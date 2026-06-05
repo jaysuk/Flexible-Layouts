@@ -1,0 +1,67 @@
+/**
+ * Discovery of pages registered by OTHER DWC plugins, so they can be embedded as widgets.
+ *
+ * DWC doesn't expose a page -> owning-plugin map, so the owning plugin id is inferred best-effort
+ * from the conventional `/Plugins/<id>/...` route path and validated against the set of loaded
+ * plugins. That id is only used for dependency capture on export; embedding works regardless.
+ */
+import { getJobViewTabs, getLoadedPlugins, getPluginSettingTabs } from "@/plugins";
+import i18n from "@/i18n";
+import { type MenuItem, useMenuStore } from "@/stores/menu";
+
+import { CUSTOM_PAGE_PREFIX } from "./pageManager";
+
+export interface EmbeddablePage {
+	source: "page" | "settingTab" | "jobTab";
+	path?: string;
+	tabKey?: string;
+	label: string;
+	icon: string;
+	pluginId?: string;
+}
+
+/** Infer the owning plugin id from a `/Plugins/<id>/...` path, validated against loaded plugins. */
+export function inferPluginId(path: string): string | undefined {
+	const match = path.match(/^\/Plugins\/([^/]+)/);
+	if (!match) {
+		return undefined;
+	}
+	const segment = match[1];
+	const loaded = getLoadedPlugins();
+	// Exact id match first, then case-insensitive, else fall back to the raw path segment.
+	if (loaded.has(segment)) {
+		return segment;
+	}
+	for (const id of loaded) {
+		if (id.toLowerCase() === segment.toLowerCase() || id.toLowerCase().startsWith(segment.toLowerCase())) {
+			return id;
+		}
+	}
+	return segment;
+}
+
+function label(item: MenuItem): string {
+	return item.translated ? item.caption : i18n.global.t(item.caption);
+}
+
+function resolveCaption(caption: string | (() => string), translated: boolean): string {
+	const raw = typeof caption === "function" ? caption() : caption;
+	return translated ? raw : i18n.global.t(raw);
+}
+
+/** Plugin-registered nav pages + Settings/Job tabs, excluding this plugin's own contributions. */
+export function listEmbeddablePages(): Array<EmbeddablePage> {
+	const menu = useMenuStore();
+	const pages: Array<EmbeddablePage> = menu.pluginItems
+		.filter((it) => !it.path.startsWith(CUSTOM_PAGE_PREFIX) && !it.path.startsWith("/Plugins/FlexibleLayouts"))
+		.map((it) => ({ source: "page" as const, path: it.path, label: label(it), icon: it.icon, pluginId: inferPluginId(it.path) }));
+
+	const settingTabs: Array<EmbeddablePage> = getPluginSettingTabs()
+		.filter((t) => t.key !== "flexibleLayouts")
+		.map((t) => ({ source: "settingTab" as const, tabKey: t.key, label: resolveCaption(t.caption, t.translated ?? false), icon: t.icon }));
+
+	const jobTabs: Array<EmbeddablePage> = getJobViewTabs()
+		.map((t) => ({ source: "jobTab" as const, tabKey: t.key, label: resolveCaption(t.caption, t.translated ?? false), icon: t.icon }));
+
+	return [...pages, ...settingTabs, ...jobTabs];
+}

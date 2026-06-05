@@ -1,0 +1,13 @@
+# Generated plugin ZIP — kept locally for convenience, distributed via GitHub Releases
+*.zip
+
+# Intermediate build output from `npm run build-plugin-pkg`
+dist/
+pkg/
+
+# Node
+node_modules/
+
+# Editor / OS
+.DS_Store
+*.log

@@ -1,0 +1,17 @@
+{
+  "name": "flexible-layouts",
+  "version": "1.0.0",
+  "description": "Flexible Layouts — drag-and-drop UI customisation plugin for DuetWebControl (Vue 3).",
+  "private": true,
+  "license": "GPL-3.0-or-later",
+  "homepage": "https://github.com/jaysuk/Flexible-Layouts",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "grid-layout-plus": "^1.1.1"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.8"
+  }
+}
