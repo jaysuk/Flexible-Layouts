@@ -408,6 +408,133 @@
 					</v-row>
 				</template>
 
+				<!-- Progress bar -->
+				<template v-else-if="draft.type === 'progress'">
+					<v-text-field v-model="draft.label" class="mb-2" density="compact" variant="outlined" hide-details
+								  :label="$t('plugins.flexibleLayouts.properties.label')" />
+					<OmPathField v-model="draft.omPath" class="mb-2" :label="$t('plugins.flexibleLayouts.progress.omPath')" />
+					<OmPathField v-model="draft.maxPath" class="mb-2" :label="$t('plugins.flexibleLayouts.progress.maxPath')" />
+					<v-row dense>
+						<v-col cols="4"><v-text-field v-model.number="draft.min" type="number" density="compact" variant="outlined" hide-details label="Min" /></v-col>
+						<v-col cols="4"><v-text-field v-model.number="draft.max" type="number" density="compact" variant="outlined" hide-details label="Max" /></v-col>
+						<v-col cols="4"><v-text-field v-model.number="draft.scale" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.slider.scale')" /></v-col>
+					</v-row>
+					<div class="d-flex flex-wrap ga-x-4 mt-1 align-center">
+						<v-switch v-model="draft.showValue" color="primary" density="compact" hide-details :label="$t('plugins.flexibleLayouts.progress.showValue')" />
+						<v-select v-model="draft.color" :items="colorOptions" density="compact" variant="outlined" hide-details style="max-width:11rem" :label="$t('plugins.flexibleLayouts.properties.color')" />
+					</div>
+				</template>
+
+				<!-- Status indicator -->
+				<template v-else-if="draft.type === 'status'">
+					<v-text-field v-model="draft.label" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" />
+					<OmPathField v-model="draft.omPath" class="mb-2" :label="$t('plugins.flexibleLayouts.status.omPath')" />
+					<div class="d-flex align-center mb-1">
+						<span class="text-title-small">{{ $t("plugins.flexibleLayouts.status.states") }}</span>
+						<v-spacer />
+						<v-btn size="x-small" variant="tonal" prepend-icon="mdi-plus" @click="addStatusState">{{ $t("plugins.flexibleLayouts.conditions.add") }}</v-btn>
+					</div>
+					<v-sheet v-for="(s, i) in draft.states" :key="i" border rounded class="pa-2 mb-2">
+						<div class="d-flex ga-2">
+							<v-select v-model="s.operator" :items="operatorOptions" density="compact" variant="outlined" hide-details style="max-width:130px" :label="$t('plugins.flexibleLayouts.conditions.operator')" />
+							<v-text-field v-if="needsValue(s.operator)" v-model="s.value" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.conditions.value')" />
+							<v-btn icon="mdi-delete" size="small" variant="text" color="error" @click="draft.states.splice(i, 1)" />
+						</div>
+						<div class="d-flex ga-2 mt-2">
+							<v-text-field v-model="s.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" />
+							<v-text-field v-model="s.icon" density="compact" variant="outlined" hide-details label="mdi-…" style="max-width:9rem" />
+							<v-select v-model="s.color" :items="colorOptions" density="compact" variant="outlined" hide-details style="max-width:9rem" :label="$t('plugins.flexibleLayouts.properties.color')" />
+						</div>
+					</v-sheet>
+					<v-row dense>
+						<v-col cols="6"><v-text-field v-model="draft.defaultLabel" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.status.defaultLabel')" /></v-col>
+						<v-col cols="6"><v-select v-model="draft.defaultColor" :items="colorOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.status.defaultColor')" /></v-col>
+					</v-row>
+				</template>
+
+				<!-- Alert banner -->
+				<template v-else-if="draft.type === 'alert'">
+					<v-text-field v-model="draft.message" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.alert.message')" />
+					<OmPathField v-model="draft.omPath" class="mb-2" :label="$t('plugins.flexibleLayouts.alert.omPath')" />
+					<div class="d-flex ga-2 mb-2">
+						<v-select v-model="draft.operator" :items="operatorOptions" density="compact" variant="outlined" hide-details style="max-width:150px" :label="$t('plugins.flexibleLayouts.conditions.operator')" />
+						<v-text-field v-if="needsValue(draft.operator)" v-model="draft.value" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.conditions.value')" />
+					</div>
+					<v-row dense>
+						<v-col cols="6"><v-select v-model="draft.severity" :items="severityOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.alert.severity')" /></v-col>
+						<v-col cols="6"><v-text-field v-model="draft.icon" density="compact" variant="outlined" hide-details label="mdi-…" /></v-col>
+					</v-row>
+				</template>
+
+				<!-- Webcam -->
+				<template v-else-if="draft.type === 'webcam'">
+					<v-text-field v-model="draft.url" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.webcam.url')" placeholder="http://…/webcam/?action=snapshot" />
+					<v-row dense>
+						<v-col cols="4"><v-text-field v-model.number="draft.refreshMs" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.webcam.refreshMs')" /></v-col>
+						<v-col cols="4"><v-select v-model="draft.fit" :items="fitOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.webcam.fit')" /></v-col>
+						<v-col cols="4" class="d-flex align-center"><v-switch v-model="draft.fullscreen" color="primary" density="compact" hide-details :label="$t('plugins.flexibleLayouts.webcam.fullscreen')" /></v-col>
+					</v-row>
+				</template>
+
+				<!-- Macro grid -->
+				<template v-else-if="draft.type === 'macros'">
+					<v-text-field v-model="draft.folder" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.macros.folder')" placeholder="0:/macros" />
+					<v-row dense>
+						<v-col cols="6"><v-text-field v-model.number="draft.columns" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.macros.columns')" /></v-col>
+						<v-col cols="6"><v-select v-model="draft.color" :items="colorOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
+					</v-row>
+				</template>
+
+				<!-- Mini console -->
+				<template v-else-if="draft.type === 'console'">
+					<v-row dense>
+						<v-col cols="4"><v-text-field v-model.number="draft.rows" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.console.rows')" /></v-col>
+						<v-col cols="8"><v-text-field v-model="draft.placeholder" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.console.placeholderLabel')" /></v-col>
+					</v-row>
+				</template>
+
+				<!-- Heater -->
+				<template v-else-if="draft.type === 'heater'">
+					<v-text-field v-model="draft.label" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" />
+					<OmPathField v-model="draft.omPath" class="mb-2" :label="$t('plugins.flexibleLayouts.heater.omPath')" />
+					<v-text-field v-model="draft.setCommand" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.heater.setCommand')" placeholder="M140 S{value}" />
+					<v-text-field v-model="draft.offCommand" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.heater.offCommand')" placeholder="M140 S-273.15" />
+					<v-row dense>
+						<v-col cols="8"><v-text-field v-model="heaterPresetsText" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.heater.presets')" :hint="$t('plugins.flexibleLayouts.jog.stepsHint')" /></v-col>
+						<v-col cols="4"><v-select v-model="draft.color" :items="colorOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
+					</v-row>
+				</template>
+
+				<!-- Clock -->
+				<template v-else-if="draft.type === 'clock'">
+					<v-text-field v-model="draft.label" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" />
+					<v-row dense>
+						<v-col cols="6"><v-select v-model="draft.mode" :items="clockModeOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.clock.mode')" /></v-col>
+						<v-col cols="6"><v-select v-if="draft.mode === 'time'" v-model="draft.format" :items="clockFormatOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.clock.format')" /></v-col>
+					</v-row>
+				</template>
+
+				<!-- Multi-value table -->
+				<template v-else-if="draft.type === 'table'">
+					<v-text-field v-model="draft.title" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.jog.titleField')" />
+					<div class="d-flex align-center mb-1">
+						<span class="text-title-small">{{ $t("plugins.flexibleLayouts.table.rows") }}</span>
+						<v-spacer />
+						<v-btn size="x-small" variant="tonal" prepend-icon="mdi-plus" @click="addTableRow">{{ $t("plugins.flexibleLayouts.conditions.add") }}</v-btn>
+					</div>
+					<v-sheet v-for="(r, i) in draft.rows" :key="i" border rounded class="pa-2 mb-2">
+						<div class="d-flex ga-2">
+							<v-text-field v-model="r.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" style="max-width:9rem" />
+							<OmPathField v-model="r.omPath" class="flex-grow-1" :label="$t('plugins.flexibleLayouts.conditions.omPath')" />
+							<v-btn icon="mdi-delete" size="small" variant="text" color="error" @click="draft.rows.splice(i, 1)" />
+						</div>
+						<div class="d-flex ga-2 mt-2">
+							<v-text-field v-model="r.unit" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.unit')" style="max-width:8rem" />
+							<v-text-field v-model.number="r.precision" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.stepper.precision')" style="max-width:8rem" />
+						</div>
+					</v-sheet>
+				</template>
+
 				<!-- Built-in panel: optional title override -->
 				<template v-else-if="draft.type === 'builtinPanel'">
 					<div class="text-body-2 text-medium-emphasis">
@@ -688,6 +815,46 @@ const stepperModeOptions = computed(() => [
 	{ title: t("stepper.modeRelative"), value: "relative" },
 	{ title: t("stepper.modeAbsolute"), value: "absolute" },
 ]);
+
+// Tier 2/3 config options
+const severityOptions = computed(() => [
+	{ title: t("alert.sevInfo"), value: "info" },
+	{ title: t("alert.sevSuccess"), value: "success" },
+	{ title: t("alert.sevWarning"), value: "warning" },
+	{ title: t("alert.sevError"), value: "error" },
+]);
+const fitOptions = computed(() => [
+	{ title: t("webcam.fitContain"), value: "contain" },
+	{ title: t("webcam.fitCover"), value: "cover" },
+]);
+const clockModeOptions = computed(() => [
+	{ title: t("clock.modeTime"), value: "time" },
+	{ title: t("clock.modeUptime"), value: "uptime" },
+	{ title: t("clock.modePrintTime"), value: "printTime" },
+	{ title: t("clock.modeTimeLeft"), value: "timeLeft" },
+]);
+const clockFormatOptions = computed(() => [
+	{ title: "24h", value: "24" },
+	{ title: "12h", value: "12" },
+]);
+const heaterPresetsText = computed({
+	get: () => (draft.value?.presets ?? []).join(", "),
+	set: (text: string) => {
+		if (draft.value) {
+			draft.value.presets = text.split(",").map((s) => Number(s.trim())).filter((n) => !Number.isNaN(n));
+		}
+	},
+});
+function addStatusState(): void {
+	if (draft.value?.type === "status") {
+		(draft.value.states ??= []).push({ operator: "eq", value: "", color: "primary", label: "", icon: "" });
+	}
+}
+function addTableRow(): void {
+	if (draft.value?.type === "table") {
+		(draft.value.rows ??= []).push({ label: "", omPath: "", unit: "", precision: 1 });
+	}
+}
 const liveGlobalNames = computed(() => {
 	const g = (machineStore.model as unknown as { global?: Map<string, unknown> }).global;
 	return g instanceof Map ? Array.from(g.keys()).sort() : [];

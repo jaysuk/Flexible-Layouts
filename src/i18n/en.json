@@ -60,6 +60,15 @@
 		"slider": "Slider",
 		"toggle": "Toggle / switch",
 		"stepper": "Stepper (+/−)",
+		"progress": "Progress bar",
+		"status": "Status indicator",
+		"alert": "Alert banner",
+		"webcam": "Webcam / snapshot",
+		"macros": "Macro grid",
+		"console": "Mini console",
+		"heater": "Heater control",
+		"clock": "Clock / timer",
+		"table": "Value table",
 		"chart": "Live chart",
 		"chartUnset": "Add a value to chart",
 		"chartDownload": "Download data (CSV)",
@@ -357,6 +366,65 @@
 		"omPath": "Live value path (optional)",
 		"precision": "Decimals",
 		"commandHint": "{value} = ±step (relative) or the new total (absolute)."
+	},
+	"progress": {
+		"omPath": "Value path",
+		"maxPath": "Max path (optional)",
+		"showValue": "Show %"
+	},
+	"status": {
+		"omPath": "Value path",
+		"states": "States (first match wins)",
+		"defaultLabel": "Default label",
+		"defaultColor": "Default colour"
+	},
+	"alert": {
+		"message": "Message",
+		"omPath": "Condition path",
+		"severity": "Severity",
+		"sevInfo": "Info",
+		"sevSuccess": "Success",
+		"sevWarning": "Warning",
+		"sevError": "Error",
+		"hidden": "Shown only when the condition is true"
+	},
+	"webcam": {
+		"url": "Image / stream URL",
+		"refreshMs": "Refresh (ms, 0 = stream)",
+		"fit": "Fit",
+		"fitContain": "Contain",
+		"fitCover": "Cover",
+		"fullscreen": "Click to enlarge",
+		"unset": "Set a webcam image or stream URL."
+	},
+	"macros": {
+		"folder": "Macros folder",
+		"columns": "Columns",
+		"loading": "Loading…",
+		"none": "No macros found in this folder."
+	},
+	"console": {
+		"rows": "Replies kept",
+		"placeholder": "Send code…",
+		"placeholderLabel": "Input placeholder"
+	},
+	"heater": {
+		"omPath": "Heater path (e.g. heat.heaters[0])",
+		"setCommand": "Set command",
+		"offCommand": "Off command",
+		"presets": "Presets (°C, comma-separated)",
+		"off": "Off"
+	},
+	"clock": {
+		"mode": "Show",
+		"modeTime": "Wall clock",
+		"modeUptime": "Uptime",
+		"modePrintTime": "Print time",
+		"modeTimeLeft": "Time left",
+		"format": "Format"
+	},
+	"table": {
+		"rows": "Rows"
 	},
 	"dependencies": {
 		"embedReason": "Embeds the “{name}” page"

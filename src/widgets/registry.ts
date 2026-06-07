@@ -69,6 +69,15 @@ export const FREEFORM_WIDGETS: ReadonlyArray<FreeformCatalogEntry> = [
 	{ type: "chart",      labelKey: "widgets.chart",      icon: "mdi-chart-line",         defaultSize: { w: 6, h: 6 } },
 	{ type: "neopixel",   labelKey: "widgets.neopixel",   icon: "mdi-led-strip-variant",  defaultSize: { w: 4, h: 9 } },
 	{ type: "globals",    labelKey: "widgets.globals",    icon: "mdi-variable",           defaultSize: { w: 5, h: 6 } },
+	{ type: "progress",   labelKey: "widgets.progress",   icon: "mdi-progress-helper",    defaultSize: { w: 4, h: 2 } },
+	{ type: "status",     labelKey: "widgets.status",     icon: "mdi-circle-slice-8",     defaultSize: { w: 3, h: 2 } },
+	{ type: "alert",      labelKey: "widgets.alert",      icon: "mdi-alert-circle",       defaultSize: { w: 5, h: 2 } },
+	{ type: "webcam",     labelKey: "widgets.webcam",     icon: "mdi-webcam",             defaultSize: { w: 6, h: 6 } },
+	{ type: "macros",     labelKey: "widgets.macros",     icon: "mdi-cog-play",           defaultSize: { w: 4, h: 5 } },
+	{ type: "console",    labelKey: "widgets.console",    icon: "mdi-console-line",       defaultSize: { w: 6, h: 5 } },
+	{ type: "heater",     labelKey: "widgets.heater",     icon: "mdi-radiator",           defaultSize: { w: 4, h: 3 } },
+	{ type: "clock",      labelKey: "widgets.clock",      icon: "mdi-clock-outline",      defaultSize: { w: 3, h: 2 } },
+	{ type: "table",      labelKey: "widgets.table",      icon: "mdi-table",              defaultSize: { w: 4, h: 4 } },
 	{ type: "web",        labelKey: "widgets.web",        icon: "mdi-web",                defaultSize: { w: 6, h: 8 } },
 ];
 
@@ -149,5 +158,23 @@ export function describeWidget(widget: Widget): { title: string; icon: string } 
 				title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.stepper"),
 				icon: "mdi-plus-minus-variant",
 			};
+		case "progress":
+			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.progress"), icon: "mdi-progress-helper" };
+		case "status":
+			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.status"), icon: "mdi-circle-slice-8" };
+		case "alert":
+			return { title: widget.message || i18n.global.t("plugins.flexibleLayouts.widgets.alert"), icon: "mdi-alert-circle" };
+		case "webcam":
+			return { title: i18n.global.t("plugins.flexibleLayouts.widgets.webcam"), icon: "mdi-webcam" };
+		case "macros":
+			return { title: i18n.global.t("plugins.flexibleLayouts.widgets.macros"), icon: "mdi-cog-play" };
+		case "console":
+			return { title: i18n.global.t("plugins.flexibleLayouts.widgets.console"), icon: "mdi-console-line" };
+		case "heater":
+			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.heater"), icon: "mdi-radiator" };
+		case "clock":
+			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.clock"), icon: "mdi-clock-outline" };
+		case "table":
+			return { title: widget.title || i18n.global.t("plugins.flexibleLayouts.widgets.table"), icon: "mdi-table" };
 	}
 }

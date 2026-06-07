@@ -225,6 +225,88 @@ export type Widget =
 		/** Command template; `{value}` is replaced. */
 		command?: string;
 		color?: string;
+	}
+	| {
+		/** Horizontal progress bar for an OM fraction. */
+		type: "progress";
+		label?: string;
+		omPath?: string;
+		/** If set, fraction = value / valueAt(maxPath); otherwise (value-min)/(max-min). */
+		maxPath?: string;
+		min?: number;
+		max?: number;
+		scale?: number;
+		showValue?: boolean;
+		color?: string;
+	}
+	| {
+		/** Coloured status dot + label: first matching rule wins. */
+		type: "status";
+		label?: string;
+		omPath?: string;
+		states?: Array<{ operator: ConditionOperator; value?: string | number; color?: string; label?: string; icon?: string }>;
+		defaultColor?: string;
+		defaultLabel?: string;
+		defaultIcon?: string;
+	}
+	| {
+		/** Banner shown only while an OM condition holds. */
+		type: "alert";
+		omPath?: string;
+		operator?: ConditionOperator;
+		value?: string | number;
+		severity?: "info" | "success" | "warning" | "error";
+		message?: string;
+		icon?: string;
+	}
+	| {
+		/** Webcam / snapshot image with optional periodic refresh. */
+		type: "webcam";
+		url?: string;
+		/** 0 = treat as a live stream (no cache-bust); >0 = snapshot refreshed every N ms. */
+		refreshMs?: number;
+		fit?: "contain" | "cover";
+		fullscreen?: boolean;
+	}
+	| {
+		/** Button grid built from the .g files in a macros folder. */
+		type: "macros";
+		folder?: string;
+		columns?: number;
+		color?: string;
+	}
+	| {
+		/** Send a command and show the last few replies. */
+		type: "console";
+		rows?: number;
+		placeholder?: string;
+	}
+	| {
+		/** Compact heater tile: live readout + target presets / off (template-driven). */
+		type: "heater";
+		label?: string;
+		/** OM base for the heater, e.g. `heat.heaters[0]`. */
+		omPath?: string;
+		/** Command template ({value}) to set the target. */
+		setCommand?: string;
+		/** Command to switch the heater off. */
+		offCommand?: string;
+		presets?: Array<number>;
+		color?: string;
+	}
+	| {
+		/** Clock / uptime / print-time readout. */
+		type: "clock";
+		label?: string;
+		mode?: "time" | "uptime" | "printTime" | "timeLeft";
+		/** 12- or 24-hour for mode "time". */
+		format?: "24" | "12";
+	}
+	| {
+		/** Compact label → value table for several OM paths. */
+		type: "table";
+		title?: string;
+		rows?: Array<{ label?: string; omPath: string; unit?: string; precision?: number }>;
 	};
 
 /** Widget type discriminator, handy for palettes and factories. */
@@ -311,6 +393,66 @@ export function createDefaultWidget(type: WidgetType): Widget {
 				step: 0.05, precision: 3, unit: "mm",
 				command: "M290 Z{value}",
 				color: "primary",
+			};
+		case "progress":
+			return {
+				type: "progress",
+				label: "Progress",
+				omPath: "job.filePosition",
+				maxPath: "job.file.size",
+				showValue: true,
+				color: "primary",
+			};
+		case "status":
+			return {
+				type: "status",
+				label: "Status",
+				omPath: "state.status",
+				states: [
+					{ operator: "eq", value: "processing", color: "success", label: "Printing", icon: "mdi-printer-3d" },
+					{ operator: "eq", value: "paused", color: "warning", label: "Paused", icon: "mdi-pause" },
+					{ operator: "eq", value: "idle", color: "info", label: "Idle", icon: "mdi-check" },
+					{ operator: "eq", value: "halted", color: "error", label: "Halted", icon: "mdi-alert" },
+				],
+				defaultColor: "grey",
+				defaultLabel: "—",
+				defaultIcon: "mdi-help",
+			};
+		case "alert":
+			return {
+				type: "alert",
+				omPath: "",
+				operator: "truthy",
+				severity: "warning",
+				message: "Alert",
+				icon: "mdi-alert",
+			};
+		case "webcam":
+			return { type: "webcam", url: "", refreshMs: 1000, fit: "contain", fullscreen: true };
+		case "macros":
+			return { type: "macros", folder: "0:/macros", columns: 2, color: "primary" };
+		case "console":
+			return { type: "console", rows: 5, placeholder: "Send code…" };
+		case "heater":
+			return {
+				type: "heater",
+				label: "Bed",
+				omPath: "heat.heaters[0]",
+				setCommand: "M140 S{value}",
+				offCommand: "M140 S-273.15",
+				presets: [0, 60, 100],
+				color: "primary",
+			};
+		case "clock":
+			return { type: "clock", label: "", mode: "time", format: "24" };
+		case "table":
+			return {
+				type: "table",
+				title: "Status",
+				rows: [
+					{ label: "Bed", omPath: "heat.heaters[0].current", unit: "°C", precision: 1 },
+					{ label: "Tool", omPath: "heat.heaters[1].current", unit: "°C", precision: 1 },
+				],
 			};
 		case "group":
 			return { type: "group", title: "Custom panel", items: [], cols: 12, rowHeight: 30 };

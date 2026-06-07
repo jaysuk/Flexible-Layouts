@@ -28,6 +28,20 @@ Add widgets with **Add widget** while editing. Every widget can additionally be 
 | **Globals editor** | View and edit RRF `global.*` variables inline — booleans toggle live, numbers/strings/arrays edit + Set. | show all vs a chosen list of variables, filter box, allow-edit (read-only) |
 | **Web page** | Embeds an external page / local web service in an iframe. | URL |
 
+## Display & dashboard widgets
+
+| Widget | What it does | Key options |
+|--------|--------------|-------------|
+| **Progress bar** | Horizontal bar for an OM fraction (value, or value ÷ a max path). Print progress, heater-to-target, etc. | value path, max path, min/max/scale, show %, colour |
+| **Status indicator** | A coloured dot + label/icon chosen by the first matching rule against an OM value. At-a-glance machine state. | value path, states (operator/value → colour/label/icon), defaults |
+| **Alert banner** | A banner shown **only while** an OM condition holds (filament out, fault, door open…). Visible in edit mode for setup. | condition (path/operator/value), severity, message, icon |
+| **Webcam / snapshot** | An image or stream, optionally refreshed on a timer, click-to-enlarge. | URL, refresh ms (0 = stream), fit, click-to-enlarge |
+| **Macro grid** | A button per `.g` file in a macros folder; runs `M98 P"…"`. | folder, columns, colour |
+| **Mini console** | Send a command and see the last few replies, without leaving the page. | replies kept, placeholder |
+| **Heater control** | Compact tile: live current/active/state + target presets and off (command-templated). | heater path, set/off commands, presets, colour |
+| **Clock / timer** | Wall clock, uptime, print time, or time-left. | mode, 12/24h |
+| **Value table** | A tidy label → value table for several OM paths in one tile. | rows (label/path/unit/decimals) |
+
 > Use the 🌳 **browse** button anywhere a path is needed to pick object-model values without typing.
 
 ## Conditions (any widget)
