@@ -37,10 +37,24 @@
 				 it remains selectable; in view mode it renders nothing. -->
 			<div v-if="effects.hidden && !editMode" class="fill-height" />
 			<div v-else class="fill-height" :class="{ 'condition-dimmed': effects.hidden && editMode }">
-				<ScaleToFit v-if="fitEnabled">
-					<WidgetView :widget="item.widget" :override-color="effects.color" :disabled="effects.disabled" />
-				</ScaleToFit>
-				<WidgetView v-else :widget="item.widget" :override-color="effects.color" :disabled="effects.disabled" />
+				<WidgetErrorBoundary :reset-key="widgetKey">
+					<ScaleToFit v-if="fitEnabled">
+						<WidgetView :widget="item.widget" :override-color="effects.color" :disabled="effects.disabled" />
+					</ScaleToFit>
+					<WidgetView v-else :widget="item.widget" :override-color="effects.color" :disabled="effects.disabled" />
+
+					<template #error="{ message, reset }">
+						<div class="flex-widget-error fill-height">
+							<v-icon color="warning" size="small">mdi-alert-circle-outline</v-icon>
+							<div class="text-caption font-weight-medium mt-1">{{ meta.title }} — {{ $t("plugins.flexibleLayouts.widgetError.title") }}</div>
+							<div class="text-caption text-medium-emphasis flex-widget-error-msg">{{ message }}</div>
+							<div class="d-flex ga-2 mt-2">
+								<v-btn size="x-small" variant="tonal" prepend-icon="mdi-refresh" @click="reset">{{ $t("plugins.flexibleLayouts.widgetError.retry") }}</v-btn>
+								<v-btn size="x-small" variant="tonal" color="error" prepend-icon="mdi-delete" @click="emit('remove')">{{ $t("plugins.flexibleLayouts.widgetError.remove") }}</v-btn>
+							</div>
+						</div>
+					</template>
+				</WidgetErrorBoundary>
 			</div>
 		</div>
 	</div>
@@ -56,6 +70,7 @@ import type { GridItemModel } from "../model/document";
 import { evaluateConditions } from "../util/conditions";
 import { describeWidget } from "../widgets/registry";
 import ScaleToFit from "../widgets/ScaleToFit.vue";
+import WidgetErrorBoundary from "../widgets/WidgetErrorBoundary.vue";
 import WidgetView from "../widgets/WidgetView.vue";
 
 const props = defineProps<{ item: GridItemModel; editMode: boolean }>();
@@ -76,6 +91,10 @@ const meta = computed(() => {
 	const described = describeWidget(props.item.widget);
 	return { title: props.item.title || described.title, icon: described.icon };
 });
+
+// Re-render (clear a caught error) when the widget's config changes, so fixing it in the
+// properties dialog recovers the tile automatically.
+const widgetKey = computed(() => JSON.stringify(props.item.widget));
 
 // Reactive condition effects (colour / hide / disable) driven by the live object model.
 const effects = computed(() => evaluateConditions(machineStore.model, props.item.conditions));
@@ -170,5 +189,22 @@ const fitEnabled = computed(() =>
 .flex-item-body.has-text :deep(.v-card-title),
 .flex-item-body.has-text :deep(.v-card-text) {
 	color: var(--flex-text);
+}
+
+.flex-widget-error {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	text-align: center;
+	padding: 8px;
+	overflow: auto;
+}
+.flex-widget-error-msg {
+	font-family: monospace;
+	font-size: 0.7rem;
+	max-height: 4.5em;
+	overflow: auto;
+	word-break: break-word;
 }
 </style>

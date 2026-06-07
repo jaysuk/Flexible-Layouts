@@ -499,6 +499,11 @@
 	"eventLog": {
 		"empty": "Waiting for messages…"
 	},
+	"widgetError": {
+		"title": "this panel failed to render",
+		"retry": "Retry",
+		"remove": "Remove"
+	},
 	"dependencies": {
 		"embedReason": "Embeds the “{name}” page"
 	},

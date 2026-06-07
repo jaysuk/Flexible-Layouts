@@ -105,6 +105,10 @@ function stripLabel(s: Strip): string {
 }
 
 // --- LED state ---------------------------------------------------------------------
+// Declared before syncLen()/the immediate watch below, which read them (avoids a TDZ crash).
+const brightness = ref(255);
+const target = ref<"all" | number>("all");
+
 const ledCount = computed({
   get: () => props.widget.ledCount ?? 30,
   set: (v: number) => { props.widget.ledCount = Math.max(1, Math.round(Number(v) || 1)); },
@@ -122,9 +126,6 @@ function syncLen(): void {
   if (typeof target.value === "number" && target.value >= n) target.value = "all";
 }
 watch(ledCount, syncLen, { immediate: true });
-
-const brightness = ref(255);
-const target = ref<"all" | number>("all");
 
 // --- colour helpers ----------------------------------------------------------------
 function hexToRgb(hex: string): { r: number; g: number; b: number } {
