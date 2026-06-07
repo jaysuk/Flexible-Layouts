@@ -20,10 +20,13 @@
                :title="$t('plugins.flexibleLayouts.neopixel.off')" @click="turnOff" />
       </div>
 
-      <!-- Colour picker -->
-      <div class="d-flex justify-center flex-shrink-0">
-        <v-color-picker v-model="pickerHex" :modes="['rgb']" hide-inputs :width="pickerWidth"
-                        class="np-picker" />
+      <!-- Colour picker: native swatch (opens the OS colour picker) + quick presets -->
+      <div class="d-flex align-center ga-2 flex-shrink-0">
+        <input type="color" class="np-swatch" :value="pickerHex" @input="pickerHex = ($event.target as HTMLInputElement).value" />
+        <div class="np-presets">
+          <button v-for="p in PRESETS" :key="p" type="button" class="np-preset" :style="{ background: p }"
+                  :title="p" @click="pickerHex = p" />
+        </div>
       </div>
 
       <!-- White channel (RGBW only) -->
@@ -77,7 +80,7 @@ const machineStore = useMachineStore();
 const uiStore = useUiStore();
 
 const disabledNow = computed(() => props.disabled || uiStore.uiFrozen);
-const pickerWidth = 220;
+const PRESETS = ["#ffffff", "#ff0000", "#00ff00", "#0000ff", "#ffaa00", "#ff00ff", "#00ffff", "#000000"];
 
 // --- strips ------------------------------------------------------------------------
 const strips = computed<Array<{ strip: Strip; eIndex: number }>>(() => {
@@ -203,7 +206,9 @@ function turnOff(): void {
 .np-count :deep(input) { text-align: center; }
 .np-count { max-width: 4.5rem; }
 .np-num { width: 2.2em; text-align: right; font-variant-numeric: tabular-nums; }
-.np-picker { box-shadow: none; background: transparent; max-width: 100%; }
+.np-swatch { width: 44px; height: 32px; flex: 0 0 auto; border: 1px solid rgba(var(--v-theme-on-surface), 0.3); border-radius: 4px; background: none; cursor: pointer; padding: 0; }
+.np-presets { display: flex; flex-wrap: wrap; gap: 3px; flex: 1 1 auto; }
+.np-preset { width: 18px; height: 18px; border-radius: 3px; cursor: pointer; flex: 0 0 auto; border: 1px solid rgba(var(--v-theme-on-surface), 0.25); }
 .np-pips-wrap { min-height: 0; overflow-y: auto; }
 .np-pips { display: flex; flex-wrap: wrap; gap: 3px; }
 .np-pip {
