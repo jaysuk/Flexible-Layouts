@@ -57,6 +57,9 @@
 		"jog": "Movement / jog (Pronterface)",
 		"neopixel": "LED strip (NeoPixel)",
 		"globals": "Globals editor",
+		"slider": "Slider",
+		"toggle": "Toggle / switch",
+		"stepper": "Stepper (+/−)",
 		"chart": "Live chart",
 		"chartUnset": "Add a value to chart",
 		"chartDownload": "Download data (CSV)",
@@ -331,6 +334,29 @@
 		"search": "Filter…",
 		"set": "Set",
 		"none": "No matching global variables."
+	},
+	"slider": {
+		"omPath": "Live value path (optional)",
+		"step": "Step",
+		"scale": "OM ×scale",
+		"offset": "OM +offset",
+		"live": "Send while dragging"
+	},
+	"toggle": {
+		"omPath": "State path (truthy = on)",
+		"onCommand": "On command",
+		"offCommand": "Off command",
+		"variant": "Style",
+		"variantSwitch": "Switch",
+		"variantButton": "Button"
+	},
+	"stepper": {
+		"mode": "Mode",
+		"modeRelative": "Relative (send ±step)",
+		"modeAbsolute": "Absolute (send new total)",
+		"omPath": "Live value path (optional)",
+		"precision": "Decimals",
+		"commandHint": "{value} = ±step (relative) or the new total (absolute)."
 	},
 	"dependencies": {
 		"embedReason": "Embeds the “{name}” page"

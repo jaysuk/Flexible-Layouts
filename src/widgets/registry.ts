@@ -61,6 +61,9 @@ export const FREEFORM_WIDGETS: ReadonlyArray<FreeformCatalogEntry> = [
 	{ type: "codeButton", labelKey: "widgets.codeButton", icon: "mdi-gesture-tap-button", defaultSize: { w: 3, h: 3 } },
 	{ type: "jog",        labelKey: "widgets.jog",        icon: "mdi-circle-double",      defaultSize: { w: 5, h: 8 } },
 	{ type: "input",      labelKey: "widgets.input",      icon: "mdi-form-textbox",       defaultSize: { w: 4, h: 2 } },
+	{ type: "slider",     labelKey: "widgets.slider",     icon: "mdi-tune-variant",       defaultSize: { w: 4, h: 2 } },
+	{ type: "toggle",     labelKey: "widgets.toggle",     icon: "mdi-toggle-switch",      defaultSize: { w: 3, h: 2 } },
+	{ type: "stepper",    labelKey: "widgets.stepper",    icon: "mdi-plus-minus-variant", defaultSize: { w: 3, h: 2 } },
 	{ type: "value",      labelKey: "widgets.value",      icon: "mdi-counter",            defaultSize: { w: 3, h: 3 } },
 	{ type: "label",      labelKey: "widgets.label",      icon: "mdi-format-text",        defaultSize: { w: 4, h: 2 } },
 	{ type: "chart",      labelKey: "widgets.chart",      icon: "mdi-chart-line",         defaultSize: { w: 6, h: 6 } },
@@ -130,6 +133,21 @@ export function describeWidget(widget: Widget): { title: string; icon: string } 
 			return {
 				title: widget.title || i18n.global.t("plugins.flexibleLayouts.widgets.globals"),
 				icon: "mdi-variable",
+			};
+		case "slider":
+			return {
+				title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.slider"),
+				icon: "mdi-tune-variant",
+			};
+		case "toggle":
+			return {
+				title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.toggle"),
+				icon: "mdi-toggle-switch",
+			};
+		case "stepper":
+			return {
+				title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.stepper"),
+				icon: "mdi-plus-minus-variant",
 			};
 	}
 }

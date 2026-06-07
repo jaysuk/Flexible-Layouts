@@ -27,9 +27,9 @@ multiple switchable interfaces, and share it all as a file.
   background, and show a page only when an object-model condition is true.
 - **Widgets** — built-in DWC panels, pages/tabs from other plugins, custom-panel groups, command
   buttons (G-code / macros / HTTP / open-URL), a Pronterface-style **jog** control, a
-  **NeoPixel/LED-strip** controller, a **`global.*` variables editor**, input fields (run a command
-  with a value, or set a `global` variable), live value read-outs, live charts (with CSV download),
-  text / images, and web embeds.
+  **NeoPixel/LED-strip** controller, a **`global.*` variables editor**, input fields, **sliders**,
+  **toggles/switches** and **+/- steppers** (all command-driven, optionally OM-bound), live value
+  read-outs, live charts (with CSV download), text / images, and web embeds.
 - **Smart behaviour** — per-widget object-model **conditions** (recolour / hide / disable), **value
   formatting** (units, on/off, value→text maps), **colours**, **font size & family**, and
   **scale-to-fit**.

@@ -177,6 +177,54 @@ export type Widget =
 		showSearch?: boolean;
 		/** Allow editing values inline (otherwise read-only). */
 		allowEdit?: boolean;
+	}
+	| {
+		/** Slider that sends a command template ({value}) and optionally tracks a live OM value. */
+		type: "slider";
+		label?: string;
+		/** Optional OM path for the live position (slider = value * scale + offset). */
+		omPath?: string;
+		scale?: number;
+		offset?: number;
+		min?: number;
+		max?: number;
+		step?: number;
+		unit?: string;
+		/** Command template; `{value}` is replaced with the slider value. */
+		command?: string;
+		/** Send continuously while dragging, vs only on release (default). */
+		live?: boolean;
+		color?: string;
+	}
+	| {
+		/** Stateful on/off control bound to an OM value, sending separate on/off commands. */
+		type: "toggle";
+		label?: string;
+		/** OM path whose truthiness drives the on/off state. */
+		omPath?: string;
+		onCommand?: string;
+		offCommand?: string;
+		/** Render as a switch (default) or a pressable button. */
+		variant?: "switch" | "button";
+		color?: string;
+	}
+	| {
+		/** +/- adjuster that sends a command template ({value}); absolute or relative. */
+		type: "stepper";
+		label?: string;
+		/** `absolute` sends the new total; `relative` sends ±step each press. */
+		mode?: "absolute" | "relative";
+		/** Optional OM path for the live value / absolute base. */
+		omPath?: string;
+		step?: number;
+		min?: number;
+		max?: number;
+		/** Decimal places for display and the sent value. */
+		precision?: number;
+		unit?: string;
+		/** Command template; `{value}` is replaced. */
+		command?: string;
+		color?: string;
 	};
 
 /** Widget type discriminator, handy for palettes and factories. */
@@ -232,6 +280,37 @@ export function createDefaultWidget(type: WidgetType): Widget {
 				names: [],
 				showSearch: true,
 				allowEdit: true,
+			};
+		case "slider":
+			return {
+				type: "slider",
+				label: "Fan",
+				omPath: "fans[0].requestedValue",
+				scale: 100, offset: 0,
+				min: 0, max: 100, step: 1, unit: "%",
+				command: "M106 P0 S{value}",
+				live: false,
+				color: "primary",
+			};
+		case "toggle":
+			return {
+				type: "toggle",
+				label: "ATX power",
+				omPath: "state.atxPower",
+				onCommand: "M80",
+				offCommand: "M81",
+				variant: "switch",
+				color: "primary",
+			};
+		case "stepper":
+			return {
+				type: "stepper",
+				label: "Babystep Z",
+				mode: "relative",
+				omPath: "move.axes[2].babystep",
+				step: 0.05, precision: 3, unit: "mm",
+				command: "M290 Z{value}",
+				color: "primary",
 			};
 		case "group":
 			return { type: "group", title: "Custom panel", items: [], cols: 12, rowHeight: 30 };

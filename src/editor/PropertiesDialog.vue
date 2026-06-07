@@ -344,6 +344,70 @@
 					</div>
 				</template>
 
+				<!-- Slider -->
+				<template v-else-if="draft.type === 'slider'">
+					<v-text-field v-model="draft.label" class="mb-2" density="compact" variant="outlined" hide-details
+								  :label="$t('plugins.flexibleLayouts.properties.label')" />
+					<v-text-field v-model="draft.command" class="mb-2" density="compact" variant="outlined" hide-details
+								  label="Command" placeholder="M106 P0 S{value}"
+								  :hint="$t('plugins.flexibleLayouts.properties.codeHint')" />
+					<OmPathField v-model="draft.omPath" class="mb-2"
+								 :label="$t('plugins.flexibleLayouts.slider.omPath')" />
+					<v-row dense>
+						<v-col cols="4"><v-text-field v-model.number="draft.min" type="number" density="compact" variant="outlined" hide-details label="Min" /></v-col>
+						<v-col cols="4"><v-text-field v-model.number="draft.max" type="number" density="compact" variant="outlined" hide-details label="Max" /></v-col>
+						<v-col cols="4"><v-text-field v-model.number="draft.step" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.slider.step')" /></v-col>
+					</v-row>
+					<v-row dense class="mt-1">
+						<v-col cols="4"><v-text-field v-model.number="draft.scale" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.slider.scale')" /></v-col>
+						<v-col cols="4"><v-text-field v-model.number="draft.offset" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.slider.offset')" /></v-col>
+						<v-col cols="4"><v-text-field v-model="draft.unit" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.unit')" /></v-col>
+					</v-row>
+					<v-select v-model="draft.color" :items="colorOptions" class="mt-2" density="compact" variant="outlined"
+							  hide-details :label="$t('plugins.flexibleLayouts.properties.color')" />
+					<v-switch v-model="draft.live" color="primary" density="compact" hide-details class="mt-1"
+							  :label="$t('plugins.flexibleLayouts.slider.live')" />
+				</template>
+
+				<!-- Toggle -->
+				<template v-else-if="draft.type === 'toggle'">
+					<v-text-field v-model="draft.label" class="mb-2" density="compact" variant="outlined" hide-details
+								  :label="$t('plugins.flexibleLayouts.properties.label')" />
+					<v-text-field v-model="draft.onCommand" class="mb-2" density="compact" variant="outlined" hide-details
+								  :label="$t('plugins.flexibleLayouts.toggle.onCommand')" placeholder="M80" />
+					<v-text-field v-model="draft.offCommand" class="mb-2" density="compact" variant="outlined" hide-details
+								  :label="$t('plugins.flexibleLayouts.toggle.offCommand')" placeholder="M81" />
+					<OmPathField v-model="draft.omPath" class="mb-2"
+								 :label="$t('plugins.flexibleLayouts.toggle.omPath')" />
+					<v-row dense>
+						<v-col cols="6"><v-select v-model="draft.variant" :items="toggleVariantOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.toggle.variant')" /></v-col>
+						<v-col cols="6"><v-select v-model="draft.color" :items="colorOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
+					</v-row>
+				</template>
+
+				<!-- Stepper -->
+				<template v-else-if="draft.type === 'stepper'">
+					<v-text-field v-model="draft.label" class="mb-2" density="compact" variant="outlined" hide-details
+								  :label="$t('plugins.flexibleLayouts.properties.label')" />
+					<v-select v-model="draft.mode" :items="stepperModeOptions" class="mb-2" density="compact" variant="outlined"
+							  hide-details :label="$t('plugins.flexibleLayouts.stepper.mode')" />
+					<v-text-field v-model="draft.command" class="mb-2" density="compact" variant="outlined" hide-details
+								  label="Command" placeholder="M290 Z{value}"
+								  :hint="$t('plugins.flexibleLayouts.stepper.commandHint')" persistent-hint />
+					<OmPathField v-model="draft.omPath" class="mb-2"
+								 :label="$t('plugins.flexibleLayouts.stepper.omPath')" />
+					<v-row dense>
+						<v-col cols="3"><v-text-field v-model.number="draft.step" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.slider.step')" /></v-col>
+						<v-col cols="3"><v-text-field v-model.number="draft.min" type="number" density="compact" variant="outlined" hide-details label="Min" /></v-col>
+						<v-col cols="3"><v-text-field v-model.number="draft.max" type="number" density="compact" variant="outlined" hide-details label="Max" /></v-col>
+						<v-col cols="3"><v-text-field v-model.number="draft.precision" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.stepper.precision')" /></v-col>
+					</v-row>
+					<v-row dense class="mt-1">
+						<v-col cols="6"><v-text-field v-model="draft.unit" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.unit')" /></v-col>
+						<v-col cols="6"><v-select v-model="draft.color" :items="colorOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
+					</v-row>
+				</template>
+
 				<!-- Built-in panel: optional title override -->
 				<template v-else-if="draft.type === 'builtinPanel'">
 					<div class="text-body-2 text-medium-emphasis">
@@ -613,6 +677,16 @@ const stripIndexItems = computed(() => {
 const globalsModeOptions = computed(() => [
 	{ title: t("globals.modeAll"), value: "all" },
 	{ title: t("globals.modeList"), value: "list" },
+]);
+
+// Toggle / stepper config options
+const toggleVariantOptions = computed(() => [
+	{ title: t("toggle.variantSwitch"), value: "switch" },
+	{ title: t("toggle.variantButton"), value: "button" },
+]);
+const stepperModeOptions = computed(() => [
+	{ title: t("stepper.modeRelative"), value: "relative" },
+	{ title: t("stepper.modeAbsolute"), value: "absolute" },
 ]);
 const liveGlobalNames = computed(() => {
 	const g = (machineStore.model as unknown as { global?: Map<string, unknown> }).global;

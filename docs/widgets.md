@@ -18,6 +18,9 @@ Add widgets with **Add widget** while editing. Every widget can additionally be 
 | **Command button** | Sends G-code / runs a macro, makes an HTTP GET, or opens a URL. | code/URL, label, icon, colour, confirm-before-run, action type |
 | **Jog control** | Pronterface-style movement pad: concentric step rings for two planar axes + a Z bar. | axis letters, XY/Z step rings (right-click a ring to change it), feedrates, home buttons, motors-off, per-axis invert, title |
 | **Input field** | Runs a command template with the entered value (`{value}`), or sets an RRF `global` variable. | mode, command template / global name, number vs text, default |
+| **Slider** | Sends a command template (`{value}`) as you drag, and optionally tracks a live OM value. Fan %, speed/flow factor, brightness, RPM… | live value path (+scale/offset), min/max/step, command, unit, send-while-dragging, colour |
+| **Toggle / switch** | Stateful on/off bound to an OM value, sending separate on/off commands. ATX power (`M80`/`M81`), pins (`M42`), a `global` bool… | state path, on/off commands, switch vs button, colour |
+| **Stepper (+/−)** | Buttons that nudge a value by a step. Relative sends `±step` each press; absolute sends the new total. Babystep, target temp, factors… | mode, live value path, step/min/max, decimals, command, unit, colour |
 | **Value read-out** | Shows one object-model value as a number, label or gauge. | OM path, display mode, unit, precision, gauge bounds, scale/offset, on/off text, value→text map |
 | **Live chart** | Plots one or more OM values over time, with CSV download. | series (OM paths), window seconds, interval, Y bounds, axis titles |
 | **Text / image** | A heading, paragraph, image (by URL) or spacer. | variant, content, alignment, colour |
