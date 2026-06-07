@@ -307,6 +307,100 @@ export type Widget =
 		type: "table";
 		title?: string;
 		rows?: Array<{ label?: string; omPath: string; unit?: string; precision?: number }>;
+	}
+	| {
+		/** Extrude / retract control. */
+		type: "extruder";
+		label?: string;
+		amounts?: Array<number>;
+		feedrate?: number;
+		/** Tool to select first (T<n>); null = current tool. */
+		tool?: number | null;
+		color?: string;
+	}
+	| {
+		/** Work coordinate system (CNC): select G54–G59 and zero/go-to axes. */
+		type: "wcs";
+		label?: string;
+		/** Axis letters offered for zeroing. */
+		axes?: Array<string>;
+		color?: string;
+	}
+	| {
+		/** Tool selector: a button per configured tool. */
+		type: "toolSelect";
+		label?: string;
+		color?: string;
+	}
+	| {
+		/** Single-fan slider + RPM read-out. */
+		type: "fan";
+		label?: string;
+		fanIndex?: number;
+		color?: string;
+	}
+	| {
+		/** Job pause / resume / cancel with progress. */
+		type: "jobControl";
+		showProgress?: boolean;
+		color?: string;
+	}
+	| {
+		/** File picker: a button per file in a folder; starts it. */
+		type: "files";
+		folder?: string;
+		columns?: number;
+		/** Command template; `{path}` is replaced. */
+		startCommand?: string;
+		color?: string;
+	}
+	| {
+		/** Several radial gauges in one tile. */
+		type: "gaugeCluster";
+		title?: string;
+		gauges?: Array<{ label?: string; omPath: string; min?: number; max?: number; unit?: string; color?: string }>;
+	}
+	| {
+		/** Grid of truthiness-driven status icons (endstops, sensors, flags…). */
+		type: "indicators";
+		title?: string;
+		columns?: number;
+		items?: Array<{ label?: string; omPath: string; trueColor?: string; falseColor?: string; trueIcon?: string; falseIcon?: string }>;
+	}
+	| {
+		/** Image with clickable command regions (machine schematic, etc.). */
+		type: "hotspot";
+		url?: string;
+		regions?: Array<{ x: number; y: number; w: number; h: number; command?: string; label?: string }>;
+	}
+	| {
+		/** Formatted note (minimal Markdown). */
+		type: "note";
+		content?: string;
+	}
+	| {
+		/** Poll an HTTP endpoint and display the result. */
+		type: "http";
+		label?: string;
+		url?: string;
+		pollMs?: number;
+		/** Dotted path to extract from a JSON response (optional). */
+		jsonPath?: string;
+		prefix?: string;
+		suffix?: string;
+	}
+	| {
+		/** Live tail of console messages / replies. */
+		type: "eventLog";
+		rows?: number;
+	}
+	| {
+		/** Tiny multi-series trend line(s) sampled from the object model. */
+		type: "sparkline";
+		title?: string;
+		series?: Array<{ omPath: string; color?: string }>;
+		windowSeconds?: number;
+		intervalMs?: number;
 	};
 
 /** Widget type discriminator, handy for palettes and factories. */
@@ -453,6 +547,52 @@ export function createDefaultWidget(type: WidgetType): Widget {
 					{ label: "Bed", omPath: "heat.heaters[0].current", unit: "°C", precision: 1 },
 					{ label: "Tool", omPath: "heat.heaters[1].current", unit: "°C", precision: 1 },
 				],
+			};
+		case "extruder":
+			return { type: "extruder", label: "Extruder", amounts: [1, 5, 10, 50], feedrate: 300, tool: null, color: "primary" };
+		case "wcs":
+			return { type: "wcs", label: "Work offsets", axes: ["X", "Y", "Z"], color: "primary" };
+		case "toolSelect":
+			return { type: "toolSelect", label: "Tools", color: "primary" };
+		case "fan":
+			return { type: "fan", label: "Fan", fanIndex: 0, color: "primary" };
+		case "jobControl":
+			return { type: "jobControl", showProgress: true, color: "primary" };
+		case "files":
+			return { type: "files", folder: "0:/gcodes", columns: 1, startCommand: "M32 \"{path}\"", color: "primary" };
+		case "gaugeCluster":
+			return {
+				type: "gaugeCluster",
+				title: "Temperatures",
+				gauges: [
+					{ label: "Bed", omPath: "heat.heaters[0].current", min: 0, max: 120, unit: "°C", color: "primary" },
+					{ label: "Tool", omPath: "heat.heaters[1].current", min: 0, max: 300, unit: "°C", color: "error" },
+				],
+			};
+		case "indicators":
+			return {
+				type: "indicators",
+				title: "Sensors",
+				columns: 2,
+				items: [
+					{ label: "Z probe", omPath: "sensors.probes[0].value[0]", trueColor: "success", falseColor: "grey", trueIcon: "mdi-circle", falseIcon: "mdi-circle-outline" },
+				],
+			};
+		case "hotspot":
+			return { type: "hotspot", url: "", regions: [] };
+		case "note":
+			return { type: "note", content: "# Note\n\nEdit in the widget settings. Supports **bold**, *italic*, `code`, lists and [links](https://duet3d.com)." };
+		case "http":
+			return { type: "http", label: "Endpoint", url: "", pollMs: 5000, jsonPath: "", prefix: "", suffix: "" };
+		case "eventLog":
+			return { type: "eventLog", rows: 8 };
+		case "sparkline":
+			return {
+				type: "sparkline",
+				title: "Trend",
+				series: [{ omPath: "heat.heaters[1].current", color: "primary" }],
+				windowSeconds: 120,
+				intervalMs: 1000,
 			};
 		case "group":
 			return { type: "group", title: "Custom panel", items: [], cols: 12, rowHeight: 30 };

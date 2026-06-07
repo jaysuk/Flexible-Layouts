@@ -21,6 +21,19 @@
 	<HeaterWidget v-else-if="widget.type === 'heater'" :widget="widget" :disabled="disabled" />
 	<ClockWidget v-else-if="widget.type === 'clock'" :widget="widget" />
 	<TableWidget v-else-if="widget.type === 'table'" :widget="widget" />
+	<ExtruderWidget v-else-if="widget.type === 'extruder'" :widget="widget" :disabled="disabled" />
+	<WcsWidget v-else-if="widget.type === 'wcs'" :widget="widget" :disabled="disabled" />
+	<ToolSelectWidget v-else-if="widget.type === 'toolSelect'" :widget="widget" :disabled="disabled" />
+	<FanWidget v-else-if="widget.type === 'fan'" :widget="widget" :disabled="disabled" />
+	<JobControlWidget v-else-if="widget.type === 'jobControl'" :widget="widget" :disabled="disabled" />
+	<FilesWidget v-else-if="widget.type === 'files'" :widget="widget" :disabled="disabled" />
+	<GaugeClusterWidget v-else-if="widget.type === 'gaugeCluster'" :widget="widget" />
+	<IndicatorsWidget v-else-if="widget.type === 'indicators'" :widget="widget" />
+	<SparklineWidget v-else-if="widget.type === 'sparkline'" :widget="widget" />
+	<NoteWidget v-else-if="widget.type === 'note'" :widget="widget" />
+	<HotspotWidget v-else-if="widget.type === 'hotspot'" :widget="widget" :disabled="disabled" />
+	<HttpWidget v-else-if="widget.type === 'http'" :widget="widget" />
+	<EventLogWidget v-else-if="widget.type === 'eventLog'" :widget="widget" />
 	<GroupWidget v-else-if="widget.type === 'group'" :widget="widget" />
 	<PluginPageWidget v-else-if="widget.type === 'pluginPage'" :widget="widget" />
 	<WebWidget v-else-if="widget.type === 'web'" :widget="widget" />
@@ -34,22 +47,35 @@ import ChartWidget from "./ChartWidget.vue";
 import ClockWidget from "./ClockWidget.vue";
 import CommandButtonWidget from "./CommandButtonWidget.vue";
 import ConsoleWidget from "./ConsoleWidget.vue";
+import EventLogWidget from "./EventLogWidget.vue";
+import ExtruderWidget from "./ExtruderWidget.vue";
+import FanWidget from "./FanWidget.vue";
+import FilesWidget from "./FilesWidget.vue";
+import GaugeClusterWidget from "./GaugeClusterWidget.vue";
 import GlobalsWidget from "./GlobalsWidget.vue";
 import GroupWidget from "./GroupWidget.vue";
 import HeaterWidget from "./HeaterWidget.vue";
+import HotspotWidget from "./HotspotWidget.vue";
+import HttpWidget from "./HttpWidget.vue";
+import IndicatorsWidget from "./IndicatorsWidget.vue";
 import InputWidget from "./InputWidget.vue";
+import JobControlWidget from "./JobControlWidget.vue";
 import JogWidget from "./JogWidget.vue";
 import LabelWidget from "./LabelWidget.vue";
 import MacrosWidget from "./MacrosWidget.vue";
 import NeopixelWidget from "./NeopixelWidget.vue";
+import NoteWidget from "./NoteWidget.vue";
 import PluginPageWidget from "./PluginPageWidget.vue";
 import ProgressWidget from "./ProgressWidget.vue";
 import SliderWidget from "./SliderWidget.vue";
+import SparklineWidget from "./SparklineWidget.vue";
 import StatusWidget from "./StatusWidget.vue";
 import StepperWidget from "./StepperWidget.vue";
 import TableWidget from "./TableWidget.vue";
 import ToggleWidget from "./ToggleWidget.vue";
+import ToolSelectWidget from "./ToolSelectWidget.vue";
 import ValueWidget from "./ValueWidget.vue";
+import WcsWidget from "./WcsWidget.vue";
 import WebcamWidget from "./WebcamWidget.vue";
 import WebWidget from "./WebWidget.vue";
 

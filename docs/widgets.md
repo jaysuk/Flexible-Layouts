@@ -42,6 +42,29 @@ Add widgets with **Add widget** while editing. Every widget can additionally be 
 | **Clock / timer** | Wall clock, uptime, print time, or time-left. | mode, 12/24h |
 | **Value table** | A tidy label → value table for several OM paths in one tile. | rows (label/path/unit/decimals) |
 
+## Machine control widgets
+
+| Widget | What it does | Key options |
+|--------|--------------|-------------|
+| **Extruder** | Extrude / retract by a chosen amount + feedrate (`M83` + `G1 E…`), optional tool select. | amounts, feedrate, tool |
+| **Work offsets (CNC)** | Select G54–G59 and zero the current WCS for chosen axes (`G10 L20`). | axes, colour |
+| **Tool selector** | A button per tool (`T<n>`); active tool highlighted. | label, colour |
+| **Fan slider** | Single-fan slider with live % + RPM (`M106 P<n> S…`). | fan #, colour |
+| **Job control** | Pause / resume / cancel (`M25`/`M24`/`M0`) with progress. | show progress, colour |
+| **File picker** | A button per gcode file in a folder; starts it (`M32`-templated). | folder, columns, start command |
+
+## More display widgets
+
+| Widget | What it does | Key options |
+|--------|--------------|-------------|
+| **Gauge cluster** | Several radial gauges in one tile. | gauges (label/path/min/max/unit/colour) |
+| **Indicator grid** | Grid of truthiness-driven status icons (endstops, sensors, flags). | items (label/path/on+off colour/icon), columns |
+| **Sparkline** | Tiny multi-series trend line sampled from the OM. | series (path/colour), window, interval |
+| **Note (Markdown)** | Formatted text/instructions from a minimal Markdown subset. | content |
+| **Image hotspots** | An image with clickable regions that each send a command (machine schematic, etc.). | image URL, regions (x/y/w/h %, command, label) |
+| **HTTP / REST value** | Polls an HTTP endpoint and shows the response (optionally a JSON field). | URL, poll ms, JSON path, prefix/suffix |
+| **Console log** | Live tail of console messages and command replies (via the plugin event bus). | replies kept |
+
 > Use the 🌳 **browse** button anywhere a path is needed to pick object-model values without typing.
 
 ## Conditions (any widget)

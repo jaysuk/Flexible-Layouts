@@ -69,6 +69,19 @@
 		"heater": "Heater control",
 		"clock": "Clock / timer",
 		"table": "Value table",
+		"extruder": "Extruder",
+		"wcs": "Work offsets (CNC)",
+		"toolSelect": "Tool selector",
+		"fan": "Fan slider",
+		"jobControl": "Job control",
+		"files": "File picker",
+		"gaugeCluster": "Gauge cluster",
+		"indicators": "Indicator grid",
+		"sparkline": "Sparkline",
+		"note": "Note (Markdown)",
+		"hotspot": "Image hotspots",
+		"http": "HTTP / REST value",
+		"eventLog": "Console log",
 		"chart": "Live chart",
 		"chartUnset": "Add a value to chart",
 		"chartDownload": "Download data (CSV)",
@@ -425,6 +438,66 @@
 	},
 	"table": {
 		"rows": "Rows"
+	},
+	"extruder": {
+		"amounts": "Amounts (mm)",
+		"feedrate": "Feedrate",
+		"tool": "Tool (optional)",
+		"extrude": "Extrude",
+		"retract": "Retract"
+	},
+	"wcs": {
+		"axes": "Axes to zero",
+		"zeroHere": "Zero here"
+	},
+	"toolSelect": {
+		"none": "Deselect",
+		"empty": "No tools defined."
+	},
+	"fan": {
+		"index": "Fan #"
+	},
+	"jobControl": {
+		"noJob": "No active job",
+		"pause": "Pause",
+		"resume": "Resume",
+		"cancel": "Cancel"
+	},
+	"files": {
+		"folder": "Folder",
+		"startCommand": "Start command",
+		"none": "No files found in this folder."
+	},
+	"gaugeCluster": {
+		"gauges": "Gauges"
+	},
+	"indicators": {
+		"items": "Indicators",
+		"onColor": "On colour",
+		"offColor": "Off colour"
+	},
+	"sparkline": {
+		"series": "Series"
+	},
+	"note": {
+		"content": "Content (Markdown)",
+		"hint": "Supports headings, **bold**, *italic*, `code`, lists and [links](url)."
+	},
+	"hotspot": {
+		"url": "Image URL",
+		"regions": "Clickable regions",
+		"hint": "Positions are percentages of the image. Outlines show while editing.",
+		"unset": "Set an image URL to place clickable regions."
+	},
+	"http": {
+		"url": "Endpoint URL",
+		"pollMs": "Poll (ms)",
+		"jsonPath": "JSON path (optional)",
+		"prefix": "Prefix",
+		"suffix": "Suffix"
+	},
+	"eventLog": {
+		"empty": "Waiting for messages…"
 	},
 	"dependencies": {
 		"embedReason": "Embeds the “{name}” page"

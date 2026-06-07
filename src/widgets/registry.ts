@@ -78,6 +78,19 @@ export const FREEFORM_WIDGETS: ReadonlyArray<FreeformCatalogEntry> = [
 	{ type: "heater",     labelKey: "widgets.heater",     icon: "mdi-radiator",           defaultSize: { w: 4, h: 3 } },
 	{ type: "clock",      labelKey: "widgets.clock",      icon: "mdi-clock-outline",      defaultSize: { w: 3, h: 2 } },
 	{ type: "table",      labelKey: "widgets.table",      icon: "mdi-table",              defaultSize: { w: 4, h: 4 } },
+	{ type: "extruder",   labelKey: "widgets.extruder",   icon: "mdi-printer-3d-nozzle",  defaultSize: { w: 4, h: 3 } },
+	{ type: "wcs",        labelKey: "widgets.wcs",        icon: "mdi-axis-arrow",         defaultSize: { w: 4, h: 3 } },
+	{ type: "toolSelect", labelKey: "widgets.toolSelect", icon: "mdi-tools",              defaultSize: { w: 4, h: 2 } },
+	{ type: "fan",        labelKey: "widgets.fan",        icon: "mdi-fan",                defaultSize: { w: 4, h: 2 } },
+	{ type: "jobControl", labelKey: "widgets.jobControl", icon: "mdi-play-pause",         defaultSize: { w: 4, h: 3 } },
+	{ type: "files",      labelKey: "widgets.files",      icon: "mdi-file-document-multiple", defaultSize: { w: 4, h: 6 } },
+	{ type: "gaugeCluster", labelKey: "widgets.gaugeCluster", icon: "mdi-gauge",          defaultSize: { w: 5, h: 4 } },
+	{ type: "indicators", labelKey: "widgets.indicators", icon: "mdi-led-on",             defaultSize: { w: 4, h: 3 } },
+	{ type: "sparkline",  labelKey: "widgets.sparkline",  icon: "mdi-chart-bell-curve",   defaultSize: { w: 4, h: 3 } },
+	{ type: "note",       labelKey: "widgets.note",       icon: "mdi-text-box-outline",   defaultSize: { w: 5, h: 4 } },
+	{ type: "hotspot",    labelKey: "widgets.hotspot",    icon: "mdi-image-filter-center-focus", defaultSize: { w: 6, h: 6 } },
+	{ type: "http",       labelKey: "widgets.http",       icon: "mdi-web-box",            defaultSize: { w: 4, h: 2 } },
+	{ type: "eventLog",   labelKey: "widgets.eventLog",   icon: "mdi-console-line",       defaultSize: { w: 6, h: 5 } },
 	{ type: "web",        labelKey: "widgets.web",        icon: "mdi-web",                defaultSize: { w: 6, h: 8 } },
 ];
 
@@ -176,5 +189,31 @@ export function describeWidget(widget: Widget): { title: string; icon: string } 
 			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.clock"), icon: "mdi-clock-outline" };
 		case "table":
 			return { title: widget.title || i18n.global.t("plugins.flexibleLayouts.widgets.table"), icon: "mdi-table" };
+		case "extruder":
+			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.extruder"), icon: "mdi-printer-3d-nozzle" };
+		case "wcs":
+			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.wcs"), icon: "mdi-axis-arrow" };
+		case "toolSelect":
+			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.toolSelect"), icon: "mdi-tools" };
+		case "fan":
+			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.fan"), icon: "mdi-fan" };
+		case "jobControl":
+			return { title: i18n.global.t("plugins.flexibleLayouts.widgets.jobControl"), icon: "mdi-play-pause" };
+		case "files":
+			return { title: i18n.global.t("plugins.flexibleLayouts.widgets.files"), icon: "mdi-file-document-multiple" };
+		case "gaugeCluster":
+			return { title: widget.title || i18n.global.t("plugins.flexibleLayouts.widgets.gaugeCluster"), icon: "mdi-gauge" };
+		case "indicators":
+			return { title: widget.title || i18n.global.t("plugins.flexibleLayouts.widgets.indicators"), icon: "mdi-led-on" };
+		case "sparkline":
+			return { title: widget.title || i18n.global.t("plugins.flexibleLayouts.widgets.sparkline"), icon: "mdi-chart-bell-curve" };
+		case "note":
+			return { title: i18n.global.t("plugins.flexibleLayouts.widgets.note"), icon: "mdi-text-box-outline" };
+		case "hotspot":
+			return { title: i18n.global.t("plugins.flexibleLayouts.widgets.hotspot"), icon: "mdi-image-filter-center-focus" };
+		case "http":
+			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.http"), icon: "mdi-web-box" };
+		case "eventLog":
+			return { title: i18n.global.t("plugins.flexibleLayouts.widgets.eventLog"), icon: "mdi-console-line" };
 	}
 }
