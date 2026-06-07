@@ -149,6 +149,34 @@ export type Widget =
 		inputKind: "number" | "text";
 		color?: string;
 		default?: string | number;
+	}
+	| {
+		/** NeoPixel / DotStar LED-strip control (RRF M150). */
+		type: "neopixel";
+		title?: string;
+		/** Which strip to drive: "auto" = first detected, or a fixed `move.ledStrips` index. */
+		stripMode?: "auto" | "fixed" | "choose";
+		stripIndex?: number;
+		/** LED count (not in the object model, so configured here). */
+		ledCount?: number;
+		/** Show the editable LED-count field. */
+		showCount?: boolean;
+		/** Show the per-LED pip grid (paint individual LEDs). */
+		showPerLed?: boolean;
+		/** Theme colour for the action buttons. */
+		color?: string;
+	}
+	| {
+		/** View/edit RRF `global.*` variables. */
+		type: "globals";
+		title?: string;
+		/** `all` lists every global; `list` shows only `names`. */
+		mode?: "all" | "list";
+		names?: Array<string>;
+		/** Show the filter box (only meaningful in `all` mode). */
+		showSearch?: boolean;
+		/** Allow editing values inline (otherwise read-only). */
+		allowEdit?: boolean;
 	};
 
 /** Widget type discriminator, handy for palettes and factories. */
@@ -185,6 +213,25 @@ export function createDefaultWidget(type: WidgetType): Widget {
 				xyFeedrate: 3000, zFeedrate: 600,
 				showZ: true, showHome: true, showFeedrate: true, showMotorsOff: false,
 				color: "primary",
+			};
+		case "neopixel":
+			return {
+				type: "neopixel",
+				title: "LEDs",
+				stripMode: "auto",
+				ledCount: 30,
+				showCount: true,
+				showPerLed: true,
+				color: "primary",
+			};
+		case "globals":
+			return {
+				type: "globals",
+				title: "Globals",
+				mode: "all",
+				names: [],
+				showSearch: true,
+				allowEdit: true,
 			};
 		case "group":
 			return { type: "group", title: "Custom panel", items: [], cols: 12, rowHeight: 30 };

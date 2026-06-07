@@ -55,6 +55,8 @@
 		"label": "Text / image",
 		"web": "Web page (iframe)",
 		"jog": "Movement / jog (Pronterface)",
+		"neopixel": "LED strip (NeoPixel)",
+		"globals": "Globals editor",
 		"chart": "Live chart",
 		"chartUnset": "Add a value to chart",
 		"chartDownload": "Download data (CSV)",
@@ -301,6 +303,34 @@
 		"motorsOff": "Motors off",
 		"editStepTitle": "Change step amount",
 		"stepAmount": "Step (mm)"
+	},
+	"neopixel": {
+		"titleField": "Panel title",
+		"stripMode": "LED strip",
+		"modeAuto": "First detected",
+		"modeChoose": "Let me choose",
+		"modeFixed": "Fixed strip",
+		"stripIndex": "Strip index",
+		"count": "LEDs",
+		"off": "All off",
+		"all": "All",
+		"apply": "Apply",
+		"showPerLed": "Per-LED painting",
+		"showCount": "Editable LED count",
+		"none": "No LED strips found. Configure them in config.g with M950 E… C\"…\"."
+	},
+	"globals": {
+		"titleField": "Panel title",
+		"mode": "Show",
+		"modeAll": "All globals",
+		"modeList": "Selected globals",
+		"names": "Variables to show",
+		"namesHint": "Pick from detected globals, or type a name.",
+		"allowEdit": "Allow editing",
+		"showSearch": "Search box",
+		"search": "Filter…",
+		"set": "Set",
+		"none": "No matching global variables."
 	},
 	"dependencies": {
 		"embedReason": "Embeds the “{name}” page"

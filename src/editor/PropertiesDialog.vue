@@ -299,6 +299,51 @@
 					</div>
 				</template>
 
+				<!-- NeoPixel / LED strip -->
+				<template v-else-if="draft.type === 'neopixel'">
+					<v-text-field v-model="draft.title" class="mb-2" density="compact" variant="outlined" hide-details
+								  clearable :label="$t('plugins.flexibleLayouts.neopixel.titleField')" />
+					<v-select v-model="draft.stripMode" :items="stripModeOptions" class="mb-2" density="compact"
+							  variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.neopixel.stripMode')" />
+					<v-select v-if="draft.stripMode === 'fixed'" v-model.number="draft.stripIndex" :items="stripIndexItems"
+							  class="mb-2" density="compact" variant="outlined" hide-details
+							  :label="$t('plugins.flexibleLayouts.neopixel.stripIndex')" />
+					<v-row dense>
+						<v-col cols="6">
+							<v-text-field v-model.number="draft.ledCount" type="number" :min="1" density="compact"
+										  variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.neopixel.count')" />
+						</v-col>
+						<v-col cols="6">
+							<v-select v-model="draft.color" :items="colorOptions" density="compact" variant="outlined"
+									  hide-details :label="$t('plugins.flexibleLayouts.properties.color')" />
+						</v-col>
+					</v-row>
+					<div class="d-flex flex-wrap ga-x-4 mt-1">
+						<v-switch v-model="draft.showPerLed" color="primary" density="compact" hide-details
+								  :label="$t('plugins.flexibleLayouts.neopixel.showPerLed')" />
+						<v-switch v-model="draft.showCount" color="primary" density="compact" hide-details
+								  :label="$t('plugins.flexibleLayouts.neopixel.showCount')" />
+					</div>
+				</template>
+
+				<!-- Globals -->
+				<template v-else-if="draft.type === 'globals'">
+					<v-text-field v-model="draft.title" class="mb-2" density="compact" variant="outlined" hide-details
+								  clearable :label="$t('plugins.flexibleLayouts.globals.titleField')" />
+					<v-select v-model="draft.mode" :items="globalsModeOptions" class="mb-2" density="compact"
+							  variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.globals.mode')" />
+					<v-combobox v-if="draft.mode === 'list'" v-model="draft.names" :items="liveGlobalNames" multiple
+								chips closable-chips clearable density="compact" variant="outlined" hide-details
+								class="mb-2" :label="$t('plugins.flexibleLayouts.globals.names')"
+								:hint="$t('plugins.flexibleLayouts.globals.namesHint')" persistent-hint />
+					<div class="d-flex flex-wrap ga-x-4 mt-1">
+						<v-switch v-model="draft.allowEdit" color="primary" density="compact" hide-details
+								  :label="$t('plugins.flexibleLayouts.globals.allowEdit')" />
+						<v-switch v-if="draft.mode !== 'list'" v-model="draft.showSearch" color="primary" density="compact"
+								  hide-details :label="$t('plugins.flexibleLayouts.globals.showSearch')" />
+					</div>
+				</template>
+
 				<!-- Built-in panel: optional title override -->
 				<template v-else-if="draft.type === 'builtinPanel'">
 					<div class="text-body-2 text-medium-emphasis">
@@ -550,6 +595,29 @@ const inputKindOptions = computed(() => [
 	{ title: t("properties.inputNumber"), value: "number" },
 	{ title: t("properties.inputText"), value: "text" },
 ]);
+
+// NeoPixel config options
+const stripModeOptions = computed(() => [
+	{ title: t("neopixel.modeAuto"), value: "auto" },
+	{ title: t("neopixel.modeChoose"), value: "choose" },
+	{ title: t("neopixel.modeFixed"), value: "fixed" },
+]);
+const stripIndexItems = computed(() => {
+	const arr = (machineStore.model as unknown as { ledStrips?: Array<unknown> }).ledStrips;
+	if (!Array.isArray(arr)) return [] as Array<{ title: string; value: number }>;
+	return arr.map((s, i) => (s ? { title: `${i}: ${(s as { type?: string }).type ?? "strip"}`, value: i } : null))
+		.filter((x): x is { title: string; value: number } => x !== null);
+});
+
+// Globals config options
+const globalsModeOptions = computed(() => [
+	{ title: t("globals.modeAll"), value: "all" },
+	{ title: t("globals.modeList"), value: "list" },
+]);
+const liveGlobalNames = computed(() => {
+	const g = (machineStore.model as unknown as { global?: Map<string, unknown> }).global;
+	return g instanceof Map ? Array.from(g.keys()).sort() : [];
+});
 
 const actionOptions = computed(() => [
 	{ title: t("properties.actionGcode"), value: "gcode" },

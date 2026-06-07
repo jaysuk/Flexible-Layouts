@@ -64,6 +64,8 @@ export const FREEFORM_WIDGETS: ReadonlyArray<FreeformCatalogEntry> = [
 	{ type: "value",      labelKey: "widgets.value",      icon: "mdi-counter",            defaultSize: { w: 3, h: 3 } },
 	{ type: "label",      labelKey: "widgets.label",      icon: "mdi-format-text",        defaultSize: { w: 4, h: 2 } },
 	{ type: "chart",      labelKey: "widgets.chart",      icon: "mdi-chart-line",         defaultSize: { w: 6, h: 6 } },
+	{ type: "neopixel",   labelKey: "widgets.neopixel",   icon: "mdi-led-strip-variant",  defaultSize: { w: 4, h: 9 } },
+	{ type: "globals",    labelKey: "widgets.globals",    icon: "mdi-variable",           defaultSize: { w: 5, h: 6 } },
 	{ type: "web",        labelKey: "widgets.web",        icon: "mdi-web",                defaultSize: { w: 6, h: 8 } },
 ];
 
@@ -118,6 +120,16 @@ export function describeWidget(widget: Widget): { title: string; icon: string } 
 			return {
 				title: i18n.global.t("plugins.flexibleLayouts.widgets.jog"),
 				icon: "mdi-circle-double",
+			};
+		case "neopixel":
+			return {
+				title: widget.title || i18n.global.t("plugins.flexibleLayouts.widgets.neopixel"),
+				icon: "mdi-led-strip-variant",
+			};
+		case "globals":
+			return {
+				title: widget.title || i18n.global.t("plugins.flexibleLayouts.widgets.globals"),
+				icon: "mdi-variable",
 			};
 	}
 }

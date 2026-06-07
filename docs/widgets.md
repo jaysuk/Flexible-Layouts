@@ -21,6 +21,8 @@ Add widgets with **Add widget** while editing. Every widget can additionally be 
 | **Value read-out** | Shows one object-model value as a number, label or gauge. | OM path, display mode, unit, precision, gauge bounds, scale/offset, on/off text, value→text map |
 | **Live chart** | Plots one or more OM values over time, with CSV download. | series (OM paths), window seconds, interval, Y bounds, axis titles |
 | **Text / image** | A heading, paragraph, image (by URL) or spacer. | variant, content, alignment, colour |
+| **LED strip (NeoPixel)** | Control NeoPixel/DotStar strips via `M150`: colour picker, master brightness, all-off, and optional per-LED painting (pick a colour, click pips to paint them). RGBW strips get a white channel. | which strip (first detected / choose / fixed), LED count, per-LED painting on/off, editable count on/off, colour |
+| **Globals editor** | View and edit RRF `global.*` variables inline — booleans toggle live, numbers/strings/arrays edit + Set. | show all vs a chosen list of variables, filter box, allow-edit (read-only) |
 | **Web page** | Embeds an external page / local web service in an iframe. | URL |
 
 > Use the 🌳 **browse** button anywhere a path is needed to pick object-model values without typing.
