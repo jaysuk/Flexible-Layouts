@@ -38,6 +38,18 @@
 							  :transform="hubIconTransform" />
 					</g>
 				</svg>
+
+				<!-- per-axis home buttons, tucked into the corners so they don't overlap the rings -->
+				<template v-if="widget.showHome !== false">
+					<button type="button" class="jog-axis-home jog-home-x" :style="zBtnStyle" :disabled="disabledNow"
+							:title="`${$t('plugins.flexibleLayouts.jog.home')} ${xAxisLetter}`" @click="homeX">
+						<v-icon size="x-small">mdi-home</v-icon><span class="jog-axis-letter">{{ xAxisLetter }}</span>
+					</button>
+					<button type="button" class="jog-axis-home jog-home-y" :style="zBtnStyle" :disabled="disabledNow"
+							:title="`${$t('plugins.flexibleLayouts.jog.home')} ${yAxisLetter}`" @click="homeY">
+						<v-icon size="x-small">mdi-home</v-icon><span class="jog-axis-letter">{{ yAxisLetter }}</span>
+					</button>
+				</template>
 			</div>
 
 			<!-- Z bar -->
@@ -226,6 +238,16 @@ function homeZ(): void {
 		void machineStore.sendCode(`G28 ${quote(zAxisLetter.value)}`);
 	}
 }
+function homeX(): void {
+	if (!disabledNow.value) {
+		void machineStore.sendCode(`G28 ${quote(xAxisLetter.value)}`);
+	}
+}
+function homeY(): void {
+	if (!disabledNow.value) {
+		void machineStore.sendCode(`G28 ${quote(yAxisLetter.value)}`);
+	}
+}
 function motorsOff(): void {
 	if (!disabledNow.value) {
 		void machineStore.sendCode("M18");
@@ -318,6 +340,33 @@ async function editStep(arr: "xy" | "z", index: number): Promise<void> {
 }
 .jog-hub-icon {
 	fill: currentColor;
+}
+.jog-axis-home {
+	position: absolute;
+	top: 2px;
+	display: flex;
+	align-items: center;
+	gap: 1px;
+	padding: 1px 4px;
+	font-size: 0.6em;
+	line-height: 1;
+	border-radius: 4px;
+	color: currentColor;
+	background: rgba(var(--v-theme-on-surface), 0.04);
+	border: 1px solid currentColor;
+	cursor: pointer;
+}
+.jog-axis-home:hover {
+	background: currentColor;
+}
+.jog-axis-home:hover :deep(.v-icon),
+.jog-axis-home:hover .jog-axis-letter {
+	color: rgb(var(--v-theme-surface));
+}
+.jog-home-x { left: 2px; }
+.jog-home-y { right: 2px; }
+.jog-axis-letter {
+	font-weight: 600;
 }
 .jog-z {
 	flex: 0 0 auto;

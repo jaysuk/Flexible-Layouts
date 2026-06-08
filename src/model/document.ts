@@ -303,6 +303,13 @@ export type Widget =
 		format?: "24" | "12";
 	}
 	| {
+		/** Thumbnail preview of the currently running job (from the slicer-embedded image). */
+		type: "thumbnail";
+		title?: string;
+		/** How the image fits its cell. */
+		fit?: "contain" | "cover";
+	}
+	| {
 		/** Compact label → value table for several OM paths. */
 		type: "table";
 		title?: string;
@@ -574,6 +581,8 @@ export function createDefaultWidget(type: WidgetType): Widget {
 			};
 		case "clock":
 			return { type: "clock", label: "", mode: "time", format: "24" };
+		case "thumbnail":
+			return { type: "thumbnail", title: "", fit: "contain" };
 		case "table":
 			return {
 				type: "table",
@@ -707,6 +716,8 @@ export interface GridItemModel {
 	locked?: boolean;
 	/** Object-model-driven rules that recolour / hide / disable this widget at runtime. */
 	conditions?: Array<ConditionRule>;
+	/** Pixel width when placed in the header strip (which is a horizontal row, not a grid). */
+	headerWidth?: number;
 }
 
 /** Layout of a single page. */

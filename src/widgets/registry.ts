@@ -102,6 +102,7 @@ export const FREEFORM_WIDGETS: ReadonlyArray<FreeformCatalogEntry> = [
 	{ type: "eventLog",   labelKey: "widgets.eventLog",   icon: "mdi-console-line",       defaultSize: { w: 6, h: 5 }, category: "dashboard" },
 	{ type: "label",      labelKey: "widgets.label",      icon: "mdi-format-text",        defaultSize: { w: 4, h: 2 }, category: "dashboard" },
 	{ type: "webcam",     labelKey: "widgets.webcam",     icon: "mdi-webcam",             defaultSize: { w: 6, h: 6 }, category: "dashboard" },
+	{ type: "thumbnail",  labelKey: "widgets.thumbnail",  icon: "mdi-image-frame",        defaultSize: { w: 4, h: 5 }, category: "dashboard" },
 	{ type: "hotspot",    labelKey: "widgets.hotspot",    icon: "mdi-image-filter-center-focus", defaultSize: { w: 6, h: 6 }, category: "dashboard" },
 	{ type: "http",       labelKey: "widgets.http",       icon: "mdi-web-box",            defaultSize: { w: 4, h: 2 }, category: "dashboard" },
 	{ type: "web",        labelKey: "widgets.web",        icon: "mdi-web",                defaultSize: { w: 6, h: 8 }, category: "dashboard" },
@@ -206,6 +207,8 @@ export function describeWidget(widget: Widget): { title: string; icon: string } 
 			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.heater"), icon: "mdi-radiator" };
 		case "clock":
 			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.clock"), icon: "mdi-clock-outline" };
+		case "thumbnail":
+			return { title: widget.title || i18n.global.t("plugins.flexibleLayouts.widgets.thumbnail"), icon: "mdi-image-frame" };
 		case "table":
 			return { title: widget.title || i18n.global.t("plugins.flexibleLayouts.widgets.table"), icon: "mdi-table" };
 		case "extruder":

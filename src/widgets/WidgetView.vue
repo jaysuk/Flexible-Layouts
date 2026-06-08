@@ -20,6 +20,7 @@
 	<ConsoleWidget v-else-if="widget.type === 'console'" :widget="widget" :disabled="disabled" />
 	<HeaterWidget v-else-if="widget.type === 'heater'" :widget="widget" :disabled="disabled" />
 	<ClockWidget v-else-if="widget.type === 'clock'" :widget="widget" />
+	<ThumbnailWidget v-else-if="widget.type === 'thumbnail'" :widget="widget" />
 	<TableWidget v-else-if="widget.type === 'table'" :widget="widget" />
 	<ExtruderWidget v-else-if="widget.type === 'extruder'" :widget="widget" :disabled="disabled" />
 	<WcsWidget v-else-if="widget.type === 'wcs'" :widget="widget" :disabled="disabled" />
@@ -82,6 +83,7 @@ import StatusWidget from "./StatusWidget.vue";
 import StepperWidget from "./StepperWidget.vue";
 import TableWidget from "./TableWidget.vue";
 import ThemeToggleWidget from "./ThemeToggleWidget.vue";
+import ThumbnailWidget from "./ThumbnailWidget.vue";
 import ToggleWidget from "./ToggleWidget.vue";
 import ToolSelectWidget from "./ToolSelectWidget.vue";
 import ValueWidget from "./ValueWidget.vue";

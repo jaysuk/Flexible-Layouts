@@ -29,6 +29,7 @@
 		"unlock": "Unlock",
 		"undo": "Undo (Ctrl+Z)",
 		"redo": "Redo (Ctrl+Y)",
+		"rearrange": "Tidy up — pack panels to use the least space",
 		"searchPanels": "Search widgets…",
 		"freeform": "Buttons & widgets",
 		"pluginPages": "Pages from other plugins",
@@ -68,6 +69,7 @@
 		"console": "Mini console",
 		"heater": "Heater control",
 		"clock": "Clock / timer",
+		"thumbnail": "Job thumbnail",
 		"table": "Value table",
 		"extruder": "Extruder",
 		"wcs": "Work offsets (CNC)",
@@ -329,6 +331,7 @@
 		"invertY": "Invert Y",
 		"invertZ": "Invert Z",
 		"homeAll": "Home all",
+		"home": "Home",
 		"homeZ": "Home Z",
 		"motorsOff": "Motors off",
 		"editStepTitle": "Change step amount",
@@ -440,6 +443,12 @@
 		"modePrintTime": "Print time",
 		"modeTimeLeft": "Time left",
 		"format": "Format"
+	},
+	"thumbnail": {
+		"none": "No job thumbnail",
+		"fit": "Image fit",
+		"fitContain": "Fit (contain)",
+		"fitCover": "Fill (cover)"
 	},
 	"table": {
 		"rows": "Rows"

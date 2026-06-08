@@ -23,6 +23,9 @@
 				   :title="$t('plugins.flexibleLayouts.editor.undo')" @click="undo" />
 			<v-btn v-if="editMode" icon="mdi-redo" size="small" variant="text" :disabled="!canRedo"
 				   :title="$t('plugins.flexibleLayouts.editor.redo')" @click="redo" />
+			<v-btn v-if="editMode" icon="mdi-view-compact-outline" size="small" variant="text"
+				   :disabled="layout.length < 2"
+				   :title="$t('plugins.flexibleLayouts.editor.rearrange')" @click="rearrangeAll" />
 			<v-spacer />
 			<v-btn-toggle v-if="editMode" v-model="editingBp" mandatory density="compact" variant="outlined"
 						  divided class="me-2">
@@ -399,6 +402,34 @@ function onLayoutUpdated() {
 /** Next free row at the bottom of the grid, so new panels stack rather than overlap. */
 function nextY(): number {
 	return layout.value.reduce((max, it) => Math.max(max, it.y + it.h), 0);
+}
+
+// "Tidy up": repack every panel top-left, removing gaps and overlaps so the page takes the least
+// vertical space. Items are placed in reading order (current top→bottom, left→right) into the first
+// free slot that fits, preserving each panel's size. Respects the column count; locked items are
+// repacked too (this is an explicit, undoable action).
+function rearrangeAll(): void {
+	const cols = grid.value.cols;
+	const ordered = [...layout.value].sort((a, b) => a.y - b.y || a.x - b.x);
+	const placed: Array<GridItemModel> = [];
+	const overlaps = (x: number, y: number, w: number, h: number): boolean =>
+		placed.some((p) => x < p.x + p.w && x + w > p.x && y < p.y + p.h && y + h > p.y);
+	for (const it of ordered) {
+		const w = Math.min(it.w, cols);
+		let px = 0;
+		let py = 0;
+		search: for (py = 0; ; py++) {
+			for (px = 0; px + w <= cols; px++) {
+				if (!overlaps(px, py, w, it.h)) {
+					break search;
+				}
+			}
+		}
+		placed.push({ ...it, x: px, y: py, w });
+	}
+	layout.value = placed;
+	persist();
+	commit();
 }
 
 function addWidget(payload: { widget: Widget; size: { w: number; h: number }; configure: boolean }) {

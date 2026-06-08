@@ -79,6 +79,16 @@ describe("widgets emit the expected G-code", () => {
 		expect(lastCode()).toBe("M292");
 	});
 
+	it("jog Home X / Home Y send per-axis G28", async () => {
+		const w = mountWidget("jog");
+		await byTitle(w, "plugins.flexibleLayouts.jog.home X")!.trigger("click");
+		await flushPromises();
+		expect(lastCode()).toBe("G28 X");
+		await byTitle(w, "plugins.flexibleLayouts.jog.home Y")!.trigger("click");
+		await flushPromises();
+		expect(lastCode()).toBe("G28 Y");
+	});
+
 	it("neopixel Off blanks the strip", async () => {
 		const w = mountWidget("neopixel"); // default RGBW strip, 30 LEDs
 		await byTitle(w, "plugins.flexibleLayouts.neopixel.off")!.trigger("click");

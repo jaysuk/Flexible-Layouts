@@ -514,6 +514,12 @@
 					</v-row>
 				</template>
 
+				<!-- Job thumbnail -->
+				<template v-else-if="draft.type === 'thumbnail'">
+					<v-text-field v-model="draft.title" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.jog.titleField')" />
+					<v-select v-model="draft.fit" :items="thumbnailFitOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.thumbnail.fit')" />
+				</template>
+
 				<!-- Multi-value table -->
 				<template v-else-if="draft.type === 'table'">
 					<v-text-field v-model="draft.title" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.jog.titleField')" />
@@ -1040,6 +1046,10 @@ const severityOptions = computed(() => [
 const fitOptions = computed(() => [
 	{ title: t("webcam.fitContain"), value: "contain" },
 	{ title: t("webcam.fitCover"), value: "cover" },
+]);
+const thumbnailFitOptions = computed(() => [
+	{ title: t("thumbnail.fitContain"), value: "contain" },
+	{ title: t("thumbnail.fitCover"), value: "cover" },
 ]);
 const clockModeOptions = computed(() => [
 	{ title: t("clock.modeTime"), value: "time" },
