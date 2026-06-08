@@ -36,10 +36,10 @@ function value(row: { omPath: string; precision?: number }): string {
 
 <style scoped>
 .tb-root { min-height: 0; }
-.tb-title { font-size: 0.8rem; font-weight: 600; opacity: 0.85; }
+.tb-title { font-size: 0.8em; font-weight: 600; opacity: 0.85; }
 .tb-body { min-height: 0; overflow-y: auto; }
 .tb-row { display: flex; align-items: baseline; gap: 8px; padding: 1px 2px; }
-.tb-label { flex: 1 1 auto; font-size: 0.8rem; opacity: 0.8; }
-.tb-value { font-size: 0.85rem; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.tb-unit { font-size: 0.7rem; font-weight: 400; opacity: 0.7; margin-left: 1px; }
+.tb-label { flex: 1 1 auto; font-size: 0.8em; opacity: 0.8; }
+.tb-value { font-size: 0.85em; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tb-unit { font-size: 0.7em; font-weight: 400; opacity: 0.7; margin-left: 1px; }
 </style>

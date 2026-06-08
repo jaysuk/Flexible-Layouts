@@ -47,6 +47,6 @@ function select(n: number): void {
 <style scoped>
 .ts-root { min-height: 0; }
 .ts-frozen { opacity: 0.5; pointer-events: none; }
-.ts-label { font-size: 0.8rem; font-weight: 500; }
+.ts-label { font-size: 0.8em; font-weight: 500; }
 .ts-btn { min-width: 0; }
 </style>

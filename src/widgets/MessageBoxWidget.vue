@@ -78,6 +78,6 @@ function choose(i: number): void { send(`M292 R${i}`); }
 <style scoped>
 .mb-root { min-height: 0; overflow-y: auto; }
 .mb-frozen { opacity: 0.5; pointer-events: none; }
-.mb-title { font-size: 0.85rem; font-weight: 700; }
-.mb-msg { font-size: 0.82rem; white-space: pre-wrap; }
+.mb-title { font-size: 0.85em; font-weight: 700; }
+.mb-msg { font-size: 0.82em; white-space: pre-wrap; }
 </style>

@@ -63,8 +63,8 @@ onBeforeUnmount(() => { if (timer) clearInterval(timer); });
 
 <style scoped>
 .sp-root { min-height: 0; }
-.sp-title { font-size: 0.8rem; font-weight: 600; opacity: 0.85; }
+.sp-title { font-size: 0.8em; font-weight: 600; opacity: 0.85; }
 .sp-svg { width: 100%; min-height: 0; }
-.sp-foot { font-size: 0.72rem; font-variant-numeric: tabular-nums; }
+.sp-foot { font-size: 0.72em; font-variant-numeric: tabular-nums; }
 .sp-leg { font-weight: 600; }
 </style>

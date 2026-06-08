@@ -201,7 +201,7 @@ function turnOff(): void {
 
 <style scoped>
 .np-root { min-height: 0; }
-.np-title { font-size: 0.8rem; font-weight: 600; line-height: 1.4; opacity: 0.85; }
+.np-title { font-size: 0.8em; font-weight: 600; line-height: 1.4; opacity: 0.85; }
 .np-frozen { opacity: 0.5; pointer-events: none; }
 .np-strip { max-width: 9rem; }
 .np-count :deep(input) { text-align: center; }

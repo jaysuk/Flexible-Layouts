@@ -31,5 +31,5 @@ function toggle(): void { settings.darkTheme = !settings.darkTheme; }
 
 <style scoped>
 .tt-root { min-height: 0; }
-.tt-label { font-size: 0.8rem; font-weight: 500; }
+.tt-label { font-size: 0.8em; font-weight: 500; }
 </style>

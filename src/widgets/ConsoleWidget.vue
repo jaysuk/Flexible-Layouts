@@ -53,7 +53,7 @@ async function send(): Promise<void> {
 <style scoped>
 .cn-root { min-height: 0; }
 .cn-frozen { opacity: 0.5; pointer-events: none; }
-.cn-log { min-height: 0; overflow-y: auto; font-family: monospace; font-size: 0.75rem; }
+.cn-log { min-height: 0; overflow-y: auto; font-family: monospace; font-size: 0.75em; }
 .cn-entry { margin-bottom: 4px; }
 .cn-cmd { color: rgb(var(--v-theme-primary)); }
 .cn-reply { white-space: pre-wrap; margin: 0; opacity: 0.85; }

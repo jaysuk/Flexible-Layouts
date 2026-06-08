@@ -63,7 +63,7 @@ function bump(dir: number): void {
 <style scoped>
 .st-root { min-height: 0; }
 .st-frozen { opacity: 0.5; pointer-events: none; }
-.st-label { font-size: 0.78rem; font-weight: 500; line-height: 1.3; }
-.st-val { font-size: 0.95rem; font-weight: 600; font-variant-numeric: tabular-nums; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.st-unit { font-size: 0.75rem; font-weight: 400; opacity: 0.7; margin-left: 1px; }
+.st-label { font-size: 0.78em; font-weight: 500; line-height: 1.3; }
+.st-val { font-size: 0.95em; font-weight: 600; font-variant-numeric: tabular-nums; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.st-unit { font-size: 0.75em; font-weight: 400; opacity: 0.7; margin-left: 1px; }
 </style>

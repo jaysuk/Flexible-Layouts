@@ -29,5 +29,5 @@ const active = computed(() => {
 
 <style scoped>
 .su-root { min-height: 0; }
-.su-text { font-size: 0.85rem; font-weight: 600; }
+.su-text { font-size: 0.85em; font-weight: 600; }
 </style>

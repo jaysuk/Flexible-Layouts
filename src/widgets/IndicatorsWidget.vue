@@ -41,8 +41,8 @@ const items = computed(() =>
 
 <style scoped>
 .in-root { min-height: 0; }
-.in-title { font-size: 0.8rem; font-weight: 600; opacity: 0.85; }
+.in-title { font-size: 0.8em; font-weight: 600; opacity: 0.85; }
 .in-grid { display: grid; gap: 4px 8px; align-content: flex-start; overflow-y: auto; min-height: 0; }
 .in-item { display: flex; align-items: center; gap: 5px; }
-.in-label { font-size: 0.78rem; }
+.in-label { font-size: 0.78em; }
 </style>

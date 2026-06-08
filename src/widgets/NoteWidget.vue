@@ -51,10 +51,10 @@ const html = computed(() => {
 </script>
 
 <style scoped>
-.nt-root { min-height: 0; overflow-y: auto; font-size: 0.85rem; line-height: 1.5; }
-.nt-root :deep(h1) { font-size: 1.1rem; font-weight: 700; margin: 0 0 4px; }
-.nt-root :deep(h2) { font-size: 1rem; font-weight: 700; margin: 4px 0 2px; }
-.nt-root :deep(h3), .nt-root :deep(h4) { font-size: 0.9rem; font-weight: 600; margin: 4px 0 2px; }
+.nt-root { min-height: 0; overflow-y: auto; font-size: 0.85em; line-height: 1.5; }
+.nt-root :deep(h1) { font-size: 1.1em; font-weight: 700; margin: 0 0 4px; }
+.nt-root :deep(h2) { font-size: 1em; font-weight: 700; margin: 4px 0 2px; }
+.nt-root :deep(h3), .nt-root :deep(h4) { font-size: 0.9em; font-weight: 600; margin: 4px 0 2px; }
 .nt-root :deep(p) { margin: 0 0 6px; }
 .nt-root :deep(ul) { margin: 0 0 6px; padding-left: 1.2em; }
 .nt-root :deep(code) { font-family: monospace; background: rgba(var(--v-theme-on-surface), 0.08); padding: 0 3px; border-radius: 3px; }

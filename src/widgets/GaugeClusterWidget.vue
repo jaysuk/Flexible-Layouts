@@ -42,9 +42,9 @@ const gauges = computed(() =>
 
 <style scoped>
 .gc-root { min-height: 0; }
-.gc-title { font-size: 0.8rem; font-weight: 600; opacity: 0.85; }
+.gc-title { font-size: 0.8em; font-weight: 600; opacity: 0.85; }
 .gc-grid { display: flex; flex-wrap: wrap; gap: 10px; align-content: flex-start; justify-content: space-around; overflow-y: auto; min-height: 0; }
 .gc-item { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-.gc-num { font-size: 0.72rem; font-weight: 600; font-variant-numeric: tabular-nums; }
-.gc-label { font-size: 0.7rem; opacity: 0.75; max-width: 5rem; }
+.gc-num { font-size: 0.72em; font-weight: 600; font-variant-numeric: tabular-nums; }
+.gc-label { font-size: 0.7em; opacity: 0.75; max-width: 5rem; }
 </style>

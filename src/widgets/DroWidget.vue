@@ -52,9 +52,9 @@ const axes = computed(() => {
 
 <style scoped>
 .dro-root { min-height: 0; }
-.dro-title { font-size: 0.8rem; font-weight: 600; opacity: 0.85; }
+.dro-title { font-size: 0.8em; font-weight: 600; opacity: 0.85; }
 .dro-body { min-height: 0; overflow-y: auto; }
 .dro-row { display: flex; align-items: baseline; gap: 6px; padding: 1px 2px; }
 .dro-letter { font-weight: 700; width: 1.4em; }
-.dro-pos { margin-left: auto; font-family: monospace; font-size: 1rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.dro-pos { margin-left: auto; font-family: monospace; font-size: 1em; font-weight: 600; font-variant-numeric: tabular-nums; }
 </style>

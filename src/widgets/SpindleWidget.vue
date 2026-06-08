@@ -68,8 +68,8 @@ function run(code: string): void {
 <style scoped>
 .spn-root { min-height: 0; }
 .spn-frozen { opacity: 0.5; pointer-events: none; }
-.spn-label { font-size: 0.8rem; font-weight: 500; }
-.spn-rpm { font-size: 0.85rem; font-variant-numeric: tabular-nums; width: 3.5em; text-align: right; }
-.spn-state { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.7; }
+.spn-label { font-size: 0.8em; font-weight: 500; }
+.spn-rpm { font-size: 0.85em; font-variant-numeric: tabular-nums; width: 3.5em; text-align: right; }
+.spn-state { font-size: 0.72em; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.7; }
 .spn-state--forward, .spn-state--reverse { color: rgb(var(--v-theme-success)); opacity: 1; }
 </style>

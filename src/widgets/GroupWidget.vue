@@ -1,6 +1,6 @@
 <template>
 	<v-card class="fill-height d-flex flex-column" variant="tonal">
-		<v-card-title v-if="widget.title" class="py-1 text-truncate" style="font-size: 0.95rem;">
+		<v-card-title v-if="widget.title" class="py-1 text-truncate" style="font-size: 0.95em;">
 			{{ widget.title }}
 		</v-card-title>
 		<div class="flex-grow-1" style="min-height: 0; overflow: auto;">

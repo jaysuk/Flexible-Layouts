@@ -58,5 +58,5 @@ function toggle(): void { set(!isOn.value); }
 <style scoped>
 .tg-root { min-height: 0; }
 .tg-frozen { opacity: 0.5; pointer-events: none; }
-.tg-label { font-size: 0.8rem; font-weight: 500; }
+.tg-label { font-size: 0.8em; font-weight: 500; }
 </style>

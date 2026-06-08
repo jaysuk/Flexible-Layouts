@@ -47,6 +47,6 @@ function move(dir: number): void {
 <style scoped>
 .ex-root { min-height: 0; }
 .ex-frozen { opacity: 0.5; pointer-events: none; }
-.ex-label { font-size: 0.8rem; font-weight: 500; }
+.ex-label { font-size: 0.8em; font-weight: 500; }
 .ex-feed { max-width: 7rem; }
 </style>

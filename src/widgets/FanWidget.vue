@@ -53,7 +53,7 @@ function onEnd(v: number): void { send(v); setTimeout(() => { dragging.value = n
 <style scoped>
 .fn-root { min-height: 0; }
 .fn-frozen { opacity: 0.5; pointer-events: none; }
-.fn-label { font-size: 0.8rem; font-weight: 500; }
-.fn-val { font-size: 0.8rem; font-variant-numeric: tabular-nums; opacity: 0.85; }
-.fn-rpm { font-size: 0.7rem; opacity: 0.6; font-variant-numeric: tabular-nums; }
+.fn-label { font-size: 0.8em; font-weight: 500; }
+.fn-val { font-size: 0.8em; font-variant-numeric: tabular-nums; opacity: 0.85; }
+.fn-rpm { font-size: 0.7em; opacity: 0.6; font-variant-numeric: tabular-nums; }
 </style>

@@ -55,10 +55,10 @@ function off(): void { run(props.widget.offCommand); }
 <style scoped>
 .ht-root { min-height: 0; }
 .ht-frozen { opacity: 0.5; pointer-events: none; }
-.ht-label { font-size: 0.8rem; font-weight: 500; }
-.ht-cur { font-size: 1.1rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-.ht-unit { font-size: 0.7rem; font-weight: 400; opacity: 0.7; }
-.ht-target { font-size: 0.72rem; }
+.ht-label { font-size: 0.8em; font-weight: 500; }
+.ht-cur { font-size: 1.1em; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ht-unit { font-size: 0.7em; font-weight: 400; opacity: 0.7; }
+.ht-target { font-size: 0.72em; }
 .ht-presets { display: flex; flex-wrap: wrap; gap: 3px; }
 .ht-btn { min-width: 0; padding: 0 6px; }
 </style>

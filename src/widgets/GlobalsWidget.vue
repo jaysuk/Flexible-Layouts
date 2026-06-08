@@ -122,7 +122,7 @@ function setBool(name: string, value: boolean): void {
 
 <style scoped>
 .gl-root { min-height: 0; }
-.gl-title { font-size: 0.8rem; font-weight: 600; opacity: 0.85; }
+.gl-title { font-size: 0.8em; font-weight: 600; opacity: 0.85; }
 .gl-frozen { opacity: 0.5; pointer-events: none; }
 .gl-search { max-width: 14rem; }
 .gl-list { min-height: 0; overflow-y: auto; }
@@ -131,8 +131,8 @@ function setBool(name: string, value: boolean): void {
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.07);
 }
 .gl-row:last-child { border-bottom: none; }
-.gl-name { flex: 1 1 6rem; min-width: 4rem; font-family: monospace; font-size: 0.8rem; }
-.gl-ro { flex: 1 1 6rem; text-align: right; font-family: monospace; font-size: 0.8rem; opacity: 0.8; }
+.gl-name { flex: 1 1 6rem; min-width: 4rem; font-family: monospace; font-size: 0.8em; }
+.gl-ro { flex: 1 1 6rem; text-align: right; font-family: monospace; font-size: 0.8em; opacity: 0.8; }
 .gl-field { flex: 1 1 6rem; max-width: 12rem; }
 .gl-switch { flex: 0 0 auto; }
 </style>

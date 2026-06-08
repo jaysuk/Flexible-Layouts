@@ -68,6 +68,6 @@ function onEnd(v: number): void {
 <style scoped>
 .sl-root { min-height: 0; }
 .sl-frozen { opacity: 0.5; pointer-events: none; }
-.sl-label { font-size: 0.8rem; font-weight: 500; }
-.sl-val { font-size: 0.8rem; font-variant-numeric: tabular-nums; opacity: 0.85; }
+.sl-label { font-size: 0.8em; font-weight: 500; }
+.sl-val { font-size: 0.8em; font-variant-numeric: tabular-nums; opacity: 0.85; }
 </style>

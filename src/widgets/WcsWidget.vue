@@ -48,6 +48,6 @@ function zeroHere(): void {
 <style scoped>
 .wcs-root { min-height: 0; }
 .wcs-frozen { opacity: 0.5; pointer-events: none; }
-.wcs-label { font-size: 0.8rem; font-weight: 500; }
+.wcs-label { font-size: 0.8em; font-weight: 500; }
 .wcs-btn { min-width: 0; padding: 0 6px; }
 </style>

@@ -51,5 +51,5 @@ function run(code: string): void {
 <style scoped>
 .jc-root { min-height: 0; }
 .jc-frozen { opacity: 0.5; pointer-events: none; }
-.jc-name { font-size: 0.78rem; font-weight: 500; }
+.jc-name { font-size: 0.78em; font-weight: 500; }
 </style>

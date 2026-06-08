@@ -54,6 +54,6 @@ onBeforeUnmount(() => { if (timer) clearInterval(timer); });
 
 <style scoped>
 .hp-root { min-height: 0; }
-.hp-label { font-size: 0.75rem; opacity: 0.7; }
-.hp-value { font-size: 1.05rem; font-weight: 600; }
+.hp-label { font-size: 0.75em; opacity: 0.7; }
+.hp-value { font-size: 1.05em; font-weight: 600; }
 </style>

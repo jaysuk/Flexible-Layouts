@@ -45,5 +45,5 @@ function fire(r: { command?: string }): void {
 .hs-img { display: block; max-width: 100%; max-height: 100%; }
 .hs-region { position: absolute; background: transparent; border: none; cursor: pointer; padding: 0; }
 .hs-region--edit { border: 1px dashed rgba(var(--v-theme-primary), 0.8); background: rgba(var(--v-theme-primary), 0.12); }
-.hs-tag { font-size: 0.65rem; background: rgb(var(--v-theme-primary)); color: rgb(var(--v-theme-on-primary)); padding: 0 3px; border-radius: 2px; }
+.hs-tag { font-size: 0.65em; background: rgb(var(--v-theme-primary)); color: rgb(var(--v-theme-on-primary)); padding: 0 3px; border-radius: 2px; }
 </style>

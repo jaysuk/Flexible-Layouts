@@ -46,7 +46,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .el-root { min-height: 0; }
-.el-log { height: 100%; overflow-y: auto; font-family: monospace; font-size: 0.72rem; line-height: 1.35; }
+.el-log { height: 100%; overflow-y: auto; font-family: monospace; font-size: 0.72em; line-height: 1.35; }
 .el-line { white-space: pre-wrap; word-break: break-word; }
 .el-cmd { color: rgb(var(--v-theme-primary)); }
 .el-reply { opacity: 0.85; }

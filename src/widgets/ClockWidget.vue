@@ -46,6 +46,6 @@ const display = computed(() => {
 
 <style scoped>
 .ck-root { min-height: 0; }
-.ck-label { font-size: 0.72rem; opacity: 0.7; }
-.ck-value { font-size: 1.2rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ck-label { font-size: 0.72em; opacity: 0.7; }
+.ck-value { font-size: 1.2em; font-weight: 700; font-variant-numeric: tabular-nums; }
 </style>

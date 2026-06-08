@@ -277,7 +277,7 @@ function applyEdit(): void {
 	min-height: 0;
 }
 .jog-title {
-	font-size: 0.8rem;
+	font-size: 0.8em;
 	font-weight: 600;
 	line-height: 1.4;
 	opacity: 0.85;
@@ -351,7 +351,7 @@ function applyEdit(): void {
 	align-items: center;
 	justify-content: center;
 	gap: 1px;
-	font-size: 0.65rem;
+	font-size: 0.65em;
 	line-height: 1;
 	border-radius: 4px;
 	color: currentColor;

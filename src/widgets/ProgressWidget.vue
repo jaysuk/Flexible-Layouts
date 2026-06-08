@@ -38,6 +38,6 @@ const pct = computed(() => {
 
 <style scoped>
 .pr-root { min-height: 0; }
-.pr-label { font-size: 0.8rem; font-weight: 500; }
-.pr-val { font-size: 0.8rem; font-variant-numeric: tabular-nums; opacity: 0.85; }
+.pr-label { font-size: 0.8em; font-weight: 500; }
+.pr-val { font-size: 0.8em; font-variant-numeric: tabular-nums; opacity: 0.85; }
 </style>

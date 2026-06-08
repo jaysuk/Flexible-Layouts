@@ -30,6 +30,6 @@ function switchTo(id: string): void {
 
 <style scoped>
 .ps-root { min-height: 0; }
-.ps-label { font-size: 0.78rem; opacity: 0.7; margin-bottom: 2px; }
+.ps-label { font-size: 0.78em; opacity: 0.7; margin-bottom: 2px; }
 .ps-btn { min-width: 0; }
 </style>
