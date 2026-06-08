@@ -68,30 +68,14 @@
 			<v-btn size="small" variant="tonal" block prepend-icon="mdi-power" :disabled="disabledNow"
 				   @click="motorsOff">{{ $t("plugins.flexibleLayouts.jog.motorsOff") }}</v-btn>
 		</div>
-
-		<!-- right-click: change a step amount -->
-		<v-dialog v-model="editOpen" max-width="320">
-			<v-card>
-				<v-card-title class="text-body-1">{{ $t("plugins.flexibleLayouts.jog.editStepTitle") }}</v-card-title>
-				<v-card-text>
-					<v-text-field v-model.number="editValue" type="number" autofocus density="compact"
-								  variant="outlined" hide-details :min="0" :step="0.1"
-								  :label="$t('plugins.flexibleLayouts.jog.stepAmount')"
-								  @keyup.enter="applyEdit" />
-				</v-card-text>
-				<v-card-actions>
-					<v-spacer />
-					<v-btn variant="text" @click="editOpen = false">{{ $t("generic.cancel") }}</v-btn>
-					<v-btn color="primary" @click="applyEdit">{{ $t("generic.ok") }}</v-btn>
-				</v-card-actions>
-			</v-card>
-		</v-dialog>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted } from "vue";
 
+import { getNumericInput } from "@/composables/useInputDialog";
+import i18n from "@/i18n";
 import { useMachineStore } from "@/stores/machine";
 import { useUiStore } from "@/stores/ui";
 
@@ -249,26 +233,23 @@ function motorsOff(): void {
 }
 
 // --- right-click step editing ------------------------------------------------------
-const editOpen = ref(false);
-const editValue = ref<number>(0);
-const editTarget = ref<{ arr: "xy" | "z"; index: number } | null>(null);
-
-function editStep(arr: "xy" | "z", index: number): void {
-	editTarget.value = { arr, index };
-	editValue.value = arr === "xy" ? xySteps.value[index] : zStepList.value[index];
-	editOpen.value = true;
-}
-function applyEdit(): void {
-	const v = Number(editValue.value);
-	const target = editTarget.value;
-	if (target && !Number.isNaN(v) && v > 0) {
-		if (target.arr === "xy") {
-			(props.widget.xySteps ??= [...xySteps.value])[target.index] = v;
+// Uses DWC's shared numeric-input dialog (externalised since 3.7.0-alpha.5) instead of a bespoke
+// in-widget dialog, so it matches the look/behaviour of the rest of the UI.
+async function editStep(arr: "xy" | "z", index: number): Promise<void> {
+	const current = arr === "xy" ? xySteps.value[index] : zStepList.value[index];
+	const v = await getNumericInput(
+		i18n.global.t("plugins.flexibleLayouts.jog.editStepTitle"),
+		i18n.global.t("plugins.flexibleLayouts.jog.stepAmount"),
+		current,
+		0,
+	);
+	if (v !== null && !Number.isNaN(v) && v > 0) {
+		if (arr === "xy") {
+			(props.widget.xySteps ??= [...xySteps.value])[index] = v;
 		} else {
-			(props.widget.zSteps ??= [...zStepList.value])[target.index] = v;
+			(props.widget.zSteps ??= [...zStepList.value])[index] = v;
 		}
 	}
-	editOpen.value = false;
 }
 </script>
 
