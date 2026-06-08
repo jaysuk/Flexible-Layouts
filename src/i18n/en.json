@@ -215,8 +215,8 @@
 		"text": "Text"
 	},
 	"activate": {
-		"title": "Flexible Layouts is installed",
-		"prompt": "Open Settings to switch DWC to a fully customisable interface. You can always return with /BuiltInLayout."
+		"title": "Use Flexible Layouts?",
+		"prompt": "Switch DWC to the fully customisable Flexible Layouts interface now? You can always return with /BuiltInLayout or from Settings."
 	},
 	"help": {
 		"title": "Help & guide",

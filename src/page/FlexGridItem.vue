@@ -63,7 +63,7 @@
 <script setup lang="ts">
 import { computed, provide } from "vue";
 
-import { SETTINGS_SCOPE_KEY } from "@/plugins";
+import { SETTINGS_SCOPE_KEY } from "@/composables/useComponentSettings";
 import { useMachineStore } from "@/stores/machine";
 
 import type { GridItemModel } from "../model/document";

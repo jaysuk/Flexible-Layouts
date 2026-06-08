@@ -12,11 +12,11 @@
 import { type Component, defineComponent, h } from "vue";
 
 import { registerLayout, registerPluginMessages, registerSettingTab } from "@/plugins";
+import { showConfirmDialog } from "@/composables/useConfirmDialog";
 import Events from "@/utils/events";
 import i18n from "@/i18n";
 import { useCacheStore } from "@/stores/cache";
 import { useSettingsStore } from "@/stores/settings";
-import { LogLevel, useUiStore } from "@/stores/ui";
 
 import en from "./i18n/en.json";
 import { BUILTIN_PAGES } from "./model/builtinPages";
@@ -54,15 +54,19 @@ function maybeOfferActivation(): void {
 		return;
 	}
 	cacheStore.setPluginData(PLUGIN_ID, "promptedActivate", true);
+	// DWC 3.7.0-alpha.5 externalises `@/composables/*`, so we can use the proper confirm dialog again
+	// (a one-click "switch now?") instead of the previous notification.
 	setTimeout(() => {
-		useUiStore().makeNotification(
-			LogLevel.info,
+		showConfirmDialog(
 			i18n.global.t("plugins.flexibleLayouts.activate.title"),
 			i18n.global.t("plugins.flexibleLayouts.activate.prompt"),
-			null,
-			"/Settings",
 			"mdi-view-dashboard-edit",
-		);
+		).then((ok) => {
+			if (ok) {
+				settings.useCustomLayout = true;
+				settings.layoutUserSet = true;
+			}
+		}).catch(() => { /* dismissed */ });
 	}, 1200);
 }
 maybeOfferActivation();
