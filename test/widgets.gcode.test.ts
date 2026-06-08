@@ -1,6 +1,6 @@
 import { flushPromises } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
-import { dwc, lastCode, mountInDwc, sentCodes, setMessageBox } from "dwc-plugin-test-kit";
+import { byText, byTitle, dwc, lastCode, mountInDwc, sentCodes, setMessageBox } from "dwc-plugin-test-kit";
 
 import { createDefaultWidget } from "../src/model/document";
 import WidgetView from "../src/widgets/WidgetView.vue";
@@ -8,12 +8,6 @@ import WidgetView from "../src/widgets/WidgetView.vue";
 // Mount a default widget of `type` and return the wrapper.
 function mountWidget(type: Parameters<typeof createDefaultWidget>[0]) {
 	return mountInDwc(WidgetView, { props: { widget: createDefaultWidget(type) } });
-}
-function byTitle(wrapper: ReturnType<typeof mountWidget>, title: string) {
-	return wrapper.findAll("button").find((b) => b.attributes("title") === title);
-}
-function byText(wrapper: ReturnType<typeof mountWidget>, substr: string) {
-	return wrapper.findAll("button").find((b) => b.text().includes(substr));
 }
 
 describe("widgets emit the expected G-code", () => {
