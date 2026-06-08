@@ -10,12 +10,14 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "typecheck": "dwc-plugin-typecheck",
-    "verify-build": "dwc-plugin-verify-build"
+    "verify-build": "dwc-plugin-verify-build",
+    "e2e": "playwright test --config e2e/playwright.config.ts"
   },
   "dependencies": {
     "grid-layout-plus": "^1.1.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.49.0",
     "@vitejs/plugin-vue": "^5.2.4",
     "@vitest/coverage-v8": "^4.1.8",
     "@vue/test-utils": "^2.4.6",
