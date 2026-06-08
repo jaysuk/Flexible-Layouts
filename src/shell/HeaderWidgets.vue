@@ -214,18 +214,19 @@ function remove(i: number) {
 	background: rgba(var(--v-theme-primary), 0.4);
 }
 
-/* Same guard as the grid: a large header font must not clip Vuetify form-control text (which has a
-   fixed, density-driven height). Read-outs still scale; controls stay a normal size. */
-.header-item-body :deep(.v-field__input),
-.header-item-body :deep(.v-select__selection) {
-	font-size: 0.875rem;
+/* Same as the grid: let form controls grow with the font instead of clipping a large value. */
+.header-item-body :deep(.v-input) {
+	--v-input-control-height: 2.6em;
+}
+.header-item-body :deep(.v-field__input) {
+	min-height: 2.6em;
+	line-height: 1.5;
+	padding-top: 0.4em;
+	padding-bottom: 0.3em;
 }
 .header-item-body :deep(.v-field__input input),
-.header-item-body :deep(.v-field__input textarea) {
-	font-size: inherit;
-	line-height: 1.4;
-}
-.header-item-body :deep(.v-field .v-label) {
-	font-size: 0.75rem;
+.header-item-body :deep(.v-field__input textarea),
+.header-item-body :deep(.v-field__input .v-select__selection) {
+	line-height: 1.5;
 }
 </style>
