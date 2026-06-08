@@ -10,7 +10,7 @@ import {
 	recordError,
 	reportToJson,
 	sanitizeModel,
-} from "../src/util/diagnostics";
+} from "dwc-plugin-runtime";
 
 describe("diagnostics report", () => {
 	beforeEach(() => clearErrors());

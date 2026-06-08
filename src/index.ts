@@ -22,7 +22,7 @@ import en from "./i18n/en.json";
 import { BUILTIN_PAGES } from "./model/builtinPages";
 import { PLUGIN_MANIFEST_ID } from "./model/constants";
 import { installEscapeGuard, uninstallEscapeGuard } from "./model/lock";
-import { installErrorCapture } from "./util/diagnostics";
+import { installErrorCapture } from "dwc-plugin-runtime";
 import { migrateGlobalHides, registerExistingCustomPages } from "./model/pageManager";
 import { registerDocument } from "./model/store";
 import { applyTheme } from "./model/theme";

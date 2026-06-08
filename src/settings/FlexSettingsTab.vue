@@ -85,8 +85,9 @@ import { useMachineStore } from "@/stores/machine";
 import { useSettingsStore } from "@/stores/settings";
 import { LogLevel, useUiStore } from "@/stores/ui";
 
+import { buildReport, copyReport, downloadReport } from "dwc-plugin-runtime";
+
 import { PLUGIN_MANIFEST_ID } from "../model/constants";
-import { buildReport, copyReport, downloadReport } from "../util/diagnostics";
 import ImportExportDialog from "../editor/ImportExportDialog.vue";
 import ThemeEditor from "../editor/ThemeEditor.vue";
 import ProfilesDialog from "../editor/ProfilesDialog.vue";

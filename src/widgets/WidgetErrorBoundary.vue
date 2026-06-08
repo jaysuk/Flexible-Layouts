@@ -6,7 +6,7 @@
 <script setup lang="ts">
 import { onErrorCaptured, ref, watch } from "vue";
 
-import { recordError } from "../util/diagnostics";
+import { recordError } from "dwc-plugin-runtime";
 
 // Contains a render/lifecycle error thrown by ONE widget so it can't take down the whole page.
 // `resetKey` clears the error when it changes (e.g. after the widget's config is edited) so a

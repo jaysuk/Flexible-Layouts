@@ -67,9 +67,10 @@ import { computed, provide } from "vue";
 import { SETTINGS_SCOPE_KEY } from "@/composables/useComponentSettings";
 import { useMachineStore } from "@/stores/machine";
 
+import { buildReport, downloadReport } from "dwc-plugin-runtime";
+
 import type { GridItemModel } from "../model/document";
 import { PLUGIN_MANIFEST_ID } from "../model/constants";
-import { buildReport, downloadReport } from "../util/diagnostics";
 import { evaluateConditions } from "../util/conditions";
 import { describeWidget } from "../widgets/registry";
 import ScaleToFit from "../widgets/ScaleToFit.vue";
