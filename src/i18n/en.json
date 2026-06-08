@@ -82,6 +82,11 @@
 		"hotspot": "Image hotspots",
 		"http": "HTTP / REST value",
 		"eventLog": "Console log",
+		"dro": "Position (DRO)",
+		"spindle": "Spindle / laser",
+		"messageBox": "Message box (M291)",
+		"profileSwitch": "Profile switcher",
+		"themeToggle": "Theme toggle",
 		"chart": "Live chart",
 		"chartUnset": "Add a value to chart",
 		"chartDownload": "Download data (CSV)",
@@ -503,6 +508,43 @@
 		"title": "this panel failed to render",
 		"retry": "Retry",
 		"remove": "Remove"
+	},
+	"dro": {
+		"work": "Work",
+		"machine": "Machine",
+		"axes": "Axes (blank = all)",
+		"axesHint": "Comma-separated letters, e.g. X, Y, Z.",
+		"coord": "Coordinates",
+		"none": "No axes."
+	},
+	"spindle": {
+		"index": "Spindle #",
+		"forward": "Forward (M3)",
+		"reverse": "Reverse (M4)",
+		"stop": "Stop (M5)"
+	},
+	"messageBox": {
+		"idle": "No active message",
+		"close": "Close",
+		"note": "Shows the firmware message box (M291) and acknowledges it (M292) when one is active. No configuration needed."
+	},
+	"profileSwitch": {
+		"variantSelect": "Dropdown",
+		"variantButtons": "Buttons"
+	},
+	"themeToggle": {
+		"dark": "Dark",
+		"light": "Light"
+	},
+	"paletteCategory": {
+		"all": "All",
+		"controls": "Controls",
+		"machine": "Machine",
+		"readouts": "Read-outs",
+		"dashboard": "Dashboard & media",
+		"layout": "Layout & app",
+		"panels": "Built-in panels",
+		"plugins": "Plugin pages"
 	},
 	"dependencies": {
 		"embedReason": "Embeds the “{name}” page"

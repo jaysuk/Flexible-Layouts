@@ -52,6 +52,11 @@ Add widgets with **Add widget** while editing. Every widget can additionally be 
 | **Fan slider** | Single-fan slider with live % + RPM (`M106 P<n> S…`). | fan #, colour |
 | **Job control** | Pause / resume / cancel (`M25`/`M24`/`M0`) with progress. | show progress, colour |
 | **File picker** | A button per gcode file in a folder; starts it (`M32`-templated). | folder, columns, start command |
+| **Position (DRO)** | Axis positions with machine/work toggle and per-axis homed indicators. | axes, work/machine, decimals |
+| **Spindle / laser** | Forward/reverse/stop (`M3`/`M4`/`M5`) + RPM slider, reads `spindles[n]`. | spindle #, min/max RPM, colour |
+| **Message box (M291)** | Surfaces a firmware message box inline and acknowledges it (`M292`) — OK/Cancel, choices, or value input. | — |
+| **Profile switcher** | Switch the active FL layout profile from the page. | dropdown vs buttons |
+| **Theme toggle** | Flip the DWC light/dark theme. | switch vs button |
 
 ## More display widgets
 

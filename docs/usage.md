@@ -21,7 +21,9 @@ Click **Edit** in the top bar to start; **Done** to finish.
 - Each panel has header buttons to **configure** (⚙), **duplicate** (⧉), **lock** (🔒), **back up**
   (💾), **edit contents** (for groups) and **delete** (🗑).
 - **Undo / redo** with **Ctrl+Z / Ctrl+Y**.
-- **Add widget** opens the palette (see [widgets.md](widgets.md)).
+- **Add widget** opens the palette: filter by **category** chips (Controls, Machine, Read-outs,
+  Dashboard, Layout, Built-in panels, Plugin pages) or **search**, then click a tile to add it
+  (see [widgets.md](widgets.md)).
 - Built-in DWC pages (Console, Settings, File Explorer, Job…) can't take widgets — you'll see an
   amber note on those while editing.
 

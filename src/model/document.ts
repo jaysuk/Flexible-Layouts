@@ -401,6 +401,41 @@ export type Widget =
 		series?: Array<{ omPath: string; color?: string }>;
 		windowSeconds?: number;
 		intervalMs?: number;
+	}
+	| {
+		/** Digital read-out of axis positions with homed indicators. */
+		type: "dro";
+		title?: string;
+		/** Axis letters to show; empty = all visible axes. */
+		axes?: Array<string>;
+		coord?: "work" | "machine";
+		precision?: number;
+	}
+	| {
+		/** Spindle / laser control (M3/M4/M5). */
+		type: "spindle";
+		label?: string;
+		spindleIndex?: number;
+		min?: number;
+		max?: number;
+		color?: string;
+	}
+	| {
+		/** Surfaces the firmware message box (M291) and acknowledges it (M292). */
+		type: "messageBox";
+		title?: string;
+	}
+	| {
+		/** Switch the active FL layout profile. */
+		type: "profileSwitch";
+		label?: string;
+		variant?: "select" | "buttons";
+	}
+	| {
+		/** Toggle the DWC light/dark theme. */
+		type: "themeToggle";
+		label?: string;
+		variant?: "switch" | "button";
 	};
 
 /** Widget type discriminator, handy for palettes and factories. */
@@ -594,6 +629,16 @@ export function createDefaultWidget(type: WidgetType): Widget {
 				windowSeconds: 120,
 				intervalMs: 1000,
 			};
+		case "dro":
+			return { type: "dro", title: "Position", axes: [], coord: "work", precision: 2 };
+		case "spindle":
+			return { type: "spindle", label: "Spindle", spindleIndex: 0, color: "primary" };
+		case "messageBox":
+			return { type: "messageBox", title: "" };
+		case "profileSwitch":
+			return { type: "profileSwitch", label: "Profile", variant: "select" };
+		case "themeToggle":
+			return { type: "themeToggle", label: "Dark", variant: "switch" };
 		case "group":
 			return { type: "group", title: "Custom panel", items: [], cols: 12, rowHeight: 30 };
 		case "builtinPanel":

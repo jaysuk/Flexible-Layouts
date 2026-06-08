@@ -34,6 +34,11 @@
 	<HotspotWidget v-else-if="widget.type === 'hotspot'" :widget="widget" :disabled="disabled" />
 	<HttpWidget v-else-if="widget.type === 'http'" :widget="widget" />
 	<EventLogWidget v-else-if="widget.type === 'eventLog'" :widget="widget" />
+	<DroWidget v-else-if="widget.type === 'dro'" :widget="widget" />
+	<SpindleWidget v-else-if="widget.type === 'spindle'" :widget="widget" :disabled="disabled" />
+	<MessageBoxWidget v-else-if="widget.type === 'messageBox'" :widget="widget" />
+	<ProfileSwitchWidget v-else-if="widget.type === 'profileSwitch'" :widget="widget" />
+	<ThemeToggleWidget v-else-if="widget.type === 'themeToggle'" :widget="widget" />
 	<GroupWidget v-else-if="widget.type === 'group'" :widget="widget" />
 	<PluginPageWidget v-else-if="widget.type === 'pluginPage'" :widget="widget" />
 	<WebWidget v-else-if="widget.type === 'web'" :widget="widget" />
@@ -47,6 +52,7 @@ import ChartWidget from "./ChartWidget.vue";
 import ClockWidget from "./ClockWidget.vue";
 import CommandButtonWidget from "./CommandButtonWidget.vue";
 import ConsoleWidget from "./ConsoleWidget.vue";
+import DroWidget from "./DroWidget.vue";
 import EventLogWidget from "./EventLogWidget.vue";
 import ExtruderWidget from "./ExtruderWidget.vue";
 import FanWidget from "./FanWidget.vue";
@@ -63,15 +69,19 @@ import JobControlWidget from "./JobControlWidget.vue";
 import JogWidget from "./JogWidget.vue";
 import LabelWidget from "./LabelWidget.vue";
 import MacrosWidget from "./MacrosWidget.vue";
+import MessageBoxWidget from "./MessageBoxWidget.vue";
 import NeopixelWidget from "./NeopixelWidget.vue";
 import NoteWidget from "./NoteWidget.vue";
 import PluginPageWidget from "./PluginPageWidget.vue";
+import ProfileSwitchWidget from "./ProfileSwitchWidget.vue";
 import ProgressWidget from "./ProgressWidget.vue";
 import SliderWidget from "./SliderWidget.vue";
 import SparklineWidget from "./SparklineWidget.vue";
+import SpindleWidget from "./SpindleWidget.vue";
 import StatusWidget from "./StatusWidget.vue";
 import StepperWidget from "./StepperWidget.vue";
 import TableWidget from "./TableWidget.vue";
+import ThemeToggleWidget from "./ThemeToggleWidget.vue";
 import ToggleWidget from "./ToggleWidget.vue";
 import ToolSelectWidget from "./ToolSelectWidget.vue";
 import ValueWidget from "./ValueWidget.vue";

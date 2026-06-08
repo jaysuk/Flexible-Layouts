@@ -48,50 +48,69 @@ export function findPanelEntry(component: string): PanelCatalogEntry | undefined
 	return BUILTIN_PANELS.find((p) => p.component === component);
 }
 
+/** Palette categories, in display order. */
+export type WidgetCategory = "controls" | "machine" | "readouts" | "dashboard" | "layout";
+export const WIDGET_CATEGORIES: ReadonlyArray<WidgetCategory> = ["controls", "machine", "readouts", "dashboard", "layout"];
+
 /** Freeform (user-authored) widget types offered in the palette. */
 export interface FreeformCatalogEntry {
 	type: Exclude<WidgetType, "builtinPanel">;
 	labelKey: string;
 	icon: string;
 	defaultSize: { w: number; h: number };
+	category: WidgetCategory;
 }
 
 export const FREEFORM_WIDGETS: ReadonlyArray<FreeformCatalogEntry> = [
-	{ type: "group",      labelKey: "widgets.group",      icon: "mdi-group",              defaultSize: { w: 6, h: 6 } },
-	{ type: "codeButton", labelKey: "widgets.codeButton", icon: "mdi-gesture-tap-button", defaultSize: { w: 3, h: 3 } },
-	{ type: "jog",        labelKey: "widgets.jog",        icon: "mdi-circle-double",      defaultSize: { w: 5, h: 8 } },
-	{ type: "input",      labelKey: "widgets.input",      icon: "mdi-form-textbox",       defaultSize: { w: 4, h: 2 } },
-	{ type: "slider",     labelKey: "widgets.slider",     icon: "mdi-tune-variant",       defaultSize: { w: 4, h: 2 } },
-	{ type: "toggle",     labelKey: "widgets.toggle",     icon: "mdi-toggle-switch",      defaultSize: { w: 3, h: 2 } },
-	{ type: "stepper",    labelKey: "widgets.stepper",    icon: "mdi-plus-minus-variant", defaultSize: { w: 3, h: 2 } },
-	{ type: "value",      labelKey: "widgets.value",      icon: "mdi-counter",            defaultSize: { w: 3, h: 3 } },
-	{ type: "label",      labelKey: "widgets.label",      icon: "mdi-format-text",        defaultSize: { w: 4, h: 2 } },
-	{ type: "chart",      labelKey: "widgets.chart",      icon: "mdi-chart-line",         defaultSize: { w: 6, h: 6 } },
-	{ type: "neopixel",   labelKey: "widgets.neopixel",   icon: "mdi-led-strip-variant",  defaultSize: { w: 4, h: 9 } },
-	{ type: "globals",    labelKey: "widgets.globals",    icon: "mdi-variable",           defaultSize: { w: 5, h: 6 } },
-	{ type: "progress",   labelKey: "widgets.progress",   icon: "mdi-progress-helper",    defaultSize: { w: 4, h: 2 } },
-	{ type: "status",     labelKey: "widgets.status",     icon: "mdi-circle-slice-8",     defaultSize: { w: 3, h: 2 } },
-	{ type: "alert",      labelKey: "widgets.alert",      icon: "mdi-alert-circle",       defaultSize: { w: 5, h: 2 } },
-	{ type: "webcam",     labelKey: "widgets.webcam",     icon: "mdi-webcam",             defaultSize: { w: 6, h: 6 } },
-	{ type: "macros",     labelKey: "widgets.macros",     icon: "mdi-cog-play",           defaultSize: { w: 4, h: 5 } },
-	{ type: "console",    labelKey: "widgets.console",    icon: "mdi-console-line",       defaultSize: { w: 6, h: 5 } },
-	{ type: "heater",     labelKey: "widgets.heater",     icon: "mdi-radiator",           defaultSize: { w: 4, h: 3 } },
-	{ type: "clock",      labelKey: "widgets.clock",      icon: "mdi-clock-outline",      defaultSize: { w: 3, h: 2 } },
-	{ type: "table",      labelKey: "widgets.table",      icon: "mdi-table",              defaultSize: { w: 4, h: 4 } },
-	{ type: "extruder",   labelKey: "widgets.extruder",   icon: "mdi-printer-3d-nozzle",  defaultSize: { w: 4, h: 3 } },
-	{ type: "wcs",        labelKey: "widgets.wcs",        icon: "mdi-axis-arrow",         defaultSize: { w: 4, h: 3 } },
-	{ type: "toolSelect", labelKey: "widgets.toolSelect", icon: "mdi-tools",              defaultSize: { w: 4, h: 2 } },
-	{ type: "fan",        labelKey: "widgets.fan",        icon: "mdi-fan",                defaultSize: { w: 4, h: 2 } },
-	{ type: "jobControl", labelKey: "widgets.jobControl", icon: "mdi-play-pause",         defaultSize: { w: 4, h: 3 } },
-	{ type: "files",      labelKey: "widgets.files",      icon: "mdi-file-document-multiple", defaultSize: { w: 4, h: 6 } },
-	{ type: "gaugeCluster", labelKey: "widgets.gaugeCluster", icon: "mdi-gauge",          defaultSize: { w: 5, h: 4 } },
-	{ type: "indicators", labelKey: "widgets.indicators", icon: "mdi-led-on",             defaultSize: { w: 4, h: 3 } },
-	{ type: "sparkline",  labelKey: "widgets.sparkline",  icon: "mdi-chart-bell-curve",   defaultSize: { w: 4, h: 3 } },
-	{ type: "note",       labelKey: "widgets.note",       icon: "mdi-text-box-outline",   defaultSize: { w: 5, h: 4 } },
-	{ type: "hotspot",    labelKey: "widgets.hotspot",    icon: "mdi-image-filter-center-focus", defaultSize: { w: 6, h: 6 } },
-	{ type: "http",       labelKey: "widgets.http",       icon: "mdi-web-box",            defaultSize: { w: 4, h: 2 } },
-	{ type: "eventLog",   labelKey: "widgets.eventLog",   icon: "mdi-console-line",       defaultSize: { w: 6, h: 5 } },
-	{ type: "web",        labelKey: "widgets.web",        icon: "mdi-web",                defaultSize: { w: 6, h: 8 } },
+	// Controls — interactive, send commands
+	{ type: "codeButton", labelKey: "widgets.codeButton", icon: "mdi-gesture-tap-button", defaultSize: { w: 3, h: 3 }, category: "controls" },
+	{ type: "jog",        labelKey: "widgets.jog",        icon: "mdi-circle-double",      defaultSize: { w: 5, h: 8 }, category: "controls" },
+	{ type: "slider",     labelKey: "widgets.slider",     icon: "mdi-tune-variant",       defaultSize: { w: 4, h: 2 }, category: "controls" },
+	{ type: "toggle",     labelKey: "widgets.toggle",     icon: "mdi-toggle-switch",      defaultSize: { w: 3, h: 2 }, category: "controls" },
+	{ type: "stepper",    labelKey: "widgets.stepper",    icon: "mdi-plus-minus-variant", defaultSize: { w: 3, h: 2 }, category: "controls" },
+	{ type: "input",      labelKey: "widgets.input",      icon: "mdi-form-textbox",       defaultSize: { w: 4, h: 2 }, category: "controls" },
+	{ type: "neopixel",   labelKey: "widgets.neopixel",   icon: "mdi-led-strip-variant",  defaultSize: { w: 4, h: 9 }, category: "controls" },
+
+	// Machine — printer/CNC specific
+	{ type: "extruder",   labelKey: "widgets.extruder",   icon: "mdi-printer-3d-nozzle",  defaultSize: { w: 4, h: 3 }, category: "machine" },
+	{ type: "fan",        labelKey: "widgets.fan",        icon: "mdi-fan",                defaultSize: { w: 4, h: 2 }, category: "machine" },
+	{ type: "heater",     labelKey: "widgets.heater",     icon: "mdi-radiator",           defaultSize: { w: 4, h: 3 }, category: "machine" },
+	{ type: "spindle",    labelKey: "widgets.spindle",    icon: "mdi-saw-blade",          defaultSize: { w: 4, h: 3 }, category: "machine" },
+	{ type: "wcs",        labelKey: "widgets.wcs",        icon: "mdi-axis-arrow",         defaultSize: { w: 4, h: 3 }, category: "machine" },
+	{ type: "toolSelect", labelKey: "widgets.toolSelect", icon: "mdi-tools",              defaultSize: { w: 4, h: 2 }, category: "machine" },
+	{ type: "jobControl", labelKey: "widgets.jobControl", icon: "mdi-play-pause",         defaultSize: { w: 4, h: 3 }, category: "machine" },
+	{ type: "macros",     labelKey: "widgets.macros",     icon: "mdi-cog-play",           defaultSize: { w: 4, h: 5 }, category: "machine" },
+	{ type: "files",      labelKey: "widgets.files",      icon: "mdi-file-document-multiple", defaultSize: { w: 4, h: 6 }, category: "machine" },
+	{ type: "console",    labelKey: "widgets.console",    icon: "mdi-console-line",       defaultSize: { w: 6, h: 5 }, category: "machine" },
+
+	// Read-outs — display object-model values
+	{ type: "value",      labelKey: "widgets.value",      icon: "mdi-counter",            defaultSize: { w: 3, h: 3 }, category: "readouts" },
+	{ type: "dro",        labelKey: "widgets.dro",        icon: "mdi-axis-arrow-info",    defaultSize: { w: 3, h: 4 }, category: "readouts" },
+	{ type: "table",      labelKey: "widgets.table",      icon: "mdi-table",              defaultSize: { w: 4, h: 4 }, category: "readouts" },
+	{ type: "gaugeCluster", labelKey: "widgets.gaugeCluster", icon: "mdi-gauge",          defaultSize: { w: 5, h: 4 }, category: "readouts" },
+	{ type: "progress",   labelKey: "widgets.progress",   icon: "mdi-progress-helper",    defaultSize: { w: 4, h: 2 }, category: "readouts" },
+	{ type: "status",     labelKey: "widgets.status",     icon: "mdi-circle-slice-8",     defaultSize: { w: 3, h: 2 }, category: "readouts" },
+	{ type: "indicators", labelKey: "widgets.indicators", icon: "mdi-led-on",             defaultSize: { w: 4, h: 3 }, category: "readouts" },
+	{ type: "chart",      labelKey: "widgets.chart",      icon: "mdi-chart-line",         defaultSize: { w: 6, h: 6 }, category: "readouts" },
+	{ type: "sparkline",  labelKey: "widgets.sparkline",  icon: "mdi-chart-bell-curve",   defaultSize: { w: 4, h: 3 }, category: "readouts" },
+	{ type: "clock",      labelKey: "widgets.clock",      icon: "mdi-clock-outline",      defaultSize: { w: 3, h: 2 }, category: "readouts" },
+
+	// Dashboard — info, media, notices
+	{ type: "alert",      labelKey: "widgets.alert",      icon: "mdi-alert-circle",       defaultSize: { w: 5, h: 2 }, category: "dashboard" },
+	{ type: "messageBox", labelKey: "widgets.messageBox", icon: "mdi-message-alert",      defaultSize: { w: 5, h: 3 }, category: "dashboard" },
+	{ type: "note",       labelKey: "widgets.note",       icon: "mdi-text-box-outline",   defaultSize: { w: 5, h: 4 }, category: "dashboard" },
+	{ type: "eventLog",   labelKey: "widgets.eventLog",   icon: "mdi-console-line",       defaultSize: { w: 6, h: 5 }, category: "dashboard" },
+	{ type: "label",      labelKey: "widgets.label",      icon: "mdi-format-text",        defaultSize: { w: 4, h: 2 }, category: "dashboard" },
+	{ type: "webcam",     labelKey: "widgets.webcam",     icon: "mdi-webcam",             defaultSize: { w: 6, h: 6 }, category: "dashboard" },
+	{ type: "hotspot",    labelKey: "widgets.hotspot",    icon: "mdi-image-filter-center-focus", defaultSize: { w: 6, h: 6 }, category: "dashboard" },
+	{ type: "http",       labelKey: "widgets.http",       icon: "mdi-web-box",            defaultSize: { w: 4, h: 2 }, category: "dashboard" },
+	{ type: "web",        labelKey: "widgets.web",        icon: "mdi-web",                defaultSize: { w: 6, h: 8 }, category: "dashboard" },
+
+	// Layout & app
+	{ type: "group",      labelKey: "widgets.group",      icon: "mdi-group",              defaultSize: { w: 6, h: 6 }, category: "layout" },
+	{ type: "globals",    labelKey: "widgets.globals",    icon: "mdi-variable",           defaultSize: { w: 5, h: 6 }, category: "layout" },
+	{ type: "profileSwitch", labelKey: "widgets.profileSwitch", icon: "mdi-layers-triple", defaultSize: { w: 3, h: 2 }, category: "layout" },
+	{ type: "themeToggle", labelKey: "widgets.themeToggle", icon: "mdi-theme-light-dark", defaultSize: { w: 3, h: 2 }, category: "layout" },
 ];
 
 /** Human title + icon for a widget, used by the edit-mode tile header and the palette. */
@@ -215,5 +234,15 @@ export function describeWidget(widget: Widget): { title: string; icon: string } 
 			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.http"), icon: "mdi-web-box" };
 		case "eventLog":
 			return { title: i18n.global.t("plugins.flexibleLayouts.widgets.eventLog"), icon: "mdi-console-line" };
+		case "dro":
+			return { title: widget.title || i18n.global.t("plugins.flexibleLayouts.widgets.dro"), icon: "mdi-axis-arrow-info" };
+		case "spindle":
+			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.spindle"), icon: "mdi-saw-blade" };
+		case "messageBox":
+			return { title: i18n.global.t("plugins.flexibleLayouts.widgets.messageBox"), icon: "mdi-message-alert" };
+		case "profileSwitch":
+			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.profileSwitch"), icon: "mdi-layers-triple" };
+		case "themeToggle":
+			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.themeToggle"), icon: "mdi-theme-light-dark" };
 	}
 }

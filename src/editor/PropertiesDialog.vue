@@ -707,6 +707,48 @@
 					</v-sheet>
 				</template>
 
+				<!-- DRO -->
+				<template v-else-if="draft.type === 'dro'">
+					<v-text-field v-model="draft.title" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.jog.titleField')" />
+					<v-text-field v-model="droAxesText" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.dro.axes')" :hint="$t('plugins.flexibleLayouts.dro.axesHint')" persistent-hint />
+					<v-row dense>
+						<v-col cols="6"><v-select v-model="draft.coord" :items="droCoordOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.dro.coord')" /></v-col>
+						<v-col cols="6"><v-text-field v-model.number="draft.precision" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.stepper.precision')" /></v-col>
+					</v-row>
+				</template>
+
+				<!-- Spindle -->
+				<template v-else-if="draft.type === 'spindle'">
+					<v-text-field v-model="draft.label" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" />
+					<v-row dense>
+						<v-col cols="3"><v-text-field v-model.number="draft.spindleIndex" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.spindle.index')" /></v-col>
+						<v-col cols="3"><v-text-field v-model.number="draft.min" type="number" density="compact" variant="outlined" hide-details label="Min RPM" /></v-col>
+						<v-col cols="3"><v-text-field v-model.number="draft.max" type="number" density="compact" variant="outlined" hide-details label="Max RPM" /></v-col>
+						<v-col cols="3"><v-select v-model="draft.color" :items="colorOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
+					</v-row>
+				</template>
+
+				<!-- Message box -->
+				<template v-else-if="draft.type === 'messageBox'">
+					<div class="text-body-2 text-medium-emphasis">{{ $t("plugins.flexibleLayouts.messageBox.note") }}</div>
+				</template>
+
+				<!-- Profile switcher -->
+				<template v-else-if="draft.type === 'profileSwitch'">
+					<v-row dense>
+						<v-col cols="7"><v-text-field v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
+						<v-col cols="5"><v-select v-model="draft.variant" :items="selectButtonsOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.toggle.variant')" /></v-col>
+					</v-row>
+				</template>
+
+				<!-- Theme toggle -->
+				<template v-else-if="draft.type === 'themeToggle'">
+					<v-row dense>
+						<v-col cols="7"><v-text-field v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
+						<v-col cols="5"><v-select v-model="draft.variant" :items="toggleVariantOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.toggle.variant')" /></v-col>
+					</v-row>
+				</template>
+
 				<!-- Built-in panel: optional title override -->
 				<template v-else-if="draft.type === 'builtinPanel'">
 					<div class="text-body-2 text-medium-emphasis">
@@ -1049,6 +1091,19 @@ function addSparkSeries(): void {
 function addRegion(): void {
 	if (draft.value?.type === "hotspot") { (draft.value.regions ??= []).push({ x: 10, y: 10, w: 20, h: 20, command: "", label: "" }); }
 }
+
+const droCoordOptions = computed(() => [
+	{ title: t("dro.work"), value: "work" },
+	{ title: t("dro.machine"), value: "machine" },
+]);
+const selectButtonsOptions = computed(() => [
+	{ title: t("profileSwitch.variantSelect"), value: "select" },
+	{ title: t("profileSwitch.variantButtons"), value: "buttons" },
+]);
+const droAxesText = computed({
+	get: () => (draft.value?.axes ?? []).join(", "),
+	set: (text: string) => { if (draft.value) { draft.value.axes = text.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean); } },
+});
 const liveGlobalNames = computed(() => {
 	const g = (machineStore.model as unknown as { global?: Map<string, unknown> }).global;
 	return g instanceof Map ? Array.from(g.keys()).sort() : [];

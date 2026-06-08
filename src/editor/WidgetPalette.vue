@@ -1,5 +1,5 @@
 <template>
-	<v-dialog :model-value="modelValue" max-width="560" scrollable
+	<v-dialog :model-value="modelValue" max-width="760" scrollable
 			  @update:model-value="emit('update:modelValue', $event)">
 		<v-card>
 			<v-card-title class="d-flex align-center">
@@ -15,41 +15,32 @@
 			<input ref="panelInput" type="file" accept=".json,application/json" class="d-none" @change="onPanelFile" />
 			<v-alert v-if="error" type="error" variant="tonal" density="compact" class="mx-4 mt-2">{{ error }}</v-alert>
 
-			<v-text-field v-model="search" class="mx-4" density="compact" variant="outlined"
-						  prepend-inner-icon="mdi-magnify" hide-details clearable
-						  :placeholder="$t('plugins.flexibleLayouts.editor.searchPanels')" />
+			<div class="px-4 pt-1">
+				<v-text-field v-model="search" density="compact" variant="outlined" autofocus
+							  prepend-inner-icon="mdi-magnify" hide-details clearable
+							  :placeholder="$t('plugins.flexibleLayouts.editor.searchPanels')" />
+				<v-chip-group v-model="cat" mandatory selected-class="text-primary" class="palette-chips">
+					<v-chip v-for="c in chipCategories" :key="c" :value="c" size="small" variant="tonal" filter>
+						{{ $t(`plugins.flexibleLayouts.paletteCategory.${c}`) }}
+					</v-chip>
+				</v-chip-group>
+			</div>
 
 			<v-card-text style="max-height: 60vh;">
-				<v-list>
-					<!-- Freeform widgets -->
-					<v-list-subheader>{{ $t("plugins.flexibleLayouts.editor.freeform") }}</v-list-subheader>
-					<v-list-item v-for="entry in filteredFreeform" :key="entry.type"
-								 :prepend-icon="entry.icon" :title="freeformLabel(entry)"
-								 @click="chooseFreeform(entry)" />
-
-					<!-- Pages from other installed plugins -->
-					<template v-if="filteredPluginPages.length > 0">
-						<v-list-subheader>{{ $t("plugins.flexibleLayouts.editor.pluginPages") }}</v-list-subheader>
-						<v-list-item v-for="page in filteredPluginPages" :key="page.path ?? page.tabKey"
-									 :prepend-icon="page.icon || 'mdi-puzzle'" :title="page.label"
-									 :subtitle="page.pluginId ?? page.source" @click="choosePluginPage(page)" />
-					</template>
-
-					<!-- Built-in panels -->
-					<v-list-subheader>{{ $t("plugins.flexibleLayouts.editor.builtinPanels") }}</v-list-subheader>
-					<v-list-item v-for="entry in filteredPanels" :key="entry.component"
-								 :prepend-icon="entry.icon" :title="panelLabel(entry)"
-								 :subtitle="entry.component" @click="choosePanel(entry)">
-						<template #append>
-							<v-chip v-if="entry.mode && entry.mode !== 'any'" size="x-small" variant="tonal">
-								{{ entry.mode.toUpperCase() }}
-							</v-chip>
-						</template>
-					</v-list-item>
-
-					<v-list-item v-if="filteredPanels.length === 0 && filteredFreeform.length === 0"
-								 :title="$t('plugins.flexibleLayouts.editor.noMatches')" disabled />
-				</v-list>
+				<div v-if="!groups.length" class="text-medium-emphasis text-center py-6">
+					{{ $t("plugins.flexibleLayouts.editor.noMatches") }}
+				</div>
+				<template v-for="g in groups" :key="g.cat">
+					<div class="palette-section-head">{{ $t(`plugins.flexibleLayouts.paletteCategory.${g.cat}`) }}</div>
+					<div class="palette-grid">
+						<button v-for="it in g.items" :key="it.id" type="button" class="palette-tile" @click="it.choose()">
+							<v-icon size="26" class="palette-tile-icon">{{ it.icon }}</v-icon>
+							<span class="palette-tile-label">{{ it.label }}</span>
+							<span v-if="it.sub" class="palette-tile-sub">{{ it.sub }}</span>
+							<v-chip v-if="it.mode && it.mode !== 'any'" size="x-small" variant="tonal" class="palette-tile-mode">{{ it.mode.toUpperCase() }}</v-chip>
+						</button>
+					</div>
+				</template>
 			</v-card-text>
 		</v-card>
 	</v-dialog>
@@ -68,6 +59,7 @@ import {
 	FREEFORM_WIDGETS,
 	type FreeformCatalogEntry,
 	type PanelCatalogEntry,
+	WIDGET_CATEGORIES,
 } from "../widgets/registry";
 
 defineProps<{ modelValue: boolean }>();
@@ -78,8 +70,13 @@ const emit = defineEmits<{
 }>();
 
 const search = ref("");
+const cat = ref<string>("all");
 const error = ref("");
 const panelInput = ref<HTMLInputElement | null>(null);
+
+// Category order shown as filter chips and section order in the body.
+const SECTION_ORDER = [...WIDGET_CATEGORIES, "panels", "plugins"] as const;
+const chipCategories = ["all", ...SECTION_ORDER];
 
 function pickPanel() {
 	error.value = "";
@@ -111,61 +108,71 @@ function freeformLabel(entry: FreeformCatalogEntry): string {
 	return i18n.global.t(`plugins.flexibleLayouts.${entry.labelKey}`);
 }
 
-const query = computed(() => (search.value ?? "").trim().toLowerCase());
-
-const filteredPanels = computed(() => {
-	const q = query.value;
-	if (!q) {
-		return BUILTIN_PANELS;
-	}
-	return BUILTIN_PANELS.filter((e) => panelLabel(e).toLowerCase().includes(q) || e.component.toLowerCase().includes(q));
-});
-
-const filteredFreeform = computed(() => {
-	const q = query.value;
-	if (!q) {
-		return FREEFORM_WIDGETS;
-	}
-	return FREEFORM_WIDGETS.filter((e) => freeformLabel(e).toLowerCase().includes(q));
-});
-
-const pluginPages = computed(() => listEmbeddablePages());
-const filteredPluginPages = computed(() => {
-	const q = query.value;
-	if (!q) {
-		return pluginPages.value;
-	}
-	return pluginPages.value.filter((p) => p.label.toLowerCase().includes(q) || (p.path ?? p.tabKey ?? "").toLowerCase().includes(q));
-});
-
-function choosePanel(entry: PanelCatalogEntry) {
-	emit("add", {
-		widget: { type: "builtinPanel", component: entry.component },
-		size: entry.defaultSize,
-		configure: false,
-	});
-	emit("update:modelValue", false);
-}
-
 function chooseFreeform(entry: FreeformCatalogEntry) {
 	// Freeform widgets open their properties editor immediately so the user can configure them.
 	emit("add", { widget: createDefaultWidget(entry.type), size: entry.defaultSize, configure: true });
 	emit("update:modelValue", false);
 }
-
+function choosePanel(entry: PanelCatalogEntry) {
+	emit("add", { widget: { type: "builtinPanel", component: entry.component }, size: entry.defaultSize, configure: false });
+	emit("update:modelValue", false);
+}
 function choosePluginPage(page: EmbeddablePage) {
 	emit("add", {
-		widget: {
-			type: "pluginPage",
-			source: page.source,
-			path: page.path,
-			tabKey: page.tabKey,
-			pluginId: page.pluginId,
-			label: page.label,
-		},
+		widget: { type: "pluginPage", source: page.source, path: page.path, tabKey: page.tabKey, pluginId: page.pluginId, label: page.label },
 		size: { w: 6, h: 8 },
 		configure: false,
 	});
 	emit("update:modelValue", false);
 }
+
+interface PaletteItem { id: string; icon: string; label: string; sub?: string; mode?: string; category: string; choose: () => void }
+
+// One flat, categorised list of everything that can be added.
+const allItems = computed<Array<PaletteItem>>(() => {
+	const items: Array<PaletteItem> = [];
+	for (const e of FREEFORM_WIDGETS) {
+		items.push({ id: `f:${e.type}`, icon: e.icon, label: freeformLabel(e), category: e.category, choose: () => chooseFreeform(e) });
+	}
+	for (const e of BUILTIN_PANELS) {
+		items.push({ id: `p:${e.component}`, icon: e.icon, label: panelLabel(e), sub: e.component, mode: e.mode, category: "panels", choose: () => choosePanel(e) });
+	}
+	for (const p of listEmbeddablePages()) {
+		items.push({ id: `x:${p.path ?? p.tabKey}`, icon: p.icon || "mdi-puzzle", label: p.label, sub: p.pluginId ?? p.source, category: "plugins", choose: () => choosePluginPage(p) });
+	}
+	return items;
+});
+
+const query = computed(() => (search.value ?? "").trim().toLowerCase());
+const visible = computed(() => {
+	const q = query.value;
+	const c = cat.value;
+	return allItems.value.filter((it) =>
+		(c === "all" || it.category === c) &&
+		(!q || it.label.toLowerCase().includes(q) || (it.sub ?? "").toLowerCase().includes(q)));
+});
+const groups = computed(() =>
+	SECTION_ORDER
+		.map((c) => ({ cat: c as string, items: visible.value.filter((it) => it.category === c) }))
+		.filter((g) => g.items.length > 0));
 </script>
+
+<style scoped>
+.palette-chips { margin-top: 4px; }
+.palette-section-head {
+	font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600;
+	color: rgba(var(--v-theme-on-surface), 0.6); margin: 10px 2px 6px;
+}
+.palette-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 6px; }
+.palette-tile {
+	display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+	gap: 3px; padding: 10px 6px; min-height: 84px; cursor: pointer; text-align: center;
+	border: 1px solid rgba(var(--v-theme-on-surface), 0.12); border-radius: 8px;
+	background: rgba(var(--v-theme-on-surface), 0.02); position: relative;
+}
+.palette-tile:hover { background: rgba(var(--v-theme-primary), 0.1); border-color: rgba(var(--v-theme-primary), 0.5); }
+.palette-tile-icon { color: rgb(var(--v-theme-primary)); }
+.palette-tile-label { font-size: 0.78rem; font-weight: 500; line-height: 1.15; }
+.palette-tile-sub { font-size: 0.62rem; opacity: 0.55; overflow: hidden; text-overflow: ellipsis; max-width: 100%; white-space: nowrap; }
+.palette-tile-mode { position: absolute; top: 3px; right: 3px; }
+</style>
