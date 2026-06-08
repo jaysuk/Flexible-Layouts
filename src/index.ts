@@ -22,6 +22,7 @@ import en from "./i18n/en.json";
 import { BUILTIN_PAGES } from "./model/builtinPages";
 import { PLUGIN_MANIFEST_ID } from "./model/constants";
 import { installEscapeGuard, uninstallEscapeGuard } from "./model/lock";
+import { installErrorCapture } from "./util/diagnostics";
 import { migrateGlobalHides, registerExistingCustomPages } from "./model/pageManager";
 import { registerDocument } from "./model/store";
 import { applyTheme } from "./model/theme";
@@ -84,12 +85,17 @@ applyTheme();
 // Enforce the optional edit/escape password lock (no-op unless the user enabled it).
 installEscapeGuard();
 
-// Clean up app-lifetime resources when this plugin is stopped. The escape-guard watcher isn't tied
-// to any component, so without this it would leak (and stack a duplicate on the next load). Uses
-// DWC's shared event bus (window.DWC.Events) added in 3.7.0-alpha.4.
+// Buffer uncaught errors / promise rejections so the Diagnostics report (Settings tab) can include
+// them. Returns an uninstaller cleaned up on unload below.
+const uninstallErrorCapture = installErrorCapture();
+
+// Clean up app-lifetime resources when this plugin is stopped. The escape-guard watcher and the
+// error-capture listeners aren't tied to any component, so without this they would leak (and stack a
+// duplicate on the next load). Uses DWC's shared event bus (window.DWC.Events) added in 3.7.0-alpha.4.
 function onPluginUnloaded(id: string): void {
 	if (id === PLUGIN_MANIFEST_ID) {
 		uninstallEscapeGuard();
+		uninstallErrorCapture();
 		Events.off("dwcPluginUnloaded", onPluginUnloaded);
 	}
 }

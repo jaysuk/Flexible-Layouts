@@ -509,6 +509,15 @@
 		"retry": "Retry",
 		"remove": "Remove"
 	},
+	"diagnostics": {
+		"title": "Diagnostics",
+		"hint": "Captures plugin/firmware versions, recent errors and a privacy-scrubbed object model (network details and file names redacted) for a bug report.",
+		"download": "Download report",
+		"copy": "Copy to clipboard",
+		"report": "Report",
+		"copied": "Diagnostics copied to clipboard.",
+		"copyFailed": "Couldn't copy — use Download report instead."
+	},
 	"dro": {
 		"work": "Work",
 		"machine": "Machine",

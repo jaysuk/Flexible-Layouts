@@ -50,6 +50,7 @@
 							<div class="text-caption text-medium-emphasis flex-widget-error-msg">{{ message }}</div>
 							<div class="d-flex ga-2 mt-2">
 								<v-btn size="x-small" variant="tonal" prepend-icon="mdi-refresh" @click="reset">{{ $t("plugins.flexibleLayouts.widgetError.retry") }}</v-btn>
+								<v-btn size="x-small" variant="tonal" prepend-icon="mdi-bug" @click="reportWidgetError(message)">{{ $t("plugins.flexibleLayouts.diagnostics.report") }}</v-btn>
 								<v-btn size="x-small" variant="tonal" color="error" prepend-icon="mdi-delete" @click="emit('remove')">{{ $t("plugins.flexibleLayouts.widgetError.remove") }}</v-btn>
 							</div>
 						</div>
@@ -67,6 +68,8 @@ import { SETTINGS_SCOPE_KEY } from "@/composables/useComponentSettings";
 import { useMachineStore } from "@/stores/machine";
 
 import type { GridItemModel } from "../model/document";
+import { PLUGIN_MANIFEST_ID } from "../model/constants";
+import { buildReport, downloadReport } from "../util/diagnostics";
 import { evaluateConditions } from "../util/conditions";
 import { describeWidget } from "../widgets/registry";
 import ScaleToFit from "../widgets/ScaleToFit.vue";
@@ -86,6 +89,17 @@ if (SETTINGS_SCOPE_KEY) {
 }
 
 const machineStore = useMachineStore();
+
+// Download a diagnostic report scoped to this failing widget (its config + the error + a scrubbed
+// object model), so a bug report carries exactly what's needed to reproduce it as a test.
+function reportWidgetError(message: string): void {
+	downloadReport(buildReport({
+		pluginId: PLUGIN_MANIFEST_ID,
+		model: machineStore.model,
+		state: { widget: props.item.widget, title: props.item.title },
+		note: `widget render error: ${message}`,
+	}));
+}
 
 const meta = computed(() => {
 	const described = describeWidget(props.item.widget);

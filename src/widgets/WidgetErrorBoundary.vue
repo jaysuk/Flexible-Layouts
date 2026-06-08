@@ -6,6 +6,8 @@
 <script setup lang="ts">
 import { onErrorCaptured, ref, watch } from "vue";
 
+import { recordError } from "../util/diagnostics";
+
 // Contains a render/lifecycle error thrown by ONE widget so it can't take down the whole page.
 // `resetKey` clears the error when it changes (e.g. after the widget's config is edited) so a
 // fixable widget retries automatically.
@@ -20,6 +22,7 @@ onErrorCaptured((err) => {
   error.value = true;
   message.value = (err as Error)?.message ?? String(err);
   console.error("[FlexibleLayouts] widget error:", err);
+  recordError("widget", err); // buffer it for the diagnostic report
   return false; // handled — stop propagation to the page
 });
 

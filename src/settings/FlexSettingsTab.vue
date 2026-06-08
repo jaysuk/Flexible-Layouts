@@ -48,6 +48,20 @@
 			<v-divider class="my-4" />
 			<LockSettings />
 
+			<v-divider class="my-4" />
+			<div class="text-title-small mb-1">{{ $t("plugins.flexibleLayouts.diagnostics.title") }}</div>
+			<p class="text-body-small text-medium-emphasis mt-0 mb-2">
+				{{ $t("plugins.flexibleLayouts.diagnostics.hint") }}
+			</p>
+			<div class="d-flex flex-wrap ga-2">
+				<v-btn variant="tonal" prepend-icon="mdi-download" @click="downloadDiagnostics">
+					{{ $t("plugins.flexibleLayouts.diagnostics.download") }}
+				</v-btn>
+				<v-btn variant="tonal" prepend-icon="mdi-content-copy" @click="copyDiagnostics">
+					{{ $t("plugins.flexibleLayouts.diagnostics.copy") }}
+				</v-btn>
+			</div>
+
 			<p class="text-body-small text-medium-emphasis mt-4 mb-0">
 				{{ $t("plugins.flexibleLayouts.settings.escapeHint") }}
 				<code>/BuiltInLayout</code>
@@ -66,8 +80,13 @@
 <script setup lang="ts">
 import { computed, reactive } from "vue";
 
+import i18n from "@/i18n";
+import { useMachineStore } from "@/stores/machine";
 import { useSettingsStore } from "@/stores/settings";
+import { LogLevel, useUiStore } from "@/stores/ui";
 
+import { PLUGIN_MANIFEST_ID } from "../model/constants";
+import { buildReport, copyReport, downloadReport } from "../util/diagnostics";
 import ImportExportDialog from "../editor/ImportExportDialog.vue";
 import ThemeEditor from "../editor/ThemeEditor.vue";
 import ProfilesDialog from "../editor/ProfilesDialog.vue";
@@ -78,8 +97,26 @@ import PasswordDialog from "../editor/PasswordDialog.vue";
 import { isLocked, requestUnlock } from "../model/lock";
 
 const settingsStore = useSettingsStore();
+const machineStore = useMachineStore();
+const uiStore = useUiStore();
 
 const active = computed(() => settingsStore.useCustomLayout);
+
+// Diagnostics: bundle versions + recent errors + a privacy-scrubbed object model for a bug report.
+function diagnosticReport() {
+	return buildReport({ pluginId: PLUGIN_MANIFEST_ID, model: machineStore.model });
+}
+function downloadDiagnostics(): void {
+	downloadReport(diagnosticReport());
+}
+async function copyDiagnostics(): Promise<void> {
+	const ok = await copyReport(diagnosticReport());
+	uiStore.makeNotification(
+		ok ? LogLevel.success : LogLevel.warning,
+		"Flexible Layouts",
+		i18n.global.t(ok ? "plugins.flexibleLayouts.diagnostics.copied" : "plugins.flexibleLayouts.diagnostics.copyFailed"),
+	);
+}
 const dialogs = reactive({
 	pageManager: false,
 	theme: false,
