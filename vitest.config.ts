@@ -1,10 +1,7 @@
-import { defineConfig } from "vitest/config";
+import vue from "@vitejs/plugin-vue";
+import { dwcVitestConfig } from "dwc-plugin-test-kit/vitest";
 
-// Unit tests for the plugin's pure-logic modules (object-model paths, conditions, document
-// helpers). Node environment — no DWC/Vuetify runtime needed. Run with `npm test`.
-export default defineConfig({
-	test: {
-		include: ["src/**/*.test.ts"],
-		environment: "node",
-	},
-});
+// Pure-logic tests (src/**) plus component mount/contract tests (test/**). All the Vitest + Vuetify
+// + DWC-mock wiring lives in the shared kit; the consumer only supplies the Vue SFC plugin (so it
+// resolves from this repo's node_modules at config-load time).
+export default dwcVitestConfig({ plugins: [vue()] });

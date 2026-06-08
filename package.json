@@ -6,12 +6,21 @@
   "license": "GPL-3.0-or-later",
   "homepage": "https://github.com/jaysuk/Flexible-Layouts",
   "scripts": {
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "dwc-plugin-typecheck",
+    "verify-build": "dwc-plugin-verify-build"
   },
   "dependencies": {
     "grid-layout-plus": "^1.1.1"
   },
   "devDependencies": {
-    "vitest": "^4.1.8"
+    "@vitejs/plugin-vue": "^5.2.4",
+    "@vue/test-utils": "^2.4.6",
+    "dwc-plugin-test-kit": "file:../dwc-plugin-test-kit",
+    "happy-dom": "^15.11.7",
+    "vitest": "^4.1.8",
+    "vue": "^3.5.30",
+    "vuetify": "^4.1.0"
   }
 }

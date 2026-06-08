@@ -76,9 +76,20 @@ rm -rf <DWC>/src/plugins/_FLCheck
 
 ## Testing
 
-`npm test` runs the vitest suite (`src/**/*.test.ts`) in a Node environment. Only pure-logic modules
-are covered (object-model path building, condition evaluation, document helpers) — they import no
-Vue/DWC runtime, so they run standalone.
+`npm test` runs the full vitest suite via [dwc-plugin-test-kit](https://github.com/jaysuk/dwc-plugin-test-kit)
+(a sibling repo, linked with `file:../dwc-plugin-test-kit`):
+
+- **Pure-logic** unit tests — `src/__tests__/**` (object-model paths, conditions, document helpers).
+- **Mount smoke tests** — `test/widgets.smoke.test.ts` mounts **every** widget from the registry
+  (connected and disconnected) under Vuetify + happy-dom with the DWC stores mocked, asserting it
+  renders without throwing. Adding a widget covers it automatically — this is the net that catches
+  setup/TDZ and render crashes.
+- **G-code contract tests** — `test/widgets.gcode.test.ts` drives interactions and asserts the exact
+  G-code sent (e.g. jog, spindle `M3`, `M292`, `M150`).
+
+The kit also provides `npm run typecheck` and `npm run verify-build` (both need `DWC_DIR` pointing at
+a DuetWebControl checkout), and a reusable CI workflow (`.github/workflows/ci.yml`). See the kit's
+README for the full harness API and an optional Playwright E2E template.
 
 ## Upgrading alongside DWC
 
