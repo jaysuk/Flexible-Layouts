@@ -222,4 +222,21 @@ const fitEnabled = computed(() =>
 	overflow: auto;
 	word-break: break-word;
 }
+
+/* Panel typography sets a base font-size to scale the widget's own read-outs. Vuetify form controls
+   have a fixed, density-driven height, so a large base font overflows and clips their text (e.g. the
+   jog feed-rate fields). Pin form-control text to a normal size so inputs/selects stay legible at any
+   panel font; the widget's own em-sized read-outs keep scaling. */
+.flex-item-body :deep(.v-field__input),
+.flex-item-body :deep(.v-select__selection) {
+	font-size: 0.875rem;
+}
+.flex-item-body :deep(.v-field__input input),
+.flex-item-body :deep(.v-field__input textarea) {
+	font-size: inherit;
+	line-height: 1.4;
+}
+.flex-item-body :deep(.v-field .v-label) {
+	font-size: 0.75rem;
+}
 </style>

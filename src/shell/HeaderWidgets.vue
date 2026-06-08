@@ -213,4 +213,19 @@ function remove(i: number) {
 .header-resizer:hover {
 	background: rgba(var(--v-theme-primary), 0.4);
 }
+
+/* Same guard as the grid: a large header font must not clip Vuetify form-control text (which has a
+   fixed, density-driven height). Read-outs still scale; controls stay a normal size. */
+.header-item-body :deep(.v-field__input),
+.header-item-body :deep(.v-select__selection) {
+	font-size: 0.875rem;
+}
+.header-item-body :deep(.v-field__input input),
+.header-item-body :deep(.v-field__input textarea) {
+	font-size: inherit;
+	line-height: 1.4;
+}
+.header-item-body :deep(.v-field .v-label) {
+	font-size: 0.75rem;
+}
 </style>
