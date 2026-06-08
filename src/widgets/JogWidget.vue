@@ -2,12 +2,17 @@
 	<div class="jog-root fill-height d-flex flex-column pa-1" :class="{ 'jog-frozen': disabledNow }">
 		<div v-if="widget.title" class="jog-title text-center text-truncate flex-shrink-0">{{ widget.title }}</div>
 
-		<!-- Inline, editable feedrates (Pronterface shows XY / Z mm/min) -->
+		<!-- Inline, editable feedrates (Pronterface shows XY / Z mm/min). Native inputs, self-styled, so
+			 the value scales with the panel font and is never clipped by a fixed-height form control. -->
 		<div v-if="widget.showFeedrate !== false" class="d-flex ga-2 mb-1 flex-shrink-0">
-			<v-text-field v-model.number="xyFeed" type="number" density="compact" variant="outlined"
-						  hide-details :label="$t('plugins.flexibleLayouts.jog.xyFeed')" :min="1" />
-			<v-text-field v-if="widget.showZ !== false" v-model.number="zFeed" type="number" density="compact"
-						  variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.jog.zFeed')" :min="1" />
+			<label class="jog-feed">
+				<span class="jog-feed-label">{{ $t("plugins.flexibleLayouts.jog.xyFeed") }}</span>
+				<input v-model.number="xyFeed" class="jog-feed-input" type="number" min="1" inputmode="numeric" />
+			</label>
+			<label v-if="widget.showZ !== false" class="jog-feed">
+				<span class="jog-feed-label">{{ $t("plugins.flexibleLayouts.jog.zFeed") }}</span>
+				<input v-model.number="zFeed" class="jog-feed-input" type="number" min="1" inputmode="numeric" />
+			</label>
 		</div>
 
 		<div class="d-flex flex-grow-1 ga-2 jog-body">
@@ -284,6 +289,38 @@ async function editStep(arr: "xy" | "z", index: number): Promise<void> {
 	font-weight: 600;
 	line-height: 1.4;
 	opacity: 0.85;
+}
+.jog-feed {
+	display: flex;
+	flex-direction: column;
+	flex: 1 1 0;
+	min-width: 0;
+	gap: 1px;
+}
+.jog-feed-label {
+	font-size: 0.55em;
+	line-height: 1.2;
+	opacity: 0.7;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.jog-feed-input {
+	width: 100%;
+	box-sizing: border-box;
+	min-width: 0;
+	font: inherit;
+	font-size: 0.85em;
+	line-height: 1.4;
+	padding: 2px 6px;
+	color: inherit;
+	background: rgba(var(--v-theme-on-surface), 0.04);
+	border: 1px solid rgba(var(--v-theme-on-surface), 0.3);
+	border-radius: 4px;
+}
+.jog-feed-input:focus {
+	outline: none;
+	border-color: rgb(var(--v-theme-primary));
 }
 .jog-frozen {
 	opacity: 0.5;
