@@ -17,6 +17,11 @@ import { useMachineStore } from "@/stores/machine";
 
 import { type GridItemModel, newItemId } from "./document";
 import DashboardFallback from "../page/fallbacks/DashboardFallback.vue";
+import ConsoleFallback from "../page/fallbacks/ConsoleFallback.vue";
+import TemperaturesFallback from "../page/fallbacks/TemperaturesFallback.vue";
+import MacrosFallback from "../page/fallbacks/MacrosFallback.vue";
+import JobsFallback from "../page/fallbacks/JobsFallback.vue";
+import ExplorerFallback from "../page/fallbacks/ExplorerFallback.vue";
 
 export interface BuiltinPageDef {
 	/** Canonical vue-router paths to override (as seen in router.getRoutes().map(r => r.path)). */
@@ -54,4 +59,11 @@ function dashboardSeed(): Array<GridItemModel> {
 
 export const BUILTIN_PAGES: ReadonlyArray<BuiltinPageDef> = [
 	{ paths: ["/", "/Dashboard"], pageId: "/Dashboard", fallback: DashboardFallback, seed: dashboardSeed },
+	{ paths: ["/Console"], pageId: "/Console", fallback: ConsoleFallback },
+	{ paths: ["/Temperatures"], pageId: "/Temperatures", fallback: TemperaturesFallback },
+	{ paths: ["/Macros"], pageId: "/Macros", fallback: MacrosFallback },
+	// Jobs/Explorer are parameterised routes; the path strings must match vue-router's compiled
+	// record paths exactly (see DWC typed-router.d.ts) for the override to attach.
+	{ paths: ["/Jobs/:volume?/:path(.*)?"], pageId: "/Jobs", fallback: JobsFallback },
+	{ paths: ["/Explorer/:tab?/:volume?/:path(.*)?"], pageId: "/Explorer", fallback: ExplorerFallback },
 ];

@@ -320,9 +320,16 @@ export type Widget =
 		type: "extruder";
 		label?: string;
 		amounts?: Array<number>;
+		/** Target volumetric flow rate (mm³/s); converted to an E feed-rate for extrude/retract. */
+		flowRate?: number;
+		/** Filament diameter (mm) for the flow→feed-rate conversion; falls back to the object model then 1.75. */
+		filamentDiameter?: number;
+		/** Legacy linear feed-rate (mm/min); superseded by flowRate. */
 		feedrate?: number;
 		/** Tool to select first (T<n>); null = current tool. */
 		tool?: number | null;
+		/** Show the extruder steps-per-mm (M92 E) control. Defaults on. */
+		showStepsPerMm?: boolean;
 		color?: string;
 	}
 	| {
@@ -360,6 +367,18 @@ export type Widget =
 		/** Command template; `{path}` is replaced. */
 		startCommand?: string;
 		color?: string;
+	}
+	| {
+		/** Full G-code job browser (DWC's JobFileList): navigate folders and start a job. */
+		type: "jobs";
+		/** Root directory; empty = the firmware gcodes directory. */
+		folder?: string;
+	}
+	| {
+		/** File explorer (DWC's FileList) rooted at a directory. */
+		type: "explorer";
+		/** Root directory (default 0:/). */
+		folder?: string;
 	}
 	| {
 		/** Several radial gauges in one tile. */
@@ -593,7 +612,7 @@ export function createDefaultWidget(type: WidgetType): Widget {
 				],
 			};
 		case "extruder":
-			return { type: "extruder", label: "Extruder", amounts: [1, 5, 10, 50], feedrate: 300, tool: null, color: "primary" };
+			return { type: "extruder", label: "Extruder", amounts: [1, 5, 10, 50], flowRate: 5, filamentDiameter: 1.75, tool: null, showStepsPerMm: true, color: "primary" };
 		case "wcs":
 			return { type: "wcs", label: "Work offsets", axes: ["X", "Y", "Z"], color: "primary" };
 		case "toolSelect":
@@ -604,6 +623,10 @@ export function createDefaultWidget(type: WidgetType): Widget {
 			return { type: "jobControl", showProgress: true, color: "primary" };
 		case "files":
 			return { type: "files", folder: "0:/gcodes", columns: 1, startCommand: "M32 \"{path}\"", color: "primary" };
+		case "jobs":
+			return { type: "jobs", folder: "" };
+		case "explorer":
+			return { type: "explorer", folder: "0:/" };
 		case "gaugeCluster":
 			return {
 				type: "gaugeCluster",

@@ -41,6 +41,8 @@ export const BUILTIN_PANELS: ReadonlyArray<PanelCatalogEntry> = [
 	{ component: "JobTimesPanel",        labelKey: "panels.jobTimes",        icon: "mdi-clock-outline",       defaultSize: { w: 6, h: 5 },  mode: "any" },
 	{ component: "WebcamPanel",          labelKey: "panels.webcam",          icon: "mdi-webcam",              defaultSize: { w: 6, h: 8 },  mode: "any" },
 	{ component: "MacroList",            labelKey: "panels.macros",          icon: "mdi-cog-play",            defaultSize: { w: 4, h: 9 },  mode: "any" },
+	{ component: "TemperatureChart",     labelKey: "panels.temperatureChart", icon: "mdi-chart-line",         defaultSize: { w: 8, h: 7 },  mode: "any" },
+	{ component: "EventList",            labelKey: "panels.console",         icon: "mdi-console-line",        defaultSize: { w: 6, h: 8 },  mode: "any" },
 ];
 
 /** Look up a catalog entry by component name. */
@@ -72,7 +74,7 @@ export const FREEFORM_WIDGETS: ReadonlyArray<FreeformCatalogEntry> = [
 	{ type: "neopixel",   labelKey: "widgets.neopixel",   icon: "mdi-led-strip-variant",  defaultSize: { w: 4, h: 9 }, category: "controls" },
 
 	// Machine — printer/CNC specific
-	{ type: "extruder",   labelKey: "widgets.extruder",   icon: "mdi-printer-3d-nozzle",  defaultSize: { w: 4, h: 3 }, category: "machine" },
+	{ type: "extruder",   labelKey: "widgets.extruder",   icon: "mdi-printer-3d-nozzle",  defaultSize: { w: 4, h: 6 }, category: "machine" },
 	{ type: "fan",        labelKey: "widgets.fan",        icon: "mdi-fan",                defaultSize: { w: 4, h: 2 }, category: "machine" },
 	{ type: "heater",     labelKey: "widgets.heater",     icon: "mdi-radiator",           defaultSize: { w: 4, h: 3 }, category: "machine" },
 	{ type: "spindle",    labelKey: "widgets.spindle",    icon: "mdi-saw-blade",          defaultSize: { w: 4, h: 3 }, category: "machine" },
@@ -81,6 +83,8 @@ export const FREEFORM_WIDGETS: ReadonlyArray<FreeformCatalogEntry> = [
 	{ type: "jobControl", labelKey: "widgets.jobControl", icon: "mdi-play-pause",         defaultSize: { w: 4, h: 3 }, category: "machine" },
 	{ type: "macros",     labelKey: "widgets.macros",     icon: "mdi-cog-play",           defaultSize: { w: 4, h: 5 }, category: "machine" },
 	{ type: "files",      labelKey: "widgets.files",      icon: "mdi-file-document-multiple", defaultSize: { w: 4, h: 6 }, category: "machine" },
+	{ type: "jobs",       labelKey: "widgets.jobs",       icon: "mdi-folder-play",        defaultSize: { w: 6, h: 8 }, category: "machine" },
+	{ type: "explorer",   labelKey: "widgets.explorer",   icon: "mdi-folder-cog-outline", defaultSize: { w: 6, h: 8 }, category: "machine" },
 	{ type: "console",    labelKey: "widgets.console",    icon: "mdi-console-line",       defaultSize: { w: 6, h: 5 }, category: "machine" },
 
 	// Read-outs — display object-model values
@@ -223,6 +227,10 @@ export function describeWidget(widget: Widget): { title: string; icon: string } 
 			return { title: i18n.global.t("plugins.flexibleLayouts.widgets.jobControl"), icon: "mdi-play-pause" };
 		case "files":
 			return { title: i18n.global.t("plugins.flexibleLayouts.widgets.files"), icon: "mdi-file-document-multiple" };
+		case "jobs":
+			return { title: i18n.global.t("plugins.flexibleLayouts.widgets.jobs"), icon: "mdi-folder-play" };
+		case "explorer":
+			return { title: i18n.global.t("plugins.flexibleLayouts.widgets.explorer"), icon: "mdi-folder-cog-outline" };
 		case "gaugeCluster":
 			return { title: widget.title || i18n.global.t("plugins.flexibleLayouts.widgets.gaugeCluster"), icon: "mdi-gauge" };
 		case "indicators":

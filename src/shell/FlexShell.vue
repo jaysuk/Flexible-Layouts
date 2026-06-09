@@ -177,14 +177,18 @@ const settingsStore = useSettingsStore();
 
 const router = useRouter();
 
-// Only the overridden built-in pages and the user's own custom pages are FL editable grids; native
-// DWC pages (Console / Settings / Explorer / Job / …) render as-is and can't take widgets.
+// Editable = a user custom page, or one of the overridden built-in pages. The override paths can be
+// parameterised (e.g. Jobs `/Jobs/:volume?/:path(.*)?`), which never equal the resolved URL, so match
+// against the matched route record's pattern path rather than the live path string.
 const builtinEditablePaths = new Set(BUILTIN_PAGES.flatMap((d) => d.paths));
-function isFlPath(path: string): boolean {
-	return path.startsWith(CUSTOM_PAGE_PREFIX) || builtinEditablePaths.has(path);
-}
 const currentPath = computed(() => router.currentRoute.value.path);
-const isEditablePage = computed(() => isFlPath(currentPath.value));
+const isEditablePage = computed(() => {
+	const route = router.currentRoute.value;
+	if (route.path.startsWith(CUSTOM_PAGE_PREFIX) || builtinEditablePaths.has(route.path)) {
+		return true;
+	}
+	return route.matched.some((m) => builtinEditablePaths.has(m.path));
+});
 
 // Whether the Edit button should show a lock (lock enabled and not yet unlocked this session).
 const editLocked = computed(() => isLocked());

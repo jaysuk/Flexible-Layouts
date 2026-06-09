@@ -28,6 +28,8 @@
 	<FanWidget v-else-if="widget.type === 'fan'" :widget="widget" :disabled="disabled" />
 	<JobControlWidget v-else-if="widget.type === 'jobControl'" :widget="widget" :disabled="disabled" />
 	<FilesWidget v-else-if="widget.type === 'files'" :widget="widget" :disabled="disabled" />
+	<JobsWidget v-else-if="widget.type === 'jobs'" :widget="widget" :disabled="disabled" />
+	<ExplorerWidget v-else-if="widget.type === 'explorer'" :widget="widget" :disabled="disabled" />
 	<GaugeClusterWidget v-else-if="widget.type === 'gaugeCluster'" :widget="widget" />
 	<IndicatorsWidget v-else-if="widget.type === 'indicators'" :widget="widget" />
 	<SparklineWidget v-else-if="widget.type === 'sparkline'" :widget="widget" />
@@ -55,6 +57,7 @@ import CommandButtonWidget from "./CommandButtonWidget.vue";
 import ConsoleWidget from "./ConsoleWidget.vue";
 import DroWidget from "./DroWidget.vue";
 import EventLogWidget from "./EventLogWidget.vue";
+import ExplorerWidget from "./ExplorerWidget.vue";
 import ExtruderWidget from "./ExtruderWidget.vue";
 import FanWidget from "./FanWidget.vue";
 import FilesWidget from "./FilesWidget.vue";
@@ -67,6 +70,7 @@ import HttpWidget from "./HttpWidget.vue";
 import IndicatorsWidget from "./IndicatorsWidget.vue";
 import InputWidget from "./InputWidget.vue";
 import JobControlWidget from "./JobControlWidget.vue";
+import JobsWidget from "./JobsWidget.vue";
 import JogWidget from "./JogWidget.vue";
 import LabelWidget from "./LabelWidget.vue";
 import MacrosWidget from "./MacrosWidget.vue";

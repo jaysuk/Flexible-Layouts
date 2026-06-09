@@ -13,8 +13,8 @@
 			<v-card-text style="max-height: 70vh;">
 				<!-- Live preview of the widget as configured -->
 				<div class="text-caption text-medium-emphasis mb-1">{{ $t("plugins.flexibleLayouts.properties.preview") }}</div>
-				<v-sheet border rounded class="flex-preview mb-3">
-					<WidgetView :widget="(draft as Widget)" />
+				<v-sheet border rounded class="flex-preview mb-3" :style="previewStyle">
+					<WidgetView :key="previewKey" :widget="(draft as Widget)" />
 				</v-sheet>
 
 				<!-- Position & size (for precise alignment) -->
@@ -546,9 +546,13 @@
 					<v-text-field v-model="draft.label" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" />
 					<v-text-field v-model="extruderAmountsText" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.extruder.amounts')" :hint="$t('plugins.flexibleLayouts.jog.stepsHint')" />
 					<v-row dense>
-						<v-col cols="4"><v-text-field v-model.number="draft.feedrate" type="number" density="compact" variant="outlined" hide-details suffix="mm/min" :label="$t('plugins.flexibleLayouts.extruder.feedrate')" /></v-col>
+						<v-col cols="4"><v-text-field v-model.number="draft.flowRate" type="number" step="0.1" density="compact" variant="outlined" hide-details suffix="mm³/s" :label="$t('plugins.flexibleLayouts.extruder.flow')" /></v-col>
+						<v-col cols="4"><v-text-field v-model.number="draft.filamentDiameter" type="number" step="0.05" density="compact" variant="outlined" hide-details suffix="mm" :label="$t('plugins.flexibleLayouts.extruder.filamentDiameter')" /></v-col>
 						<v-col cols="4"><v-text-field v-model.number="draft.tool" type="number" density="compact" variant="outlined" hide-details clearable :label="$t('plugins.flexibleLayouts.extruder.tool')" /></v-col>
-						<v-col cols="4"><v-select v-model="draft.color" :items="colorOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
+					</v-row>
+					<v-row dense class="mt-1">
+						<v-col cols="6"><v-select v-model="draft.color" :items="colorOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
+						<v-col cols="6"><v-switch :model-value="draft.showStepsPerMm !== false" color="primary" density="compact" hide-details :label="$t('plugins.flexibleLayouts.extruder.showSteps')" @update:model-value="draft.showStepsPerMm = $event" /></v-col>
 					</v-row>
 				</template>
 
@@ -594,6 +598,14 @@
 						<v-col cols="6"><v-text-field v-model.number="draft.columns" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.macros.columns')" /></v-col>
 						<v-col cols="6"><v-select v-model="draft.color" :items="colorOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
 					</v-row>
+				</template>
+
+				<!-- Job browser / file explorer: just a root folder -->
+				<template v-else-if="draft.type === 'jobs'">
+					<v-text-field v-model="draft.folder" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.files.folder')" placeholder="0:/gcodes" />
+				</template>
+				<template v-else-if="draft.type === 'explorer'">
+					<v-text-field v-model="draft.folder" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.files.folder')" placeholder="0:/" />
 				</template>
 
 				<!-- Gauge cluster -->
@@ -893,6 +905,21 @@ watch(
 	},
 	{ immediate: true },
 );
+
+// Remount the preview whenever the widget config changes, so widgets that read their props once (into
+// local refs) still reflect edits live — not only the ones using reactive computeds.
+const previewKey = computed(() => (draft.value ? JSON.stringify(draft.value) : ""));
+
+// Reflect the edited panel colours + typography in the preview container (these are applied by the
+// grid wrapper at runtime, not by WidgetView itself), so colour/font changes show without saving.
+const previewStyle = computed(() => {
+	const s: Record<string, string> = {};
+	if (typography.value.fontSize) s.fontSize = `${typography.value.fontSize}px`;
+	if (typography.value.fontFamily) s.fontFamily = typography.value.fontFamily;
+	if (colors.value.background) s.background = colors.value.background;
+	if (colors.value.text) s.color = colors.value.text;
+	return s;
+});
 
 const fontOptions = [
 	{ title: "Default", value: undefined },

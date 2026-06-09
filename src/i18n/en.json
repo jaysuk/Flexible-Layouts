@@ -30,6 +30,7 @@
 		"undo": "Undo (Ctrl+Z)",
 		"redo": "Redo (Ctrl+Y)",
 		"rearrange": "Tidy up — pack panels to use the least space",
+		"noPreview": "No preview available",
 		"searchPanels": "Search widgets…",
 		"freeform": "Buttons & widgets",
 		"pluginPages": "Pages from other plugins",
@@ -77,6 +78,8 @@
 		"fan": "Fan slider",
 		"jobControl": "Job control",
 		"files": "File picker",
+		"jobs": "Job browser",
+		"explorer": "File explorer",
 		"gaugeCluster": "Gauge cluster",
 		"indicators": "Indicator grid",
 		"sparkline": "Sparkline",
@@ -458,7 +461,14 @@
 		"feedrate": "Feedrate",
 		"tool": "Tool (optional)",
 		"extrude": "Extrude",
-		"retract": "Retract"
+		"retract": "Retract",
+		"amount": "Amount",
+		"flow": "Flow rate",
+		"atFeed": "≈ {feed} mm/min",
+		"filamentDiameter": "Filament Ø (mm)",
+		"stepsPerMm": "Steps / mm",
+		"set": "Set",
+		"showSteps": "Steps/mm control"
 	},
 	"wcs": {
 		"axes": "Axes to zero",
@@ -480,7 +490,8 @@
 	"files": {
 		"folder": "Folder",
 		"startCommand": "Start command",
-		"none": "No files found in this folder."
+		"up": "Up a folder",
+		"none": "No files or folders here."
 	},
 	"gaugeCluster": {
 		"gauges": "Gauges"
@@ -645,6 +656,8 @@
 		"jobInfo": "Job Information",
 		"jobTimes": "Job Times",
 		"webcam": "Webcam",
-		"macros": "Macros"
+		"macros": "Macros",
+		"temperatureChart": "Temperature graph",
+		"console": "Console (full)"
 	}
 }

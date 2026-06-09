@@ -34,10 +34,12 @@ async function send(): Promise<void> {
   const code = cmd.value.trim();
   if (!code || disabledNow.value) return;
   cmd.value = "";
-  const entry = { code, reply: "" };
-  history.value.push(entry);
+  history.value.push({ code, reply: "" });
   const max = props.widget.rows ?? 5;
   if (history.value.length > max) history.value.splice(0, history.value.length - max);
+  // Mutate the reactive array element (not the local literal) so the reply shows when it arrives —
+  // otherwise the view only refreshes on the next unrelated change (e.g. the user typing).
+  const entry = history.value[history.value.length - 1];
   await nextTick();
   if (log.value) log.value.scrollTop = log.value.scrollHeight;
   try {

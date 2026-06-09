@@ -33,12 +33,33 @@
 				<template v-for="g in groups" :key="g.cat">
 					<div class="palette-section-head">{{ $t(`plugins.flexibleLayouts.paletteCategory.${g.cat}`) }}</div>
 					<div class="palette-grid">
-						<button v-for="it in g.items" :key="it.id" type="button" class="palette-tile" @click="it.choose()">
-							<v-icon size="26" class="palette-tile-icon">{{ it.icon }}</v-icon>
-							<span class="palette-tile-label">{{ it.label }}</span>
-							<span v-if="it.sub" class="palette-tile-sub">{{ it.sub }}</span>
-							<v-chip v-if="it.mode && it.mode !== 'any'" size="x-small" variant="tonal" class="palette-tile-mode">{{ it.mode.toUpperCase() }}</v-chip>
-						</button>
+						<v-menu v-for="it in g.items" :key="it.id" open-on-hover location="end" origin="auto"
+								:open-delay="300" :close-delay="0" :offset="10" :close-on-content-click="false"
+								transition="fade-transition">
+							<template #activator="{ props: hov }">
+								<button v-bind="hov" type="button" class="palette-tile" @click="it.choose()">
+									<v-icon size="26" class="palette-tile-icon">{{ it.icon }}</v-icon>
+									<span class="palette-tile-label">{{ it.label }}</span>
+									<span v-if="it.sub" class="palette-tile-sub">{{ it.sub }}</span>
+									<v-chip v-if="it.mode && it.mode !== 'any'" size="x-small" variant="tonal" class="palette-tile-mode">{{ it.mode.toUpperCase() }}</v-chip>
+								</button>
+							</template>
+							<!-- Live, scaled, inert preview of the widget as it would be added -->
+							<v-card class="palette-preview" elevation="10">
+								<div class="palette-preview-title">{{ it.label }}</div>
+								<div class="palette-preview-frame">
+									<ScaleToFit v-if="it.previewWidget">
+										<div class="palette-preview-content" :style="previewStyle(it.size)">
+											<WidgetView :widget="it.previewWidget" />
+										</div>
+									</ScaleToFit>
+									<div v-else class="palette-preview-empty">
+										<v-icon size="40">{{ it.icon }}</v-icon>
+										<span>{{ $t("plugins.flexibleLayouts.editor.noPreview") }}</span>
+									</div>
+								</div>
+							</v-card>
+						</v-menu>
 					</div>
 				</template>
 			</v-card-text>
@@ -54,6 +75,8 @@ import i18n from "@/i18n";
 import { createDefaultWidget, type GridItemModel, type Widget } from "../model/document";
 import { parsePanelFile } from "../model/io";
 import { type EmbeddablePage, listEmbeddablePages } from "../model/pluginPages";
+import ScaleToFit from "../widgets/ScaleToFit.vue";
+import WidgetView from "../widgets/WidgetView.vue";
 import {
 	BUILTIN_PANELS,
 	FREEFORM_WIDGETS,
@@ -126,22 +149,36 @@ function choosePluginPage(page: EmbeddablePage) {
 	emit("update:modelValue", false);
 }
 
-interface PaletteItem { id: string; icon: string; label: string; sub?: string; mode?: string; category: string; choose: () => void }
+interface PaletteItem {
+	id: string; icon: string; label: string; sub?: string; mode?: string; category: string;
+	choose: () => void;
+	/** Representative footprint (grid units) used to size the hover preview. */
+	size: { w: number; h: number };
+	/** Widget rendered live in the hover preview; omitted = no live preview (e.g. plugin pages). */
+	previewWidget?: Widget;
+}
 
 // One flat, categorised list of everything that can be added.
 const allItems = computed<Array<PaletteItem>>(() => {
 	const items: Array<PaletteItem> = [];
 	for (const e of FREEFORM_WIDGETS) {
-		items.push({ id: `f:${e.type}`, icon: e.icon, label: freeformLabel(e), category: e.category, choose: () => chooseFreeform(e) });
+		items.push({ id: `f:${e.type}`, icon: e.icon, label: freeformLabel(e), category: e.category, choose: () => chooseFreeform(e), size: e.defaultSize, previewWidget: createDefaultWidget(e.type) });
 	}
 	for (const e of BUILTIN_PANELS) {
-		items.push({ id: `p:${e.component}`, icon: e.icon, label: panelLabel(e), sub: e.component, mode: e.mode, category: "panels", choose: () => choosePanel(e) });
+		items.push({ id: `p:${e.component}`, icon: e.icon, label: panelLabel(e), sub: e.component, mode: e.mode, category: "panels", choose: () => choosePanel(e), size: e.defaultSize, previewWidget: { type: "builtinPanel", component: e.component } });
 	}
 	for (const p of listEmbeddablePages()) {
-		items.push({ id: `x:${p.path ?? p.tabKey}`, icon: p.icon || "mdi-puzzle", label: p.label, sub: p.pluginId ?? p.source, category: "plugins", choose: () => choosePluginPage(p) });
+		items.push({ id: `x:${p.path ?? p.tabKey}`, icon: p.icon || "mdi-puzzle", label: p.label, sub: p.pluginId ?? p.source, category: "plugins", choose: () => choosePluginPage(p), size: { w: 6, h: 8 } });
 	}
 	return items;
 });
+
+// Pixel footprint for the preview content, derived from the widget's default grid size and clamped.
+function previewStyle(size: { w: number; h: number }) {
+	const w = Math.min(360, Math.max(140, size.w * 34));
+	const h = Math.min(240, Math.max(90, size.h * 26));
+	return { width: `${w}px`, height: `${h}px` };
+}
 
 const query = computed(() => (search.value ?? "").trim().toLowerCase());
 const visible = computed(() => {
@@ -175,4 +212,18 @@ const groups = computed(() =>
 .palette-tile-label { font-size: 0.78rem; font-weight: 500; line-height: 1.15; }
 .palette-tile-sub { font-size: 0.62rem; opacity: 0.55; overflow: hidden; text-overflow: ellipsis; max-width: 100%; white-space: nowrap; }
 .palette-tile-mode { position: absolute; top: 3px; right: 3px; }
+
+/* Hover preview popover */
+.palette-preview { width: 320px; padding: 8px; overflow: hidden; }
+.palette-preview-title { font-size: 0.78rem; font-weight: 600; margin-bottom: 6px; opacity: 0.85; }
+.palette-preview-frame {
+	height: 200px; display: flex; align-items: center; justify-content: center; overflow: hidden;
+	background: rgba(var(--v-theme-on-surface), 0.03); border-radius: 6px;
+}
+/* Inert: the preview is display-only, so hovering/clicking it never actuates a control. */
+.palette-preview-content { pointer-events: none; overflow: hidden; }
+.palette-preview-empty {
+	display: flex; flex-direction: column; align-items: center; gap: 6px;
+	color: rgba(var(--v-theme-on-surface), 0.5); font-size: 0.72rem;
+}
 </style>

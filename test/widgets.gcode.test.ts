@@ -1,6 +1,6 @@
 import { flushPromises } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
-import { byText, byTitle, dwc, lastCode, mountInDwc, sentCodes, setMessageBox } from "dwc-plugin-test-kit";
+import { byText, byTitle, dwc, lastCode, mountInDwc, sentCodes, setFiles, setMessageBox } from "dwc-plugin-test-kit";
 
 import { createDefaultWidget } from "../src/model/document";
 import WidgetView from "../src/widgets/WidgetView.vue";
@@ -47,11 +47,12 @@ describe("widgets emit the expected G-code", () => {
 		expect(lastCode()).toBe("M5");
 	});
 
-	it("extruder extrude sends M83 + G1 E", async () => {
-		const w = mountWidget("extruder"); // default amounts [1,5,10,50] -> selects 5, feedrate 300
+	it("extruder extrude sends M83 + G1 E at the flow-derived feed-rate", async () => {
+		// default amounts [1,5,10,50] -> selects 5; flow 5 mm³/s at Ø1.75 -> F = 5/area*60 ≈ 125
+		const w = mountWidget("extruder");
 		await byText(w, "extruder.extrude")!.trigger("click");
 		await flushPromises();
-		expect(lastCode()).toBe("M83\nG1 E5 F300");
+		expect(lastCode()).toBe("M83\nG1 E5 F125");
 	});
 
 	it("toggle switch sends the on command", async () => {
@@ -87,6 +88,21 @@ describe("widgets emit the expected G-code", () => {
 		await byTitle(w, "plugins.flexibleLayouts.jog.home Y")!.trigger("click");
 		await flushPromises();
 		expect(lastCode()).toBe("G28 Y");
+	});
+
+	it("files widget lists folders, navigates into them, and starts a file", async () => {
+		setFiles("0:/gcodes", [{ name: "Calibration", isDirectory: true }, { name: "a.gcode", isDirectory: false }]);
+		setFiles("0:/gcodes/Calibration", [{ name: "cube.gcode", isDirectory: false }]);
+		const w = mountWidget("files");
+		await flushPromises();
+		expect(w.text()).toContain("Calibration"); // folder shown
+		expect(w.text()).toContain("a.gcode");      // file shown
+		await byText(w, "Calibration")!.trigger("click");
+		await flushPromises();
+		expect(w.text()).toContain("cube.gcode");    // navigated into the sub-folder
+		await byText(w, "cube.gcode")!.trigger("click");
+		await flushPromises();
+		expect(lastCode()).toBe('M32 "0:/gcodes/Calibration/cube.gcode"');
 	});
 
 	it("neopixel Off blanks the strip", async () => {
