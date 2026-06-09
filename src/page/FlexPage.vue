@@ -588,9 +588,13 @@ onBeforeUnmount(() => {
 	gap: 8px;
 	padding: 6px 8px;
 	position: sticky;
-	top: 0;
-	z-index: 5;
-	background: rgba(var(--v-theme-surface), 0.95);
+	/* Stick just below the app bar (its height is the layout-top inset Vuetify pads v-main with).
+	   With top:0 it would stick behind the fixed app bar and scroll out of view. */
+	top: var(--v-layout-top, 64px);
+	z-index: 6;
+	background: rgb(var(--v-theme-surface));
 	border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+	border-radius: 0 0 6px 6px;
 }
 </style>

@@ -53,11 +53,11 @@
 						<div class="palette-preview-title text-truncate">{{ hovered.label }}</div>
 						<div v-if="hovered.sub" class="palette-preview-sub text-truncate">{{ hovered.sub }}</div>
 						<div class="palette-preview-frame">
-							<ScaleToFit v-if="hovered.previewWidget" :key="hovered.id">
-								<div class="palette-preview-content" :style="previewStyle(hovered.size)">
-									<WidgetView :widget="hovered.previewWidget" />
-								</div>
-							</ScaleToFit>
+							<!-- Render at the widget's real grid footprint, then scale uniformly to fit, so it
+								 lays out as it would on the page instead of cramming into a tiny box. -->
+							<div v-if="hovered.previewWidget" :key="hovered.id" class="palette-preview-stage" :style="previewStyle(hovered.size)">
+								<WidgetView :widget="hovered.previewWidget" />
+							</div>
 							<div v-else class="palette-preview-empty">
 								<v-icon size="40">{{ hovered.icon }}</v-icon>
 								<span>{{ $t("plugins.flexibleLayouts.editor.noPreview") }}</span>
@@ -84,7 +84,6 @@ import i18n from "@/i18n";
 import { createDefaultWidget, type GridItemModel, type Widget } from "../model/document";
 import { parsePanelFile } from "../model/io";
 import { type EmbeddablePage, listEmbeddablePages } from "../model/pluginPages";
-import ScaleToFit from "../widgets/ScaleToFit.vue";
 import WidgetView from "../widgets/WidgetView.vue";
 import {
 	BUILTIN_PANELS,
@@ -183,11 +182,21 @@ const allItems = computed<Array<PaletteItem>>(() => {
 	return items;
 });
 
-// Pixel footprint for the preview content, derived from the widget's default grid size and clamped.
+// Render the preview at the widget's real grid footprint (≈ a 12-col grid at ~90px/col, 30px rows)
+// then scale it uniformly to fit the preview frame — so widgets look like they would on the page
+// rather than being crammed into a narrow box and wrapping oddly. FRAME_* track the CSS frame size.
+const FRAME_W = 236;
+const FRAME_H = 204;
 function previewStyle(size: { w: number; h: number }) {
-	const w = Math.min(360, Math.max(140, size.w * 34));
-	const h = Math.min(240, Math.max(90, size.h * 26));
-	return { width: `${w}px`, height: `${h}px` };
+	const footW = Math.min(Math.max(size.w * 90, 160), 900);
+	const footH = Math.min(Math.max(size.h * 30, 80), 640);
+	const scale = Math.min(FRAME_W / footW, FRAME_H / footH, 1);
+	return {
+		width: `${footW}px`,
+		height: `${footH}px`,
+		transform: `scale(${scale})`,
+		transformOrigin: "center center",
+	};
 }
 
 const query = computed(() => (search.value ?? "").trim().toLowerCase());
@@ -240,8 +249,9 @@ const groups = computed(() =>
 	height: 210px; margin-top: 6px; display: flex; align-items: center; justify-content: center;
 	overflow: hidden; background: rgba(var(--v-theme-on-surface), 0.03); border-radius: 6px;
 }
-/* Inert: the preview is display-only, so hovering/clicking it never actuates a control. */
-.palette-preview-content { pointer-events: none; overflow: hidden; }
+/* Inert: the preview is display-only, so hovering/clicking it never actuates a control. The scale
+   transform shrinks the real-footprint stage to fit; flex-centering + overflow:hidden keep it tidy. */
+.palette-preview-stage { flex: none; pointer-events: none; overflow: hidden; }
 .palette-preview-empty,
 .palette-preview-hint {
 	display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
