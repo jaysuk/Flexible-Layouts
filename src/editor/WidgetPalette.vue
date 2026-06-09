@@ -1,5 +1,5 @@
 <template>
-	<v-dialog :model-value="modelValue" max-width="760" scrollable
+	<v-dialog :model-value="modelValue" max-width="920" scrollable
 			  @update:model-value="emit('update:modelValue', $event)">
 		<v-card>
 			<v-card-title class="d-flex align-center">
@@ -26,42 +26,51 @@
 				</v-chip-group>
 			</div>
 
-			<v-card-text style="max-height: 60vh;">
-				<div v-if="!groups.length" class="text-medium-emphasis text-center py-6">
-					{{ $t("plugins.flexibleLayouts.editor.noMatches") }}
-				</div>
-				<template v-for="g in groups" :key="g.cat">
-					<div class="palette-section-head">{{ $t(`plugins.flexibleLayouts.paletteCategory.${g.cat}`) }}</div>
-					<div class="palette-grid">
-						<v-menu v-for="it in g.items" :key="it.id" open-on-hover location="end" origin="auto"
-								:open-delay="300" :close-delay="0" :offset="10" :close-on-content-click="false"
-								transition="fade-transition">
-							<template #activator="{ props: hov }">
-								<button v-bind="hov" type="button" class="palette-tile" @click="it.choose()">
-									<v-icon size="26" class="palette-tile-icon">{{ it.icon }}</v-icon>
-									<span class="palette-tile-label">{{ it.label }}</span>
-									<span v-if="it.sub" class="palette-tile-sub">{{ it.sub }}</span>
-									<v-chip v-if="it.mode && it.mode !== 'any'" size="x-small" variant="tonal" class="palette-tile-mode">{{ it.mode.toUpperCase() }}</v-chip>
-								</button>
-							</template>
-							<!-- Live, scaled, inert preview of the widget as it would be added -->
-							<v-card class="palette-preview" elevation="10">
-								<div class="palette-preview-title">{{ it.label }}</div>
-								<div class="palette-preview-frame">
-									<ScaleToFit v-if="it.previewWidget">
-										<div class="palette-preview-content" :style="previewStyle(it.size)">
-											<WidgetView :widget="it.previewWidget" />
-										</div>
-									</ScaleToFit>
-									<div v-else class="palette-preview-empty">
-										<v-icon size="40">{{ it.icon }}</v-icon>
-										<span>{{ $t("plugins.flexibleLayouts.editor.noPreview") }}</span>
-									</div>
-								</div>
-							</v-card>
-						</v-menu>
+			<v-card-text class="palette-body pa-3">
+				<!-- Tile list -->
+				<div class="palette-list">
+					<div v-if="!groups.length" class="text-medium-emphasis text-center py-6">
+						{{ $t("plugins.flexibleLayouts.editor.noMatches") }}
 					</div>
-				</template>
+					<template v-for="g in groups" :key="g.cat">
+						<div class="palette-section-head">{{ $t(`plugins.flexibleLayouts.paletteCategory.${g.cat}`) }}</div>
+						<div class="palette-grid">
+							<button v-for="it in g.items" :key="it.id" type="button" class="palette-tile"
+									:class="{ 'palette-tile--active': hovered && hovered.id === it.id }"
+									@click="it.choose()" @mouseenter="hovered = it" @focus="hovered = it">
+								<v-icon size="26" class="palette-tile-icon">{{ it.icon }}</v-icon>
+								<span class="palette-tile-label">{{ it.label }}</span>
+								<span v-if="it.sub" class="palette-tile-sub">{{ it.sub }}</span>
+								<v-chip v-if="it.mode && it.mode !== 'any'" size="x-small" variant="tonal" class="palette-tile-mode">{{ it.mode.toUpperCase() }}</v-chip>
+							</button>
+						</div>
+					</template>
+				</div>
+
+				<!-- Dedicated preview pane: live, scaled, inert preview of the hovered widget -->
+				<div class="palette-preview-pane">
+					<template v-if="hovered">
+						<div class="palette-preview-title text-truncate">{{ hovered.label }}</div>
+						<div v-if="hovered.sub" class="palette-preview-sub text-truncate">{{ hovered.sub }}</div>
+						<div class="palette-preview-frame">
+							<ScaleToFit v-if="hovered.previewWidget" :key="hovered.id">
+								<div class="palette-preview-content" :style="previewStyle(hovered.size)">
+									<WidgetView :widget="hovered.previewWidget" />
+								</div>
+							</ScaleToFit>
+							<div v-else class="palette-preview-empty">
+								<v-icon size="40">{{ hovered.icon }}</v-icon>
+								<span>{{ $t("plugins.flexibleLayouts.editor.noPreview") }}</span>
+							</div>
+						</div>
+						<v-btn color="primary" variant="flat" size="small" block class="mt-2" prepend-icon="mdi-plus"
+							   @click="hovered.choose()">{{ $t("plugins.flexibleLayouts.editor.addWidget") }}</v-btn>
+					</template>
+					<div v-else class="palette-preview-hint text-medium-emphasis">
+						<v-icon size="40" class="mb-2">mdi-cursor-default-outline</v-icon>
+						<span>{{ $t("plugins.flexibleLayouts.editor.previewHint") }}</span>
+					</div>
+				</div>
 			</v-card-text>
 		</v-card>
 	</v-dialog>
@@ -95,6 +104,7 @@ const emit = defineEmits<{
 const search = ref("");
 const cat = ref<string>("all");
 const error = ref("");
+const hovered = ref<PaletteItem | null>(null);
 const panelInput = ref<HTMLInputElement | null>(null);
 
 // Category order shown as filter chips and section order in the body.
@@ -212,18 +222,34 @@ const groups = computed(() =>
 .palette-tile-label { font-size: 0.78rem; font-weight: 500; line-height: 1.15; }
 .palette-tile-sub { font-size: 0.62rem; opacity: 0.55; overflow: hidden; text-overflow: ellipsis; max-width: 100%; white-space: nowrap; }
 .palette-tile-mode { position: absolute; top: 3px; right: 3px; }
+.palette-tile--active { background: rgba(var(--v-theme-primary), 0.14); border-color: rgb(var(--v-theme-primary)); }
 
-/* Hover preview popover */
-.palette-preview { width: 320px; padding: 8px; overflow: hidden; }
-.palette-preview-title { font-size: 0.78rem; font-weight: 600; margin-bottom: 6px; opacity: 0.85; }
+/* Body: scrollable tile list + a sticky, dedicated preview pane (no overlay). */
+.palette-body { display: flex; gap: 12px; max-height: 62vh; }
+.palette-list { flex: 1 1 auto; overflow-y: auto; min-width: 0; }
+.palette-preview-pane {
+	flex: 0 0 260px; align-self: flex-start; position: sticky; top: 0;
+	display: flex; flex-direction: column;
+	padding: 10px; border-radius: 8px;
+	border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+	background: rgba(var(--v-theme-on-surface), 0.02);
+}
+.palette-preview-title { font-size: 0.82rem; font-weight: 600; }
+.palette-preview-sub { font-size: 0.66rem; opacity: 0.55; margin-bottom: 4px; }
 .palette-preview-frame {
-	height: 200px; display: flex; align-items: center; justify-content: center; overflow: hidden;
-	background: rgba(var(--v-theme-on-surface), 0.03); border-radius: 6px;
+	height: 210px; margin-top: 6px; display: flex; align-items: center; justify-content: center;
+	overflow: hidden; background: rgba(var(--v-theme-on-surface), 0.03); border-radius: 6px;
 }
 /* Inert: the preview is display-only, so hovering/clicking it never actuates a control. */
 .palette-preview-content { pointer-events: none; overflow: hidden; }
-.palette-preview-empty {
-	display: flex; flex-direction: column; align-items: center; gap: 6px;
-	color: rgba(var(--v-theme-on-surface), 0.5); font-size: 0.72rem;
+.palette-preview-empty,
+.palette-preview-hint {
+	display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+	text-align: center; color: rgba(var(--v-theme-on-surface), 0.5); font-size: 0.72rem;
+}
+.palette-preview-hint { flex: 1 1 auto; }
+
+@media (max-width: 700px) {
+	.palette-preview-pane { display: none; }
 }
 </style>

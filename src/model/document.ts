@@ -320,16 +320,16 @@ export type Widget =
 		type: "extruder";
 		label?: string;
 		amounts?: Array<number>;
-		/** Target volumetric flow rate (mm³/s); converted to an E feed-rate for extrude/retract. */
+		/** How the speed is set: "length" = feed-rate (mm/min, default); "flow" = volumetric (mm³/s). */
+		mode?: "length" | "flow";
+		/** Feed-rate (mm/min) used in length mode. */
+		feedrate?: number;
+		/** Target volumetric flow rate (mm³/s) used in flow mode. */
 		flowRate?: number;
 		/** Filament diameter (mm) for the flow→feed-rate conversion; falls back to the object model then 1.75. */
 		filamentDiameter?: number;
-		/** Legacy linear feed-rate (mm/min); superseded by flowRate. */
-		feedrate?: number;
 		/** Tool to select first (T<n>); null = current tool. */
 		tool?: number | null;
-		/** Show the extruder steps-per-mm (M92 E) control. Defaults on. */
-		showStepsPerMm?: boolean;
 		color?: string;
 	}
 	| {
@@ -612,7 +612,7 @@ export function createDefaultWidget(type: WidgetType): Widget {
 				],
 			};
 		case "extruder":
-			return { type: "extruder", label: "Extruder", amounts: [1, 5, 10, 50], flowRate: 5, filamentDiameter: 1.75, tool: null, showStepsPerMm: true, color: "primary" };
+			return { type: "extruder", label: "Extruder", amounts: [1, 5, 10, 50], mode: "length", feedrate: 300, flowRate: 5, filamentDiameter: 1.75, tool: null, color: "primary" };
 		case "wcs":
 			return { type: "wcs", label: "Work offsets", axes: ["X", "Y", "Z"], color: "primary" };
 		case "toolSelect":

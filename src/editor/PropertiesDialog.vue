@@ -546,14 +546,15 @@
 					<v-text-field v-model="draft.label" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" />
 					<v-text-field v-model="extruderAmountsText" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.extruder.amounts')" :hint="$t('plugins.flexibleLayouts.jog.stepsHint')" />
 					<v-row dense>
-						<v-col cols="4"><v-text-field v-model.number="draft.flowRate" type="number" step="0.1" density="compact" variant="outlined" hide-details suffix="mm³/s" :label="$t('plugins.flexibleLayouts.extruder.flow')" /></v-col>
-						<v-col cols="4"><v-text-field v-model.number="draft.filamentDiameter" type="number" step="0.05" density="compact" variant="outlined" hide-details suffix="mm" :label="$t('plugins.flexibleLayouts.extruder.filamentDiameter')" /></v-col>
-						<v-col cols="4"><v-text-field v-model.number="draft.tool" type="number" density="compact" variant="outlined" hide-details clearable :label="$t('plugins.flexibleLayouts.extruder.tool')" /></v-col>
+						<v-col cols="6"><v-select v-model="draft.mode" :items="extruderModeOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.extruder.speedBy')" /></v-col>
+						<v-col cols="6"><v-text-field v-model.number="draft.tool" type="number" density="compact" variant="outlined" hide-details clearable :label="$t('plugins.flexibleLayouts.extruder.tool')" /></v-col>
 					</v-row>
 					<v-row dense class="mt-1">
-						<v-col cols="6"><v-select v-model="draft.color" :items="colorOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
-						<v-col cols="6"><v-switch :model-value="draft.showStepsPerMm !== false" color="primary" density="compact" hide-details :label="$t('plugins.flexibleLayouts.extruder.showSteps')" @update:model-value="draft.showStepsPerMm = $event" /></v-col>
+						<v-col cols="4"><v-text-field v-model.number="draft.feedrate" type="number" density="compact" variant="outlined" hide-details suffix="mm/min" :label="$t('plugins.flexibleLayouts.extruder.speed')" /></v-col>
+						<v-col cols="4"><v-text-field v-model.number="draft.flowRate" type="number" step="0.1" density="compact" variant="outlined" hide-details suffix="mm³/s" :label="$t('plugins.flexibleLayouts.extruder.flow')" /></v-col>
+						<v-col cols="4"><v-text-field v-model.number="draft.filamentDiameter" type="number" step="0.05" density="compact" variant="outlined" hide-details suffix="mm" :label="$t('plugins.flexibleLayouts.extruder.filamentDiameter')" /></v-col>
 					</v-row>
+					<v-select v-model="draft.color" :items="colorOptions" density="compact" variant="outlined" hide-details class="mt-1" :label="$t('plugins.flexibleLayouts.properties.color')" />
 				</template>
 
 				<!-- WCS -->
@@ -1077,6 +1078,10 @@ const fitOptions = computed(() => [
 const thumbnailFitOptions = computed(() => [
 	{ title: t("thumbnail.fitContain"), value: "contain" },
 	{ title: t("thumbnail.fitCover"), value: "cover" },
+]);
+const extruderModeOptions = computed(() => [
+	{ title: t("extruder.byLength"), value: "length" },
+	{ title: t("extruder.byFlow"), value: "flow" },
 ]);
 const clockModeOptions = computed(() => [
 	{ title: t("clock.modeTime"), value: "time" },

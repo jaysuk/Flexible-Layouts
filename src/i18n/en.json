@@ -31,6 +31,7 @@
 		"redo": "Redo (Ctrl+Y)",
 		"rearrange": "Tidy up — pack panels to use the least space",
 		"noPreview": "No preview available",
+		"previewHint": "Hover a widget to preview it",
 		"searchPanels": "Search widgets…",
 		"freeform": "Buttons & widgets",
 		"pluginPages": "Pages from other plugins",
@@ -430,7 +431,8 @@
 	"console": {
 		"rows": "Replies kept",
 		"placeholder": "Send code…",
-		"placeholderLabel": "Input placeholder"
+		"placeholderLabel": "Input placeholder",
+		"send": "Send"
 	},
 	"heater": {
 		"omPath": "Heater path (e.g. heat.heaters[0])",
@@ -463,12 +465,13 @@
 		"extrude": "Extrude",
 		"retract": "Retract",
 		"amount": "Amount",
+		"speedBy": "Speed by",
+		"byLength": "Length",
+		"byFlow": "Flow",
+		"speed": "Feed-rate",
 		"flow": "Flow rate",
 		"atFeed": "≈ {feed} mm/min",
-		"filamentDiameter": "Filament Ø (mm)",
-		"stepsPerMm": "Steps / mm",
-		"set": "Set",
-		"showSteps": "Steps/mm control"
+		"filamentDiameter": "Filament Ø (mm)"
 	},
 	"wcs": {
 		"axes": "Axes to zero",

@@ -47,12 +47,12 @@ describe("widgets emit the expected G-code", () => {
 		expect(lastCode()).toBe("M5");
 	});
 
-	it("extruder extrude sends M83 + G1 E at the flow-derived feed-rate", async () => {
-		// default amounts [1,5,10,50] -> selects 5; flow 5 mm³/s at Ø1.75 -> F = 5/area*60 ≈ 125
+	it("extruder extrude sends M83 + G1 E (length mode: amount + feed-rate)", async () => {
+		// default amounts [1,5,10,50] -> selects 5; default mode "length", feed-rate 300
 		const w = mountWidget("extruder");
 		await byText(w, "extruder.extrude")!.trigger("click");
 		await flushPromises();
-		expect(lastCode()).toBe("M83\nG1 E5 F125");
+		expect(lastCode()).toBe("M83\nG1 E5 F300");
 	});
 
 	it("toggle switch sends the on command", async () => {
