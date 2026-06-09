@@ -219,7 +219,9 @@ const groups = computed(() =>
 	font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600;
 	color: rgba(var(--v-theme-on-surface), 0.6); margin: 10px 2px 6px;
 }
-.palette-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 6px; }
+/* Fixed 4 columns so the tile grid never reflows between 4↔5 as the dialog resizes (which made
+   tiles jump under the cursor). The preview pane is a fixed width, so the list width is stable too. */
+.palette-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 .palette-tile {
 	display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
 	gap: 3px; padding: 10px 6px; min-height: 84px; cursor: pointer; text-align: center;
