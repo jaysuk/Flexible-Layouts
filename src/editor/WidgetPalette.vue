@@ -191,11 +191,12 @@ function previewStyle(size: { w: number; h: number }) {
 	const footW = Math.min(Math.max(size.w * 90, 160), 900);
 	const footH = Math.min(Math.max(size.h * 30, 80), 640);
 	const scale = Math.min(FRAME_W / footW, FRAME_H / footH, 1);
+	// Stage is absolutely centred in the frame; translate(-50%,-50%) centres its own box, scale shrinks
+	// it. Being out of flow, its (large) footprint can never push the fixed-width pane around.
 	return {
 		width: `${footW}px`,
 		height: `${footH}px`,
-		transform: `scale(${scale})`,
-		transformOrigin: "center center",
+		transform: `translate(-50%, -50%) scale(${scale})`,
 	};
 }
 
@@ -239,7 +240,10 @@ const groups = computed(() =>
 .palette-body { display: flex; gap: 12px; max-height: 62vh; }
 .palette-list { flex: 1 1 auto; overflow-y: auto; min-width: 0; }
 .palette-preview-pane {
-	flex: 0 0 260px; align-self: flex-start; position: sticky; top: 0;
+	/* Hard-pinned width so the preview content (which can be much wider than the frame) never resizes
+	   it. min-width:0 stops the default min-content sizing from expanding the flex item. */
+	flex: 0 0 260px; width: 260px; min-width: 260px; max-width: 260px;
+	align-self: flex-start; position: sticky; top: 0;
 	display: flex; flex-direction: column;
 	padding: 10px; border-radius: 8px;
 	border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
@@ -248,12 +252,12 @@ const groups = computed(() =>
 .palette-preview-title { font-size: 0.82rem; font-weight: 600; }
 .palette-preview-sub { font-size: 0.66rem; opacity: 0.55; margin-bottom: 4px; }
 .palette-preview-frame {
-	height: 210px; margin-top: 6px; display: flex; align-items: center; justify-content: center;
+	position: relative; width: 100%; height: 210px; margin-top: 6px;
+	display: flex; align-items: center; justify-content: center;
 	overflow: hidden; background: rgba(var(--v-theme-on-surface), 0.03); border-radius: 6px;
 }
-/* Inert: the preview is display-only, so hovering/clicking it never actuates a control. The scale
-   transform shrinks the real-footprint stage to fit; flex-centering + overflow:hidden keep it tidy. */
-.palette-preview-stage { flex: none; pointer-events: none; overflow: hidden; }
+/* Inert, display-only. Absolutely centred + scaled so its real footprint never affects layout. */
+.palette-preview-stage { position: absolute; top: 50%; left: 50%; pointer-events: none; overflow: hidden; }
 .palette-preview-empty,
 .palette-preview-hint {
 	display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;

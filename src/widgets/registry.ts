@@ -43,6 +43,8 @@ export const BUILTIN_PANELS: ReadonlyArray<PanelCatalogEntry> = [
 	{ component: "MacroList",            labelKey: "panels.macros",          icon: "mdi-cog-play",            defaultSize: { w: 4, h: 9 },  mode: "any" },
 	{ component: "TemperatureChart",     labelKey: "panels.temperatureChart", icon: "mdi-chart-line",         defaultSize: { w: 8, h: 7 },  mode: "any" },
 	{ component: "EventList",            labelKey: "panels.console",         icon: "mdi-console-line",        defaultSize: { w: 6, h: 8 },  mode: "any" },
+	{ component: "JobFileList",          labelKey: "panels.jobs",            icon: "mdi-folder-play",         defaultSize: { w: 6, h: 8 },  mode: "any" },
+	{ component: "FileList",             labelKey: "panels.explorer",        icon: "mdi-folder-cog-outline",  defaultSize: { w: 6, h: 8 },  mode: "any" },
 ];
 
 /** Look up a catalog entry by component name. */
@@ -83,8 +85,6 @@ export const FREEFORM_WIDGETS: ReadonlyArray<FreeformCatalogEntry> = [
 	{ type: "jobControl", labelKey: "widgets.jobControl", icon: "mdi-play-pause",         defaultSize: { w: 4, h: 3 }, category: "machine" },
 	{ type: "macros",     labelKey: "widgets.macros",     icon: "mdi-cog-play",           defaultSize: { w: 4, h: 5 }, category: "machine" },
 	{ type: "files",      labelKey: "widgets.files",      icon: "mdi-file-document-multiple", defaultSize: { w: 4, h: 6 }, category: "machine" },
-	{ type: "jobs",       labelKey: "widgets.jobs",       icon: "mdi-folder-play",        defaultSize: { w: 6, h: 8 }, category: "machine" },
-	{ type: "explorer",   labelKey: "widgets.explorer",   icon: "mdi-folder-cog-outline", defaultSize: { w: 6, h: 8 }, category: "machine" },
 	{ type: "console",    labelKey: "widgets.console",    icon: "mdi-console-line",       defaultSize: { w: 6, h: 5 }, category: "machine" },
 
 	// Read-outs — display object-model values
@@ -227,10 +227,6 @@ export function describeWidget(widget: Widget): { title: string; icon: string } 
 			return { title: i18n.global.t("plugins.flexibleLayouts.widgets.jobControl"), icon: "mdi-play-pause" };
 		case "files":
 			return { title: i18n.global.t("plugins.flexibleLayouts.widgets.files"), icon: "mdi-file-document-multiple" };
-		case "jobs":
-			return { title: i18n.global.t("plugins.flexibleLayouts.widgets.jobs"), icon: "mdi-folder-play" };
-		case "explorer":
-			return { title: i18n.global.t("plugins.flexibleLayouts.widgets.explorer"), icon: "mdi-folder-cog-outline" };
 		case "gaugeCluster":
 			return { title: widget.title || i18n.global.t("plugins.flexibleLayouts.widgets.gaugeCluster"), icon: "mdi-gauge" };
 		case "indicators":

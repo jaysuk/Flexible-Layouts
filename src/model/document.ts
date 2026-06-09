@@ -369,18 +369,6 @@ export type Widget =
 		color?: string;
 	}
 	| {
-		/** Full G-code job browser (DWC's JobFileList): navigate folders and start a job. */
-		type: "jobs";
-		/** Root directory; empty = the firmware gcodes directory. */
-		folder?: string;
-	}
-	| {
-		/** File explorer (DWC's FileList) rooted at a directory. */
-		type: "explorer";
-		/** Root directory (default 0:/). */
-		folder?: string;
-	}
-	| {
 		/** Several radial gauges in one tile. */
 		type: "gaugeCluster";
 		title?: string;
@@ -623,10 +611,6 @@ export function createDefaultWidget(type: WidgetType): Widget {
 			return { type: "jobControl", showProgress: true, color: "primary" };
 		case "files":
 			return { type: "files", folder: "0:/gcodes", columns: 1, startCommand: "M32 \"{path}\"", color: "primary" };
-		case "jobs":
-			return { type: "jobs", folder: "" };
-		case "explorer":
-			return { type: "explorer", folder: "0:/" };
 		case "gaugeCluster":
 			return {
 				type: "gaugeCluster",

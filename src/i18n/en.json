@@ -79,8 +79,6 @@
 		"fan": "Fan slider",
 		"jobControl": "Job control",
 		"files": "File picker",
-		"jobs": "Job browser",
-		"explorer": "File explorer",
 		"gaugeCluster": "Gauge cluster",
 		"indicators": "Indicator grid",
 		"sparkline": "Sparkline",
@@ -586,6 +584,17 @@
 		"exportHeading": "Export this layout",
 		"layoutName": "Layout name",
 		"export": "Export to file",
+		"includeHeading": "Include in backup",
+		"partTheme": "Theme",
+		"partHeader": "Top bar",
+		"partPages": "Pages",
+		"partSettings": "Status & nav",
+		"exportPageHeading": "Back up a single page",
+		"choosePage": "Choose a page…",
+		"exportPageBtn": "Export page",
+		"restoreHeading": "Choose what to restore",
+		"selectAll": "All",
+		"selectNone": "None",
 		"importHeading": "Import a layout",
 		"importHelp": "Load a .dwclayout.json file someone shared with you.",
 		"import": "Choose file…",
@@ -661,6 +670,8 @@
 		"webcam": "Webcam",
 		"macros": "Macros",
 		"temperatureChart": "Temperature graph",
-		"console": "Console (full)"
+		"console": "Console (full)",
+		"jobs": "Job browser",
+		"explorer": "File explorer"
 	}
 }

@@ -601,14 +601,6 @@
 					</v-row>
 				</template>
 
-				<!-- Job browser / file explorer: just a root folder -->
-				<template v-else-if="draft.type === 'jobs'">
-					<v-text-field v-model="draft.folder" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.files.folder')" placeholder="0:/gcodes" />
-				</template>
-				<template v-else-if="draft.type === 'explorer'">
-					<v-text-field v-model="draft.folder" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.files.folder')" placeholder="0:/" />
-				</template>
-
 				<!-- Gauge cluster -->
 				<template v-else-if="draft.type === 'gaugeCluster'">
 					<v-text-field v-model="draft.title" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.jog.titleField')" />
