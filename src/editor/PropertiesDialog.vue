@@ -3,8 +3,9 @@
 			  @update:model-value="emit('update:modelValue', $event)">
 		<v-card v-if="draft">
 			<v-card-title class="d-flex align-center">
-				<v-icon class="me-2">mdi-cog</v-icon>
+				<v-icon class="me-2">{{ described.icon }}</v-icon>
 				{{ $t("plugins.flexibleLayouts.properties.title") }}
+				<span class="text-medium-emphasis text-truncate ms-2">— {{ described.title }}</span>
 				<v-spacer />
 				<v-btn icon="mdi-close" variant="text" density="comfortable"
 					   @click="emit('update:modelValue', false)" />
@@ -888,6 +889,7 @@ import { useMachineStore } from "@/stores/machine";
 
 import type { ConditionOperator, ConditionRule, GridItemModel, PanelColors, Typography, Widget } from "../model/document";
 import { OM_VALUE_PRESETS, type OmPreset, resolveOmPath } from "../util/omPath";
+import { describeWidget } from "../widgets/registry";
 import IconPicker from "./IconPicker.vue";
 import OmPathField from "./OmPathField.vue";
 import WidgetView from "../widgets/WidgetView.vue";
@@ -904,6 +906,8 @@ const machineStore = useMachineStore();
 // is cast back to Widget on save. Re-cloned every time the dialog opens.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const draft = ref<any>(null);
+// Name + icon of the panel being edited, shown in the dialog header.
+const described = computed(() => draft.value ? describeWidget(draft.value as Widget) : { title: "", icon: "mdi-cog" });
 const conditions = ref<Array<ConditionRule>>([]);
 const colors = ref<PanelColors>({});
 const typography = ref<Typography>({});

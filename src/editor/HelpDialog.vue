@@ -91,6 +91,8 @@
 							backup, or one that <em>excludes</em> the theme. You can also back up a <strong>single page</strong>
 							from the dropdown. On <strong>restore</strong>, choose which parts and which pages to apply (it
 							merges over your current layout) and you're warned about any plugins the file needs.
+							Browse and download layouts others have shared at the
+							<a href="https://jaysuk.github.io/flexible-layouts-gallery/" target="_blank" rel="noopener">community layout gallery</a>.
 						</v-expansion-panel-text>
 					</v-expansion-panel>
 

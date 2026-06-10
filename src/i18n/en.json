@@ -635,6 +635,7 @@
 		"selectNone": "None",
 		"importHeading": "Import a layout, page or widget",
 		"importHelp": "Load a .dwclayout.json (whole layout), .dwcpage.json (single page) or .dwcpanel.json (single widget). Pages and widgets are added as a new page.",
+		"galleryLink": "Browse the community layout gallery",
 		"importedPage": "Page imported.",
 		"importedPageTitle": "Imported page",
 		"importedPanel": "Widget imported onto a new page.",

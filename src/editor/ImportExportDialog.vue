@@ -46,6 +46,11 @@
 						{{ $t("plugins.flexibleLayouts.io.import") }}
 					</v-btn>
 					<input ref="fileInput" type="file" accept=".json,application/json" class="d-none" @change="onFile" />
+					<div class="text-caption mt-2">
+						<a :href="GALLERY_URL" target="_blank" rel="noopener" class="text-primary">
+							<v-icon size="14" class="me-1">mdi-view-gallery-outline</v-icon>{{ $t("plugins.flexibleLayouts.io.galleryLink") }}
+						</a>
+					</div>
 					<v-alert v-if="error" type="error" variant="tonal" density="compact" class="mt-3">{{ error }}</v-alert>
 
 					<v-divider class="my-4" />
@@ -111,6 +116,8 @@ import { describeWidget } from "../widgets/registry";
 
 defineProps<{ modelValue: boolean }>();
 const emit = defineEmits<{ "update:modelValue": [boolean] }>();
+
+const GALLERY_URL = "https://jaysuk.github.io/flexible-layouts-gallery/";
 
 const store = useLayoutStore();
 const uiStore = useUiStore();

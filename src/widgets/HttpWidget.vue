@@ -9,6 +9,7 @@
 import { onBeforeUnmount, onMounted, ref } from "vue";
 
 import type { Widget } from "../model/document";
+import { resolveExternalUrl } from "../util/url";
 
 const props = defineProps<{ widget: Extract<Widget, { type: "http" }>; disabled?: boolean }>();
 
@@ -27,9 +28,10 @@ function pick(obj: unknown, path: string): unknown {
 }
 
 async function poll(): Promise<void> {
-  if (!props.widget.url) { value.value = "—"; return; }
+  const url = resolveExternalUrl(props.widget.url);
+  if (!url) { value.value = "—"; return; }
   try {
-    const res = await fetch(props.widget.url, { mode: "cors" });
+    const res = await fetch(url, { mode: "cors" });
     const text = await res.text();
     if (props.widget.jsonPath) {
       try {
