@@ -108,6 +108,7 @@ import { useRouter } from "vue-router";
 import i18n from "@/i18n";
 import { LogLevel, useUiStore } from "@/stores/ui";
 
+import { convertBtnCmd, isBtnCmdFile } from "../model/btncmd";
 import { applyImportedDocument, exportLayout, exportPage, listDocumentPages, type ParsedImport, parseLayoutFile, parsePageFile, parsePanelFile } from "../model/io";
 import { createCustomPage } from "../model/pageManager";
 import { loadCncPreset } from "../model/presets";
@@ -183,16 +184,30 @@ async function onFile(event: Event) {
 	error.value = "";
 	const text = await file.text();
 
-	// Peek at the file kind so the one Import button accepts a whole layout, a single page, or a
-	// single panel/custom widget. Pages and panels each land on a new custom page we navigate to
-	// (a fresh page mount renders reliably); a full layout opens the selective-restore view.
-	let kind: string | undefined;
+	let raw: unknown;
 	try {
-		kind = (JSON.parse(text) as { kind?: string }).kind;
+		raw = JSON.parse(text);
 	} catch {
 		error.value = i18n.global.t("plugins.flexibleLayouts.io.error.invalidJson");
 		return;
 	}
+
+	// A BtnCmd export (no `kind`, has `btns`/`tabs`/`panels` or `btnCmdVer`) is converted into a
+	// Flexible Layouts document, then flows through the same selective-restore view below.
+	if (isBtnCmdFile(raw)) {
+		const document = convertBtnCmd(raw);
+		pending.value = { document, missing: [] };
+		restore.theme = true;
+		restore.header = true;
+		restore.settings = true;
+		selectedPages.value = listDocumentPages(document).map((p) => p.path);
+		return;
+	}
+
+	// Peek at the file kind so the one Import button accepts a whole layout, a single page, or a
+	// single panel/custom widget. Pages and panels each land on a new custom page we navigate to
+	// (a fresh page mount renders reliably); a full layout opens the selective-restore view.
+	const kind = (raw as { kind?: string }).kind;
 
 	try {
 		if (kind === "dwcpage") {
