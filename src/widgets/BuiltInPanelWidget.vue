@@ -90,8 +90,19 @@ onErrorCaptured((err) => {
 .flex-builtin-panel {
 	overflow: auto;
 }
-/* Let the console's event list shrink and scroll within the flex column instead of overflowing. */
+/* Console event list: make the card a flex column so its row list scrolls within the panel while
+   the "Event Log" toolbar header stays pinned, instead of the rows overflowing the fixed panel. */
 .flex-console-list {
 	min-height: 0;
+	display: flex;
+	flex-direction: column;
+}
+.flex-console-list :deep(.event-log-header) {
+	flex-shrink: 0;
+}
+.flex-console-list :deep(.event-log-list) {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow-y: auto;
 }
 </style>
