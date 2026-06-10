@@ -25,6 +25,9 @@
 			<v-btn v-if="editMode" icon="mdi-view-compact-outline" size="small" variant="text"
 				   :disabled="layout.length < 2"
 				   :title="$t('plugins.flexibleLayouts.editor.rearrange')" @click="rearrangeAll" />
+			<v-btn v-if="editMode" icon="mdi-view-dashboard-variant" size="small" variant="text"
+				   :disabled="layout.length < 2"
+				   :title="$t('plugins.flexibleLayouts.editor.pack')" @click="packAll" />
 			<v-spacer />
 			<v-btn-toggle v-if="editMode" v-model="editingBp" mandatory density="compact" variant="outlined"
 						  divided class="me-2">
@@ -45,7 +48,7 @@
 
 		<!-- Live grid -->
 		<FlexGrid v-if="layout.length > 0" v-model:layout="layout"
-				  :cols="grid.cols" :row-height="grid.rowHeight" :edit-mode="editMode"
+				  :cols="grid.cols" :row-height="grid.rowHeight" :gap="grid.gap ?? 8" :edit-mode="editMode"
 				  @changed="onLayoutUpdated" @remove="removeItem" @edit="openProperties"
 				  @edit-contents="openGroupEditor" @export-item="exportPanelById"
 				  @duplicate="duplicateItem" @toggle-lock="toggleLock" @auto-height="onAutoHeight" />
@@ -124,6 +127,11 @@
 							<v-text-field :model-value="grid.rowHeight" type="number" density="compact" variant="outlined"
 										  hide-details :label="$t('plugins.flexibleLayouts.pageSettings.rowHeight')" suffix="px"
 										  @update:model-value="setGridRowHeight" />
+						</v-col>
+						<v-col cols="6">
+							<v-text-field :model-value="grid.gap ?? 8" type="number" :min="0" density="compact" variant="outlined"
+										  hide-details :label="$t('plugins.flexibleLayouts.pageSettings.gap')" suffix="px"
+										  @update:model-value="setGridGap" />
 						</v-col>
 					</v-row>
 					<div class="text-title-small mb-2">{{ $t("plugins.flexibleLayouts.background.title") }}</div>
@@ -209,6 +217,11 @@ function setGridRowHeight(v: string) {
 	grid.value = { ...grid.value, rowHeight };
 	store.ensurePage(props.pageId, props.kind ?? "custom").grid = { ...grid.value };
 }
+function setGridGap(v: string) {
+	const gap = Math.max(0, Math.min(48, Math.round(Number(v) || 0)));
+	grid.value = { ...grid.value, gap };
+	store.ensurePage(props.pageId, props.kind ?? "custom").grid = { ...grid.value };
+}
 
 function resetBreakpoint() {
 	if (activeBp.value === "lg") {
@@ -276,7 +289,7 @@ const backgroundStyle = computed(() => {
 // copy (rather than binding the store array directly) avoids writing to the persisted settings -
 // and triggering the board-side settings save - on every animation frame of a drag.
 const layout = ref<Array<GridItemModel>>([]);
-const grid = ref({ cols: 12, rowHeight: 30 });
+const grid = ref<{ cols: number; rowHeight: number; gap?: number }>({ cols: 12, rowHeight: 30, gap: 8 });
 
 // Responsive breakpoints. While viewing, the layout follows the actual viewport width; while
 // editing, it follows the breakpoint the user has selected to edit (so a phone layout can be
@@ -318,7 +331,7 @@ function load() {
 	loading = true;
 	seedDismissed.value = false;
 	const page = store.getPage(props.pageId);
-	grid.value = page?.grid ? { ...page.grid } : { cols: 12, rowHeight: 30 };
+	grid.value = page?.grid ? { ...page.grid } : { cols: 12, rowHeight: 30, gap: 8 };
 	layout.value = JSON.parse(JSON.stringify(store.getItemsForBp(props.pageId, activeBp.value)));
 	resetHistory();
 	// Let grid-layout-plus emit its initial mount/compact event before we start persisting, so just
@@ -421,13 +434,10 @@ function nextY(): number {
 	return layout.value.reduce((max, it) => Math.max(max, it.y + it.h), 0);
 }
 
-// "Tidy up": repack every panel top-left, removing gaps and overlaps so the page takes the least
-// vertical space. Items are placed in reading order (current top→bottom, left→right) into the first
-// free slot that fits, preserving each panel's size. Respects the column count; locked items are
-// repacked too (this is an explicit, undoable action).
-function rearrangeAll(): void {
+// Place the given items into the first free slot (scanning top→bottom, left→right), preserving each
+// panel's size, then commit. Locked items are repacked too (this is an explicit, undoable action).
+function repack(ordered: Array<GridItemModel>): void {
 	const cols = grid.value.cols;
-	const ordered = [...layout.value].sort((a, b) => a.y - b.y || a.x - b.x);
 	const placed: Array<GridItemModel> = [];
 	const overlaps = (x: number, y: number, w: number, h: number): boolean =>
 		placed.some((p) => x < p.x + p.w && x + w > p.x && y < p.y + p.h && y + h > p.y);
@@ -447,6 +457,18 @@ function rearrangeAll(): void {
 	layout.value = placed;
 	persist();
 	commit();
+}
+
+// "Tidy up": keep reading order (top→bottom, left→right), just remove gaps/overlaps - the panels
+// stay roughly where they were.
+function rearrangeAll(): void {
+	repack([...layout.value].sort((a, b) => a.y - b.y || a.x - b.x));
+}
+
+// "Pack tight": first-fit-decreasing (largest panels first), which fills small panels into the gaps
+// the big ones leave - removing far more dead space, at the cost of reordering the panels.
+function packAll(): void {
+	repack([...layout.value].sort((a, b) => (b.w * b.h) - (a.w * a.h) || a.y - b.y || a.x - b.x));
 }
 
 function addWidget(payload: { widget: Widget; size: { w: number; h: number }; configure: boolean }) {
@@ -609,9 +631,15 @@ onBeforeUnmount(() => {
 	   With top:0 it would stick behind the fixed app bar and scroll out of view. */
 	top: var(--v-layout-top, 64px);
 	z-index: 6;
-	background: rgb(var(--v-theme-surface));
-	border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+	/* Translucent so the panels read through it ("like it's not there"); the blur keeps the buttons
+	   legible over whatever is underneath. Opaque on hover when you're actually using it. */
+	background: rgba(var(--v-theme-surface), 0.55);
+	backdrop-filter: blur(6px);
+	border-bottom: 1px solid rgba(var(--v-border-color), calc(var(--v-border-opacity) * 0.6));
 	border-radius: 0 0 6px 6px;
+	transition: background 0.15s ease;
+}
+.flex-page-toolbar:hover {
+	background: rgba(var(--v-theme-surface), 0.9);
 }
 </style>

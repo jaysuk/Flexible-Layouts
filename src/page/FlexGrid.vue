@@ -1,6 +1,6 @@
 <template>
 	<GridLayout v-model:layout="layoutModel" class="flex-grid"
-				:col-num="cols" :row-height="rowHeight" :margin="[8, 8]"
+				:col-num="cols" :row-height="rowHeight" :margin="margin"
 				:is-draggable="editMode" :is-resizable="editMode"
 				:vertical-compact="false" :prevent-collision="false" :use-css-transforms="true"
 				@layout-updated="emit('changed')">
@@ -28,6 +28,7 @@ const props = defineProps<{
 	layout: Array<GridItemModel>;
 	cols: number;
 	rowHeight: number;
+	gap?: number;
 	editMode: boolean;
 }>();
 const emit = defineEmits<{
@@ -41,6 +42,12 @@ const emit = defineEmits<{
 	toggleLock: [string];
 	autoHeight: [string, number];
 }>();
+
+// Configurable inter-panel gap (px); defaults to 8 for consumers that don't set it.
+const margin = computed<[number, number]>(() => {
+	const g = Math.max(0, props.gap ?? 8);
+	return [g, g];
+});
 
 // grid-layout-plus reassigns the layout array on add/remove and mutates items in place on
 // drag/resize; bridge both back to the parent via v-model.

@@ -783,7 +783,7 @@ export interface PageLayout {
 	background?: { color?: string; image?: string; size?: "cover" | "contain" | "auto" };
 	/** Show this page in navigation only while this object-model rule matches. */
 	showWhen?: ConditionRule;
-	grid: { cols: number; rowHeight: number };
+	grid: { cols: number; rowHeight: number; /** Gap (px) between panels. Default 8. */ gap?: number };
 	/** Base (desktop / lg) layout. */
 	items: Array<GridItemModel>;
 	/**

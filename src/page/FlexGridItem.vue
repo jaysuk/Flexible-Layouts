@@ -31,7 +31,7 @@
 		<!-- In edit mode the body becomes pointer-inert (so dragging/clicking the tile never actuates
 			 the live widget underneath, e.g. firing G-code while arranging). Done with
 			 pointer-events:none rather than an overlay, so it doesn't swallow the resize grip. -->
-		<div class="flex-item-body" :class="{ 'with-header': editMode, 'is-inert': editMode, 'has-bg': !!item.colors?.background, 'has-text': !!item.colors?.text, 'no-scroll': fitEnabled, 'has-label-size': !!item.typography?.labelFontSize, 'has-label-family': !!item.typography?.labelFontFamily }"
+		<div class="flex-item-body" :class="{ 'with-header': editMode, 'is-inert': editMode, 'has-bg': !!item.colors?.background, 'has-text': !!item.colors?.text, 'no-scroll': fitEnabled, 'is-builtin-panel': item.widget.type === 'builtinPanel' && !fitEnabled, 'has-label-size': !!item.typography?.labelFontSize, 'has-label-family': !!item.typography?.labelFontFamily }"
 			 :style="typographyStyle">
 			<!-- A condition can hide the widget at runtime. In edit mode it stays visible (dimmed) so
 				 it remains selectable; in view mode it renders nothing. -->
@@ -207,19 +207,37 @@ onBeforeUnmount(() => {
 	display: flex;
 	flex-direction: column;
 	border-radius: 4px;
+	/* Anchor the edit header, which is an overlay (see below) rather than a row that consumes space. */
+	position: relative;
 }
 .flex-grid-item.is-editing {
 	outline: 1px dashed rgba(var(--v-theme-primary), 0.6);
 	outline-offset: -1px;
 }
+/* The edit-mode modify bar floats OVER the top of the panel instead of pushing the content down, so a
+   panel is exactly the same size (and renders identically) in edit and view modes - "like it's not
+   there". Semi-transparent so the panel shows through; opaque on hover for easy use. */
 .flex-item-header {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	z-index: 4;
 	display: flex;
 	align-items: center;
 	padding: 2px 4px;
-	background: rgba(var(--v-theme-primary), 0.12);
+	background: rgba(var(--v-theme-surface), 0.5);
+	backdrop-filter: blur(2px);
+	border-radius: 4px 4px 0 0;
 	cursor: move;
 	user-select: none;
 	min-height: 28px;
+	opacity: 0.7;
+	transition: opacity 0.12s ease, background 0.12s ease;
+}
+.flex-item-header:hover {
+	opacity: 1;
+	background: rgba(var(--v-theme-surface), 0.92);
 }
 .flex-item-title {
 	font-size: 0.8rem;
@@ -238,6 +256,12 @@ onBeforeUnmount(() => {
 .flex-item-body.no-scroll,
 .flex-item-body.no-scroll.with-header {
 	overflow: hidden;
+}
+/* Built-in DWC panels are v-cards whose elevation shadow gives them their "raised panel" look. The
+   body normally clips that shadow (flat panels); let it show so they match the stock dashboard. The
+   panel's own content is still clipped/scrolled by its inner container, so nothing bleeds out. */
+.flex-item-body.is-builtin-panel {
+	overflow: visible;
 }
 .flex-item-body.is-inert {
 	pointer-events: none;
