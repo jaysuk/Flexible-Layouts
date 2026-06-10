@@ -252,4 +252,7 @@ export function describeWidget(widget: Widget): { title: string; icon: string } 
 		case "themeToggle":
 			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.themeToggle"), icon: "mdi-theme-light-dark" };
 	}
+	// Fallback for an unknown/removed widget type in an older saved layout (must never return
+	// undefined — the edit-mode tile header reads .title and would otherwise crash the whole page).
+	return { title: (widget as { type?: string }).type || "Widget", icon: "mdi-help-box-outline" };
 }

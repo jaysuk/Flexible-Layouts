@@ -43,6 +43,10 @@
 	<GroupWidget v-else-if="widget.type === 'group'" :widget="widget" />
 	<PluginPageWidget v-else-if="widget.type === 'pluginPage'" :widget="widget" />
 	<WebWidget v-else-if="widget.type === 'web'" :widget="widget" />
+	<!-- Unknown/removed widget type from an older saved layout: show a placeholder, never crash. -->
+	<v-alert v-else type="info" variant="tonal" density="compact" class="ma-2">
+		{{ $t("plugins.flexibleLayouts.widget.unknownWidget", { type: (widget as { type?: string }).type }) }}
+	</v-alert>
 </template>
 
 <script setup lang="ts">

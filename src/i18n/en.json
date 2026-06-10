@@ -47,7 +47,8 @@
 	},
 	"widget": {
 		"panelError": "The “{name}” panel could not be displayed here.",
-		"panelMissing": "Panel “{name}” is not available in this DWC build."
+		"panelMissing": "Panel “{name}” is not available in this DWC build.",
+		"unknownWidget": "Unsupported widget “{type}” (from a newer/older layout). Delete it in edit mode."
 	},
 	"widgets": {
 		"codeButton": "Command button",
