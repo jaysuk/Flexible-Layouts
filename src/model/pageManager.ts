@@ -15,6 +15,7 @@ import { useMenuStore } from "@/stores/menu";
 import { useSettingsStore } from "@/stores/settings";
 
 import { createEmptyPage, newItemId, type PageLayout } from "./document";
+import { isFlLayoutActive } from "./layoutState";
 import { useLayoutStore } from "./store";
 import CustomPageHost from "../page/CustomPageHost.vue";
 
@@ -48,10 +49,11 @@ export function listCustomPages(): Array<{ path: string; page: PageLayout }> {
 		.map(([path, page]) => ({ path, page }));
 }
 
-/** Nav entries for custom pages only appear while the Flexible Layouts shell is active, so the
- *  built-in layout stays the pristine default. The route itself always exists (URL-navigable). */
+/** Nav entries for custom pages only appear while the Flexible Layouts shell is the ACTIVE layout
+ *  (not the built-in shell, nor another plugin's layout), so neither stays cluttered. The route
+ *  itself always exists (URL-navigable). */
 function customPageVisible(): boolean {
-	return useSettingsStore().useCustomLayout;
+	return isFlLayoutActive();
 }
 
 function addRoute(path: string, page: PageLayout): void {

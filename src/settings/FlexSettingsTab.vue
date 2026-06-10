@@ -82,12 +82,12 @@ import { computed, reactive } from "vue";
 
 import i18n from "@/i18n";
 import { useMachineStore } from "@/stores/machine";
-import { useSettingsStore } from "@/stores/settings";
 import { LogLevel, useUiStore } from "@/stores/ui";
 
 import { buildReport, copyReport, downloadReport } from "dwc-plugin-runtime";
 
 import { PLUGIN_MANIFEST_ID } from "../model/constants";
+import { activateFlLayout, deactivateFlLayout, isFlLayoutActive } from "../model/layoutState";
 import { useLayoutStore } from "../model/store";
 import ImportExportDialog from "../editor/ImportExportDialog.vue";
 import ThemeEditor from "../editor/ThemeEditor.vue";
@@ -98,11 +98,10 @@ import PageManager from "../editor/PageManager.vue";
 import PasswordDialog from "../editor/PasswordDialog.vue";
 import { isLocked, requestUnlock } from "../model/lock";
 
-const settingsStore = useSettingsStore();
 const machineStore = useMachineStore();
 const uiStore = useUiStore();
 
-const active = computed(() => settingsStore.useCustomLayout);
+const active = computed(() => isFlLayoutActive());
 
 // Diagnostics: bundle versions + recent errors + a privacy-scrubbed object model + the live layout
 // document (the most useful FL-specific artifact — lets a bug be reproduced from the exact layout).
@@ -143,7 +142,10 @@ async function openGated(key: "pageManager" | "theme" | "io" | "profiles"): Prom
 }
 
 function onToggleLayout() {
-	settingsStore.useCustomLayout = !settingsStore.useCustomLayout;
-	settingsStore.layoutUserSet = true;
+	if (isFlLayoutActive()) {
+		deactivateFlLayout();
+	} else {
+		activateFlLayout();
+	}
 }
 </script>

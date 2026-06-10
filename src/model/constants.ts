@@ -11,3 +11,6 @@
  * settings/i18n key below.
  */
 export const PLUGIN_MANIFEST_ID = "FlexibleLayouts";
+
+/** Id this plugin registers its custom layout under (registerLayout / settings.activeLayoutId). */
+export const LAYOUT_ID = "flexible-layouts";

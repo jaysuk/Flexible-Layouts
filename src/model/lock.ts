@@ -15,6 +15,8 @@ import { ref, watch } from "vue";
 
 import { useSettingsStore } from "@/stores/settings";
 
+import { activateFlLayout, deactivateFlLayout, isFlLayoutActive } from "./layoutState";
+
 const PLUGIN_KEY = "flexibleLayouts";
 const LOCK_KEY = "lock";
 const SALT = "flexlayouts::v1::";
@@ -117,26 +119,24 @@ export function markUnlocked(): void {
 let guardInstalled = false;
 let stopEscapeWatch: (() => void) | null = null;
 /**
- * Block leaving the custom layout while locked. Catches every escape vector (Settings switch, the
- * /BuiltInLayout URL, FL's own button) by watching the shared useCustomLayout flag: if it flips off
- * while locked, revert it synchronously (so the shell never actually swaps) and ask for the password
- * before allowing the switch. Installed once at plugin load.
+ * Block leaving Flexible Layouts' shell while locked. Catches every escape vector (Settings layout
+ * picker, the /BuiltInLayout URL, FL's own button, and switching to another plugin's layout) by
+ * watching whether FL is the active layout: if that flips off while locked, re-activate FL
+ * synchronously (so the shell never actually swaps) and ask for the password first. Installed once.
  */
 export function installEscapeGuard(): void {
 	if (guardInstalled) {
 		return;
 	}
 	guardInstalled = true;
-	const settings = useSettingsStore();
 	stopEscapeWatch = watch(
-		() => settings.useCustomLayout,
+		() => isFlLayoutActive(),
 		(now, prev) => {
 			if (prev && !now && isLocked()) {
-				settings.useCustomLayout = true; // revert before the shell can swap
+				activateFlLayout(); // revert before the shell can swap (also catches switch to another layout)
 				void requestUnlock().then((ok) => {
 					if (ok) {
-						settings.useCustomLayout = false;
-						settings.layoutUserSet = true;
+						deactivateFlLayout();
 					}
 				});
 			}

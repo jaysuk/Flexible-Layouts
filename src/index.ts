@@ -20,7 +20,8 @@ import { useSettingsStore } from "@/stores/settings";
 
 import en from "./i18n/en.json";
 import { BUILTIN_PAGES } from "./model/builtinPages";
-import { PLUGIN_MANIFEST_ID } from "./model/constants";
+import { LAYOUT_ID, PLUGIN_MANIFEST_ID } from "./model/constants";
+import { activateFlLayout } from "./model/layoutState";
 import { installEscapeGuard, uninstallEscapeGuard } from "./model/lock";
 import { installErrorCapture } from "dwc-plugin-runtime";
 import { migrateGlobalHides, registerExistingCustomPages } from "./model/pageManager";
@@ -31,7 +32,6 @@ import FlexShell from "./shell/FlexShell.vue";
 import FlexSettingsTab from "./settings/FlexSettingsTab.vue";
 
 const PLUGIN_ID = "flexibleLayouts";
-const LAYOUT_ID = "flexible-layouts";
 
 registerPluginMessages(PLUGIN_ID, { en });
 
@@ -64,8 +64,7 @@ function maybeOfferActivation(): void {
 			"mdi-view-dashboard-edit",
 		).then((ok) => {
 			if (ok) {
-				settings.useCustomLayout = true;
-				settings.layoutUserSet = true;
+				activateFlLayout();
 			}
 		}).catch(() => { /* dismissed */ });
 	}, 1200);
