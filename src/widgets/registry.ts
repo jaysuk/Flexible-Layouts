@@ -42,6 +42,7 @@ export const BUILTIN_PANELS: ReadonlyArray<PanelCatalogEntry> = [
 	{ component: "WebcamPanel",          labelKey: "panels.webcam",          icon: "mdi-webcam",              defaultSize: { w: 6, h: 8 },  mode: "any" },
 	{ component: "MacroList",            labelKey: "panels.macros",          icon: "mdi-cog-play",            defaultSize: { w: 4, h: 9 },  mode: "any" },
 	{ component: "TemperatureChart",     labelKey: "panels.temperatureChart", icon: "mdi-chart-line",         defaultSize: { w: 8, h: 7 },  mode: "any" },
+	{ component: "JobLayerChart",        labelKey: "panels.layerChart",      icon: "mdi-chart-timeline-variant", defaultSize: { w: 8, h: 7 }, mode: "any" },
 	{ component: "EventList",            labelKey: "panels.console",         icon: "mdi-console-line",        defaultSize: { w: 6, h: 8 },  mode: "any" },
 	{ component: "JobFileList",          labelKey: "panels.jobs",            icon: "mdi-folder-play",         defaultSize: { w: 6, h: 8 },  mode: "any" },
 	{ component: "FileList",             labelKey: "panels.explorer",        icon: "mdi-folder-cog-outline",  defaultSize: { w: 6, h: 8 },  mode: "any" },

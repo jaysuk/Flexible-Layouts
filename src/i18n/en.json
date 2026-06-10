@@ -646,6 +646,9 @@
 		"replaceExisting": "Replace my current layout (delete existing pages)",
 		"additiveHint": "Your existing pages are kept; the imported pages are added alongside them.",
 		"replaceHint": "Your current pages will be deleted and replaced by the imported ones.",
+		"undoImport": "Undo last import",
+		"undoHint": "Restores the automatic backup taken just before your most recent import.",
+		"undoneImport": "Reverted to the pre-import backup.",
 		"importedPage": "Page imported.",
 		"importedPageTitle": "Imported page",
 		"importedPanel": "Widget imported onto a new page.",
@@ -723,6 +726,7 @@
 		"webcam": "Webcam",
 		"macros": "Macros",
 		"temperatureChart": "Temperature graph",
+		"layerChart": "Layer graph",
 		"console": "Console (full)",
 		"jobs": "Job browser",
 		"explorer": "File explorer"

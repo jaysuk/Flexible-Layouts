@@ -38,6 +38,13 @@ interface BtnCmdPanel {
 	panelWSize?: number;
 	panelMMPath?: string;
 	panelMMPrefix?: string;
+	panelMMSuffix?: string;
+	panelMMEvalMathStr?: string;
+	panelHoverText?: string;
+	chartLabel?: string;
+	inputVarName?: string;
+	inputType?: string;
+	inputClass?: string;
 	altWebCamParams?: { altWebCamURL?: string; altWebCamUpdateTimer?: number };
 }
 interface BtnCmdTab {
@@ -121,6 +128,10 @@ function buttonWidget(b: BtnCmdBtn): Widget {
 		color: hexColor(b.btnColour),
 		confirm: b.btnReqConf || undefined,
 	};
+	if (type === "txtlabel" || type === "label" || type === "text") {
+		// A text label, not a real button - the same thing as Flexible Layouts' Text/image widget.
+		return { type: "label", variant: "text", content: b.btnLabel || "", align: "center", color: hexColor(b.btnColour) };
+	}
 	if (type === "macro") {
 		return { type: "codeButton", action: "gcode", code: data ? `M98 P"${data}"` : "", ...common };
 	}
@@ -147,10 +158,32 @@ function panelWidget(p: BtnCmdPanel): Widget {
 	if (type === "mm" || type === "machinemodel") {
 		return { type: "value", omPath: p.panelMMPath || "", label: p.panelMMPrefix || "", display: "number", precision: 1 };
 	}
-	return {
-		type: "note",
-		content: `Imported from BtnCmd — the "${p.panelType || "unknown"}" panel isn't auto-converted. Replace this with an equivalent widget from Add widget.`,
+	return { type: "note", content: describeUnmatchedPanel(p) };
+}
+
+/**
+ * A verbose placeholder for a panel we couldn't auto-convert: it carries every meaningful field from
+ * the BtnCmd panel (object-model path, prefix/suffix/expression, chart/input details, hover text,
+ * position) so you can rebuild it by hand without losing what it pointed at.
+ */
+function describeUnmatchedPanel(p: BtnCmdPanel): string {
+	const lines: Array<string> = [];
+	const add = (label: string, value: unknown): void => {
+		if (value !== undefined && value !== null && value !== "") {
+			lines.push(`- ${label}: \`${typeof value === "object" ? JSON.stringify(value) : value}\``);
+		}
 	};
+	add("Object-model path", p.panelMMPath);
+	add("Prefix / text", p.panelMMPrefix);
+	add("Suffix", p.panelMMSuffix);
+	add("Expression", p.panelMMEvalMathStr);
+	add("Chart label", p.chartLabel);
+	add("Input variable", p.inputVarName);
+	add("Input type", p.inputType || p.inputClass);
+	add("Hover text", p.panelHoverText);
+	add("Position (x, y)", p.panelXpos !== undefined ? `${p.panelXpos}, ${p.panelYpos ?? 0}` : undefined);
+	const detail = lines.length ? `\n\n${lines.join("\n")}` : "";
+	return `**Unmatched BtnCmd panel: \`${p.panelType || "unknown"}\`**\n\nThis panel type isn't auto-converted yet. Recreate it with an equivalent widget (e.g. a Value read-out pointing at the object-model path below).${detail}`;
 }
 
 /** Convert a BtnCmd export into a Flexible Layouts document (one custom page per tab). */

@@ -53,6 +53,13 @@
 					</div>
 					<v-alert v-if="error" type="error" variant="tonal" density="compact" class="mt-3">{{ error }}</v-alert>
 
+					<div v-if="backup" class="mt-3">
+						<v-btn variant="tonal" color="warning" prepend-icon="mdi-undo-variant" @click="undoImport">
+							{{ $t("plugins.flexibleLayouts.io.undoImport") }}
+						</v-btn>
+						<div class="text-caption text-medium-emphasis mt-1">{{ $t("plugins.flexibleLayouts.io.undoHint") }}</div>
+					</div>
+
 					<v-divider class="my-4" />
 
 					<div class="text-title-small mb-2">{{ $t("plugins.flexibleLayouts.io.samplesHeading") }}</div>
@@ -109,21 +116,32 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from "vue";
+import { computed, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
 import i18n from "@/i18n";
 import { LogLevel, useUiStore } from "@/stores/ui";
 
 import { convertBtnCmd, isBtnCmdFile } from "../model/btncmd";
-import { applyImportedDocument, exportLayout, exportPage, listDocumentPages, type ParsedImport, parseLayoutFile, parsePageFile, parsePanelFile } from "../model/io";
-import { createCustomPage } from "../model/pageManager";
+import type { LayoutDocument } from "../model/document";
+import { applyImportedDocument, exportLayout, exportPage, getPreImportBackup, listDocumentPages, pageToImportDocument, panelToImportDocument, type ParsedImport, parseLayoutFile, parsePageFile, parsePanelFile, restorePreImportBackup } from "../model/io";
 import { loadCncPreset } from "../model/presets";
 import { useLayoutStore } from "../model/store";
 import { describeWidget } from "../widgets/registry";
 
-defineProps<{ modelValue: boolean }>();
+const props = defineProps<{ modelValue: boolean }>();
 const emit = defineEmits<{ "update:modelValue": [boolean] }>();
+
+// Pre-import safety backup ("undo last import"); refreshed each time the dialog opens.
+const backup = ref(getPreImportBackup());
+watch(() => props.modelValue, (open) => { if (open) backup.value = getPreImportBackup(); });
+function undoImport(): void {
+	if (restorePreImportBackup()) {
+		backup.value = null;
+		uiStore.log(LogLevel.success, i18n.global.t("plugins.flexibleLayouts.io.undoneImport"));
+		close();
+	}
+}
 
 const GALLERY_URL = "https://jaysuk.github.io/flexible-layouts-gallery/";
 
@@ -199,61 +217,47 @@ async function onFile(event: Event) {
 		return;
 	}
 
-	// A BtnCmd export (no `kind`, has `btns`/`tabs`/`panels` or `btnCmdVer`) is converted into a
-	// Flexible Layouts document, then flows through the same selective-restore view below.
-	if (isBtnCmdFile(raw)) {
-		const document = convertBtnCmd(raw);
-		pending.value = { document, missing: [] };
-		restore.theme = true;
-		restore.header = true;
-		restore.settings = true;
-		restore.replaceExisting = false;
-		selectedPages.value = listDocumentPages(document).map((p) => p.path);
-		return;
-	}
-
-	// Peek at the file kind so the one Import button accepts a whole layout, a single page, or a
-	// single panel/custom widget. Pages and panels each land on a new custom page we navigate to
-	// (a fresh page mount renders reliably); a full layout opens the selective-restore view.
-	const kind = (raw as { kind?: string }).kind;
-
 	try {
+		// Everything is normalised to an import document and flows through the same selective-restore
+		// view, so layouts, single pages, single panels and BtnCmd exports all import the same way
+		// (additive by default, with the pre-import safety backup).
+		if (isBtnCmdFile(raw)) {
+			beginRestore(convertBtnCmd(raw));
+			return;
+		}
+		const kind = (raw as { kind?: string }).kind;
 		if (kind === "dwcpage") {
-			const parsed = parsePageFile(text);
-			const path = createCustomPage({
-				title: parsed.title || parsed.page.title || i18n.global.t("plugins.flexibleLayouts.io.importedPageTitle"),
-				icon: parsed.icon || parsed.page.icon,
-			});
-			store.setItems(path, parsed.page.items, "custom");
-			uiStore.log(LogLevel.success, i18n.global.t("plugins.flexibleLayouts.io.importedPage"));
-			close();
-			router.push(path);
+			beginRestore(pageToImportDocument(parsePageFile(text)));
 			return;
 		}
 		if (kind === "dwcpanel") {
 			const item = parsePanelFile(text);
-			const name = item.title || describeWidget(item.widget).title;
-			const path = createCustomPage({ title: i18n.global.t("plugins.flexibleLayouts.io.importedPanelTitle", { name }) });
-			store.setItems(path, [{ ...item, x: 0, y: 0 }], "custom");
-			uiStore.log(LogLevel.success, i18n.global.t("plugins.flexibleLayouts.io.importedPanel"));
-			close();
-			router.push(path);
+			beginRestore(panelToImportDocument(item, item.title || describeWidget(item.widget).title));
 			return;
 		}
-		// Otherwise treat it as a full layout and open the selective-restore view.
 		const parsed = parseLayoutFile(text);
 		pending.value = parsed;
-		// Default selection: everything the file contains.
-		restore.theme = true;
-		restore.header = true;
-		restore.settings = true;
-		restore.replaceExisting = false;
+		resetRestore();
 		selectedPages.value = listDocumentPages(parsed.document).map((p) => p.path);
 	} catch (e) {
 		const code = (e as Error).message;
 		const known = ["invalidJson", "notALayout", "notAPage", "notAPanel"];
 		error.value = i18n.global.t(`plugins.flexibleLayouts.io.error.${known.includes(code) ? code : "generic"}`);
 	}
+}
+
+function resetRestore(): void {
+	restore.theme = true;
+	restore.header = true;
+	restore.settings = true;
+	restore.replaceExisting = false;
+}
+
+/** Open the selective-restore view for a normalised import document (no missing-plugin info). */
+function beginRestore(document: LayoutDocument): void {
+	pending.value = { document, missing: [] };
+	resetRestore();
+	selectedPages.value = listDocumentPages(document).map((p) => p.path);
 }
 
 function cancelImport() {

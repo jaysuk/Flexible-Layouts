@@ -57,9 +57,25 @@ describe("BtnCmd import", () => {
 		expect(panelItem!.w).toBeGreaterThanOrEqual(2);
 	});
 
-	it("falls back to a note placeholder for unknown panel types", () => {
-		const doc = convertBtnCmd({ ...SAMPLE, panels: [{ tabID: "tab1", panelType: "somethingNew", panelXpos: 0, panelYpos: 0 }] });
+	it("falls back to a verbose note for unknown panel types, carrying the object-model path", () => {
+		const doc = convertBtnCmd({
+			...SAMPLE,
+			panels: [{ tabID: "tab1", panelType: "somethingNew", panelMMPath: "sensors.analog[0].lastReading", panelMMPrefix: "Coolant", panelXpos: 0, panelYpos: 0 }],
+		});
 		const note = Object.values(doc.pages)[0].items.map((i) => i.widget).find((w) => w.type === "note") as Extract<Widget, { type: "note" }>;
 		expect(note?.content).toContain("somethingNew");
+		expect(note?.content).toContain("sensors.analog[0].lastReading"); // OM path preserved for rebuilding
+		expect(note?.content).toContain("Coolant");
+	});
+
+	it("maps a txtLabel button to a text label widget (not a code button)", () => {
+		const doc = convertBtnCmd({
+			...SAMPLE,
+			btns: [{ btnType: "txtLabel", btnLabel: "Heading", btnColour: "#FF0000", btnGroupIdx: "tab1", btnXpos: 0, btnYpos: 0 }],
+		});
+		const w = Object.values(doc.pages)[0].items.map((i) => i.widget).find((x) => x.type === "label") as Extract<Widget, { type: "label" }>;
+		expect(w?.content).toBe("Heading");
+		expect(w?.variant).toBe("text");
+		expect(w?.color).toBe("#FF0000");
 	});
 });

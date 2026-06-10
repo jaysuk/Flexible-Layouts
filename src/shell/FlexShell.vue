@@ -130,7 +130,7 @@
 			</v-container>
 		</v-main>
 
-		<PageManager v-model="pageManagerOpen" />
+		<PageManager v-model="pageManagerOpen" @open-import="ioOpen = true" />
 		<ThemeEditor v-model="themeEditorOpen" />
 		<ImportExportDialog v-model="ioOpen" />
 		<ProfilesDialog v-model="profilesOpen" />

@@ -68,7 +68,7 @@
 			</p>
 		</v-card-text>
 
-		<PageManager v-model="dialogs.pageManager" />
+		<PageManager v-model="dialogs.pageManager" @open-import="dialogs.io = true" />
 		<ThemeEditor v-model="dialogs.theme" />
 		<ImportExportDialog v-model="dialogs.io" />
 		<ProfilesDialog v-model="dialogs.profiles" />

@@ -30,6 +30,9 @@
 			<div v-else-if="component === 'TemperatureChart'" class="d-flex flex-column fill-height">
 				<TemperatureChart class="flex-grow-1" />
 			</div>
+			<div v-else-if="component === 'JobLayerChart'" class="d-flex flex-column fill-height">
+				<JobLayerChart class="flex-grow-1" :settings="layerChartSettings" />
+			</div>
 			<!-- Full console = command input + event list, like DWC's Console page. -->
 			<div v-else-if="component === 'EventList'" class="d-flex flex-column fill-height">
 				<CodeInput variant="solo" class="flex-shrink-0 mb-2" />
@@ -60,6 +63,10 @@ interface FileItem { name: string; isDirectory?: boolean }
 
 const props = defineProps<{ component: string }>();
 const machineStore = useMachineStore();
+
+// The layer chart requires a `settings` prop (display options); a sensible static default is fine for
+// a dashboard panel - the user isn't expected to tweak it here.
+const layerChartSettings = { hideFirstLayer: false, showAllLayers: false, lastLayerCount: 30 };
 
 const gcodesDir = computed(() =>
 	(machineStore.model as { directories?: { gCodes?: string } }).directories?.gCodes || "0:/gcodes");

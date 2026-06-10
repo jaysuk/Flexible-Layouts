@@ -29,7 +29,7 @@
 						</v-col>
 					</v-row>
 					<div class="d-flex justify-end mt-2 ga-2">
-						<v-btn variant="text" size="small" prepend-icon="mdi-upload" @click="pickPage">
+						<v-btn variant="text" size="small" prepend-icon="mdi-upload" @click="requestImport">
 							{{ $t("plugins.flexibleLayouts.io.importPage") }}
 						</v-btn>
 						<v-btn color="primary" size="small" prepend-icon="mdi-plus"
@@ -37,8 +37,6 @@
 							{{ $t("plugins.flexibleLayouts.pages.create") }}
 						</v-btn>
 					</div>
-					<input ref="pageInput" type="file" accept=".json,application/json" class="d-none" @change="onPageFile" />
-					<v-alert v-if="pageError" type="error" variant="tonal" density="compact" class="mt-2">{{ pageError }}</v-alert>
 				</v-sheet>
 
 				<!-- Existing nav items, grouped by menu section (matching the drawer). Reordering is
@@ -168,13 +166,13 @@ import {
 	setHidden,
 	setNavOrder,
 } from "../model/pageManager";
-import { exportPage, parsePageFile } from "../model/io";
+import { exportPage } from "../model/io";
 import { useLayoutStore } from "../model/store";
 import IconPicker from "./IconPicker.vue";
 import OmPathField from "./OmPathField.vue";
 
 defineProps<{ modelValue: boolean }>();
-const emit = defineEmits<{ "update:modelValue": [boolean] }>();
+const emit = defineEmits<{ "update:modelValue": [boolean]; "open-import": [] }>();
 
 const menuStore = useMenuStore();
 const router = useRouter();
@@ -183,8 +181,12 @@ const store = useLayoutStore();
 const newTitle = ref("");
 const newIcon = ref("mdi-view-dashboard-outline");
 const newCategory = ref<PageCategory>("control");
-const pageInput = ref<HTMLInputElement | null>(null);
-const pageError = ref("");
+// Importing a page is handled by the shared Backup & share dialog (same mechanism for layouts, pages,
+// panels and BtnCmd files: additive by default, with a pre-import backup). We just open it.
+function requestImport(): void {
+	emit("open-import");
+	emit("update:modelValue", false);
+}
 
 function hasLayout(path: string): boolean {
 	const page = store.getPage(path);
@@ -236,33 +238,6 @@ function clearCond() {
 }
 // #endregion
 
-function pickPage() {
-	pageError.value = "";
-	pageInput.value?.click();
-}
-
-async function onPageFile(event: Event) {
-	const input = event.target as HTMLInputElement;
-	const file = input.files?.[0];
-	input.value = "";
-	if (!file) {
-		return;
-	}
-	try {
-		const parsed = parsePageFile(await file.text());
-		const path = createCustomPage({
-			title: parsed.title || parsed.page.title || "Imported page",
-			icon: parsed.icon || parsed.page.icon,
-		});
-		store.setItems(path, parsed.page.items, "custom");
-		emit("update:modelValue", false);
-		router.push(path);
-	} catch (e) {
-		const code = (e as Error).message;
-		const key = code === "invalidJson" || code === "notAPage" ? code : "generic";
-		pageError.value = i18n.global.t(`plugins.flexibleLayouts.io.error.${key}`);
-	}
-}
 
 const categoryItems = computed(() =>
 	PAGE_CATEGORIES.map((key) => ({ title: categoryLabel(key), value: key })));

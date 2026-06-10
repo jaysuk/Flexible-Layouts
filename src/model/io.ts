@@ -8,9 +8,9 @@
 import { getLoadedPlugins } from "@/plugins";
 import { useMachineStore } from "@/stores/machine";
 
-import { type GridItemModel, type LayoutDependency, type LayoutDocument, type PageLayout, migrateDocument, reidItem } from "./document";
+import { createEmptyDocument, type GridItemModel, type LayoutDependency, type LayoutDocument, type PageLayout, migrateDocument, newItemId, reidItem } from "./document";
 import { computeDependencies, recomputeDependencies } from "./dependencies";
-import { registerExistingCustomPages, unregisterAllCustomPages } from "./pageManager";
+import { CUSTOM_PAGE_PREFIX, registerExistingCustomPages, unregisterAllCustomPages } from "./pageManager";
 import { setLiveDocument, useLayoutStore } from "./store";
 import { applyTheme } from "./theme";
 
@@ -168,11 +168,30 @@ export function mergeImported(current: LayoutDocument, imported: LayoutDocument,
 		}
 	}
 
+	const existingTitles = new Set(
+		Object.values(target.pages).map((p) => (p?.title ?? "").trim().toLowerCase()).filter(Boolean),
+	);
 	const keys = pages === "all" ? Object.keys(imported.pages ?? {}) : pages;
 	for (const key of keys) {
-		if (imported.pages?.[key]) {
-			target.pages[key] = JSON.parse(JSON.stringify(imported.pages[key]));
+		const src = imported.pages?.[key];
+		if (!src) {
+			continue;
 		}
+		const page = JSON.parse(JSON.stringify(src)) as PageLayout;
+		// A page arriving under a NEW key (not overwriting an existing one) gets a unique title, so you
+		// don't end up with two identically-named pages in the navigation.
+		if (!(key in target.pages) && page.title) {
+			let title = page.title;
+			let n = 2;
+			while (existingTitles.has(title.trim().toLowerCase())) {
+				title = `${page.title} (${n++})`;
+			}
+			page.title = title;
+		}
+		if (page.title) {
+			existingTitles.add(page.title.trim().toLowerCase());
+		}
+		target.pages[key] = page;
 	}
 
 	if (settings) {
@@ -196,14 +215,94 @@ export function mergeImported(current: LayoutDocument, imported: LayoutDocument,
 	return target;
 }
 
+// --- pre-import safety backup (browser-local; a one-click undo of the last import) ----------------
+const PREIMPORT_KEY = "flexibleLayouts.preImportBackup";
+
+export interface PreImportBackup {
+	at: number;
+	name: string;
+	document: LayoutDocument;
+}
+
+/** The snapshot taken just before the most recent import, if any. */
+export function getPreImportBackup(): PreImportBackup | null {
+	try {
+		const s = localStorage.getItem(PREIMPORT_KEY);
+		return s ? (JSON.parse(s) as PreImportBackup) : null;
+	} catch {
+		return null;
+	}
+}
+function setPreImportBackup(doc: LayoutDocument): void {
+	try {
+		localStorage.setItem(PREIMPORT_KEY, JSON.stringify({ at: Date.now(), name: doc.meta?.name ?? "", document: doc }));
+	} catch {
+		/* storage disabled / over quota - skip the safety net rather than block the import */
+	}
+}
+
+/** Roll back to the snapshot taken before the last import. Returns false if there is none. */
+export function restorePreImportBackup(): boolean {
+	const backup = getPreImportBackup();
+	if (!backup) {
+		return false;
+	}
+	unregisterAllCustomPages();
+	setLiveDocument(JSON.parse(JSON.stringify(backup.document)));
+	registerExistingCustomPages();
+	applyTheme();
+	recomputeDependencies();
+	try {
+		localStorage.removeItem(PREIMPORT_KEY);
+	} catch {
+		/* ignore */
+	}
+	return true;
+}
+
 /** Apply mergeImported() to the live document and re-wire routes/theme/dependencies. */
 export function applyImportedDocument(imported: LayoutDocument, opts: RestoreOptions = {}): void {
+	// Snapshot the current layout first so an import can always be undone.
+	setPreImportBackup(useLayoutStore().document.value);
 	const target = mergeImported(useLayoutStore().document.value, imported, opts);
 	unregisterAllCustomPages();
 	setLiveDocument(target);
 	registerExistingCustomPages();
 	applyTheme();
 	recomputeDependencies();
+}
+
+/** Wrap a parsed page into a one-page import document (so single pages flow through the same merge). */
+export function pageToImportDocument(parsed: { page: PageLayout; title?: string; icon?: string }): LayoutDocument {
+	const doc = createEmptyDocument();
+	const path = CUSTOM_PAGE_PREFIX + newItemId();
+	const page: PageLayout = JSON.parse(JSON.stringify(parsed.page));
+	page.kind = "custom";
+	if (parsed.title) {
+		page.title = parsed.title;
+	}
+	if (parsed.icon) {
+		page.icon = parsed.icon;
+	}
+	doc.pages[path] = page;
+	doc.nav.order.push(path);
+	return doc;
+}
+
+/** Wrap a single imported panel into a one-page import document. */
+export function panelToImportDocument(item: GridItemModel, title: string): LayoutDocument {
+	const doc = createEmptyDocument();
+	const path = CUSTOM_PAGE_PREFIX + newItemId();
+	doc.pages[path] = {
+		kind: "custom",
+		title,
+		icon: "mdi-card-outline",
+		category: "control",
+		grid: { cols: 12, rowHeight: 30 },
+		items: [{ ...JSON.parse(JSON.stringify(item)), x: 0, y: 0 }],
+	};
+	doc.nav.order.push(path);
+	return doc;
 }
 
 // #region Single-panel and single-page export/import

@@ -47,6 +47,17 @@ describe("import merge (additive by default)", () => {
 		expect(merged.nav.order).toEqual(["/Plugins/FlexibleLayouts/p/theirs"]);
 	});
 
+	it("renames an imported page whose title collides with an existing one", () => {
+		const current = docWithPages("/Plugins/FlexibleLayouts/p/a");
+		current.pages["/Plugins/FlexibleLayouts/p/a"].title = "Layout 1";
+		const imported = docWithPages("/Plugins/FlexibleLayouts/p/b");
+		imported.pages["/Plugins/FlexibleLayouts/p/b"].title = "Layout 1";
+
+		const merged = mergeImported(current, imported, {});
+		expect(merged.pages["/Plugins/FlexibleLayouts/p/a"].title).toBe("Layout 1");
+		expect(merged.pages["/Plugins/FlexibleLayouts/p/b"].title).toBe("Layout 1 (2)"); // disambiguated
+	});
+
 	it("overwrites a same-keyed page but never drops the others", () => {
 		const current = docWithPages("/", "/Plugins/FlexibleLayouts/p/mine");
 		current.pages["/"].title = "My dashboard";
