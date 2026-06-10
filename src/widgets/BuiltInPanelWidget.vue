@@ -31,9 +31,7 @@
 			<JobFileList v-else-if="component === 'JobFileList'" :options="jobOptions" :root-directory="gcodesDir"
 						 :root-label="$t('list.jobs.root')" no-items-text="list.jobs.noJobs" no-new-file
 						 @file-click="startJob" />
-			<FileList v-else-if="component === 'FileList'" :options="explorerOptions" root-directory="0:/" root-label="0:/"
-					  :no-items-text="$t('plugins.flexibleLayouts.files.none')"
-					  @file-click="openInEditor" @file-edit="openInEditor" />
+			<ExplorerPanel v-else-if="component === 'FileList'" />
 			<v-alert v-else type="info" variant="tonal" density="compact" class="ma-2">
 				{{ $t("plugins.flexibleLayouts.widget.panelMissing", { name: component }) }}
 			</v-alert>
@@ -43,25 +41,23 @@
 
 <script setup lang="ts">
 import { computed, onErrorCaptured, ref } from "vue";
-import { useRouter } from "vue-router";
 
 import { showConfirmDialog } from "@/composables/useConfirmDialog";
 import i18n from "@/i18n";
 import { useMachineStore } from "@/stores/machine";
 
+import ExplorerPanel from "./ExplorerPanel.vue";
+
 interface FileItem { name: string; isDirectory?: boolean }
 
 const props = defineProps<{ component: string }>();
 const machineStore = useMachineStore();
-const router = useRouter();
 
 const gcodesDir = computed(() =>
 	(machineStore.model as { directories?: { gCodes?: string } }).directories?.gCodes || "0:/gcodes");
-// Loosely typed: JobFileList/FileList accept a FileBrowserOptions; we only need the initial directory.
+// Loosely typed: JobFileList accepts a FileBrowserOptions; we only need the initial directory.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const jobOptions = computed((): any => ({ initialDirectory: gcodesDir.value, initialFiles: [] }));
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const explorerOptions = computed((): any => ({ initialDirectory: "0:/", initialFiles: [] }));
 
 async function startJob(item: FileItem, directory: string): Promise<void> {
 	const full = `${directory.replace(/\/+$/, "")}/${item.name}`;
@@ -72,19 +68,6 @@ async function startJob(item: FileItem, directory: string): Promise<void> {
 	)) {
 		await machineStore.sendCode(`M32 "${full}"`);
 	}
-}
-
-// Open a file in DWC's real editor (the Explorer "edit" route), mirroring Path.editRoute so we don't
-// have to bundle @/utils/path. Directories are navigated inside the FileList, so ignore them here.
-function openInEditor(item: FileItem, directory: string): void {
-	if (item.isDirectory) return;
-	const sdPath = `${directory.replace(/\/+$/, "")}/${item.name}`;
-	const match = /^(\d+):\/?(.*)$/.exec(sdPath);
-	const volume = match ? match[1] : "0";
-	const segs = (match ? match[2] : "").split("/").filter(Boolean);
-	const omitVolume = volume === "0" && (segs.length === 0 || !/^\d+$/.test(segs[0]));
-	const route = "/Explorer/edit/" + (omitVolume ? segs : [volume, ...segs]).join("/");
-	router.push(route).catch(() => { /* duplicate navigation */ });
 }
 
 const errored = ref(false);

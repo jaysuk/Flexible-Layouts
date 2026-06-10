@@ -493,6 +493,7 @@
 		"folder": "Folder",
 		"startCommand": "Start command",
 		"up": "Up a folder",
+		"back": "Back to files",
 		"none": "No files or folders here."
 	},
 	"gaugeCluster": {
