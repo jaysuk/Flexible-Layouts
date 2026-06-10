@@ -269,6 +269,32 @@ export type Widget =
 		fullscreen?: boolean;
 	}
 	| {
+		/** Combined nozzle/tool alignment: webcam + crosshair overlay + tool buttons + X/Y offset capture. */
+		type: "toolAlign";
+		label?: string;
+		/** Camera URL (MJPEG stream or snapshot), as for the webcam widget. */
+		url?: string;
+		/** 0 = live stream; >0 = snapshot refreshed every N ms. */
+		refreshMs?: number;
+		fit?: "contain" | "cover";
+		/** Overlay drawn over the feed to aim at. */
+		overlay?: "crosshair" | "target" | "none";
+		overlayColor?: string;
+		/** Crosshair centre as a percentage of the camera box (default 50/50). */
+		overlayX?: number;
+		overlayY?: number;
+		/** Base ring diameter (px) for the "target" overlay. */
+		overlaySize?: number;
+		/** Tool number used as the datum; others are offset relative to it. */
+		referenceTool?: number;
+		/** Default fine-jog step (mm) and feed rate (mm/min) for the nudge buttons. */
+		jogStep?: number;
+		jogFeed?: number;
+		/** Flip the sign of computed offsets if a machine's convention comes out mirrored. */
+		invertOffsets?: boolean;
+		color?: string;
+	}
+	| {
 		/** Button grid built from the .g files in a macros folder. */
 		type: "macros";
 		folder?: string;
@@ -572,6 +598,12 @@ export function createDefaultWidget(type: WidgetType): Widget {
 			};
 		case "webcam":
 			return { type: "webcam", url: "", refreshMs: 1000, fit: "contain", fullscreen: true };
+		case "toolAlign":
+			return {
+				type: "toolAlign", url: "", refreshMs: 0, fit: "contain",
+				overlay: "crosshair", overlayColor: "#39FF14", overlayX: 50, overlayY: 50, overlaySize: 60,
+				jogStep: 0.1, jogFeed: 6000,
+			};
 		case "macros":
 			return { type: "macros", folder: "0:/macros", columns: 2, color: "primary" };
 		case "console":

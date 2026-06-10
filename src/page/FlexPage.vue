@@ -1,9 +1,8 @@
 <template>
 	<div class="flex-page" :style="backgroundStyle">
-		<!-- Edit toolbar. Always shown on custom/empty pages so the canvas is editable on its own;
-			 on a built-in page (fallback present) it appears only while editing, keeping the stock
-			 page pristine in view mode - editing is then entered from the shell's Edit button. -->
-		<div v-if="editMode || !fallback" class="flex-page-toolbar">
+		<!-- Edit toolbar. Shown only while editing; editing is always entered from the shell's top-bar
+			 Edit button (the single entry point), so no standalone edit button floats over the page. -->
+		<div v-if="editMode" class="flex-page-toolbar">
 			<v-btn :color="editMode ? 'primary' : undefined" :variant="editMode ? 'flat' : 'tonal'"
 				   size="small" :prepend-icon="editMode ? 'mdi-check' : 'mdi-pencil-ruler'"
 				   @click="attemptToggleEdit">

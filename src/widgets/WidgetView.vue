@@ -25,6 +25,7 @@
 	<ExtruderWidget v-else-if="widget.type === 'extruder'" :widget="widget" :disabled="disabled" />
 	<WcsWidget v-else-if="widget.type === 'wcs'" :widget="widget" :disabled="disabled" />
 	<ToolSelectWidget v-else-if="widget.type === 'toolSelect'" :widget="widget" :disabled="disabled" />
+	<ToolAlignWidget v-else-if="widget.type === 'toolAlign'" :widget="widget" :disabled="disabled" />
 	<FanWidget v-else-if="widget.type === 'fan'" :widget="widget" :disabled="disabled" />
 	<JobControlWidget v-else-if="widget.type === 'jobControl'" :widget="widget" :disabled="disabled" />
 	<FilesWidget v-else-if="widget.type === 'files'" :widget="widget" :disabled="disabled" />
@@ -89,6 +90,7 @@ import TableWidget from "./TableWidget.vue";
 import ThemeToggleWidget from "./ThemeToggleWidget.vue";
 import ThumbnailWidget from "./ThumbnailWidget.vue";
 import ToggleWidget from "./ToggleWidget.vue";
+import ToolAlignWidget from "./ToolAlignWidget.vue";
 import ToolSelectWidget from "./ToolSelectWidget.vue";
 import ValueWidget from "./ValueWidget.vue";
 import WcsWidget from "./WcsWidget.vue";

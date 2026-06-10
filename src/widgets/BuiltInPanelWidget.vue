@@ -25,8 +25,16 @@
 			<JobTimesPanel v-else-if="component === 'JobTimesPanel'" />
 			<WebcamPanel v-else-if="component === 'WebcamPanel'" />
 			<MacroList v-else-if="component === 'MacroList'" />
-			<TemperatureChart v-else-if="component === 'TemperatureChart'" />
-			<EventList v-else-if="component === 'EventList'" />
+			<!-- Chart canvas is absolutely positioned inside a flex-grow content area, so the card must
+				 be given real height or it collapses to just its title. -->
+			<div v-else-if="component === 'TemperatureChart'" class="d-flex flex-column fill-height">
+				<TemperatureChart class="flex-grow-1" />
+			</div>
+			<!-- Full console = command input + event list, like DWC's Console page. -->
+			<div v-else-if="component === 'EventList'" class="d-flex flex-column fill-height">
+				<CodeInput variant="solo" class="flex-shrink-0 mb-2" />
+				<EventList class="flex-grow-1 flex-console-list" />
+			</div>
 			<!-- File browsers need props/handlers the page would normally supply. -->
 			<JobFileList v-else-if="component === 'JobFileList'" :options="jobOptions" :root-directory="gcodesDir"
 						 :root-label="$t('list.jobs.root')" no-items-text="list.jobs.noJobs" no-new-file
@@ -81,5 +89,9 @@ onErrorCaptured((err) => {
 <style scoped>
 .flex-builtin-panel {
 	overflow: auto;
+}
+/* Let the console's event list shrink and scroll within the flex column instead of overflowing. */
+.flex-console-list {
+	min-height: 0;
 }
 </style>

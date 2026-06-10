@@ -82,6 +82,7 @@ export const FREEFORM_WIDGETS: ReadonlyArray<FreeformCatalogEntry> = [
 	{ type: "spindle",    labelKey: "widgets.spindle",    icon: "mdi-saw-blade",          defaultSize: { w: 4, h: 3 }, category: "machine" },
 	{ type: "wcs",        labelKey: "widgets.wcs",        icon: "mdi-axis-arrow",         defaultSize: { w: 4, h: 3 }, category: "machine" },
 	{ type: "toolSelect", labelKey: "widgets.toolSelect", icon: "mdi-tools",              defaultSize: { w: 4, h: 2 }, category: "machine" },
+	{ type: "toolAlign",  labelKey: "widgets.toolAlign",  icon: "mdi-image-filter-center-focus", defaultSize: { w: 6, h: 12 }, category: "machine" },
 	{ type: "jobControl", labelKey: "widgets.jobControl", icon: "mdi-play-pause",         defaultSize: { w: 4, h: 3 }, category: "machine" },
 	{ type: "macros",     labelKey: "widgets.macros",     icon: "mdi-cog-play",           defaultSize: { w: 4, h: 5 }, category: "machine" },
 	{ type: "files",      labelKey: "widgets.files",      icon: "mdi-file-document-multiple", defaultSize: { w: 4, h: 6 }, category: "machine" },
@@ -221,6 +222,8 @@ export function describeWidget(widget: Widget): { title: string; icon: string } 
 			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.wcs"), icon: "mdi-axis-arrow" };
 		case "toolSelect":
 			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.toolSelect"), icon: "mdi-tools" };
+		case "toolAlign":
+			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.toolAlign"), icon: "mdi-image-filter-center-focus" };
 		case "fan":
 			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.fan"), icon: "mdi-fan" };
 		case "jobControl":

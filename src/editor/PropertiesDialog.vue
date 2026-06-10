@@ -476,6 +476,28 @@
 					</v-row>
 				</template>
 
+				<!-- Tool alignment -->
+				<template v-else-if="draft.type === 'toolAlign'">
+					<v-text-field v-model="draft.url" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.webcam.url')" placeholder="http://…/webcam/?action=stream" />
+					<v-row dense>
+						<v-col cols="6"><v-text-field v-model.number="draft.refreshMs" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.webcam.refreshMs')" /></v-col>
+						<v-col cols="6"><v-select v-model="draft.fit" :items="fitOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.webcam.fit')" /></v-col>
+					</v-row>
+					<div class="text-caption text-medium-emphasis mb-1 mt-2">{{ $t("plugins.flexibleLayouts.toolAlign.overlayHeading") }}</div>
+					<v-row dense>
+						<v-col cols="6"><v-select v-model="draft.overlay" :items="overlayOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.toolAlign.overlay')" /></v-col>
+						<v-col cols="6"><v-text-field v-model="draft.overlayColor" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.toolAlign.overlayColor')" placeholder="#39FF14" /></v-col>
+						<v-col cols="4"><v-text-field v-model.number="draft.overlayX" type="number" density="compact" variant="outlined" hide-details suffix="%" :label="$t('plugins.flexibleLayouts.toolAlign.centreX')" /></v-col>
+						<v-col cols="4"><v-text-field v-model.number="draft.overlayY" type="number" density="compact" variant="outlined" hide-details suffix="%" :label="$t('plugins.flexibleLayouts.toolAlign.centreY')" /></v-col>
+						<v-col cols="4"><v-text-field v-model.number="draft.overlaySize" type="number" density="compact" variant="outlined" hide-details suffix="px" :label="$t('plugins.flexibleLayouts.toolAlign.ringSize')" /></v-col>
+					</v-row>
+					<div class="text-caption text-medium-emphasis mb-1 mt-2">{{ $t("plugins.flexibleLayouts.toolAlign.jogHeading") }}</div>
+					<v-row dense>
+						<v-col cols="6"><v-text-field v-model.number="draft.jogStep" type="number" step="0.01" density="compact" variant="outlined" hide-details suffix="mm" :label="$t('plugins.flexibleLayouts.toolAlign.jogStep')" /></v-col>
+						<v-col cols="6"><v-text-field v-model.number="draft.jogFeed" type="number" density="compact" variant="outlined" hide-details suffix="mm/min" :label="$t('plugins.flexibleLayouts.toolAlign.jogFeed')" /></v-col>
+					</v-row>
+				</template>
+
 				<!-- Macro grid -->
 				<template v-else-if="draft.type === 'macros'">
 					<v-text-field v-model="draft.folder" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.macros.folder')" placeholder="0:/macros" />
@@ -1071,6 +1093,11 @@ const severityOptions = computed(() => [
 const fitOptions = computed(() => [
 	{ title: t("webcam.fitContain"), value: "contain" },
 	{ title: t("webcam.fitCover"), value: "cover" },
+]);
+const overlayOptions = computed(() => [
+	{ title: t("toolAlign.overlayCrosshair"), value: "crosshair" },
+	{ title: t("toolAlign.overlayTarget"), value: "target" },
+	{ title: t("toolAlign.overlayNone"), value: "none" },
 ]);
 const thumbnailFitOptions = computed(() => [
 	{ title: t("thumbnail.fitContain"), value: "contain" },
