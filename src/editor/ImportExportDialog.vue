@@ -87,6 +87,13 @@
 						<div class="text-body-2 mb-1">{{ $t("plugins.flexibleLayouts.io.missingHelp") }}</div>
 						<div v-for="dep in pending.missing" :key="dep.pluginId" class="text-caption">• {{ dep.name }} ({{ dep.pluginId }})</div>
 					</v-alert>
+
+					<v-divider class="my-3" />
+					<v-checkbox v-model="restore.replaceExisting" color="warning" density="compact" hide-details
+								:label="$t('plugins.flexibleLayouts.io.replaceExisting')" />
+					<div class="text-caption text-medium-emphasis">
+						{{ restore.replaceExisting ? $t("plugins.flexibleLayouts.io.replaceHint") : $t("plugins.flexibleLayouts.io.additiveHint") }}
+					</div>
 				</template>
 			</v-card-text>
 
@@ -150,7 +157,7 @@ function onExportPage() {
 }
 
 // --- import ------------------------------------------------------------------------
-const restore = reactive({ theme: true, header: true, settings: true });
+const restore = reactive({ theme: true, header: true, settings: true, replaceExisting: false });
 const selectedPages = ref<Array<string>>([]);
 
 const present = computed(() => {
@@ -200,6 +207,7 @@ async function onFile(event: Event) {
 		restore.theme = true;
 		restore.header = true;
 		restore.settings = true;
+		restore.replaceExisting = false;
 		selectedPages.value = listDocumentPages(document).map((p) => p.path);
 		return;
 	}
@@ -239,6 +247,7 @@ async function onFile(event: Event) {
 		restore.theme = true;
 		restore.header = true;
 		restore.settings = true;
+		restore.replaceExisting = false;
 		selectedPages.value = listDocumentPages(parsed.document).map((p) => p.path);
 	} catch (e) {
 		const code = (e as Error).message;
@@ -260,6 +269,7 @@ function confirmImport() {
 		header: present.value.header && restore.header,
 		settings: restore.settings,
 		pages: selectedPages.value,
+		replaceExisting: restore.replaceExisting,
 	});
 	uiStore.log(LogLevel.success, i18n.global.t("plugins.flexibleLayouts.io.imported"));
 	close();

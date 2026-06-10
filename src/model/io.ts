@@ -134,16 +134,28 @@ export interface RestoreOptions {
 	settings?: boolean;
 	/** Page paths to restore, or "all". Selected pages overwrite; others are left as they are. */
 	pages?: Array<string> | "all";
+	/**
+	 * Delete the current pages before applying the import (a clean replace). Default false: the import
+	 * is ADDITIVE - existing pages are kept and the imported ones are added alongside them.
+	 */
+	replaceExisting?: boolean;
 }
 
 /**
- * Merge selected parts of an imported document over the current live one and re-wire routes/theme.
- * Unselected parts (and current pages not present in the import) are left untouched, so this works
- * for both a full restore and a "just the theme" / "just these pages" restore.
+ * Pure merge of selected parts of an imported document over `current`, returning a NEW document.
+ * Additive by default: current pages are never deleted (only same-keyed pages are overwritten), and
+ * the nav order/hidden lists are MERGED so existing pages keep their place and imported pages are
+ * appended. Set `replaceExisting` to wipe the current pages first (an explicit clean replace).
  */
-export function applyImportedDocument(imported: LayoutDocument, opts: RestoreOptions = {}): void {
-	const { theme = true, header = true, settings = true, pages = "all" } = opts;
-	const target = JSON.parse(JSON.stringify(useLayoutStore().document.value)) as LayoutDocument;
+export function mergeImported(current: LayoutDocument, imported: LayoutDocument, opts: RestoreOptions = {}): LayoutDocument {
+	const { theme = true, header = true, settings = true, pages = "all", replaceExisting = false } = opts;
+	const target = JSON.parse(JSON.stringify(current)) as LayoutDocument;
+
+	if (replaceExisting) {
+		// Explicit delete: start from a clean slate (built-in pages fall back to their native views).
+		target.pages = {};
+		target.nav = { order: [], hidden: [] };
+	}
 
 	if (theme) {
 		target.theme = JSON.parse(JSON.stringify(imported.theme));
@@ -155,10 +167,7 @@ export function applyImportedDocument(imported: LayoutDocument, opts: RestoreOpt
 			delete target.header;
 		}
 	}
-	if (settings) {
-		target.statusHidden = imported.statusHidden;
-		target.nav = JSON.parse(JSON.stringify(imported.nav ?? { order: [], hidden: [] }));
-	}
+
 	const keys = pages === "all" ? Object.keys(imported.pages ?? {}) : pages;
 	for (const key of keys) {
 		if (imported.pages?.[key]) {
@@ -166,6 +175,30 @@ export function applyImportedDocument(imported: LayoutDocument, opts: RestoreOpt
 		}
 	}
 
+	if (settings) {
+		const importedNav = imported.nav ?? { order: [], hidden: [] };
+		if (replaceExisting) {
+			target.statusHidden = imported.statusHidden;
+			target.nav = JSON.parse(JSON.stringify(importedNav));
+		} else {
+			// Additive: keep the current order, append imported page paths not already present, and
+			// union the hidden lists - so importing never reorders away or unhides existing pages.
+			const order = [...(target.nav?.order ?? [])];
+			for (const path of importedNav.order ?? []) {
+				if (!order.includes(path)) {
+					order.push(path);
+				}
+			}
+			target.nav = { order, hidden: [...new Set([...(target.nav?.hidden ?? []), ...(importedNav.hidden ?? [])])] };
+		}
+	}
+
+	return target;
+}
+
+/** Apply mergeImported() to the live document and re-wire routes/theme/dependencies. */
+export function applyImportedDocument(imported: LayoutDocument, opts: RestoreOptions = {}): void {
+	const target = mergeImported(useLayoutStore().document.value, imported, opts);
 	unregisterAllCustomPages();
 	setLiveDocument(target);
 	registerExistingCustomPages();
