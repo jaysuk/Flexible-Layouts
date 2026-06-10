@@ -103,9 +103,11 @@ import { useRouter } from "vue-router";
 import i18n from "@/i18n";
 import { LogLevel, useUiStore } from "@/stores/ui";
 
-import { applyImportedDocument, exportLayout, exportPage, listDocumentPages, type ParsedImport, parseLayoutFile } from "../model/io";
+import { applyImportedDocument, exportLayout, exportPage, listDocumentPages, type ParsedImport, parseLayoutFile, parsePageFile, parsePanelFile } from "../model/io";
+import { createCustomPage } from "../model/pageManager";
 import { loadCncPreset } from "../model/presets";
 import { useLayoutStore } from "../model/store";
+import { describeWidget } from "../widgets/registry";
 
 defineProps<{ modelValue: boolean }>();
 const emit = defineEmits<{ "update:modelValue": [boolean] }>();
@@ -171,8 +173,45 @@ async function onFile(event: Event) {
 	if (!file) {
 		return;
 	}
+	error.value = "";
+	const text = await file.text();
+
+	// Peek at the file kind so the one Import button accepts a whole layout, a single page, or a
+	// single panel/custom widget. Pages and panels each land on a new custom page we navigate to
+	// (a fresh page mount renders reliably); a full layout opens the selective-restore view.
+	let kind: string | undefined;
 	try {
-		const parsed = parseLayoutFile(await file.text());
+		kind = (JSON.parse(text) as { kind?: string }).kind;
+	} catch {
+		error.value = i18n.global.t("plugins.flexibleLayouts.io.error.invalidJson");
+		return;
+	}
+
+	try {
+		if (kind === "dwcpage") {
+			const parsed = parsePageFile(text);
+			const path = createCustomPage({
+				title: parsed.title || parsed.page.title || i18n.global.t("plugins.flexibleLayouts.io.importedPageTitle"),
+				icon: parsed.icon || parsed.page.icon,
+			});
+			store.setItems(path, parsed.page.items, "custom");
+			uiStore.log(LogLevel.success, i18n.global.t("plugins.flexibleLayouts.io.importedPage"));
+			close();
+			router.push(path);
+			return;
+		}
+		if (kind === "dwcpanel") {
+			const item = parsePanelFile(text);
+			const name = item.title || describeWidget(item.widget).title;
+			const path = createCustomPage({ title: i18n.global.t("plugins.flexibleLayouts.io.importedPanelTitle", { name }) });
+			store.setItems(path, [{ ...item, x: 0, y: 0 }], "custom");
+			uiStore.log(LogLevel.success, i18n.global.t("plugins.flexibleLayouts.io.importedPanel"));
+			close();
+			router.push(path);
+			return;
+		}
+		// Otherwise treat it as a full layout and open the selective-restore view.
+		const parsed = parseLayoutFile(text);
 		pending.value = parsed;
 		// Default selection: everything the file contains.
 		restore.theme = true;
@@ -181,8 +220,8 @@ async function onFile(event: Event) {
 		selectedPages.value = listDocumentPages(parsed.document).map((p) => p.path);
 	} catch (e) {
 		const code = (e as Error).message;
-		const key = code === "invalidJson" || code === "notALayout" ? code : "generic";
-		error.value = i18n.global.t(`plugins.flexibleLayouts.io.error.${key}`);
+		const known = ["invalidJson", "notALayout", "notAPage", "notAPanel"];
+		error.value = i18n.global.t(`plugins.flexibleLayouts.io.error.${known.includes(code) ? code : "generic"}`);
 	}
 }
 
