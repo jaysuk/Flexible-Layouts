@@ -858,27 +858,120 @@ export function createEmptyPage(kind: PageLayout["kind"]): PageLayout {
 	};
 }
 
+/** A single structural upgrade step. `up` mutates the document in place to reach version `to`. */
+interface DocMigration {
+	to: number;
+	up: (doc: LayoutDocument) => void;
+}
+
+/**
+ * Stepwise structural migrations, applied in order to any document whose schemaVersion is behind the
+ * current one. Add an entry here AND bump DOCUMENT_SCHEMA_VERSION only for changes that can't be
+ * handled by reading a sensible default at runtime: renaming/moving/removing a field, changing its
+ * type, or deliberately materialising new parameters. Use forEachWidget()/backfillWidgetDefaults()
+ * to reach every widget. This mirrors btncmd's checkDataVersion (merge old config against a current
+ * reference on version change) but keeps each change explicit and reviewable. Example:
+ *
+ *   { to: 2, up: (doc) => forEachWidget(doc, (w) => { if (w.type === "jog" && "speed" in w) {
+ *       (w as Record<string, unknown>).feedrate = (w as Record<string, unknown>).speed;
+ *       delete (w as Record<string, unknown>).speed; } }) },
+ */
+const DOC_MIGRATIONS: Array<DocMigration> = [
+	// (no structural migrations yet - v1 is the first schema)
+];
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Recursively add keys present in `defaults` but absent from `target`; never change an existing
+ * value (so user choices and intentionally-set fields are preserved). Arrays are taken whole.
+ */
+function fillMissingDefaults(target: Record<string, unknown>, defaults: Record<string, unknown>): void {
+	for (const key of Object.keys(defaults)) {
+		const dv = defaults[key];
+		if (!(key in target) || target[key] === undefined) {
+			target[key] = (isPlainObject(dv) || Array.isArray(dv)) ? JSON.parse(JSON.stringify(dv)) : dv;
+		} else if (isPlainObject(target[key]) && isPlainObject(dv)) {
+			fillMissingDefaults(target[key] as Record<string, unknown>, dv);
+		}
+	}
+}
+
+/**
+ * Backfill any parameters added to a widget's default template since it was saved - the migration
+ * building block for "a new parameter was added to an existing widget". Only fills gaps; never
+ * overwrites. Use from a DOC_MIGRATIONS step when you want old widgets brought up to the template.
+ */
+export function backfillWidgetDefaults(widget: Widget): void {
+	const defaults = createDefaultWidget(widget.type);
+	// createDefaultWidget falls back to a builtinPanel for types it doesn't own (e.g. pluginPage);
+	// only backfill when the template genuinely matches, so we never inject foreign keys.
+	if (defaults.type !== widget.type) {
+		return;
+	}
+	fillMissingDefaults(widget as unknown as Record<string, unknown>, defaults as unknown as Record<string, unknown>);
+}
+
+/** Visit every widget: page items (+ responsive variants), nested group children, and header items. */
+export function forEachWidget(doc: LayoutDocument, visit: (widget: Widget) => void): void {
+	const visitItems = (items?: Array<GridItemModel>): void => {
+		if (!Array.isArray(items)) {
+			return;
+		}
+		for (const item of items) {
+			if (!item || !item.widget) {
+				continue;
+			}
+			visit(item.widget);
+			if (item.widget.type === "group") {
+				visitItems((item.widget as Extract<Widget, { type: "group" }>).items);
+			}
+		}
+	};
+	for (const page of Object.values(doc.pages ?? {})) {
+		if (!page) {
+			continue;
+		}
+		visitItems(page.items);
+		visitItems(page.variants?.md);
+		visitItems(page.variants?.sm);
+	}
+	visitItems(doc.header?.items);
+}
+
 /**
  * Bring a persisted document up to the current schema. Total by contract - never throws; on an
- * unrecognised/corrupt shape it returns a fresh empty document so the UI always has something
- * valid to render.
+ * unrecognised/corrupt shape it returns a fresh empty document so the UI always has something valid
+ * to render. Normalises the top-level shape (preserving every existing field), then runs any
+ * stepwise structural migrations the stored schemaVersion is behind on.
  */
 export function migrateDocument(raw: unknown): LayoutDocument {
 	if (!raw || typeof raw !== "object") {
 		return createEmptyDocument();
 	}
-	const doc = raw as Partial<LayoutDocument>;
-	// v1 is the first schema; future versions add stepwise upgrades here keyed on doc.schemaVersion.
+	const doc = raw as Partial<LayoutDocument> & { schemaVersion?: number };
 	const base = createEmptyDocument();
-	return {
-		schemaVersion: DOCUMENT_SCHEMA_VERSION,
+	const next: LayoutDocument = {
+		schemaVersion: typeof doc.schemaVersion === "number" ? doc.schemaVersion : 0,
 		meta: { ...base.meta, ...(doc.meta ?? {}) },
 		theme: { ...base.theme, ...(doc.theme ?? {}) },
 		pages: (doc.pages && typeof doc.pages === "object") ? doc.pages as Record<string, PageLayout> : {},
 		nav: { ...base.nav, ...(doc.nav ?? {}) },
 		dependencies: Array.isArray(doc.dependencies) ? doc.dependencies : [],
-		migratedGlobalHides: doc.migratedGlobalHides === true,
+		...(doc.header ? { header: doc.header } : {}),
+		...(doc.statusHidden !== undefined ? { statusHidden: doc.statusHidden } : {}),
+		...(doc.migratedGlobalHides ? { migratedGlobalHides: true } : {}),
 	};
+	for (const migration of DOC_MIGRATIONS) {
+		if (next.schemaVersion < migration.to) {
+			migration.up(next);
+			next.schemaVersion = migration.to;
+		}
+	}
+	next.schemaVersion = DOCUMENT_SCHEMA_VERSION;
+	return next;
 }
 
 /** Deep-clone a grid item with fresh ids (recursing into group children). */

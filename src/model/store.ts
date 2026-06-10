@@ -16,6 +16,7 @@ import {
 	createEmptyPage,
 	type GridItemModel,
 	type LayoutDocument,
+	migrateDocument,
 	type PageLayout,
 	resolveBreakpointItems,
 } from "./document";
@@ -72,7 +73,18 @@ export function ensureProfiles(): { profiles: Record<string, LayoutDocument>; ac
 
 /** Seed the profiles structure. Called once at plugin init. */
 export function registerDocument(): void {
-	ensureProfiles();
+	const { profiles } = ensureProfiles();
+	// Bring every saved profile up to the current schema on load: normalise its shape and apply any
+	// stepwise migrations it's behind on, so a config saved by an older plugin version keeps working.
+	// Write the upgraded document back only when it actually changed, so we don't dirty DWC's settings
+	// (and trigger a needless SD-card write) on every load of an already-current config.
+	for (const id of Object.keys(profiles)) {
+		const before = JSON.stringify(profiles[id]);
+		const migrated = migrateDocument(profiles[id]);
+		if (JSON.stringify(migrated) !== before) {
+			profiles[id] = migrated;
+		}
+	}
 }
 
 /** Internal: resolve the active profile's live, reactive document. */
