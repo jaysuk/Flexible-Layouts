@@ -677,6 +677,10 @@ export interface Typography {
 	fontSize?: number;
 	/** CSS font-family stack. */
 	fontFamily?: string;
+	/** Font size (px) for labels — field/section labels, captions — independent of the value text. */
+	labelFontSize?: number;
+	/** CSS font-family stack for labels. */
+	labelFontFamily?: string;
 }
 
 /** Comparison operators for object-model-driven conditional rules. */

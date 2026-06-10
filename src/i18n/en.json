@@ -292,6 +292,7 @@
 		"title": "Text & size",
 		"fontSize": "Font size",
 		"fontFamily": "Font",
+		"labelFont": "Labels (separate font / size)",
 		"fit": "Scale content to fit",
 		"fitHint": "Shrinks the widget to fit its cell instead of showing scrollbars."
 	},

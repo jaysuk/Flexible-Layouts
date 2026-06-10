@@ -31,7 +31,7 @@
 		<!-- In edit mode the body becomes pointer-inert (so dragging/clicking the tile never actuates
 			 the live widget underneath, e.g. firing G-code while arranging). Done with
 			 pointer-events:none rather than an overlay, so it doesn't swallow the resize grip. -->
-		<div class="flex-item-body" :class="{ 'with-header': editMode, 'is-inert': editMode, 'has-bg': !!item.colors?.background, 'has-text': !!item.colors?.text, 'no-scroll': fitEnabled }"
+		<div class="flex-item-body" :class="{ 'with-header': editMode, 'is-inert': editMode, 'has-bg': !!item.colors?.background, 'has-text': !!item.colors?.text, 'no-scroll': fitEnabled, 'has-label-size': !!item.typography?.labelFontSize, 'has-label-family': !!item.typography?.labelFontFamily }"
 			 :style="typographyStyle">
 			<!-- A condition can hide the widget at runtime. In edit mode it stays visible (dimmed) so
 				 it remains selectable; in view mode it renders nothing. -->
@@ -128,19 +128,21 @@ const colorVars = computed(() => {
 });
 
 // Typography overrides applied to the widget body (font-family cascades to everything; freeform
-// widgets size their text in em so they follow the base font-size set here).
+// widgets size their text in em so they follow the base font-size set here). Label font/size are
+// exposed as CSS variables so widget labels can scale independently of their values.
 const typographyStyle = computed(() => {
 	const t = props.item.typography;
 	const style: Record<string, string> = {};
 	if (t?.fontSize) style.fontSize = `${t.fontSize}px`;
 	if (t?.fontFamily) style.fontFamily = t.fontFamily;
+	if (t?.labelFontSize) style["--flex-label-size"] = `${t.labelFontSize}px`;
+	if (t?.labelFontFamily) style["--flex-label-family"] = t.labelFontFamily;
 	return style;
 });
 
-// Scale-to-fit defaults on for content that tends to overflow a small cell (built-in panels,
-// embedded plugin pages); freeform widgets are sized to their cell already. The item can override.
-const fitEnabled = computed(() =>
-	props.item.fit ?? (props.item.widget.type === "builtinPanel" || props.item.widget.type === "pluginPage"));
+// Scale-to-fit defaults OFF — widgets size to their cell, panels scroll if they overflow. The user
+// can turn it on per panel in properties when they'd rather shrink the content to fit.
+const fitEnabled = computed(() => props.item.fit ?? false);
 </script>
 
 <style scoped>
@@ -241,5 +243,19 @@ const fitEnabled = computed(() =>
 .flex-item-body :deep(.v-field__input textarea),
 .flex-item-body :deep(.v-field__input .v-select__selection) {
 	line-height: 1.5;
+}
+
+/* Separate label typography: when a label font/size is configured, apply it to labels — Vuetify
+   field/section labels (.v-label), the `flex-label` convention, and any element whose class ends in
+   "-label" (the per-widget label classes) — independently of the value text. */
+.flex-item-body.has-label-size :deep(.v-label),
+.flex-item-body.has-label-size :deep(.flex-label),
+.flex-item-body.has-label-size :deep([class$="-label"]) {
+	font-size: var(--flex-label-size) !important;
+}
+.flex-item-body.has-label-family :deep(.v-label),
+.flex-item-body.has-label-family :deep(.flex-label),
+.flex-item-body.has-label-family :deep([class$="-label"]) {
+	font-family: var(--flex-label-family) !important;
 }
 </style>

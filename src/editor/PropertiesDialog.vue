@@ -839,6 +839,11 @@
 								  :label="$t('plugins.flexibleLayouts.typography.fontFamily')" />
 					</v-col>
 				</v-row>
+				<div class="text-caption text-medium-emphasis mb-1 mt-2">{{ $t("plugins.flexibleLayouts.typography.labelFont") }}</div>
+				<v-row dense>
+					<v-col cols="6"><v-text-field v-model.number="typography.labelFontSize" type="number" density="compact" variant="outlined" hide-details clearable :label="$t('plugins.flexibleLayouts.typography.fontSize')" suffix="px" /></v-col>
+					<v-col cols="6"><v-select v-model="typography.labelFontFamily" :items="fontOptions" density="compact" variant="outlined" hide-details clearable :label="$t('plugins.flexibleLayouts.typography.fontFamily')" /></v-col>
+				</v-row>
 				<v-switch v-model="fit" color="primary" density="compact" hide-details class="mt-1"
 						  :label="$t('plugins.flexibleLayouts.typography.fit')" />
 				<div class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.typography.fitHint") }}</div>
