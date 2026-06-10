@@ -88,6 +88,7 @@ import { LogLevel, useUiStore } from "@/stores/ui";
 import { buildReport, copyReport, downloadReport } from "dwc-plugin-runtime";
 
 import { PLUGIN_MANIFEST_ID } from "../model/constants";
+import { useLayoutStore } from "../model/store";
 import ImportExportDialog from "../editor/ImportExportDialog.vue";
 import ThemeEditor from "../editor/ThemeEditor.vue";
 import ProfilesDialog from "../editor/ProfilesDialog.vue";
@@ -103,9 +104,14 @@ const uiStore = useUiStore();
 
 const active = computed(() => settingsStore.useCustomLayout);
 
-// Diagnostics: bundle versions + recent errors + a privacy-scrubbed object model for a bug report.
+// Diagnostics: bundle versions + recent errors + a privacy-scrubbed object model + the live layout
+// document (the most useful FL-specific artifact — lets a bug be reproduced from the exact layout).
 function diagnosticReport() {
-	return buildReport({ pluginId: PLUGIN_MANIFEST_ID, model: machineStore.model });
+	return buildReport({
+		pluginId: PLUGIN_MANIFEST_ID,
+		model: machineStore.model,
+		state: { document: useLayoutStore().document.value },
+	});
 }
 function downloadDiagnostics(): void {
 	downloadReport(diagnosticReport());

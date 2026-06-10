@@ -14,7 +14,7 @@
     "e2e": "playwright test --config e2e/playwright.config.ts"
   },
   "dependencies": {
-    "dwc-plugin-runtime": "github:jaysuk/dwc-plugin-runtime#v0.1.0",
+    "dwc-plugin-runtime": "github:jaysuk/dwc-plugin-runtime#v0.1.1",
     "grid-layout-plus": "^1.1.1"
   },
   "devDependencies": {
