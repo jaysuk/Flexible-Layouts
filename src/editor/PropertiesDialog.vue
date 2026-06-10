@@ -877,6 +877,9 @@
 				<v-switch v-model="fit" color="primary" density="compact" hide-details class="mt-1"
 						  :label="$t('plugins.flexibleLayouts.typography.fit')" />
 				<div class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.typography.fitHint") }}</div>
+				<v-switch v-model="autoHeight" color="primary" density="compact" hide-details class="mt-1"
+						  :label="$t('plugins.flexibleLayouts.typography.autoHeight')" />
+				<div class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.typography.autoHeightHint") }}</div>
 			</v-card-text>
 
 			<v-card-actions>
@@ -904,7 +907,7 @@ import WidgetView from "../widgets/WidgetView.vue";
 const props = defineProps<{ modelValue: boolean; item: GridItemModel | null }>();
 const emit = defineEmits<{
 	"update:modelValue": [boolean];
-	save: [{ widget: Widget; conditions: Array<ConditionRule>; colors: PanelColors; typography: Typography; fit: boolean | undefined; geometry: { x: number; y: number; w: number; h: number } }];
+	save: [{ widget: Widget; conditions: Array<ConditionRule>; colors: PanelColors; typography: Typography; fit: boolean | undefined; autoHeight: boolean | undefined; geometry: { x: number; y: number; w: number; h: number } }];
 }>();
 
 const machineStore = useMachineStore();
@@ -927,6 +930,7 @@ const conditions = ref<Array<ConditionRule>>([]);
 const colors = ref<PanelColors>({});
 const typography = ref<Typography>({});
 const fit = ref<boolean | undefined>(undefined);
+const autoHeight = ref<boolean | undefined>(undefined);
 const geom = ref({ x: 0, y: 0, w: 2, h: 2 });
 watch(
 	() => props.modelValue,
@@ -937,9 +941,10 @@ watch(
 			colors.value = JSON.parse(JSON.stringify(props.item.colors ?? {}));
 			typography.value = JSON.parse(JSON.stringify(props.item.typography ?? {}));
 			geom.value = { x: props.item.x, y: props.item.y, w: props.item.w, h: props.item.h };
-			// Default reflects the runtime default (panels/plugin pages fit by default).
-			fit.value = props.item.fit
-				?? (props.item.widget.type === "builtinPanel" || props.item.widget.type === "pluginPage");
+			// Match the runtime default: scale-to-fit is OFF unless explicitly enabled (so opening +
+			// saving a panel's properties doesn't silently turn fit on and change how it renders).
+			fit.value = props.item.fit ?? false;
+			autoHeight.value = props.item.autoHeight ?? false;
 		}
 	},
 	{ immediate: true },
@@ -1234,6 +1239,7 @@ function save() {
 			colors: colors.value,
 			typography: typography.value,
 			fit: fit.value,
+			autoHeight: autoHeight.value,
 			geometry: {
 				x: Math.max(0, Math.round(geom.value.x) || 0),
 				y: Math.max(0, Math.round(geom.value.y) || 0),

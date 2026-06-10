@@ -757,6 +757,12 @@ export interface GridItemModel {
 	fit?: boolean;
 	/** Locked items can't be dragged or resized (but can still be configured). */
 	locked?: boolean;
+	/**
+	 * Size the cell to the panel's natural content height (and reflow the panels below it) instead of
+	 * a fixed height - so dynamic panels like Movement grow/shrink as their content changes, the way
+	 * the stock DWC dashboard does. Best for content-sized panels; not charts (which need a fixed box).
+	 */
+	autoHeight?: boolean;
 	/** Object-model-driven rules that recolour / hide / disable this widget at runtime. */
 	conditions?: Array<ConditionRule>;
 	/** Pixel width when placed in the header strip (which is a horizontal row, not a grid). */

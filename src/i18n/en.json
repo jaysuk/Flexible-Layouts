@@ -302,7 +302,9 @@
 		"fontFamily": "Font",
 		"labelFont": "Labels (separate font / size)",
 		"fit": "Scale content to fit",
-		"fitHint": "Shrinks the widget to fit its cell instead of showing scrollbars."
+		"fitHint": "Shrinks the widget to fit its cell instead of showing scrollbars.",
+		"autoHeight": "Auto height (fit to content)",
+		"autoHeightHint": "Resizes the cell to the panel's content and reflows the panels below — like the stock dashboard (e.g. Movement growing when axes aren't homed). Best for content-sized panels, not charts."
 	},
 	"omPresets": {
 		"tool0Current": "Tool 0 temperature",

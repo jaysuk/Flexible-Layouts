@@ -8,10 +8,11 @@
 				  :x="item.x" :y="item.y" :w="item.w" :h="item.h" :i="item.i"
 				  :min-w="1" :min-h="1" drag-allow-from=".flex-drag-handle"
 				  :is-draggable="editMode && !item.locked" :is-resizable="editMode && !item.locked">
-			<FlexGridItem :item="item" :edit-mode="editMode"
+			<FlexGridItem :item="item" :edit-mode="editMode" :row-height="rowHeight"
 						  @remove="emit('remove', item.i)" @edit="emit('edit', item.i)"
 						  @edit-contents="emit('editContents', item.i)" @export="emit('exportItem', item.i)"
-						  @duplicate="emit('duplicate', item.i)" @toggle-lock="emit('toggleLock', item.i)" />
+						  @duplicate="emit('duplicate', item.i)" @toggle-lock="emit('toggleLock', item.i)"
+						  @auto-height="(h: number) => emit('autoHeight', item.i, h)" />
 		</GridItem>
 	</GridLayout>
 </template>
@@ -38,6 +39,7 @@ const emit = defineEmits<{
 	exportItem: [string];
 	duplicate: [string];
 	toggleLock: [string];
+	autoHeight: [string, number];
 }>();
 
 // grid-layout-plus reassigns the layout array on add/remove and mutates items in place on

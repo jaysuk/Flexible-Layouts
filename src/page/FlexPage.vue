@@ -48,7 +48,7 @@
 				  :cols="grid.cols" :row-height="grid.rowHeight" :edit-mode="editMode"
 				  @changed="onLayoutUpdated" @remove="removeItem" @edit="openProperties"
 				  @edit-contents="openGroupEditor" @export-item="exportPanelById"
-				  @duplicate="duplicateItem" @toggle-lock="toggleLock" />
+				  @duplicate="duplicateItem" @toggle-lock="toggleLock" @auto-height="onAutoHeight" />
 
 		<!-- Empty page: render the built-in fallback when not editing, else prompt to add. -->
 		<template v-else>
@@ -395,7 +395,25 @@ function onLayoutUpdated() {
 		return;
 	}
 	persist();
+	// An auto-height resize (and the reflow it triggers) isn't a user edit, so persist the new sizes
+	// but don't add an undo step for it.
+	if (autoHeightPending) {
+		autoHeightPending = false;
+		return;
+	}
 	commit();
+}
+
+// Auto-height: a panel asked for its cell to fit its content. Apply it to the layout (which reflows
+// the panels below); onLayoutUpdated then persists without recording an undo step.
+let autoHeightPending = false;
+function onAutoHeight(id: string, h: number): void {
+	const idx = layout.value.findIndex((it) => it.i === id);
+	if (idx < 0 || layout.value[idx].h === h) {
+		return;
+	}
+	autoHeightPending = true;
+	layout.value = layout.value.map((it, i) => (i === idx ? { ...it, h } : it));
 }
 
 /** Next free row at the bottom of the grid, so new panels stack rather than overlap. */
@@ -510,10 +528,10 @@ function openProperties(id: string) {
 	propertiesOpen.value = true;
 }
 
-function saveProperties(payload: { widget: Widget; conditions: Array<ConditionRule>; colors: PanelColors; typography: Typography; fit: boolean | undefined; geometry: { x: number; y: number; w: number; h: number } }) {
+function saveProperties(payload: { widget: Widget; conditions: Array<ConditionRule>; colors: PanelColors; typography: Typography; fit: boolean | undefined; autoHeight: boolean | undefined; geometry: { x: number; y: number; w: number; h: number } }) {
 	layout.value = layout.value.map((it) =>
 		it.i === editingId.value
-			? { ...it, widget: payload.widget, conditions: payload.conditions, colors: payload.colors, typography: payload.typography, fit: payload.fit, ...payload.geometry }
+			? { ...it, widget: payload.widget, conditions: payload.conditions, colors: payload.colors, typography: payload.typography, fit: payload.fit, autoHeight: payload.autoHeight, ...payload.geometry }
 			: it);
 	persist();
 	commit();

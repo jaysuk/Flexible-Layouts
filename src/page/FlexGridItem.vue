@@ -41,6 +41,11 @@
 					<ScaleToFit v-if="fitEnabled">
 						<WidgetView :widget="item.widget" :override-color="effects.color" :disabled="effects.disabled" />
 					</ScaleToFit>
+					<!-- Auto-height (view mode only): render at natural content height in a measuring wrapper
+						 so the cell can be resized to fit and the panels below reflow. -->
+					<div v-else-if="autoMeasure" ref="measureRef" class="flex-auto-measure">
+						<WidgetView :widget="item.widget" :override-color="effects.color" :disabled="effects.disabled" />
+					</div>
 					<WidgetView v-else :widget="item.widget" :override-color="effects.color" :disabled="effects.disabled" />
 
 					<template #error="{ message, reset }">
@@ -62,7 +67,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, provide } from "vue";
+import { computed, onBeforeUnmount, onMounted, provide, ref, watch } from "vue";
 
 import { SETTINGS_SCOPE_KEY } from "@/composables/useComponentSettings";
 import { useMachineStore } from "@/stores/machine";
@@ -77,8 +82,8 @@ import ScaleToFit from "../widgets/ScaleToFit.vue";
 import WidgetErrorBoundary from "../widgets/WidgetErrorBoundary.vue";
 import WidgetView from "../widgets/WidgetView.vue";
 
-const props = defineProps<{ item: GridItemModel; editMode: boolean }>();
-const emit = defineEmits<{ remove: []; edit: []; editContents: []; export: []; duplicate: []; toggleLock: [] }>();
+const props = defineProps<{ item: GridItemModel; editMode: boolean; rowHeight?: number }>();
+const emit = defineEmits<{ remove: []; edit: []; editContents: []; export: []; duplicate: []; toggleLock: []; autoHeight: [number] }>();
 
 // Give every placed widget its own component-settings scope keyed by the grid item's GUID, so a
 // built-in DWC panel rendered inside (which calls useComponentSettings with no explicit id) derives
@@ -143,9 +148,61 @@ const typographyStyle = computed(() => {
 // Scale-to-fit defaults OFF — widgets size to their cell, panels scroll if they overflow. The user
 // can turn it on per panel in properties when they'd rather shrink the content to fit.
 const fitEnabled = computed(() => props.item.fit ?? false);
+
+// --- Auto-height -----------------------------------------------------------------------------------
+// View-mode only (so manual resizing in edit mode is never fought), and not while scale-to-fit owns
+// the sizing. The wrapper renders the widget at its natural height; a ResizeObserver on it reports
+// that height (independent of the cell's height, so there's no feedback loop) and we ask the parent
+// to resize the grid cell to match — which reflows the panels below, like the stock dashboard.
+const autoMeasure = computed(() => !!props.item.autoHeight && !props.editMode && !fitEnabled.value);
+const measureRef = ref<HTMLElement | null>(null);
+let ro: ResizeObserver | null = null;
+let raf = 0;
+
+function measure(): void {
+	const el = measureRef.value;
+	const rh = props.rowHeight ?? 30;
+	if (!el || rh <= 0) {
+		return;
+	}
+	cancelAnimationFrame(raf);
+	raf = requestAnimationFrame(() => {
+		const headerPx = props.editMode ? 28 : 0; // edit header isn't shown in view mode
+		const margin = 8; // grid item vertical margin
+		const rows = Math.max(1, Math.ceil((el.offsetHeight + headerPx + margin) / (rh + margin)));
+		if (rows !== props.item.h) {
+			emit("autoHeight", rows);
+		}
+	});
+}
+
+function setupObserver(): void {
+	ro?.disconnect();
+	ro = null;
+	if (autoMeasure.value && measureRef.value) {
+		ro = new ResizeObserver(() => measure());
+		ro.observe(measureRef.value);
+		measure();
+	}
+}
+onMounted(setupObserver);
+// Runs after the DOM updates (the measure wrapper mounts/unmounts), so the ref is current.
+watch(autoMeasure, setupObserver, { flush: "post" });
+
+onBeforeUnmount(() => {
+	ro?.disconnect();
+	ro = null;
+	cancelAnimationFrame(raf);
+});
 </script>
 
 <style scoped>
+/* Auto-height: render the widget at its natural content height so it can be measured. */
+.flex-auto-measure {
+	width: 100%;
+	height: auto;
+}
+
 .flex-grid-item {
 	display: flex;
 	flex-direction: column;
