@@ -7,6 +7,7 @@ import {
 	buildReport,
 	clearErrors,
 	getErrors,
+	installErrorCapture,
 	recordError,
 	reportToJson,
 	sanitizeModel,
@@ -14,6 +15,30 @@ import {
 
 describe("diagnostics report", () => {
 	beforeEach(() => clearErrors());
+
+	// End-to-end: an uncaught error (as a misbehaving panel/page would throw in DWC) reaches the global
+	// handler, is buffered, and shows up in a downloadable report. This is the capture path the
+	// Settings tab / panel "Report" / page error screen all use.
+	it("captures a simulated uncaught error and includes it in a report", () => {
+		const uninstall = installErrorCapture();
+		try {
+			const err = new Error("simulated panel crash");
+			let ev: Event;
+			try {
+				ev = new ErrorEvent("error", { error: err, message: err.message });
+			} catch {
+				ev = Object.assign(new Event("error"), { error: err, message: err.message });
+			}
+			window.dispatchEvent(ev);
+
+			expect(getErrors().some((e) => e.message === "simulated panel crash")).toBe(true);
+			const report = buildReport({ pluginId: "FlexibleLayouts", model: loadObjectModel() });
+			expect(report.errors.some((e) => e.source === "window.onerror" && e.message === "simulated panel crash")).toBe(true);
+			expect(reportToJson(report)).toContain("simulated panel crash");
+		} finally {
+			uninstall();
+		}
+	});
 
 	it("records errors into a capped ring buffer", () => {
 		for (let i = 0; i < 30; i++) recordError("test", new Error(`e${i}`));
