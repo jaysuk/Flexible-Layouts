@@ -238,8 +238,11 @@
 				<!-- Web embed -->
 				<template v-else-if="draft.type === 'web'">
 					<v-text-field v-model="draft.url" density="compact" variant="outlined" hide-details
-								  :label="$t('plugins.flexibleLayouts.properties.url')" placeholder="https://…"
-								  :hint="$t('plugins.flexibleLayouts.properties.webHint')" persistent-hint />
+								  :label="$t('plugins.flexibleLayouts.properties.url')" placeholder="https://…" />
+					<v-alert type="info" variant="tonal" density="compact" class="mt-2">
+						<div class="text-caption" v-html="urlFormatsHtml" />
+						<div class="text-caption mt-1">{{ $t("plugins.flexibleLayouts.properties.webEmbedNote") }}</div>
+					</v-alert>
 				</template>
 
 				<!-- Pronterface-style jog control -->
@@ -710,6 +713,10 @@
 						<v-col cols="6"><v-text-field v-model="draft.prefix" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.http.prefix')" /></v-col>
 						<v-col cols="6"><v-text-field v-model="draft.suffix" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.http.suffix')" /></v-col>
 					</v-row>
+					<v-alert type="info" variant="tonal" density="compact" class="mt-2">
+						<div class="text-caption" v-html="urlFormatsHtml" />
+						<div class="text-caption mt-1">{{ $t("plugins.flexibleLayouts.properties.httpCorsNote") }}</div>
+					</v-alert>
 				</template>
 
 				<!-- Event log -->
@@ -908,6 +915,14 @@ const machineStore = useMachineStore();
 const draft = ref<any>(null);
 // Name + icon of the panel being edited, shown in the dialog header.
 const described = computed(() => draft.value ? describeWidget(draft.value as Widget) : { title: "", icon: "mdi-cog" });
+
+// Shared "how URLs are interpreted" help for the web + http widgets.
+const urlFormatsHtml = computed(() =>
+	`<strong>${t("properties.urlFormatsTitle")}</strong><br>`
+	+ `<code>https://host</code> — ${t("properties.urlFull")}<br>`
+	+ `<code>host</code> — ${t("properties.urlBare")}<br>`
+	+ `<code>//host</code> — ${t("properties.urlProtoRel")}<br>`
+	+ `<code>/path</code> — ${t("properties.urlRootRel")}`);
 const conditions = ref<Array<ConditionRule>>([]);
 const colors = ref<PanelColors>({});
 const typography = ref<Typography>({});

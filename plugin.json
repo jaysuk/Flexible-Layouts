@@ -2,9 +2,14 @@
 	"id": "FlexibleLayouts",
 	"name": "Flexible Layouts",
 	"author": "James Skitt",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"license": "GPL-3.0-or-later",
 	"homepage": "https://github.com/Duet3D/DuetWebControl",
 	"dwcVersion": "auto",
-	"tags": ["layout", "customisation", "dashboard", "theme"]
+	"tags": [
+		"layout",
+		"customisation",
+		"dashboard",
+		"theme"
+	]
 }
