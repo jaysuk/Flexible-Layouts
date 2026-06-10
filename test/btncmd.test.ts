@@ -35,14 +35,16 @@ describe("BtnCmd import", () => {
 		expect(doc.nav.order).toContain(paths[0]);
 	});
 
-	it("maps a Macro button to a code button (M98) keeping colour and icon", () => {
+	it("maps a Macro button to a compact code button (M98) keeping colour and icon", () => {
 		const page = Object.values(convertBtnCmd(SAMPLE).pages)[0];
-		const btn = page.items.map((i) => i.widget).find((w) => w.type === "codeButton") as Extract<Widget, { type: "codeButton" }>;
-		expect(btn).toBeTruthy();
+		const item = page.items.find((i) => i.widget.type === "codeButton")!;
+		const btn = item.widget as Extract<Widget, { type: "codeButton" }>;
 		expect(btn.label).toBe("Example");
 		expect(btn.code).toBe('M98 P"MacroName.g"');
 		expect(btn.icon).toBe("mdi-polymer");
 		expect(btn.color).toBe("#00DBFF"); // alpha stripped from #RRGGBBAA
+		expect(item.h).toBe(1); // single-row, not a big 2-row box
+		expect(item.w).toBeLessThanOrEqual(2); // width tracks the label, not a fixed 3 columns
 	});
 
 	it("maps a jobinfo panel to the JobInfoPanel built-in, positioned on the grid", () => {

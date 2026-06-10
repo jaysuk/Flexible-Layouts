@@ -103,6 +103,15 @@ const PANEL_TO_BUILTIN: Record<string, string> = {
 	temperaturechart: "TemperatureChart",
 };
 
+/**
+ * BtnCmd auto-sizes a button to its icon + label. We don't have the rendered pixels, so approximate
+ * the width from the label and map it to grid columns (1-4). Buttons are a single row tall.
+ */
+function estButtonCols(label: string, colW: number): number {
+	const px = Math.max(110, (label || "").length * 8.5 + 64); // icon + padding + text
+	return Math.min(4, Math.max(1, Math.round(px / colW)));
+}
+
 function buttonWidget(b: BtnCmdBtn): Widget {
 	const type = (b.btnType || "").toLowerCase();
 	const data = b.btnActionData || "";
@@ -170,7 +179,11 @@ export function convertBtnCmd(raw: unknown): LayoutDocument {
 
 		for (const b of btns.filter((x) => x.btnGroupIdx === tab.tabID)) {
 			const auto = b.autoSize !== false || b.btnWsize === "auto" || b.btnHsize === "auto";
-			place(buttonWidget(b), b.btnXpos, b.btnYpos, auto ? 0 : Number(b.btnWsize) || 0, auto ? 0 : Number(b.btnHsize) || 0, 3, 2, 1);
+			const wpx = auto ? 0 : Number(b.btnWsize) || 0;
+			const hpx = auto ? 0 : Number(b.btnHsize) || 0;
+			// Compact single-row buttons whose width tracks the label, so the dense BtnCmd grid stays
+			// dense instead of being blown up into big overlapping boxes that the grid pushes apart.
+			place(buttonWidget(b), b.btnXpos, b.btnYpos, wpx, hpx, estButtonCols(b.btnLabel || "", colW), 1, 1);
 		}
 		for (const p of panels.filter((x) => x.tabID === tab.tabID)) {
 			place(panelWidget(p), p.panelXpos, p.panelYpos, p.panelWSize, p.panelHSize, 4, 5, 2);
