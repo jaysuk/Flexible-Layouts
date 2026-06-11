@@ -9,9 +9,11 @@
 				  :min-w="1" :min-h="1" drag-allow-from=".flex-drag-handle"
 				  :is-draggable="editMode && !item.locked" :is-resizable="editMode && !item.locked">
 			<FlexGridItem :item="item" :edit-mode="editMode" :row-height="rowHeight"
+						  :selected="selectedIds?.has(item.i)"
 						  @remove="emit('remove', item.i)" @edit="emit('edit', item.i)"
 						  @edit-contents="emit('editContents', item.i)" @export="emit('exportItem', item.i)"
 						  @duplicate="emit('duplicate', item.i)" @toggle-lock="emit('toggleLock', item.i)"
+						  @toggle-select="emit('toggleSelect', item.i)"
 						  @auto-height="(h: number) => emit('autoHeight', item.i, h)" />
 		</GridItem>
 	</GridLayout>
@@ -30,6 +32,8 @@ const props = defineProps<{
 	rowHeight: number;
 	gap?: number;
 	editMode: boolean;
+	/** Ids of currently multi-selected items (for the align/distribute highlight). */
+	selectedIds?: Set<string>;
 }>();
 const emit = defineEmits<{
 	"update:layout": [Array<GridItemModel>];
@@ -40,6 +44,7 @@ const emit = defineEmits<{
 	exportItem: [string];
 	duplicate: [string];
 	toggleLock: [string];
+	toggleSelect: [string];
 	autoHeight: [string, number];
 }>();
 

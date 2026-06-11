@@ -14,17 +14,17 @@ export function computeDependencies(doc: LayoutDocument): Array<LayoutDependency
 	const deps = new Map<string, LayoutDependency>();
 	for (const page of Object.values(doc.pages)) {
 		for (const item of page.items) {
-			if (item.widget.type === "pluginPage") {
-				const pluginId = item.widget.pluginId;
+			const w = item.widget;
+			if (w.type === "pluginPage" || w.type === "embeddable") {
+				const pluginId = w.pluginId;
 				if (!pluginId || deps.has(pluginId)) {
 					continue;
 				}
+				const name = w.label || (w.type === "pluginPage" ? w.path : w.id) || pluginId;
 				deps.set(pluginId, {
 					pluginId,
-					name: item.widget.label || pluginId,
-					reason: i18n.global.t("plugins.flexibleLayouts.dependencies.embedReason", {
-						name: item.widget.label || item.widget.path,
-					}),
+					name: w.label || pluginId,
+					reason: i18n.global.t("plugins.flexibleLayouts.dependencies.embedReason", { name }),
 				});
 			}
 		}

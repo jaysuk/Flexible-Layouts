@@ -86,6 +86,21 @@ export type Widget =
 		label?: string;
 	}
 	| {
+		/**
+		 * Embed a component a plugin published via DWC's `registerEmbeddableComponent` (3.7.0-alpha.7+).
+		 * Resolved at render time from `useUiStore().embeddableComponents` by {@link id}; when the
+		 * providing plugin isn't loaded the widget shows a "needs plugin" placeholder instead.
+		 */
+		type: "embeddable";
+		/** Stable, namespaced id from registerEmbeddableComponent, e.g. "MyPlugin.PowerPanel". */
+		id: string;
+		/** Owning plugin id — recorded for dependency capture and the missing-plugin hint. */
+		pluginId?: string;
+		/** Cached caption/icon so the tile still reads sensibly when the plugin isn't loaded. */
+		label?: string;
+		icon?: string;
+	}
+	| {
 		/** Embed an external web page / local web service in an iframe. */
 		type: "web";
 		url?: string;
@@ -773,6 +788,12 @@ export interface GridItemModel {
 	conditions?: Array<ConditionRule>;
 	/** Pixel width when placed in the header strip (which is a horizontal row, not a grid). */
 	headerWidth?: number;
+	/**
+	 * Which side of the top bar this header widget sits on. Items keep their array order within each
+	 * side; the first `end` item starts a right-aligned group (everything from it is pushed to the
+	 * right). Defaults to `start` (left, after the title/logo). Only meaningful for header items.
+	 */
+	headerAlign?: "start" | "end";
 }
 
 /** Layout of a single page. */

@@ -162,6 +162,11 @@ export function describeWidget(widget: Widget): { title: string; icon: string } 
 				title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.pluginPage"),
 				icon: "mdi-puzzle",
 			};
+		case "embeddable":
+			return {
+				title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.embeddable"),
+				icon: widget.icon || "mdi-puzzle",
+			};
 		case "group":
 			return {
 				title: widget.title || i18n.global.t("plugins.flexibleLayouts.widgets.group"),

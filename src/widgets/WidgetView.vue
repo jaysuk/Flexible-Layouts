@@ -43,6 +43,7 @@
 	<ThemeToggleWidget v-else-if="widget.type === 'themeToggle'" :widget="widget" />
 	<GroupWidget v-else-if="widget.type === 'group'" :widget="widget" />
 	<PluginPageWidget v-else-if="widget.type === 'pluginPage'" :widget="widget" />
+	<EmbeddableWidget v-else-if="widget.type === 'embeddable'" :widget="widget" />
 	<WebWidget v-else-if="widget.type === 'web'" :widget="widget" />
 	<!-- Unknown/removed widget type from an older saved layout: show a placeholder, never crash. -->
 	<v-alert v-else type="info" variant="tonal" density="compact" class="ma-2">
@@ -59,6 +60,7 @@ import ClockWidget from "./ClockWidget.vue";
 import CommandButtonWidget from "./CommandButtonWidget.vue";
 import ConsoleWidget from "./ConsoleWidget.vue";
 import DroWidget from "./DroWidget.vue";
+import EmbeddableWidget from "./EmbeddableWidget.vue";
 import EventLogWidget from "./EventLogWidget.vue";
 import ExtruderWidget from "./ExtruderWidget.vue";
 import FanWidget from "./FanWidget.vue";

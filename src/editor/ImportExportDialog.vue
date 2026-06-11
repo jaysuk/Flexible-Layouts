@@ -27,6 +27,15 @@
 						{{ $t("plugins.flexibleLayouts.io.export") }}
 					</v-btn>
 
+					<v-alert type="info" variant="tonal" density="compact" class="mt-3" icon="mdi-heart-outline">
+						<div class="text-body-2">{{ $t("plugins.flexibleLayouts.io.shareHelp") }}</div>
+						<div class="text-caption mt-1">
+							<a :href="GALLERY_REPO" target="_blank" rel="noopener" class="text-primary">
+								<v-icon size="14" class="me-1">mdi-source-pull</v-icon>{{ $t("plugins.flexibleLayouts.io.shareLink") }}
+							</a>
+						</div>
+					</v-alert>
+
 					<v-divider class="my-4" />
 
 					<div class="text-title-small mb-2">{{ $t("plugins.flexibleLayouts.io.exportPageHeading") }}</div>
@@ -107,7 +116,7 @@
 			<v-card-actions v-if="pending">
 				<v-spacer />
 				<v-btn variant="text" @click="cancelImport">{{ $t("generic.cancel") }}</v-btn>
-				<v-btn color="dialog-action" :disabled="!anyRestoreSelected" @click="confirmImport">
+				<v-btn color="card-actions" :disabled="!anyRestoreSelected" @click="confirmImport">
 					{{ $t("plugins.flexibleLayouts.io.applyImport") }}
 				</v-btn>
 			</v-card-actions>
@@ -144,6 +153,7 @@ function undoImport(): void {
 }
 
 const GALLERY_URL = "https://jaysuk.github.io/flexible-layouts-gallery/";
+const GALLERY_REPO = "https://github.com/jaysuk/flexible-layouts-gallery#contributing";
 
 const store = useLayoutStore();
 const uiStore = useUiStore();

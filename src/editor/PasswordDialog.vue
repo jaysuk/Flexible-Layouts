@@ -15,7 +15,7 @@
 			<v-card-actions>
 				<v-btn variant="text" @click="onCancel">{{ $t("generic.cancel") }}</v-btn>
 				<v-spacer />
-				<v-btn color="dialog-action" :disabled="!pw" @click="submit">
+				<v-btn color="card-actions" :disabled="!pw" @click="submit">
 					{{ $t("plugins.flexibleLayouts.lock.unlock") }}
 				</v-btn>
 			</v-card-actions>

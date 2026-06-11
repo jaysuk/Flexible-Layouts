@@ -135,7 +135,7 @@
 
 			<v-card-actions>
 				<v-spacer />
-				<v-btn color="dialog-action" @click="close">{{ $t("generic.ok") }}</v-btn>
+				<v-btn color="card-actions" @click="close">{{ $t("generic.ok") }}</v-btn>
 			</v-card-actions>
 		</v-card>
 	</v-dialog>

@@ -83,7 +83,7 @@ import i18n from "@/i18n";
 
 import { createDefaultWidget, type GridItemModel, type Widget } from "../model/document";
 import { parsePanelFile } from "../model/io";
-import { type EmbeddablePage, listEmbeddablePages } from "../model/pluginPages";
+import { type EmbeddableComponentInfo, type EmbeddablePage, listEmbeddableComponents, listEmbeddablePages } from "../model/pluginPages";
 import WidgetView from "../widgets/WidgetView.vue";
 import {
 	BUILTIN_PANELS,
@@ -157,6 +157,14 @@ function choosePluginPage(page: EmbeddablePage) {
 	});
 	emit("update:modelValue", false);
 }
+function chooseEmbeddable(c: EmbeddableComponentInfo) {
+	emit("add", {
+		widget: { type: "embeddable", id: c.id, pluginId: c.pluginId, label: c.label, icon: c.icon },
+		size: c.defaultSize,
+		configure: false,
+	});
+	emit("update:modelValue", false);
+}
 
 interface PaletteItem {
 	id: string; icon: string; label: string; sub?: string; mode?: string; category: string;
@@ -178,6 +186,9 @@ const allItems = computed<Array<PaletteItem>>(() => {
 	}
 	for (const p of listEmbeddablePages()) {
 		items.push({ id: `x:${p.path ?? p.tabKey}`, icon: p.icon || "mdi-puzzle", label: p.label, sub: p.pluginId ?? p.source, category: "plugins", choose: () => choosePluginPage(p), size: { w: 6, h: 8 } });
+	}
+	for (const c of listEmbeddableComponents()) {
+		items.push({ id: `e:${c.id}`, icon: c.icon, label: c.label, sub: c.pluginId ?? c.description, mode: c.mode, category: "plugins", choose: () => chooseEmbeddable(c), size: c.defaultSize });
 	}
 	return items;
 });

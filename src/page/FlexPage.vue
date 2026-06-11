@@ -46,12 +46,41 @@
 			</v-chip>
 		</div>
 
+		<!-- Contextual align/distribute bar — appears once one or more panels are selected (via the
+			 checkbox on each panel's edit header). Align needs ≥2 selected, distribute ≥3. -->
+		<div v-if="editMode && selectedCount > 0" class="flex-page-toolbar flex-align-toolbar">
+			<v-chip size="small" variant="flat" color="primary" class="me-1">
+				{{ $t("plugins.flexibleLayouts.editor.align.selected", { count: selectedCount }) }}
+			</v-chip>
+			<v-btn icon="mdi-select-all" size="small" variant="text"
+				   :title="$t('plugins.flexibleLayouts.editor.align.selectAll')" @click="selectAll" />
+			<v-btn icon="mdi-close" size="small" variant="text"
+				   :title="$t('plugins.flexibleLayouts.editor.align.clear')" @click="clearSelection" />
+			<v-divider vertical class="mx-1" />
+			<template v-for="b in alignButtons" :key="b.action">
+				<v-btn :icon="b.icon" size="small" variant="text" :disabled="selectedCount < 2"
+					   :title="b.title" @click="b.run()" />
+			</template>
+			<v-divider vertical class="mx-1" />
+			<v-btn icon="mdi-arrow-split-vertical" size="small" variant="text" :disabled="selectedCount < 3"
+				   :title="$t('plugins.flexibleLayouts.editor.align.distributeH')" @click="distributeH" />
+			<v-btn icon="mdi-arrow-split-horizontal" size="small" variant="text" :disabled="selectedCount < 3"
+				   :title="$t('plugins.flexibleLayouts.editor.align.distributeV')" @click="distributeV" />
+			<v-divider vertical class="mx-1" />
+			<v-btn icon="mdi-arrow-expand-horizontal" size="small" variant="text" :disabled="selectedCount < 2"
+				   :title="$t('plugins.flexibleLayouts.editor.align.sameWidth')" @click="sameWidth" />
+			<v-btn icon="mdi-arrow-expand-vertical" size="small" variant="text" :disabled="selectedCount < 2"
+				   :title="$t('plugins.flexibleLayouts.editor.align.sameHeight')" @click="sameHeight" />
+		</div>
+
 		<!-- Live grid -->
 		<FlexGrid v-if="layout.length > 0" v-model:layout="layout"
 				  :cols="grid.cols" :row-height="grid.rowHeight" :gap="grid.gap ?? 8" :edit-mode="editMode"
+				  :selected-ids="selectedIds"
 				  @changed="onLayoutUpdated" @remove="removeItem" @edit="openProperties"
 				  @edit-contents="openGroupEditor" @export-item="exportPanelById"
-				  @duplicate="duplicateItem" @toggle-lock="toggleLock" @auto-height="onAutoHeight" />
+				  @duplicate="duplicateItem" @toggle-lock="toggleLock" @toggle-select="toggleSelect"
+				  @auto-height="onAutoHeight" />
 
 		<!-- Empty page: render the built-in fallback when not editing, else prompt to add. -->
 		<template v-else>
@@ -166,6 +195,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch, type Component } from
 import i18n from "@/i18n";
 
 import { type Breakpoint, type ConditionRule, type GridItemModel, type PageLayout, type PanelColors, type Typography, type Widget, newItemId, reidItem } from "../model/document";
+import { type AlignMode, alignItems, distributeItems, matchSize } from "../model/align";
 import { useLayoutStore } from "../model/store";
 import { useFlexDisplay } from "../composables/useFlexDisplay";
 import { recomputeDependencies } from "../model/dependencies";
@@ -403,6 +433,62 @@ function redo() {
 }
 // #endregion
 
+// #region Multi-select + align / distribute
+// Panels are added to the selection via the checkbox on each panel's edit header. The selection is
+// a Set whose identity is replaced on every change so the grid (which receives it as a prop) re-renders.
+const selectedIds = ref<Set<string>>(new Set());
+const selectedCount = computed(() => selectedIds.value.size);
+
+function toggleSelect(id: string) {
+	const next = new Set(selectedIds.value);
+	if (next.has(id)) {
+		next.delete(id);
+	} else {
+		next.add(id);
+	}
+	selectedIds.value = next;
+}
+function clearSelection() {
+	selectedIds.value = new Set();
+}
+function selectAll() {
+	selectedIds.value = new Set(layout.value.map((it) => it.i));
+}
+
+// A selection only makes sense within one page/breakpoint while editing; drop it when that context
+// changes (or when leaving edit mode) so stale ids never drive an align.
+watch([editMode, () => props.pageId, activeBp, () => store.document.value], clearSelection);
+
+// Apply a layout transform to the selection (pure helpers in model/align), then persist + record one
+// undo step. Free placement (no compaction/collision in the grid) means the computed positions stay
+// put even if panels end up overlapping — that's the user's call.
+function applySelection(next: Array<GridItemModel>) {
+	if (next === layout.value) {
+		return; // helper returned the same array (too few selected) — nothing to do
+	}
+	layout.value = next;
+	persist();
+	commit();
+}
+
+const alignButtons = computed(() => ([
+	{ action: "left", icon: "mdi-format-horizontal-align-left", title: i18n.global.t("plugins.flexibleLayouts.editor.align.left") },
+	{ action: "centerH", icon: "mdi-format-horizontal-align-center", title: i18n.global.t("plugins.flexibleLayouts.editor.align.centerH") },
+	{ action: "right", icon: "mdi-format-horizontal-align-right", title: i18n.global.t("plugins.flexibleLayouts.editor.align.right") },
+	{ action: "top", icon: "mdi-format-vertical-align-top", title: i18n.global.t("plugins.flexibleLayouts.editor.align.top") },
+	{ action: "middleV", icon: "mdi-format-vertical-align-center", title: i18n.global.t("plugins.flexibleLayouts.editor.align.middleV") },
+	{ action: "bottom", icon: "mdi-format-vertical-align-bottom", title: i18n.global.t("plugins.flexibleLayouts.editor.align.bottom") },
+] as Array<{ action: AlignMode; icon: string; title: string }>).map((b) => ({
+	...b,
+	run: () => applySelection(alignItems(layout.value, selectedIds.value, b.action, grid.value.cols)),
+})));
+
+function sameWidth() { applySelection(matchSize(layout.value, selectedIds.value, "w", grid.value.cols)); }
+function sameHeight() { applySelection(matchSize(layout.value, selectedIds.value, "h", grid.value.cols)); }
+function distributeH() { applySelection(distributeItems(layout.value, selectedIds.value, "x", grid.value.cols)); }
+function distributeV() { applySelection(distributeItems(layout.value, selectedIds.value, "y", grid.value.cols)); }
+// #endregion
+
 function onLayoutUpdated() {
 	if (loading) {
 		return;
@@ -507,6 +593,11 @@ function applySeed() {
 
 function removeItem(id: string) {
 	layout.value = layout.value.filter((it) => it.i !== id);
+	if (selectedIds.value.has(id)) {
+		const next = new Set(selectedIds.value);
+		next.delete(id);
+		selectedIds.value = next;
+	}
 	persist();
 	commit();
 }

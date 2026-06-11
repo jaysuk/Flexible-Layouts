@@ -1,8 +1,11 @@
 <template>
-	<div class="flex-grid-item fill-height" :class="{ 'is-editing': editMode }" :style="colorVars">
+	<div class="flex-grid-item fill-height" :class="{ 'is-editing': editMode, 'is-selected': selected }" :style="colorVars">
 		<!-- Edit-mode header: drag handle + title + settings + delete. The `flex-drag-handle` class is
 			 what the grid item's drag-allow-from targets, so dragging only starts from this bar. -->
 		<div v-if="editMode" class="flex-item-header flex-drag-handle" :class="{ 'has-header-color': !!item.colors?.header }">
+			<v-btn :icon="selected ? 'mdi-checkbox-marked' : 'mdi-checkbox-blank-outline'" size="x-small" variant="text"
+				   density="comfortable" :color="selected ? 'primary' : undefined"
+				   :title="$t('plugins.flexibleLayouts.editor.selectItem')" @click="emit('toggleSelect')" />
 			<v-icon size="small" class="me-1">mdi-drag</v-icon>
 			<v-icon size="small" class="me-1">{{ meta.icon }}</v-icon>
 			<span class="flex-item-title text-truncate">{{ meta.title }}</span>
@@ -82,8 +85,8 @@ import ScaleToFit from "../widgets/ScaleToFit.vue";
 import WidgetErrorBoundary from "../widgets/WidgetErrorBoundary.vue";
 import WidgetView from "../widgets/WidgetView.vue";
 
-const props = defineProps<{ item: GridItemModel; editMode: boolean; rowHeight?: number }>();
-const emit = defineEmits<{ remove: []; edit: []; editContents: []; export: []; duplicate: []; toggleLock: []; autoHeight: [number] }>();
+const props = defineProps<{ item: GridItemModel; editMode: boolean; rowHeight?: number; selected?: boolean }>();
+const emit = defineEmits<{ remove: []; edit: []; editContents: []; export: []; duplicate: []; toggleLock: []; toggleSelect: []; autoHeight: [number] }>();
 
 // Give every placed widget its own component-settings scope keyed by the grid item's GUID, so a
 // built-in DWC panel rendered inside (which calls useComponentSettings with no explicit id) derives
@@ -213,6 +216,12 @@ onBeforeUnmount(() => {
 .flex-grid-item.is-editing {
 	outline: 1px dashed rgba(var(--v-theme-primary), 0.6);
 	outline-offset: -1px;
+}
+/* Multi-select highlight: a solid ring so selected panels stand out from the dashed edit outline
+   while align/distribute acts on them. */
+.flex-grid-item.is-selected {
+	outline: 2px solid rgb(var(--v-theme-primary));
+	outline-offset: -2px;
 }
 /* The edit-mode modify bar floats OVER the top of the panel instead of pushing the content down, so a
    panel is exactly the same size (and renders identically) in edit and view modes - "like it's not

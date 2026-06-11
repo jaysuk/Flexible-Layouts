@@ -89,7 +89,12 @@ const FALLBACKS: Record<string, string> = {
 	info: "#2196f3",
 	success: "#4caf50",
 	warning: "#fb8c00",
-	"dialog-action": "#1E88E5",
+	"card-actions": "#1E88E5",
+	"card-title": "#383838",
+	"main-menu-category": "#383838",
+	"main-menu-route": "#383838",
+	"macro-directory": "#BDBDBD",
+	"chart-grid": "#BDBDBD",
 };
 
 function fallback(token: string): string {

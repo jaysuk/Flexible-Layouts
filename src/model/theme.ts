@@ -22,8 +22,16 @@ export const THEME_TOKENS = [
 	"info",
 	"success",
 	"warning",
-	// DWC 3.7.0-alpha.6+ recolours dialog action buttons (Cancel/OK/Apply, …) through this token.
-	"dialog-action",
+	// DWC 3.7.0-alpha.7 themeable accents. `card-actions` (renamed from alpha.6's `dialog-action`)
+	// recolours every button inside a v-card-actions row (Cancel/OK/Apply, …); `card-title` the panel
+	// & dialog titles; `main-menu-category`/`main-menu-route` the nav drawer; `macro-directory` the
+	// macro-list folder avatars; `chart-grid` the temperature-chart gridlines.
+	"card-actions",
+	"card-title",
+	"main-menu-category",
+	"main-menu-route",
+	"macro-directory",
+	"chart-grid",
 ] as const;
 
 /**

@@ -8,6 +8,7 @@
 import { getJobViewTabs, getLoadedPlugins, getPluginSettingTabs } from "@/plugins";
 import i18n from "@/i18n";
 import { type MenuItem, useMenuStore } from "@/stores/menu";
+import { useUiStore } from "@/stores/ui";
 
 import { CUSTOM_PAGE_PREFIX } from "./pageManager";
 
@@ -64,4 +65,35 @@ export function listEmbeddablePages(): Array<EmbeddablePage> {
 		.map((t) => ({ source: "jobTab" as const, tabKey: t.key, label: resolveCaption(t.caption, t.translated ?? false), icon: t.icon }));
 
 	return [...pages, ...settingTabs, ...jobTabs];
+}
+
+/**
+ * Palette-friendly view of a component a plugin published for embedding (DWC 3.7.0-alpha.7+
+ * `registerEmbeddableComponent`). Captions are resolved through i18n unless the plugin marked them
+ * literal, and a default footprint is supplied so the widget lands at a sane size.
+ */
+export interface EmbeddableComponentInfo {
+	id: string;
+	pluginId?: string;
+	label: string;
+	icon: string;
+	description?: string;
+	defaultSize: { w: number; h: number };
+	mode?: "fff" | "cnc" | "any";
+}
+
+/** Components other plugins exposed for embedding, read reactively from the UI store. */
+export function listEmbeddableComponents(): Array<EmbeddableComponentInfo> {
+	const ui = useUiStore();
+	return ui.embeddableComponents
+		.filter((c) => c.pluginId !== "FlexibleLayouts")
+		.map((c) => ({
+			id: c.id,
+			pluginId: c.pluginId,
+			label: resolveCaption(c.caption, c.translated ?? false),
+			icon: c.icon || "mdi-puzzle",
+			description: c.description,
+			defaultSize: c.defaultSize ?? { w: 4, h: 4 },
+			mode: c.machineMode,
+		}));
 }

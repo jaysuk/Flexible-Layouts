@@ -37,7 +37,7 @@
 			<v-card-actions>
 				<v-spacer />
 				<v-btn variant="text" @click="emit('update:modelValue', false)">{{ $t("generic.cancel") }}</v-btn>
-				<v-btn color="dialog-action" @click="save">{{ $t("generic.ok") }}</v-btn>
+				<v-btn color="card-actions" @click="save">{{ $t("generic.ok") }}</v-btn>
 			</v-card-actions>
 		</v-card>
 

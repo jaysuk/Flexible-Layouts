@@ -1,11 +1,16 @@
 <template>
 	<div class="d-flex align-center ga-1 flex-header-widgets">
-		<div v-for="(item, i) in items" :key="item.i" class="header-item" :class="{ editing: editMode, dragging: dragIndex === i }"
+		<div v-for="(item, i) in items" :key="item.i" class="header-item"
+			 :class="{ editing: editMode, dragging: dragIndex === i, 'pushed-right': i === firstEndIndex }"
 			 :style="itemStyle(item)"
 			 :draggable="editMode"
 			 @dragstart="onDragStart(i, $event)" @dragover.prevent="onDragOver(i)" @dragend="onDragEnd" @drop="onDrop">
 			<div v-if="editMode" class="header-item-tools">
 				<v-icon class="drag-grip" size="x-small">mdi-drag-vertical</v-icon>
+				<v-btn :icon="item.headerAlign === 'end' ? 'mdi-format-horizontal-align-right' : 'mdi-format-horizontal-align-left'"
+					   size="x-small" variant="text" density="comfortable"
+					   :title="item.headerAlign === 'end' ? $t('plugins.flexibleLayouts.editor.headerAlignLeft') : $t('plugins.flexibleLayouts.editor.headerAlignRight')"
+					   @click="toggleAlign(i)" />
 				<v-btn icon="mdi-cog" size="x-small" variant="text" density="comfortable" @click="edit(i)" />
 				<v-btn icon="mdi-delete" size="x-small" variant="text" density="comfortable" @click="remove(i)" />
 			</div>
@@ -56,6 +61,25 @@ function headerItems(): Array<GridItemModel> {
 }
 
 const items = computed(() => headerItems());
+
+// The first right-aligned item (in array order) gets `margin-left:auto`, pushing it and everything
+// after it to the right edge — a left group and a right group from a single flat array.
+const firstEndIndex = computed(() => items.value.findIndex((it) => it.headerAlign === "end"));
+
+// Flip an item between the left (start) and right (end) groups, moving it within the array so the two
+// groups stay contiguous (start items first, then end items) and the push-right stays clean.
+function toggleAlign(i: number) {
+	const list = headerItems();
+	const [item] = list.splice(i, 1);
+	if (item.headerAlign === "end") {
+		item.headerAlign = undefined;
+		const firstEnd = list.findIndex((it) => it.headerAlign === "end");
+		list.splice(firstEnd === -1 ? list.length : firstEnd, 0, item);
+	} else {
+		item.headerAlign = "end";
+		list.push(item);
+	}
+}
 
 const paletteOpen = ref(false);
 const propsOpen = ref(false);
@@ -165,6 +189,11 @@ function remove(i: number) {
 	overflow-x: auto;
 	max-width: 46vw;
 	font-size: 12px;
+}
+/* The first right-aligned header item starts the right-hand group: the auto left margin eats the
+   free space so it (and everything after it) sits against the right edge of the bar. */
+.header-item.pushed-right {
+	margin-left: auto;
 }
 .header-item {
 	position: relative;
