@@ -55,12 +55,62 @@
 						{{ $t("plugins.flexibleLayouts.io.import") }}
 					</v-btn>
 					<input ref="fileInput" type="file" accept=".json,application/json" class="d-none" @change="onFile" />
-					<div class="text-caption mt-2">
-						<a :href="GALLERY_URL" target="_blank" rel="noopener" class="text-primary">
-							<v-icon size="14" class="me-1">mdi-view-gallery-outline</v-icon>{{ $t("plugins.flexibleLayouts.io.galleryLink") }}
+					<v-alert v-if="error" type="error" variant="tonal" density="compact" class="mt-3">{{ error }}</v-alert>
+
+					<v-divider class="my-4" />
+
+					<!-- Gallery section: lazy-fetches the index, renders importable cards -->
+					<div class="d-flex align-center mb-2">
+						<div class="text-title-small">{{ $t("plugins.flexibleLayouts.io.galleryHeading") }}</div>
+						<v-spacer />
+						<a :href="GALLERY_URL" target="_blank" rel="noopener" class="text-caption text-primary text-decoration-none">
+							<v-icon size="13" class="me-1">mdi-open-in-new</v-icon>{{ $t("plugins.flexibleLayouts.io.galleryOpenSite") }}
 						</a>
 					</div>
-					<v-alert v-if="error" type="error" variant="tonal" density="compact" class="mt-3">{{ error }}</v-alert>
+					<div class="text-caption text-medium-emphasis mb-2">{{ $t("plugins.flexibleLayouts.io.galleryHelp") }}</div>
+
+					<div v-if="!galleryLoaded && !galleryError && !galleryLoading">
+						<v-btn variant="tonal" prepend-icon="mdi-view-gallery-outline" :loading="galleryLoading" @click="loadGallery">
+							{{ $t("plugins.flexibleLayouts.io.galleryBrowse") }}
+						</v-btn>
+					</div>
+
+					<div v-else-if="galleryLoading" class="d-flex justify-center pa-3">
+						<v-progress-circular indeterminate size="28" />
+					</div>
+
+					<v-alert v-else-if="galleryError" type="warning" variant="tonal" density="compact">
+						{{ $t("plugins.flexibleLayouts.io.galleryOffline") }}
+					</v-alert>
+
+					<div v-else-if="galleryLoaded">
+						<v-text-field v-model="gallerySearch" density="compact" variant="outlined" hide-details clearable
+									  prepend-inner-icon="mdi-magnify" :placeholder="$t('plugins.flexibleLayouts.io.gallerySearch')" class="mb-2" />
+
+						<div v-if="filteredGallery.length === 0" class="text-caption text-medium-emphasis pa-2">
+							{{ $t("plugins.flexibleLayouts.io.galleryEmpty") }}
+						</div>
+						<v-card v-for="item in filteredGallery" :key="item.slug" variant="outlined" class="mb-2" density="compact">
+							<v-card-text class="pa-3">
+								<div class="d-flex align-start justify-space-between">
+									<div class="flex-grow-1 me-2">
+										<div class="font-weight-medium text-body-2">{{ item.title }}</div>
+										<div class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.io.galleryBy", { author: item.author }) }}</div>
+										<div v-if="item.description" class="text-caption mt-1">{{ item.description }}</div>
+										<div class="mt-1 d-flex flex-wrap ga-1">
+											<v-chip v-if="item.machine && item.machine !== 'any'" size="x-small" variant="outlined">{{ item.machine }}</v-chip>
+											<v-chip v-for="tag in (item.tags || [])" :key="tag" size="x-small" variant="tonal">{{ tag }}</v-chip>
+										</div>
+									</div>
+									<v-btn size="small" variant="tonal" prepend-icon="mdi-import"
+										   :loading="galleryImporting === item.slug" :disabled="!!galleryImporting"
+										   @click="importGalleryItem(item)">
+										{{ $t("plugins.flexibleLayouts.io.galleryImport") }}
+									</v-btn>
+								</div>
+							</v-card-text>
+						</v-card>
+					</div>
 
 					<div v-if="backup" class="mt-3">
 						<v-btn variant="tonal" color="warning" prepend-icon="mdi-undo-variant" @click="undoImport">
@@ -154,6 +204,89 @@ function undoImport(): void {
 
 const GALLERY_URL = "https://jaysuk.github.io/flexible-layouts-gallery/";
 const GALLERY_REPO = "https://github.com/jaysuk/flexible-layouts-gallery#contributing";
+const GALLERY_JSON_URL = "https://jaysuk.github.io/flexible-layouts-gallery/gallery.json";
+
+// --- gallery -------------------------------------------------------------------------------
+
+interface GalleryItem {
+	slug: string;
+	title: string;
+	author: string;
+	description?: string;
+	machine?: string;
+	tags?: string[];
+	kind: string;
+	kindLabel?: string;
+	file: string;
+}
+
+const galleryItems = ref<GalleryItem[]>([]);
+const galleryLoaded = ref(false);
+const galleryLoading = ref(false);
+const galleryError = ref(false);
+const gallerySearch = ref("");
+const galleryImporting = ref<string | null>(null);
+
+const filteredGallery = computed(() => {
+	const q = gallerySearch.value.trim().toLowerCase();
+	if (!q) return galleryItems.value;
+	return galleryItems.value.filter((item) =>
+		item.title.toLowerCase().includes(q) ||
+		(item.author ?? "").toLowerCase().includes(q) ||
+		(item.description ?? "").toLowerCase().includes(q) ||
+		(item.tags ?? []).some((t) => t.toLowerCase().includes(q)) ||
+		(item.machine ?? "").toLowerCase().includes(q),
+	);
+});
+
+async function loadGallery(): Promise<void> {
+	if (galleryLoaded.value || galleryLoading.value) return;
+	galleryLoading.value = true;
+	galleryError.value = false;
+	try {
+		const res = await fetch(GALLERY_JSON_URL);
+		if (!res.ok) throw new Error(`HTTP ${res.status}`);
+		const data = (await res.json()) as { layouts?: GalleryItem[] };
+		galleryItems.value = data.layouts ?? [];
+		galleryLoaded.value = true;
+	} catch {
+		galleryError.value = true;
+	} finally {
+		galleryLoading.value = false;
+	}
+}
+
+async function importGalleryItem(item: GalleryItem): Promise<void> {
+	if (galleryImporting.value) return;
+	galleryImporting.value = item.slug;
+	error.value = "";
+	try {
+		// Resolve the site-relative `file` path against the gallery base URL.
+		const fileUrl = new URL(item.file, GALLERY_URL).href;
+		const res = await fetch(fileUrl);
+		if (!res.ok) throw new Error(`HTTP ${res.status}`);
+		const text = await res.text();
+		// Feed through the same code path used for file-picked layouts — gets validation + dep-diff for free.
+		const raw = JSON.parse(text) as { kind?: string };
+		if (raw.kind === "dwcpage") {
+			beginRestore(pageToImportDocument(parsePageFile(text)));
+		} else if (raw.kind === "dwcpanel") {
+			const panel = parsePanelFile(text);
+			beginRestore(panelToImportDocument(panel, panel.title || describeWidget(panel.widget).title));
+		} else {
+			const parsed = parseLayoutFile(text);
+			pending.value = parsed;
+			resetRestore();
+			selectedPages.value = listDocumentPages(parsed.document).map((p) => p.path);
+		}
+	} catch (e) {
+		const code = (e as Error).message;
+		const known = ["invalidJson", "notALayout", "notAPage", "notAPanel"];
+		error.value = i18n.global.t(`plugins.flexibleLayouts.io.error.${known.includes(code) ? code : "generic"}`);
+	} finally {
+		galleryImporting.value = null;
+	}
+}
 
 const store = useLayoutStore();
 const uiStore = useUiStore();
