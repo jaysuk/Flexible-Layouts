@@ -67,7 +67,7 @@
 					</div>
 					<v-btn color="primary" :loading="applying" :disabled="!isConnected" prepend-icon="mdi-download"
 						   @click="updateNow">{{ $t("plugins.flexibleLayouts.updates.updateNow") }}</v-btn>
-					<v-btn variant="text" :href="update.releaseUrl ?? undefined" target="_blank" rel="noopener">
+					<v-btn variant="text" @click="showReleaseNotes">
 						{{ $t("plugins.flexibleLayouts.updates.notes") }}
 					</v-btn>
 				</div>
@@ -77,7 +77,7 @@
 			<v-alert v-else-if="update?.scenario === 'dwcUpdate'" type="warning" variant="tonal" density="comfortable" class="mb-2">
 				<div class="font-weight-medium">{{ $t("plugins.flexibleLayouts.updates.available", { version: update.latestVersion }) }}</div>
 				<div class="text-caption">{{ $t("plugins.flexibleLayouts.updates.needsDwc", { dwc: update.requiredDwc, running: update.runningDwc }) }}</div>
-				<v-btn class="mt-1" size="small" variant="text" :href="update.releaseUrl ?? undefined" target="_blank" rel="noopener">
+				<v-btn class="mt-1" size="small" variant="text" @click="showReleaseNotes">
 					{{ $t("plugins.flexibleLayouts.updates.notes") }}
 				</v-btn>
 			</v-alert>
@@ -108,6 +108,24 @@
 				<code>/BuiltInLayout</code>
 			</p>
 		</v-card-text>
+
+		<v-dialog v-model="releaseNotesOpen" width="600" scrollable>
+			<v-card>
+				<v-card-title>{{ $t("plugins.flexibleLayouts.updates.releaseNotes", { version: update?.latestVersion }) }}</v-card-title>
+				<v-divider />
+				<v-card-text class="text-body-small" style="white-space: pre-wrap; word-break: break-word;">
+					{{ update?.notes || "" }}
+				</v-card-text>
+				<v-divider />
+				<v-card-actions>
+					<v-spacer />
+					<v-btn variant="text" @click="releaseNotesOpen = false">{{ $t("common.close") }}</v-btn>
+					<v-btn v-if="update?.releaseUrl" color="primary" variant="text" :href="update.releaseUrl" target="_blank" rel="noopener">
+						{{ $t("plugins.flexibleLayouts.updates.viewOnGithub") }}
+					</v-btn>
+				</v-card-actions>
+			</v-card>
+		</v-dialog>
 
 		<PageManager v-model="dialogs.pageManager" @open-import="dialogs.io = true" />
 		<ThemeEditor v-model="dialogs.theme" />
@@ -148,8 +166,10 @@ const active = computed(() => isFlLayoutActive());
 // --- Updates -----------------------------------------------------------------------------------
 const isConnected = computed(() => machineStore.isConnected);
 const checksEnabled = ref(updateChecksEnabled());
+const releaseNotesOpen = ref(false);
 function checkNow() { runUpdateCheck({ force: true }); }
 function updateNow() { applyUpdateNow(); }
+function showReleaseNotes() { releaseNotesOpen.value = true; }
 function onToggleChecks(value: boolean | null) {
 	const on = value === true;
 	checksEnabled.value = on;
