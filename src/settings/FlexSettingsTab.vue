@@ -57,8 +57,18 @@
 					   @click="checkNow">{{ $t("plugins.flexibleLayouts.updates.checkNow") }}</v-btn>
 			</div>
 
+			<!-- Reload prompt: shown after a successful one-click update (stale code runs until reload) -->
+			<v-alert v-if="pendingReload" type="success" variant="tonal" density="comfortable" class="mb-2">
+				<div class="d-flex align-center flex-wrap ga-2">
+					<div class="flex-grow-1">{{ $t("plugins.flexibleLayouts.updates.installedReloadBanner") }}</div>
+					<v-btn color="success" prepend-icon="mdi-restart" @click="reloadPage">
+						{{ $t("plugins.flexibleLayouts.updates.reloadNow") }}
+					</v-btn>
+				</div>
+			</v-alert>
+
 			<!-- A compatible newer release: one-click apply -->
-			<v-alert v-if="update?.scenario === 'pluginUpdate'" type="info" variant="tonal" density="comfortable" class="mb-2">
+			<v-alert v-else-if="update?.scenario === 'pluginUpdate'" type="info" variant="tonal" density="comfortable" class="mb-2">
 				<div class="d-flex align-center flex-wrap ga-2">
 					<div class="flex-grow-1">
 						<div class="font-weight-medium">{{ $t("plugins.flexibleLayouts.updates.available", { version: update.latestVersion }) }}</div>
@@ -113,8 +123,22 @@
 			<v-card>
 				<v-card-title>{{ $t("plugins.flexibleLayouts.updates.releaseNotes", { version: update?.latestVersion }) }}</v-card-title>
 				<v-divider />
-				<v-card-text class="text-body-small" style="word-break: break-word; font-family: system-ui, -apple-system, sans-serif;">
-					<div v-html="formattedReleaseNotes" />
+				<v-card-text class="text-body-small" style="word-break: break-word; font-family: system-ui, -apple-system, sans-serif; max-height: 60vh; overflow-y: auto;">
+					<!-- Loading indicator while fetching history -->
+					<div v-if="historyLoading" class="d-flex justify-center pa-4">
+						<v-progress-circular indeterminate size="32" />
+					</div>
+					<!-- Cumulative history: one section per release newer than the installed version -->
+					<template v-else-if="releaseHistory.length > 0">
+						<div v-for="entry in releaseHistory" :key="entry.version" class="mb-4">
+							<div class="text-subtitle-2 font-weight-bold mb-1">{{ entry.name }}</div>
+							<div v-html="formatReleaseNotesHtml(entry.notes)" />
+						</div>
+					</template>
+					<!-- Offline fallback: single section from the latest-release notes -->
+					<template v-else>
+						<div v-html="fallbackNotesHtml" />
+					</template>
 				</v-card-text>
 				<v-divider />
 				<v-card-actions>
@@ -137,17 +161,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from "vue";
+import { computed, reactive, ref, watch } from "vue";
 
 import i18n from "@/i18n";
 import { useMachineStore } from "@/stores/machine";
 import { LogLevel, useUiStore } from "@/stores/ui";
 
-import { buildReport, copyReport, downloadReport } from "dwc-plugin-runtime";
+import { buildReport, cleanReleaseNotes, copyReport, downloadReport, fetchReleaseHistory, formatReleaseNotesHtml, type ReleaseHistoryEntry } from "dwc-plugin-runtime";
 
 import { PLUGIN_MANIFEST_ID } from "../model/constants";
 import { activateFlLayout, deactivateFlLayout, isFlLayoutActive } from "../model/layoutState";
-import { applying, checking, runUpdateCheck, setUpdateChecksEnabled, updateChecksEnabled, updateState as update, applyUpdateNow } from "../model/updateCheck";
+import { applying, checking, pendingReload, runUpdateCheck, setUpdateChecksEnabled, updateChecksEnabled, updateState as update, applyUpdateNow } from "../model/updateCheck";
 import { useLayoutStore } from "../model/store";
 import ImportExportDialog from "../editor/ImportExportDialog.vue";
 import ThemeEditor from "../editor/ThemeEditor.vue";
@@ -168,41 +192,45 @@ const isConnected = computed(() => machineStore.isConnected);
 const checksEnabled = ref(updateChecksEnabled());
 const releaseNotesOpen = ref(false);
 
-// Format release notes: strip machine-readable comment, parse basic markdown.
-const formattedReleaseNotes = computed(() => {
-	const notes = update.value?.notes || "";
-	// Remove the machine-readable comment: <!-- dwc-plugin-update {...} -->
-	const clean = notes.replace(/<!--\s*dwc-plugin-update\s*{[\s\S]*?}\s*-->/g, "").trim();
-	// Basic markdown parsing: headers, bold, lists, line breaks
-	let html = clean
-		.split("\n").map(line => {
-			// Headers: ### Title → <h3>Title</h3>
-			if (line.startsWith("### ")) {
-				return `<h4 style="margin: 12px 0 6px 0; font-weight: 600;">${escapeHtml(line.slice(4))}</h4>`;
-			}
-			// Bold: **text** → <strong>text</strong>
-			line = line.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
-			// Lists: - item → • item with indent
-			if (line.startsWith("- ")) {
-				return `<div style="margin-left: 16px; margin: 4px 0 4px 16px;">• ${escapeHtml(line.slice(2))}</div>`;
-			}
-			// Empty line → spacer
-			if (!line.trim()) return "<div style=\"height: 8px;\"></div>";
-			// Regular paragraph
-			return `<div style="margin: 6px 0;">${line}</div>`;
-		}).join("");
-	return html;
-});
+// Release history: lazily fetched when the notes dialog opens, cached until latestVersion changes.
+const releaseHistory = ref<ReleaseHistoryEntry[]>([]);
+const historyLoading = ref(false);
+let historyFetchedFor: string | null = null;
 
-function escapeHtml(text: string): string {
-	const div = document.createElement("div");
-	div.textContent = text;
-	return div.innerHTML;
+/** Installed version used as the "since" cursor for cumulative history. */
+function installedVersion(): string {
+	const plugins = (machineStore.model as { plugins?: Map<string, { version?: string }> }).plugins;
+	return plugins?.get(PLUGIN_MANIFEST_ID)?.version ?? "0.0.0";
 }
+
+/** HTML rendered for the offline fallback (single-entry, from the latest-release notes). */
+const fallbackNotesHtml = computed(() =>
+	formatReleaseNotesHtml(cleanReleaseNotes(update.value?.notes ?? "")),
+);
+
+watch(releaseNotesOpen, async (open) => {
+	if (!open) return;
+	const latest = update.value?.latestVersion ?? null;
+	// Only re-fetch when the dialog opens and the latest version has changed (avoids redundant calls).
+	if (latest && historyFetchedFor === latest) return;
+	historyLoading.value = true;
+	try {
+		releaseHistory.value = await fetchReleaseHistory({
+			owner: "jaysuk",
+			repo: "Flexible-Layouts",
+			// Show all releases newer than what the user currently has installed.
+			sinceVersion: installedVersion(),
+		});
+		historyFetchedFor = latest;
+	} finally {
+		historyLoading.value = false;
+	}
+});
 
 function checkNow() { runUpdateCheck({ force: true }); }
 function updateNow() { applyUpdateNow(); }
 function showReleaseNotes() { releaseNotesOpen.value = true; }
+function reloadPage() { window.location.reload(); }
 function onToggleChecks(value: boolean | null) {
 	const on = value === true;
 	checksEnabled.value = on;

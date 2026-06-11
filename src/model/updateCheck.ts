@@ -26,6 +26,12 @@ const LS_DISMISSED = "flexibleLayouts.updateCheck.dismissed";
 export const updateState = ref<UpdateResult | null>(null);
 export const checking = ref(false);
 export const applying = ref(false);
+/**
+ * Set to true after a successful one-click update. Updating a running plugin leaves stale code
+ * executing until the page reloads — DWC's own install wizard prompts the same way (it shows a
+ * "reload to finish" message after hot-installing any plugin). The UI shows a reload prompt.
+ */
+export const pendingReload = ref(false);
 
 const t = (key: string, named?: Record<string, unknown>) => i18n.global.t(`plugins.flexibleLayouts.updates.${key}`, named ?? {});
 
@@ -106,7 +112,8 @@ export async function applyUpdateNow(): Promise<void> {
 			// the blob if needed), and hot-loads the bundle. The signature is (filename, blob, start).
 			installPlugin: (filename, blob, start) => machine.installPlugin(filename, blob, start),
 		});
-		ui.makeNotification(LogLevel.success, t("title"), t("applied", { version: result.latestVersion }));
+		pendingReload.value = true;
+		ui.makeNotification(LogLevel.success, t("title"), t("installedReload", { version: result.latestVersion }));
 	} catch (e) {
 		console.warn("[FlexibleLayouts] update failed:", e);
 		// One-click failed (likely CORS). Offer direct download link instead.
