@@ -104,9 +104,9 @@ export async function applyUpdateNow(): Promise<void> {
 		await applyUpdate({
 			assetUrl: result.assetUrl,
 			assetName: result.assetName,
-			// DWC's installer validates the manifest + compatibility, uploads, and hot-loads the bundle.
-			installPlugin: (filename, blob, zipFile, start) =>
-				machine.installPlugin(filename, blob, zipFile as Parameters<typeof machine.installPlugin>[2], start),
+			// DWC 3.7+ validates the manifest + compatibility, uploads the ZIP (reconstructing JSZip from
+			// the blob if needed), and hot-loads the bundle. The signature is (filename, blob, start).
+			installPlugin: (filename, blob, start) => machine.installPlugin(filename, blob, start),
 		});
 		ui.makeNotification(LogLevel.success, t("title"), t("applied", { version: result.latestVersion }));
 	} catch (e) {
