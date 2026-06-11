@@ -34,7 +34,7 @@
 				<v-card-actions>
 					<v-spacer />
 					<v-btn variant="text" @click="cancelSet">{{ $t("generic.cancel") }}</v-btn>
-					<v-btn color="primary" :disabled="!pw1 || mismatch" @click="savePassword">{{ $t("generic.ok") }}</v-btn>
+					<v-btn color="dialog-action" :disabled="!pw1 || mismatch" @click="savePassword">{{ $t("generic.ok") }}</v-btn>
 				</v-card-actions>
 			</v-card>
 		</v-dialog>

@@ -107,7 +107,7 @@
 			<v-card-actions v-if="pending">
 				<v-spacer />
 				<v-btn variant="text" @click="cancelImport">{{ $t("generic.cancel") }}</v-btn>
-				<v-btn color="primary" :disabled="!anyRestoreSelected" @click="confirmImport">
+				<v-btn color="dialog-action" :disabled="!anyRestoreSelected" @click="confirmImport">
 					{{ $t("plugins.flexibleLayouts.io.applyImport") }}
 				</v-btn>
 			</v-card-actions>

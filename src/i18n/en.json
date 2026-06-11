@@ -15,6 +15,7 @@
 		"statusInactive": "The built-in DWC layout is active. Switch to Flexible Layouts to start customising.",
 		"switchToFlex": "Switch to Flexible Layouts",
 		"switchToDefault": "Switch to built-in layout",
+		"pickerHint": "You can also pick the active layout under Settings → General → Display (use that when several layout plugins are installed).",
 		"escapeHint": "Stuck? You can always return to the built-in layout by visiting"
 	},
 	"editor": {

@@ -24,6 +24,7 @@
 					? $t("plugins.flexibleLayouts.settings.switchToDefault")
 					: $t("plugins.flexibleLayouts.settings.switchToFlex") }}
 			</v-btn>
+			<div class="text-caption text-medium-emphasis mt-2">{{ $t("plugins.flexibleLayouts.settings.pickerHint") }}</div>
 
 			<v-divider class="my-4" />
 

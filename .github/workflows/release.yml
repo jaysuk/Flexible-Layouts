@@ -1,0 +1,88 @@
+name: Release
+
+# Builds the installable plugin ZIP against DuetWebControl's source and attaches it to a GitHub
+# Release - no local build needed. Create a Release in the GitHub UI (tag e.g. `v1.0.9`, write the
+# notes) and this runs automatically and uploads FlexibleLayouts-<version>.zip to it.
+#
+# You can also run it manually (Actions -> Release -> Run workflow) to build a ZIP as an artifact,
+# optionally against a different DWC ref.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      dwc-ref:
+        description: DuetWebControl branch/tag/sha to build against
+        default: next
+
+permissions:
+  contents: write # needed to upload the asset to the Release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { path: plugin }
+
+      - name: Checkout DuetWebControl
+        uses: actions/checkout@v4
+        with:
+          repository: Duet3D/DuetWebControl
+          ref: ${{ github.event.inputs.dwc-ref || 'next' }}
+          path: DuetWebControl
+
+      - uses: actions/setup-node@v4
+        with: { node-version: 24 }
+
+      # The Release tag must match the version that gets stamped into the ZIP/manifest, so a release
+      # can't accidentally ship a mismatched build.
+      - name: Verify tag matches plugin version
+        if: github.event_name == 'release'
+        working-directory: plugin
+        run: |
+          VER=$(node -p "require('./plugin.json').version")
+          TAG="${GITHUB_REF_NAME#v}"
+          if [ "$VER" != "$TAG" ]; then
+            echo "::error::Release tag '$TAG' != plugin.json version '$VER'. Bump plugin.json + package.json and re-tag."
+            exit 1
+          fi
+
+      - name: Install DuetWebControl
+        working-directory: DuetWebControl
+        run: npm install
+
+      - name: Install plugin (and its bundled deps into DWC)
+        working-directory: plugin
+        run: |
+          npm install
+          # Install the plugin's runtime dependencies into DWC with their exact specs (github: specs
+          # used verbatim, registry specs as name@range) so the build/type-check can resolve them.
+          SPECS=$(node -p "Object.entries(require('./package.json').dependencies||{}).map(([k,v])=>/[:\\/]/.test(v)?v:k+'@'+v).join(' ')")
+          if [ -n "$SPECS" ]; then (cd ../DuetWebControl && npm install --no-save $SPECS); fi
+
+      - name: Type-check against DWC
+        working-directory: plugin
+        env:
+          DWC_DIR: ${{ github.workspace }}/DuetWebControl
+        run: npm run typecheck
+
+      - name: Build installable ZIP
+        working-directory: plugin
+        env:
+          DWC_DIR: ${{ github.workspace }}/DuetWebControl
+        run: npm run verify-build
+
+      - name: Attach ZIP to the Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: plugin/FlexibleLayouts-*.zip
+
+      - name: Upload ZIP as an artifact (manual runs)
+        if: github.event_name != 'release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: FlexibleLayouts-plugin
+          path: plugin/FlexibleLayouts-*.zip

@@ -119,7 +119,7 @@
 					<v-btn variant="text" color="error" @click="clearCond">{{ $t("plugins.flexibleLayouts.pages.conditionClear") }}</v-btn>
 					<v-spacer />
 					<v-btn variant="text" @click="condOpen = false">{{ $t("generic.cancel") }}</v-btn>
-					<v-btn color="primary" @click="saveCond">{{ $t("generic.ok") }}</v-btn>
+					<v-btn color="dialog-action" @click="saveCond">{{ $t("generic.ok") }}</v-btn>
 				</v-card-actions>
 			</v-card>
 		</v-dialog>
@@ -136,7 +136,7 @@
 				<v-card-actions>
 					<v-spacer />
 					<v-btn variant="text" @click="editOpen = false">{{ $t("generic.cancel") }}</v-btn>
-					<v-btn color="primary" :disabled="!editTitle.trim()" @click="saveEdit">
+					<v-btn color="dialog-action" :disabled="!editTitle.trim()" @click="saveEdit">
 						{{ $t("generic.ok") }}
 					</v-btn>
 				</v-card-actions>

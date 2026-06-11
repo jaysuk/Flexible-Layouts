@@ -67,7 +67,7 @@
 				<v-card-actions>
 					<v-spacer />
 					<v-btn variant="text" @click="renameOpen = false">{{ $t("generic.cancel") }}</v-btn>
-					<v-btn color="primary" :disabled="!renameValue.trim()" @click="saveRename">{{ $t("generic.ok") }}</v-btn>
+					<v-btn color="dialog-action" :disabled="!renameValue.trim()" @click="saveRename">{{ $t("generic.ok") }}</v-btn>
 				</v-card-actions>
 			</v-card>
 		</v-dialog>
