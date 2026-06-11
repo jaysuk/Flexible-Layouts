@@ -22,6 +22,8 @@ export const THEME_TOKENS = [
 	"info",
 	"success",
 	"warning",
+	// DWC 3.7.0-alpha.6+ recolours dialog action buttons (Cancel/OK/Apply, …) through this token.
+	"dialog-action",
 ] as const;
 
 /**

@@ -89,6 +89,7 @@ const FALLBACKS: Record<string, string> = {
 	info: "#2196f3",
 	success: "#4caf50",
 	warning: "#fb8c00",
+	"dialog-action": "#1E88E5",
 };
 
 function fallback(token: string): string {

@@ -208,7 +208,8 @@
 		"success": "Success (green)",
 		"info": "Info (blue)",
 		"warning": "Warning (amber)",
-		"error": "Error (red)"
+		"error": "Error (red)",
+		"dialog-action": "Dialog buttons"
 	},
 	"theme": {
 		"title": "Theme & colours",

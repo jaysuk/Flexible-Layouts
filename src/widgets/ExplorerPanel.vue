@@ -8,6 +8,7 @@
 					<v-icon size="small" class="mr-2">{{ tab.kind === 'editor' ? 'mdi-file-document-edit' : 'mdi-folder' }}</v-icon>
 					<span class="exp-tab-label text-truncate">{{ tabLabel(tab) }}{{ tab.dirty ? " *" : "" }}</span>
 					<v-btn variant="text" size="small" density="comfortable" icon class="ml-2"
+						   :disabled="isLastDirectoryTab(tab)"
 						   :title="$t('list.explorer.closeTab')" @click.stop="closeTab(tab.id)">
 						<v-icon size="20">mdi-close</v-icon>
 					</v-btn>
@@ -40,7 +41,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, resolveComponent } from "vue";
+import { computed, ref, resolveComponent } from "vue";
 
 import i18n from "@/i18n";
 
@@ -80,10 +81,19 @@ function addBrowserTab(): void {
 	activeTab.value = id;
 }
 
+// The "+" new-tab button lives in a browser/directory tab (its FileList actions when there's one
+// tab) or the multi-tab toolbar. Closing the last directory tab while an editor tab remains would
+// leave a lone editor tab with no "+", stranding the user - so the last directory tab can't close.
+const directoryTabCount = computed(() => tabs.value.filter((t) => t.kind === "directory").length);
+function isLastDirectoryTab(tab: Tab): boolean {
+	return tab.kind === "directory" && directoryTabCount.value === 1;
+}
+
 function closeTab(id: number): void {
-	if (tabs.value.length <= 1) return;
 	const idx = tabs.value.findIndex((t) => t.id === id);
-	if (idx < 0) return;
+	if (idx < 0 || tabs.value.length <= 1 || isLastDirectoryTab(tabs.value[idx])) {
+		return;
+	}
 	tabs.value.splice(idx, 1);
 	if (activeTab.value === id) {
 		activeTab.value = tabs.value[Math.min(idx, tabs.value.length - 1)].id;
