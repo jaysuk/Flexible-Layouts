@@ -51,6 +51,31 @@ export function matchSize(layout: Array<GridItemModel>, ids: Set<string>, dim: "
 	return layout.map((it) => (ids.has(it.i) ? clampGeom({ ...it, [dim]: value }, cols) : it));
 }
 
+/**
+ * Translate each item's position by (dx, dy), clamping the result to the grid bounds. Returns a NEW
+ * array; returns the same array reference when ids is empty (no-op), matching the same-array-ref
+ * semantics used by alignItems / matchSize / distributeItems for "too few selected" cases.
+ *
+ * @param items  The subset to translate (NOT the full layout — already filtered by the caller).
+ * @param dx     Column delta (integer; positive = right).
+ * @param dy     Row delta (integer; positive = down).
+ * @param cols   Grid column count; used to clamp x to [0, cols-w].
+ */
+export function translateItems<T extends Pick<GridItemModel, "x" | "y" | "w" | "h" | "i">>(
+	items: T[],
+	dx: number,
+	dy: number,
+	cols: number,
+): T[] {
+	if (items.length === 0) return items;
+	return items.map((it) => {
+		const w = it.w;
+		const x = Math.max(0, Math.min(it.x + dx, cols - w));
+		const y = Math.max(0, it.y + dy);
+		return { ...it, x, y };
+	});
+}
+
 /** Evenly space the inner selected items' centres between the two outermost; ends stay put. Needs ≥3. */
 export function distributeItems(layout: Array<GridItemModel>, ids: Set<string>, axis: "x" | "y", cols: number): Array<GridItemModel> {
 	const sizeKey = axis === "x" ? "w" : "h";

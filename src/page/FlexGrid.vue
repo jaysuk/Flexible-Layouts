@@ -7,7 +7,9 @@
 		<GridItem v-for="item in layout" :key="item.i"
 				  :x="item.x" :y="item.y" :w="item.w" :h="item.h" :i="item.i"
 				  :min-w="1" :min-h="1" drag-allow-from=".flex-drag-handle"
-				  :is-draggable="editMode && !item.locked" :is-resizable="editMode && !item.locked">
+				  :is-draggable="editMode && !item.locked" :is-resizable="editMode && !item.locked"
+				  @move="(i: string, x: number, y: number) => emit('itemMove', i, x, y)"
+				  @moved="(i: string, x: number, y: number) => emit('itemMoved', i, x, y)">
 			<FlexGridItem :item="item" :edit-mode="editMode" :row-height="rowHeight"
 						  :selected="selectedIds?.has(item.i)"
 						  @remove="emit('remove', item.i)" @edit="emit('edit', item.i)"
@@ -46,7 +48,11 @@ const emit = defineEmits<{
 	toggleLock: [string];
 	toggleSelect: [string];
 	autoHeight: [string, number];
-}>();
+	/** Fired continuously while an item is being dragged (group-drag live follow). */
+	itemMove: [i: string, x: number, y: number];
+	/** Fired once when the drag ends (group-drag commit). */
+	itemMoved: [i: string, x: number, y: number];
+}>(); 
 
 // Configurable inter-panel gap (px); defaults to 8 for consumers that don't set it.
 const margin = computed<[number, number]>(() => {

@@ -80,7 +80,8 @@
 				  @changed="onLayoutUpdated" @remove="removeItem" @edit="openProperties"
 				  @edit-contents="openGroupEditor" @export-item="exportPanelById"
 				  @duplicate="duplicateItem" @toggle-lock="toggleLock" @toggle-select="toggleSelect"
-				  @auto-height="onAutoHeight" />
+				  @auto-height="onAutoHeight"
+				  @item-move="onGroupDragMove" @item-moved="onGroupDragEnd" />
 
 		<!-- Empty page: render the built-in fallback when not editing, else prompt to add. -->
 		<template v-else>
@@ -195,7 +196,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch, type Component } from
 import i18n from "@/i18n";
 
 import { type Breakpoint, type ConditionRule, type GridItemModel, type PageLayout, type PanelColors, type Typography, type Widget, newItemId, reidItem } from "../model/document";
-import { type AlignMode, alignItems, distributeItems, matchSize } from "../model/align";
+import { type AlignMode, alignItems, distributeItems, matchSize, translateItems } from "../model/align";
 import { useLayoutStore } from "../model/store";
 import { useFlexDisplay } from "../composables/useFlexDisplay";
 import { recomputeDependencies } from "../model/dependencies";
@@ -487,6 +488,83 @@ function sameWidth() { applySelection(matchSize(layout.value, selectedIds.value,
 function sameHeight() { applySelection(matchSize(layout.value, selectedIds.value, "h", grid.value.cols)); }
 function distributeH() { applySelection(distributeItems(layout.value, selectedIds.value, "x", grid.value.cols)); }
 function distributeV() { applySelection(distributeItems(layout.value, selectedIds.value, "y", grid.value.cols)); }
+
+// #region ── Group drag: dragging a selected item moves all other selected items in sync ──────────
+//
+// grid-layout-plus fires `move(i, x, y)` during a drag and `moved(i, x, y)` at drag end. When the
+// dragged item is part of a multi-selection we mirror its delta to all OTHER selected items live,
+// then commit a single undo step on `moved` — identical to how the align toolbar persists
+// (applySelection calls persist()+commit()). Non-selected drags and single-item drags pass through
+// the normal onLayoutUpdated path and are completely unaffected.
+//
+// IMPORTANT: grid-layout-plus already mutates layout items in place during the drag (it's the source
+// of truth for the anchor item). We only touch the OTHER selected items to mirror the delta;
+// onLayoutUpdated skips commit() during the drag (no move event triggers it — only the grid's
+// layout-updated event triggers it, which fires once at dragend after we've already committed below).
+
+interface GroupDragSnapshot {
+	anchorStartX: number;
+	anchorStartY: number;
+	/** Captured positions of all selected items EXCEPT the anchor at the moment of the first `move`. */
+	followerPositions: Map<string, { x: number; y: number }>;
+}
+
+let groupDragSnap: GroupDragSnapshot | null = null;
+// Flag to suppress the normal onLayoutUpdated commit path for the drag-end layout-updated event —
+// we commit the entire group ourselves via applySelection, which would double-commit otherwise.
+// Set to true after a group drag commits via applySelection; cleared on the next onLayoutUpdated
+// call to absorb the layout-updated event that fires after dragend without double-committing.
+let groupDragCommitting = false;
+
+function onGroupDragMove(anchorId: string, newX: number, newY: number): void {
+	if (selectedIds.value.size <= 1 || !selectedIds.value.has(anchorId)) {
+		return; // Not a group drag — let the normal path handle it.
+	}
+
+	if (!groupDragSnap) {
+		// First move event: snapshot all followers' current positions.
+		const followers = new Map<string, { x: number; y: number }>();
+		for (const id of selectedIds.value) {
+			if (id === anchorId) continue;
+			const it = layout.value.find((l) => l.i === id);
+			if (it) followers.set(id, { x: it.x, y: it.y });
+		}
+		// The anchor's CURRENT grid position before this move is not yet available as a separate
+		// "start" value — use newX/newY as the first anchor position; delta for this first event is 0.
+		groupDragSnap = { anchorStartX: newX, anchorStartY: newY, followerPositions: followers };
+	}
+
+	// Compute delta since the drag started.
+	const dx = newX - groupDragSnap.anchorStartX;
+	const dy = newY - groupDragSnap.anchorStartY;
+
+	// Apply delta to each follower live so they move alongside the anchor.
+	const cols = grid.value.cols;
+	layout.value = layout.value.map((it) => {
+		if (it.i === anchorId || !selectedIds.value.has(it.i)) return it;
+		const origin = groupDragSnap!.followerPositions.get(it.i);
+		if (!origin) return it;
+		const translated = translateItems([{ ...it, x: origin.x, y: origin.y }], dx, dy, cols);
+		return { ...it, x: translated[0].x, y: translated[0].y };
+	});
+}
+
+function onGroupDragEnd(anchorId: string, _newX: number, _newY: number): void {
+	if (!groupDragSnap || !selectedIds.value.has(anchorId)) {
+		groupDragSnap = null;
+		return;
+	}
+	// Commit all selected items' final positions as one undo step — the same persist()+commit() path
+	// that applySelection uses. Set the flag so onLayoutUpdated (which fires just after this from
+	// layout-updated) skips its own commit, preventing a double undo entry.
+	// The layout already reflects the final positions (onGroupDragMove already applied the delta).
+	// Commit the whole group as one undo step using the same persist()+commit() path that
+	// applySelection uses, but without the same-array no-op guard (layout IS already correct).
+	groupDragCommitting = true; // onLayoutUpdated absorbs the layout-updated that fires after dragend
+	persist();
+	commit();
+	groupDragSnap = null;
+}
 // #endregion
 
 function onLayoutUpdated() {
@@ -498,6 +576,12 @@ function onLayoutUpdated() {
 	// but don't add an undo step for it.
 	if (autoHeightPending) {
 		autoHeightPending = false;
+		return;
+	}
+	// A group-drag end fires layout-updated AFTER onGroupDragEnd has already committed the whole
+	// group as one undo step. Absorb that event (skip the duplicate commit) then clear the flag.
+	if (groupDragCommitting) {
+		groupDragCommitting = false;
 		return;
 	}
 	commit();
