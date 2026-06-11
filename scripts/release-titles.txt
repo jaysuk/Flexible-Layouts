@@ -1,0 +1,23 @@
+# Yoga / flexibility pun titles for releases, one per line (blank lines and #comments ignored).
+# The Nth version tag (sorted by semver) gets the Nth title; it wraps around if it runs out.
+# So this list maps in order: v1.0.10 -> line 1, v1.0.11 -> line 2, and so on.
+Limbering Up
+Bend Over Backwards
+Forward Fold
+Sun Salutation
+Downward Duct
+Touch Your Toes
+The Pretzel
+Double-Jointed
+Cobra Pose
+Warrior Two
+Bridge Pose
+Happy Baby
+Child's Pose
+Stretch Goals
+Loosey-Goosey
+Noodle Mode
+Hamstring Hero
+Backbend Bonanza
+Reach for It
+Namaste Put

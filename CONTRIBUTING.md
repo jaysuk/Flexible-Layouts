@@ -51,9 +51,15 @@ Releases are fully built in CI — you never build locally for a release.
    ```
 3. Pushing the `v*` tag triggers **`.github/workflows/release.yml`**, which builds
    `FlexibleLayouts-1.0.12.zip` against DuetWebControl's source, generates the changelog from the
-   commits since the previous tag, and creates a **draft** GitHub Release with the ZIP attached.
-4. Open the draft, give it a title (we use a yoga/flexibility pun per release 🤸), tweak the notes
-   if you like, and **Publish**.
+   commits since the previous tag, picks the release title, and **publishes** the GitHub Release with
+   the ZIP attached. No manual step — once the tag is pushed, it ships.
+
+That's it. The two generated bits:
+
+- **Title** — a yoga/flexibility pun per release 🤸, taken in order from
+  [`scripts/release-titles.txt`](scripts/release-titles.txt) (the Nth tag gets the Nth line). Edit
+  that file to add/reorder puns; preview with `npm run release-title`.
+- **Notes** — the Conventional-Commit changelog; preview with `npm run changelog`.
 
 The workflow guards that the tag matches the version in `plugin.json`, so a release can never ship a
-mismatched build.
+mismatched build. (Prefer a draft for a given release? Flip `draft: false` → `true` in the workflow.)

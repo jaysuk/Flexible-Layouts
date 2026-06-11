@@ -6,9 +6,9 @@ name: Release
 #   (bump plugin.json + package.json, commit) then:
 #   git tag v1.2.3 && git push origin v1.2.3
 #
-# This runs automatically, builds FlexibleLayouts-<version>.zip against DWC, and creates a *draft*
-# Release for the tag with the ZIP attached + auto-generated notes. Open the draft, drop in your
-# title/notes, and hit Publish.
+# This runs automatically, builds FlexibleLayouts-<version>.zip against DWC, and publishes a Release
+# for the tag with the ZIP attached. Title (a yoga pun from scripts/release-titles.txt) and notes
+# (Conventional-Commit changelog) are both generated - no manual step.
 #
 # You can also run it manually (Actions -> Release -> Run workflow) to build a ZIP as an artifact,
 # optionally against a different DWC ref.
@@ -96,11 +96,25 @@ jobs:
             echo '__CHANGELOG_EOF__'
           } >> "$GITHUB_OUTPUT"
 
-      - name: Create draft Release with the ZIP (tag push)
+      # Auto-pick the yoga-pun release title from scripts/release-titles.txt.
+      - name: Resolve release title
+        id: title
+        if: startsWith(github.ref, 'refs/tags/')
+        working-directory: plugin
+        run: |
+          {
+            echo 'name<<__TITLE_EOF__'
+            node scripts/release-title.mjs
+            echo
+            echo '__TITLE_EOF__'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Publish Release with the ZIP (tag push)
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          draft: true # so you can set the title (and tweak notes) before publishing
+          draft: false # auto-publish: title + notes are generated
+          name: ${{ steps.title.outputs.name }}
           body: ${{ steps.changelog.outputs.body }}
           files: plugin/FlexibleLayouts-*.zip
 
