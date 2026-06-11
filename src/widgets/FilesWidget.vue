@@ -14,17 +14,29 @@
       <v-btn v-for="d in dirs" :key="'d:' + d" size="small" variant="tonal" color="secondary"
              class="text-none fl-btn" :disabled="disabledNow" prepend-icon="mdi-folder-outline"
              @click="openDir(d)">{{ d }}</v-btn>
-      <!-- Then printable files -->
-      <v-btn v-for="f in files" :key="'f:' + f" size="small" variant="tonal" :color="widget.color || 'primary'"
-             class="text-none fl-btn" :disabled="disabledNow" prepend-icon="mdi-file-outline"
-             @click="start(f)">{{ f }}</v-btn>
+
+      <!-- Files as thumbnail tiles when enabled (and available), else compact buttons -->
+      <template v-if="showThumbs">
+        <button v-for="f in files" :key="'f:' + f.name" type="button" class="fl-file"
+                :disabled="disabledNow" @click="start(f.name)">
+          <component :is="ThumbnailImg" v-if="firstThumb(f)" :thumbnail="firstThumb(f)" class="fl-thumb" />
+          <v-icon v-else size="small" class="fl-thumb-fallback">mdi-file-outline</v-icon>
+          <span class="fl-name text-truncate" :title="f.name">{{ f.name }}</span>
+        </button>
+      </template>
+      <template v-else>
+        <v-btn v-for="f in files" :key="'f:' + f.name" size="small" variant="tonal" :color="widget.color || 'primary'"
+               class="text-none fl-btn" :disabled="disabledNow" prepend-icon="mdi-file-outline"
+               @click="start(f.name)">{{ f.name }}</v-btn>
+      </template>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, onBeforeUnmount, ref, resolveComponent, watch } from "vue";
 
+import { type GcodeThumbnailItem, useGcodeThumbnails } from "@/composables/useGcodeThumbnails";
 import { useMachineStore } from "@/stores/machine";
 import { LogLevel, useUiStore } from "@/stores/ui";
 
@@ -36,23 +48,43 @@ const uiStore = useUiStore();
 
 const disabledNow = computed(() => props.disabled || uiStore.uiFrozen);
 
+// DWC's slicer-thumbnail fetcher (caches getFileInfo + populates each item's `thumbnails`), and its
+// globally-registered renderer. Resolving the renderer by name means we don't bundle the QOI decoder.
+const thumbs = useGcodeThumbnails();
+const ThumbnailImg = resolveComponent("ThumbnailImg");
+const showThumbs = computed(() => props.widget.thumbnails !== false && typeof ThumbnailImg !== "string");
+
+interface ThumbInfo { data?: string | null; width: number; height: number }
+function firstThumb(f: GcodeThumbnailItem): ThumbInfo | null {
+  const list = (f.thumbnails ?? []) as Array<ThumbInfo>;
+  const usable = list.filter((t) => !!t && !!t.data);
+  return usable.length ? usable.slice().sort((a, b) => b.width * b.height - a.width * a.height)[0] : null;
+}
+
 // The configured folder is the navigation root; the user can drill into sub-folders but not above it.
 const root = computed(() => (props.widget.folder || "0:/gcodes").replace(/\/+$/, ""));
 const currentDir = ref(root.value);
 watch(root, (r) => { currentDir.value = r; }); // reset when the configured folder changes
 
 const dirs = ref<Array<string>>([]);
-const files = ref<Array<string>>([]);
+const files = ref<Array<GcodeThumbnailItem>>([]);
 const loading = ref(false);
 
 async function load(): Promise<void> {
+  thumbs.cancelInFlight();
   if (!machineStore.isConnected) { dirs.value = []; files.value = []; return; }
   loading.value = true;
   try {
     const list = await machineStore.getFileList(currentDir.value);
     dirs.value = list.filter((f) => f.isDirectory).map((f) => f.name).sort();
-    files.value = list.filter((f) => !f.isDirectory && /\.(gco|gcode|g|nc)$/i.test(f.name)).map((f) => f.name).sort();
-  } catch (e) {
+    files.value = list
+      .filter((f) => !f.isDirectory && /\.(gco|gcode|g|nc)$/i.test(f.name))
+      .sort((a, b) => a.name.localeCompare(b.name)) as Array<GcodeThumbnailItem>;
+    // Decorate fetches getFileInfo per gcode file and fills in `thumbnails` reactively.
+    if (showThumbs.value && files.value.length) {
+      thumbs.decorate(files.value, currentDir.value);
+    }
+  } catch {
     dirs.value = [];
     files.value = [];
   } finally {
@@ -60,6 +92,7 @@ async function load(): Promise<void> {
   }
 }
 watch([() => machineStore.isConnected, currentDir], load, { immediate: true });
+onBeforeUnmount(() => thumbs.cancelInFlight());
 
 const canGoUp = computed(() => currentDir.value.length > root.value.length);
 const relPath = computed(() => currentDir.value.slice(root.value.length).replace(/^\/+/, ""));
@@ -89,4 +122,24 @@ function start(name: string): void {
 .fl-grid { display: grid; gap: 4px; overflow-y: auto; min-height: 0; }
 .fl-btn { min-width: 0; }
 .fl-btn :deep(.v-btn__content) { overflow: hidden; text-overflow: ellipsis; }
+
+.fl-file {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 4px;
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  border: 1px solid transparent;
+  cursor: pointer;
+  min-width: 0;
+  color: inherit;
+  font: inherit;
+}
+.fl-file:hover:not(:disabled) { border-color: rgba(var(--v-theme-primary), 0.5); }
+.fl-file:disabled { opacity: 0.5; cursor: default; }
+.fl-thumb { width: 100%; max-height: 88px; aspect-ratio: 1; object-fit: contain; }
+.fl-thumb-fallback { margin: 8px 0; }
+.fl-name { font-size: 0.7rem; max-width: 100%; }
 </style>

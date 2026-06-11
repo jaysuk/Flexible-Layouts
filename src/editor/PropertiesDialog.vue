@@ -543,7 +543,11 @@
 				<!-- Job thumbnail -->
 				<template v-else-if="draft.type === 'thumbnail'">
 					<v-text-field v-model="draft.title" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.jog.titleField')" />
-					<v-select v-model="draft.fit" :items="thumbnailFitOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.thumbnail.fit')" />
+					<v-row dense>
+						<v-col cols="6"><v-select v-model="draft.source" :items="thumbnailSourceOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.thumbnail.source')" /></v-col>
+						<v-col cols="6"><v-select v-model="draft.fit" :items="thumbnailFitOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.thumbnail.fit')" /></v-col>
+					</v-row>
+					<v-text-field v-if="draft.source === 'file'" v-model="draft.path" class="mt-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.thumbnail.path')" placeholder="0:/gcodes/benchy.gcode" />
 				</template>
 
 				<!-- Multi-value table -->
@@ -625,6 +629,7 @@
 						<v-col cols="6"><v-text-field v-model.number="draft.columns" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.macros.columns')" /></v-col>
 						<v-col cols="6"><v-select v-model="draft.color" :items="colorOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
 					</v-row>
+					<v-switch v-model="draft.thumbnails" color="primary" density="compact" hide-details class="mt-1" :label="$t('plugins.flexibleLayouts.files.thumbnails')" />
 				</template>
 
 				<!-- Gauge cluster -->
@@ -1126,6 +1131,10 @@ const overlayOptions = computed(() => [
 const thumbnailFitOptions = computed(() => [
 	{ title: t("thumbnail.fitContain"), value: "contain" },
 	{ title: t("thumbnail.fitCover"), value: "cover" },
+]);
+const thumbnailSourceOptions = computed(() => [
+	{ title: t("thumbnail.sourceJob"), value: "job" },
+	{ title: t("thumbnail.sourceFile"), value: "file" },
 ]);
 const extruderModeOptions = computed(() => [
 	{ title: t("extruder.byLength"), value: "length" },

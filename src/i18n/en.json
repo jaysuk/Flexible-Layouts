@@ -464,10 +464,14 @@
 		"format": "Format"
 	},
 	"thumbnail": {
-		"none": "No job thumbnail",
+		"none": "No thumbnail",
 		"fit": "Image fit",
 		"fitContain": "Fit (contain)",
-		"fitCover": "Fill (cover)"
+		"fitCover": "Fill (cover)",
+		"source": "Show",
+		"sourceJob": "Running job",
+		"sourceFile": "Specific file",
+		"path": "File path"
 	},
 	"table": {
 		"rows": "Rows"
@@ -543,6 +547,7 @@
 		"up": "Up a folder",
 		"back": "Back to files",
 		"filesTab": "Files",
+		"thumbnails": "Show thumbnails",
 		"none": "No files or folders here."
 	},
 	"gaugeCluster": {

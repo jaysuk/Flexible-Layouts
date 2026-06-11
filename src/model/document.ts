@@ -334,6 +334,10 @@ export type Widget =
 		title?: string;
 		/** How the image fits its cell. */
 		fit?: "contain" | "cover";
+		/** "job" = the running job's thumbnail (default); "file" = the thumbnail of a specific file. */
+		source?: "job" | "file";
+		/** File path for source === "file", e.g. `0:/gcodes/benchy.gcode`. */
+		path?: string;
 	}
 	| {
 		/** Compact label → value table for several OM paths. */
@@ -392,6 +396,8 @@ export type Widget =
 		columns?: number;
 		/** Command template; `{path}` is replaced. */
 		startCommand?: string;
+		/** Show slicer thumbnails for gcode files (fetched on demand). Default true. */
+		thumbnails?: boolean;
 		color?: string;
 	}
 	| {
@@ -621,7 +627,7 @@ export function createDefaultWidget(type: WidgetType): Widget {
 		case "clock":
 			return { type: "clock", label: "", mode: "time", format: "24" };
 		case "thumbnail":
-			return { type: "thumbnail", title: "", fit: "contain" };
+			return { type: "thumbnail", title: "", fit: "contain", source: "job" };
 		case "table":
 			return {
 				type: "table",
@@ -642,7 +648,7 @@ export function createDefaultWidget(type: WidgetType): Widget {
 		case "jobControl":
 			return { type: "jobControl", showProgress: true, color: "primary" };
 		case "files":
-			return { type: "files", folder: "0:/gcodes", columns: 1, startCommand: "M32 \"{path}\"", color: "primary" };
+			return { type: "files", folder: "0:/gcodes", columns: 1, startCommand: "M32 \"{path}\"", thumbnails: true, color: "primary" };
 		case "gaugeCluster":
 			return {
 				type: "gaugeCluster",

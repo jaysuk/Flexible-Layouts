@@ -13,13 +13,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, resolveComponent } from "vue";
+import { computed, ref, resolveComponent, watch } from "vue";
 
 import { useMachineStore } from "@/stores/machine";
 
 import type { Widget } from "../model/document";
 
-defineProps<{ widget: Extract<Widget, { type: "thumbnail" }> }>();
+const props = defineProps<{ widget: Extract<Widget, { type: "thumbnail" }> }>();
 
 const machineStore = useMachineStore();
 
@@ -30,19 +30,43 @@ const ThumbnailImg = resolveComponent("ThumbnailImg");
 
 interface ThumbInfo { data?: string | null; width: number; height: number; format?: unknown }
 
-// The running job's slicer thumbnails; DWC fetches the image data asynchronously after the job
-// file metadata arrives, so filter to those with data and pick the largest.
-const thumbnail = computed<ThumbInfo | null>(() => {
-	const job = (machineStore.model as { job?: { file?: { thumbnails?: Array<ThumbInfo> } } }).job;
-	const list = job?.file?.thumbnails;
-	if (typeof ThumbnailImg === "string" || !Array.isArray(list)) {
+function largest(list: Array<ThumbInfo> | null | undefined): ThumbInfo | null {
+	if (!Array.isArray(list)) {
 		return null;
 	}
 	const usable = list.filter((t) => !!t && !!t.data);
-	if (!usable.length) {
+	return usable.length ? usable.slice().sort((a, b) => b.width * b.height - a.width * a.height)[0] : null;
+}
+
+// source === "file": fetch a specific gcode file's thumbnail via getFileInfo (slicer metadata).
+const fileThumb = ref<ThumbInfo | null>(null);
+watch(
+	[() => props.widget.source, () => props.widget.path, () => machineStore.isConnected],
+	async () => {
+		if (props.widget.source !== "file" || !props.widget.path || !machineStore.isConnected) {
+			fileThumb.value = null;
+			return;
+		}
+		try {
+			const info = await machineStore.getFileInfo(props.widget.path, true);
+			fileThumb.value = largest((info?.thumbnails ?? []) as Array<ThumbInfo>);
+		} catch {
+			fileThumb.value = null;
+		}
+	},
+	{ immediate: true },
+);
+
+const thumbnail = computed<ThumbInfo | null>(() => {
+	if (typeof ThumbnailImg === "string") {
 		return null;
 	}
-	return usable.slice().sort((a, b) => b.width * b.height - a.width * a.height)[0];
+	if (props.widget.source === "file") {
+		return fileThumb.value;
+	}
+	// "job" (default): the running job's slicer thumbnails (DWC fetches the image data async).
+	const job = (machineStore.model as { job?: { file?: { thumbnails?: Array<ThumbInfo> } } }).job;
+	return largest(job?.file?.thumbnails);
 });
 </script>
 
