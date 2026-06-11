@@ -1,15 +1,15 @@
 {
-	"id": "FlexibleLayouts",
-	"name": "Flexible Layouts",
-	"author": "James Skitt",
-	"version": "1.0.17",
-	"license": "GPL-3.0-or-later",
-	"homepage": "https://github.com/Duet3D/DuetWebControl",
-	"dwcVersion": "auto-major",
-	"tags": [
-		"layout",
-		"customisation",
-		"dashboard",
-		"theme"
-	]
+  "id": "FlexibleLayouts",
+  "name": "Flexible Layouts",
+  "author": "James Skitt",
+  "version": "1.0.18",
+  "license": "GPL-3.0-or-later",
+  "homepage": "https://github.com/Duet3D/DuetWebControl",
+  "dwcVersion": "auto-major",
+  "tags": [
+    "layout",
+    "customisation",
+    "dashboard",
+    "theme"
+  ]
 }

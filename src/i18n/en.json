@@ -636,7 +636,8 @@
 		"notifyPlugin": "Flexible Layouts {version} is available — open the plugin settings to update.",
 		"notifyDwc": "Flexible Layouts {version} is available but needs DuetWebControl {dwc}. Update DuetWebControl first.",
 		"applied": "Installing {version}… the plugin will reload.",
-		"applyFailed": "Couldn't install the update automatically — opening the release page to download it manually."
+		"applyFailed": "Couldn't install the update automatically.",
+		"corsBlocked": "One-click update blocked by CORS. Downloading the ZIP directly — upload it to DWC's plugin installer."
 	},
 	"dro": {
 		"work": "Work",

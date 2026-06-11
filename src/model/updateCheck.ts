@@ -93,9 +93,7 @@ export async function applyUpdateNow(): Promise<void> {
 	const machine = useMachineStore();
 	const ui = useUiStore();
 	if (!result?.assetUrl || !result.assetName) {
-		if (result?.releaseUrl) {
-			window.open(result.releaseUrl, "_blank", "noopener");
-		}
+		ui.makeNotification(LogLevel.warning, t("title"), t("applyFailed"));
 		return;
 	}
 
@@ -111,10 +109,10 @@ export async function applyUpdateNow(): Promise<void> {
 		ui.makeNotification(LogLevel.success, t("title"), t("applied", { version: result.latestVersion }));
 	} catch (e) {
 		console.warn("[FlexibleLayouts] update failed:", e);
-		ui.makeNotification(LogLevel.warning, t("title"), t("applyFailed"));
-		if (result.releaseUrl) {
-			window.open(result.releaseUrl, "_blank", "noopener");
-		}
+		// One-click failed (likely CORS). Offer direct download link instead.
+		ui.makeNotification(LogLevel.warning, t("title"), t("corsBlocked"));
+		// Open the direct asset link so user can download manually
+		window.location.href = result.assetUrl;
 	} finally {
 		applying.value = false;
 	}
