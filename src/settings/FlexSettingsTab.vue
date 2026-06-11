@@ -109,17 +109,17 @@
 			</p>
 		</v-card-text>
 
-		<v-dialog v-model="releaseNotesOpen" width="600" scrollable>
+		<v-dialog v-model="releaseNotesOpen" width="700" scrollable>
 			<v-card>
 				<v-card-title>{{ $t("plugins.flexibleLayouts.updates.releaseNotes", { version: update?.latestVersion }) }}</v-card-title>
 				<v-divider />
-				<v-card-text class="text-body-small" style="white-space: pre-wrap; word-break: break-word;">
-					{{ update?.notes || "" }}
+				<v-card-text class="text-body-small" style="word-break: break-word; font-family: system-ui, -apple-system, sans-serif;">
+					<div v-html="formattedReleaseNotes" />
 				</v-card-text>
 				<v-divider />
 				<v-card-actions>
 					<v-spacer />
-					<v-btn variant="text" @click="releaseNotesOpen = false">{{ $t("common.close") }}</v-btn>
+					<v-btn variant="text" @click="releaseNotesOpen = false">{{ $t("plugins.flexibleLayouts.updates.close") }}</v-btn>
 					<v-btn v-if="update?.releaseUrl" color="primary" variant="text" :href="update.releaseUrl" target="_blank" rel="noopener">
 						{{ $t("plugins.flexibleLayouts.updates.viewOnGithub") }}
 					</v-btn>
@@ -167,6 +167,39 @@ const active = computed(() => isFlLayoutActive());
 const isConnected = computed(() => machineStore.isConnected);
 const checksEnabled = ref(updateChecksEnabled());
 const releaseNotesOpen = ref(false);
+
+// Format release notes: strip machine-readable comment, parse basic markdown.
+const formattedReleaseNotes = computed(() => {
+	const notes = update.value?.notes || "";
+	// Remove the machine-readable comment: <!-- dwc-plugin-update {...} -->
+	const clean = notes.replace(/<!--\s*dwc-plugin-update\s*{[\s\S]*?}\s*-->/g, "").trim();
+	// Basic markdown parsing: headers, bold, lists, line breaks
+	let html = clean
+		.split("\n").map(line => {
+			// Headers: ### Title → <h3>Title</h3>
+			if (line.startsWith("### ")) {
+				return `<h4 style="margin: 12px 0 6px 0; font-weight: 600;">${escapeHtml(line.slice(4))}</h4>`;
+			}
+			// Bold: **text** → <strong>text</strong>
+			line = line.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+			// Lists: - item → • item with indent
+			if (line.startsWith("- ")) {
+				return `<div style="margin-left: 16px; margin: 4px 0 4px 16px;">• ${escapeHtml(line.slice(2))}</div>`;
+			}
+			// Empty line → spacer
+			if (!line.trim()) return "<div style=\"height: 8px;\"></div>";
+			// Regular paragraph
+			return `<div style="margin: 6px 0;">${line}</div>`;
+		}).join("");
+	return html;
+});
+
+function escapeHtml(text: string): string {
+	const div = document.createElement("div");
+	div.textContent = text;
+	return div.innerHTML;
+}
+
 function checkNow() { runUpdateCheck({ force: true }); }
 function updateNow() { applyUpdateNow(); }
 function showReleaseNotes() { releaseNotesOpen.value = true; }

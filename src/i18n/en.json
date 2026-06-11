@@ -629,6 +629,7 @@
 		"notes": "Release notes",
 		"releaseNotes": "Release notes — {version}",
 		"viewOnGithub": "View on GitHub",
+		"close": "Close",
 		"needConnection": "Connect to your machine to install the update.",
 		"needsDwc": "Needs DuetWebControl {dwc} (you have {running}). Update DuetWebControl first, then update the plugin.",
 		"upToDate": "Up to date (v{version}).",
