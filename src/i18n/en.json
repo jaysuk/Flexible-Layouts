@@ -620,6 +620,22 @@
 		"copied": "Diagnostics copied to clipboard.",
 		"copyFailed": "Couldn't copy — use Download report instead."
 	},
+	"updates": {
+		"title": "Updates",
+		"checkNow": "Check now",
+		"available": "Version {version} is available",
+		"installedNow": "You have {version}",
+		"updateNow": "Update now",
+		"notes": "Release notes",
+		"needConnection": "Connect to your machine to install the update.",
+		"needsDwc": "Needs DuetWebControl {dwc} (you have {running}). Update DuetWebControl first, then update the plugin.",
+		"upToDate": "Up to date (v{version}).",
+		"autoCheck": "Check for updates on load",
+		"notifyPlugin": "Flexible Layouts {version} is available — open the plugin settings to update.",
+		"notifyDwc": "Flexible Layouts {version} is available but needs DuetWebControl {dwc}. Update DuetWebControl first.",
+		"applied": "Installing {version}… the plugin will reload.",
+		"applyFailed": "Couldn't install the update automatically — opening the release page to download it manually."
+	},
 	"dro": {
 		"work": "Work",
 		"machine": "Machine",

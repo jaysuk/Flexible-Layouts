@@ -152,6 +152,7 @@ import { useSettingsStore } from "@/stores/settings";
 
 import { useFlexDisplay } from "../composables/useFlexDisplay";
 import { attemptToggleEdit, editMode, exitEditMode } from "../model/editorState";
+import { runUpdateCheck } from "../model/updateCheck";
 import { isLocked } from "../model/lock";
 import { applyNavOrder, isHidden } from "../model/pageManager";
 import { getActiveProfileId, listProfiles, useLayoutStore } from "../model/store";
@@ -248,7 +249,24 @@ onMounted(() => {
 		return true;
 	});
 	Events.on("dwcPluginUnloaded", onPluginUnloaded);
+
+	// Check GitHub for a newer plugin release (throttled, opt-out, silent on failure). Our installed
+	// version comes from the object model, so wait until connected before checking — the throttle
+	// then ensures it only fires once.
+	if (machineStore.isConnected) {
+		runUpdateCheck({ notify: true });
+	} else {
+		stopConnWatch = watch(() => machineStore.isConnected, (connected) => {
+			if (connected) {
+				runUpdateCheck({ notify: true });
+				stopConnWatch?.();
+			}
+		});
+	}
 });
+
+let stopConnWatch: (() => void) | undefined;
+onUnmounted(() => stopConnWatch?.());
 
 // Profile switcher (reactive via the Pinia-backed document; document identity flips on switch).
 const profiles = computed(() => { void layoutStore.document.value; return listProfiles(); });

@@ -50,6 +50,46 @@
 			<LockSettings />
 
 			<v-divider class="my-4" />
+			<div class="d-flex align-center mb-1">
+				<div class="text-title-small">{{ $t("plugins.flexibleLayouts.updates.title") }}</div>
+				<v-spacer />
+				<v-btn size="small" variant="text" :loading="checking" prepend-icon="mdi-refresh"
+					   @click="checkNow">{{ $t("plugins.flexibleLayouts.updates.checkNow") }}</v-btn>
+			</div>
+
+			<!-- A compatible newer release: one-click apply -->
+			<v-alert v-if="update?.scenario === 'pluginUpdate'" type="info" variant="tonal" density="comfortable" class="mb-2">
+				<div class="d-flex align-center flex-wrap ga-2">
+					<div class="flex-grow-1">
+						<div class="font-weight-medium">{{ $t("plugins.flexibleLayouts.updates.available", { version: update.latestVersion }) }}</div>
+						<div class="text-caption">{{ $t("plugins.flexibleLayouts.updates.installedNow", { version: update.currentVersion }) }}</div>
+						<div v-if="!isConnected" class="text-caption text-warning">{{ $t("plugins.flexibleLayouts.updates.needConnection") }}</div>
+					</div>
+					<v-btn color="primary" :loading="applying" :disabled="!isConnected" prepend-icon="mdi-download"
+						   @click="updateNow">{{ $t("plugins.flexibleLayouts.updates.updateNow") }}</v-btn>
+					<v-btn variant="text" :href="update.releaseUrl ?? undefined" target="_blank" rel="noopener">
+						{{ $t("plugins.flexibleLayouts.updates.notes") }}
+					</v-btn>
+				</div>
+			</v-alert>
+
+			<!-- Newer release that needs a DWC update first -->
+			<v-alert v-else-if="update?.scenario === 'dwcUpdate'" type="warning" variant="tonal" density="comfortable" class="mb-2">
+				<div class="font-weight-medium">{{ $t("plugins.flexibleLayouts.updates.available", { version: update.latestVersion }) }}</div>
+				<div class="text-caption">{{ $t("plugins.flexibleLayouts.updates.needsDwc", { dwc: update.requiredDwc, running: update.runningDwc }) }}</div>
+				<v-btn class="mt-1" size="small" variant="text" :href="update.releaseUrl ?? undefined" target="_blank" rel="noopener">
+					{{ $t("plugins.flexibleLayouts.updates.notes") }}
+				</v-btn>
+			</v-alert>
+
+			<v-alert v-else-if="update?.scenario === 'upToDate'" type="success" variant="tonal" density="compact" class="mb-2">
+				{{ $t("plugins.flexibleLayouts.updates.upToDate", { version: update.currentVersion }) }}
+			</v-alert>
+
+			<v-switch :model-value="checksEnabled" color="primary" density="compact" hide-details
+					  :label="$t('plugins.flexibleLayouts.updates.autoCheck')" @update:model-value="onToggleChecks" />
+
+			<v-divider class="my-4" />
 			<div class="text-title-small mb-1">{{ $t("plugins.flexibleLayouts.diagnostics.title") }}</div>
 			<p class="text-body-small text-medium-emphasis mt-0 mb-2">
 				{{ $t("plugins.flexibleLayouts.diagnostics.hint") }}
@@ -79,7 +119,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive } from "vue";
+import { computed, reactive, ref } from "vue";
 
 import i18n from "@/i18n";
 import { useMachineStore } from "@/stores/machine";
@@ -89,6 +129,7 @@ import { buildReport, copyReport, downloadReport } from "dwc-plugin-runtime";
 
 import { PLUGIN_MANIFEST_ID } from "../model/constants";
 import { activateFlLayout, deactivateFlLayout, isFlLayoutActive } from "../model/layoutState";
+import { applying, checking, runUpdateCheck, setUpdateChecksEnabled, updateChecksEnabled, updateState as update, applyUpdateNow } from "../model/updateCheck";
 import { useLayoutStore } from "../model/store";
 import ImportExportDialog from "../editor/ImportExportDialog.vue";
 import ThemeEditor from "../editor/ThemeEditor.vue";
@@ -103,6 +144,18 @@ const machineStore = useMachineStore();
 const uiStore = useUiStore();
 
 const active = computed(() => isFlLayoutActive());
+
+// --- Updates -----------------------------------------------------------------------------------
+const isConnected = computed(() => machineStore.isConnected);
+const checksEnabled = ref(updateChecksEnabled());
+function checkNow() { runUpdateCheck({ force: true }); }
+function updateNow() { applyUpdateNow(); }
+function onToggleChecks(value: boolean | null) {
+	const on = value === true;
+	checksEnabled.value = on;
+	setUpdateChecksEnabled(on);
+	if (on) { runUpdateCheck({ force: true }); }
+}
 
 // Diagnostics: bundle versions + recent errors + a privacy-scrubbed object model + the live layout
 // document (the most useful FL-specific artifact — lets a bug be reproduced from the exact layout).

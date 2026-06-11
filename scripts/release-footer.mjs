@@ -12,9 +12,20 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const pkgVersion = JSON.parse(readFileSync(join(here, "..", "plugin.json"), "utf8")).version;
+const manifest = JSON.parse(readFileSync(join(here, "..", "plugin.json"), "utf8"));
+const pkgVersion = manifest.version;
 
 const dwcVersion = process.env.DWC_VERSION || "";
+
+// Resolve the manifest's dwcVersion the same way DWC's build does ("auto" -> full DWC version,
+// "auto-major" -> major.minor), so the metadata below matches the requirement DWC actually enforces
+// at install. This is what the update checker compares the running DWC version against.
+function resolveDwcRequirement(value, reference) {
+	if (value === "auto") return reference;
+	if (value === "auto-major") return reference.split(".").slice(0, 2).join(".");
+	return value || "";
+}
+const requiredDwc = resolveDwcRequirement(manifest.dwcVersion, dwcVersion);
 const dwcSha = process.env.DWC_SHA || "";
 const dwcRef = process.env.DWC_REF || "next";
 const dwcBuiltAgainst = dwcVersion
@@ -42,6 +53,8 @@ Built a layout you're proud of? Add it to the **community gallery** so others ca
 - ➕ Contribute: open a PR adding a \`layouts/<your-layout>/\` folder at ${galleryRepo}
 
 Every submission helps the library grow — PRs welcome!
+
+<!-- dwc-plugin-update ${JSON.stringify({ version: pkgVersion, dwcVersion: requiredDwc, asset: `FlexibleLayouts-${pkgVersion}.zip` })} -->
 `;
 
 process.stdout.write(out.replace(/^\n/, ""));
