@@ -43,6 +43,14 @@ jobs:
           ref: ${{ github.event.inputs.dwc-ref || 'next' }}
           path: DuetWebControl
 
+      # Record exactly which DWC the ZIP is built against, for the release notes.
+      - name: Capture DuetWebControl build info
+        id: dwc
+        run: |
+          echo "version=$(node -p "require('./DuetWebControl/package.json').version")" >> "$GITHUB_OUTPUT"
+          echo "sha=$(git -C DuetWebControl rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+          echo "ref=${{ github.event.inputs.dwc-ref || 'next' }}" >> "$GITHUB_OUTPUT"
+
       - uses: actions/setup-node@v4
         with: { node-version: 24 }
 
@@ -84,15 +92,23 @@ jobs:
           DWC_DIR: ${{ github.workspace }}/DuetWebControl
         run: npm run verify-build
 
-      # Build the changelog from Conventional-Commit messages since the previous tag (see CONTRIBUTING.md).
+      # Release body = Conventional-Commit changelog (see CONTRIBUTING.md) + a footer with install
+      # instructions, the DWC version built against, and the community-gallery call-to-action.
       - name: Generate release notes
         id: changelog
         if: startsWith(github.ref, 'refs/tags/')
         working-directory: plugin
+        env:
+          DWC_VERSION: ${{ steps.dwc.outputs.version }}
+          DWC_SHA: ${{ steps.dwc.outputs.sha }}
+          DWC_REF: ${{ steps.dwc.outputs.ref }}
         run: |
           {
             echo 'body<<__CHANGELOG_EOF__'
             node scripts/changelog.mjs
+            echo
+            node scripts/release-footer.mjs
+            echo
             echo '__CHANGELOG_EOF__'
           } >> "$GITHUB_OUTPUT"
 
@@ -108,6 +124,10 @@ jobs:
             echo
             echo '__TITLE_EOF__'
           } >> "$GITHUB_OUTPUT"
+          LEFT=$(node scripts/release-title.mjs --remaining)
+          if [ "$LEFT" -le 5 ]; then
+            echo "::warning::Only $LEFT unused yoga-pun release title(s) left — add more to scripts/release-titles.txt"
+          fi
 
       - name: Publish Release with the ZIP (tag push)
         if: startsWith(github.ref, 'refs/tags/')

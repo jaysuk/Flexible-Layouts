@@ -59,7 +59,13 @@ That's it. The two generated bits:
 - **Title** — a yoga/flexibility pun per release 🤸, taken in order from
   [`scripts/release-titles.txt`](scripts/release-titles.txt) (the Nth tag gets the Nth line). Edit
   that file to add/reorder puns; preview with `npm run release-title`.
-- **Notes** — the Conventional-Commit changelog; preview with `npm run changelog`.
+- **Notes** — the Conventional-Commit changelog; preview with `npm run changelog`. A footer is appended
+  automatically with install instructions, the **DuetWebControl version the ZIP was built against**, and
+  a call-to-action to contribute layouts to the [community gallery](https://github.com/jaysuk/flexible-layouts-gallery)
+  (see [`scripts/release-footer.mjs`](scripts/release-footer.mjs)).
+
+The pun list wraps if it runs out, and CI (plus `npm run release`) warns once fewer than five unused
+titles remain — top up [`scripts/release-titles.txt`](scripts/release-titles.txt) when you see that.
 
 The workflow guards that the tag matches the version in `plugin.json`, so a release can never ship a
 mismatched build. (Prefer a draft for a given release? Flip `draft: false` → `true` in the workflow.)

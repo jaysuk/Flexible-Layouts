@@ -9,6 +9,7 @@
  */
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
+import { LOW_TITLES_THRESHOLD, pickTitle } from "./release-title.mjs";
 
 const args = process.argv.slice(2);
 const push = args.includes("--push");
@@ -43,6 +44,15 @@ git(["add", "plugin.json", "package.json"]);
 git(["commit", "-m", `chore(release): ${tag}`]);
 git(["tag", "-a", tag, "-m", `FlexibleLayouts ${tag}`]);
 console.log(`Committed and tagged ${tag}`);
+
+// Show the title this release will publish under, and warn if the pun list is running low.
+const t = pickTitle(version);
+console.log(`Release title: ${t.label}`);
+if (t.remaining <= LOW_TITLES_THRESHOLD) {
+	console.warn(
+		`\n⚠️  Only ${t.remaining} unused release title(s) left — add more to scripts/release-titles.txt before the next few releases.`,
+	);
+}
 
 if (push) {
 	git(["push"]);
