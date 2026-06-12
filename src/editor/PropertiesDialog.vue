@@ -111,6 +111,12 @@
 													  variant="outlined" hide-details
 													  :label="$t('plugins.flexibleLayouts.properties.offset')" />
 									</v-col>
+									<v-col cols="12">
+										<v-text-field v-model="draft.expression" density="compact" variant="outlined"
+													  hide-details clearable placeholder="x / 60"
+													  :label="$t('plugins.flexibleLayouts.properties.expression')" />
+										<div class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.properties.expressionHint") }}</div>
+									</v-col>
 									<v-col cols="6">
 										<v-text-field v-model="draft.boolOn" density="compact" variant="outlined"
 													  hide-details :label="$t('plugins.flexibleLayouts.properties.boolOn')" />
@@ -885,6 +891,9 @@
 				<v-switch v-model="autoHeight" color="primary" density="compact" hide-details class="mt-1"
 						  :label="$t('plugins.flexibleLayouts.typography.autoHeight')" />
 				<div class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.typography.autoHeightHint") }}</div>
+				<v-text-field v-model="tooltip" class="mt-3" density="compact" variant="outlined" hide-details clearable
+							  :label="$t('plugins.flexibleLayouts.properties.tooltip')" />
+				<div class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.properties.tooltipHint") }}</div>
 			</v-card-text>
 
 			<v-card-actions>
@@ -912,7 +921,7 @@ import WidgetView from "../widgets/WidgetView.vue";
 const props = defineProps<{ modelValue: boolean; item: GridItemModel | null }>();
 const emit = defineEmits<{
 	"update:modelValue": [boolean];
-	save: [{ widget: Widget; conditions: Array<ConditionRule>; colors: PanelColors; typography: Typography; fit: boolean | undefined; autoHeight: boolean | undefined; geometry: { x: number; y: number; w: number; h: number } }];
+	save: [{ widget: Widget; conditions: Array<ConditionRule>; colors: PanelColors; typography: Typography; fit: boolean | undefined; autoHeight: boolean | undefined; tooltip: string | undefined; geometry: { x: number; y: number; w: number; h: number } }];
 }>();
 
 const machineStore = useMachineStore();
@@ -936,6 +945,7 @@ const colors = ref<PanelColors>({});
 const typography = ref<Typography>({});
 const fit = ref<boolean | undefined>(undefined);
 const autoHeight = ref<boolean | undefined>(undefined);
+const tooltip = ref<string>("");
 const geom = ref({ x: 0, y: 0, w: 2, h: 2 });
 watch(
 	() => props.modelValue,
@@ -950,6 +960,7 @@ watch(
 			// saving a panel's properties doesn't silently turn fit on and change how it renders).
 			fit.value = props.item.fit ?? false;
 			autoHeight.value = props.item.autoHeight ?? false;
+			tooltip.value = props.item.tooltip ?? "";
 		}
 	},
 	{ immediate: true },
@@ -1249,6 +1260,7 @@ function save() {
 			typography: typography.value,
 			fit: fit.value,
 			autoHeight: autoHeight.value,
+			tooltip: tooltip.value.trim() || undefined,
 			geometry: {
 				x: Math.max(0, Math.round(geom.value.x) || 0),
 				y: Math.max(0, Math.round(geom.value.y) || 0),

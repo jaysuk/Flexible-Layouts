@@ -105,6 +105,24 @@ export function undismissUpdate(): void {
 	dismissedVersion.value = null;
 }
 
+/** Snapshot of the update-checker state for the diagnostics report (debugs "update didn't show"). */
+export function updateDiagnostics(): Record<string, unknown> {
+	const last = Number(localStorage.getItem(LS_LAST) || 0);
+	const s = updateState.value;
+	return {
+		enabled: updateChecksEnabled(),
+		lastCheck: last ? new Date(last).toISOString() : null,
+		dismissedVersion: dismissedVersion.value,
+		pendingReload: pendingReload.value,
+		scenario: s?.scenario ?? null,
+		currentVersion: s?.currentVersion ?? null,
+		latestVersion: s?.latestVersion ?? null,
+		requiredDwc: s?.requiredDwc ?? null,
+		runningDwc: s?.runningDwc ?? null,
+		error: s?.error ?? null,
+	};
+}
+
 /**
  * Apply the offered update: download the release ZIP and install it through DWC, which hot-reloads
  * the new bundle. Requires a connected machine. On any failure (incl. a browser blocking the asset

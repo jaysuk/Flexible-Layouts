@@ -86,6 +86,39 @@ describe("BtnCmd import", () => {
 		expect(w?.color).toBe("#FF0000");
 	});
 
+	it("carries hover text over as the item tooltip", () => {
+		const doc = convertBtnCmd({
+			...SAMPLE,
+			panels: [{ tabID: "tab1", panelType: "jobinfo", panelHoverText: "Job stats", panelXpos: 0, panelYpos: 0 }],
+		});
+		const item = Object.values(doc.pages)[0].items.find((i) => i.widget.type === "builtinPanel");
+		expect(item?.tooltip).toBe("Job stats");
+	});
+
+	it("maps btnEnableWhileJob=false to a disable-while-processing condition", () => {
+		const doc = convertBtnCmd({
+			...SAMPLE,
+			btns: [{ btnType: "Macro", btnLabel: "Risky", btnEnableWhileJob: false, btnGroupIdx: "tab1", btnXpos: 0, btnYpos: 0 }],
+		});
+		const item = Object.values(doc.pages)[0].items.find((i) => i.widget.type === "codeButton");
+		expect(item?.conditions).toEqual([{ omPath: "state.status", operator: "eq", value: "processing", disable: true }]);
+		// And the inverse: enabled-while-job buttons get no condition.
+		const doc2 = convertBtnCmd({
+			...SAMPLE,
+			btns: [{ btnType: "Macro", btnLabel: "Safe", btnEnableWhileJob: true, btnGroupIdx: "tab1", btnXpos: 0, btnYpos: 0 }],
+		});
+		expect(Object.values(doc2.pages)[0].items.find((i) => i.widget.type === "codeButton")?.conditions).toBeUndefined();
+	});
+
+	it("maps the BtnCmd eval-math string onto the Value widget expression", () => {
+		const doc = convertBtnCmd({
+			...SAMPLE,
+			panels: [{ tabID: "tab1", panelType: "mmValue", panelMMPath: "move.axes[2].machinePosition", panelMMEvalMathStr: "#VAL*1000", panelXpos: 0, panelYpos: 0 }],
+		});
+		const value = Object.values(doc.pages)[0].items.map((i) => i.widget).find((w) => w.type === "value") as Extract<Widget, { type: "value" }>;
+		expect(value.expression).toBe("x*1000");
+	});
+
 	it("maps an MQTT button to an explanatory note carrying topic and payload", () => {
 		const doc = convertBtnCmd({
 			...SAMPLE,

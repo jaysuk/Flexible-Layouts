@@ -21,6 +21,8 @@
 							Click <strong>Edit</strong> in the top bar to start customising; <strong>Done</strong> to stop.
 							While editing, drag a panel by its <em>header</em> to move it and a <em>corner</em> to resize it.
 							Each panel has buttons to configure (⚙), duplicate (⧉), lock (🔒), back up (💾) and delete (🗑).
+							Tick the <strong>checkbox</strong> on several panels to multi-select: align / distribute / match-size
+							tools appear in the toolbar, and <strong>dragging one selected panel moves the whole group</strong>.
 							<strong>Ctrl+Z / Ctrl+Y</strong> undo and redo. The edit toolbar floats below the app bar so
 							<strong>Add widget</strong> and the rest stay reachable however far you've scrolled, and
 							<strong>Tidy up</strong> packs the panels to use the least space.
@@ -45,6 +47,18 @@
 							HTTP / open-URL), input fields, live value read-outs, charts, text/images and web embeds.
 							Use the 🌳 browse button to pick object-model values without typing paths. See the full list in
 							<em>Widget &amp; panel reference</em> below.
+						</v-expansion-panel-text>
+					</v-expansion-panel>
+
+					<v-expansion-panel title="Sharing, gallery &amp; updates">
+						<v-expansion-panel-text>
+							<strong>Import / Export</strong> (settings tab or edit bar) saves your layout to a file, restores it
+							selectively, and converts <strong>BtnCmd</strong> exports. The <strong>Community gallery</strong>
+							section there browses ready-made layouts you can import with one click — and you can contribute
+							your own via a pull request. The plugin also <strong>checks GitHub for new releases</strong>
+							(Settings → Flexible Layouts → Updates): update with one click when compatible, read the release
+							notes in a popup, skip a version, or turn checking off entirely. After an update, reload the page
+							when prompted to finish.
 						</v-expansion-panel-text>
 					</v-expansion-panel>
 

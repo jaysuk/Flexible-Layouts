@@ -7,7 +7,8 @@
  * the nearest built-in panel / widget, with pixel positions mapped onto the grid. It's a best-effort
  * conversion - exact placement and unusual panel types may need a tweak after import.
  */
-import { createEmptyDocument, type GridItemModel, type LayoutDocument, newItemId, type PageLayout, type Widget } from "./document";
+import { normalizeBtnCmdExpression } from "../util/mathExpr";
+import { type ConditionRule, createEmptyDocument, type GridItemModel, type LayoutDocument, newItemId, type PageLayout, type Widget } from "./document";
 
 // Same value as pageManager.CUSTOM_PAGE_PREFIX; inlined to keep this converter free of the
 // route-registration import chain.
@@ -23,6 +24,8 @@ interface BtnCmdBtn {
 	btnTopicData?: string;
 	btnColour?: string;
 	btnIcon?: string;
+	btnHoverText?: string;
+	btnEnableWhileJob?: boolean;
 	btnXpos?: number;
 	btnYpos?: number;
 	btnHsize?: string | number;
@@ -139,6 +142,17 @@ const PANEL_TO_BUILTIN: Record<string, string> = {
 	webcam: "WebcamPanel",
 };
 
+/**
+ * BtnCmd's "enable while job active" toggle (off = the button is greyed out while a job runs) maps
+ * onto a condition rule disabling the widget while the machine is processing.
+ */
+function buttonConditions(b: BtnCmdBtn): Array<ConditionRule> | undefined {
+	if (b.btnEnableWhileJob !== false) {
+		return undefined;
+	}
+	return [{ omPath: "state.status", operator: "eq", value: "processing", disable: true }];
+}
+
 /** Bare hostnames are common in BtnCmd window buttons ("google.co.uk"); make them absolute. */
 function ensureUrl(u: string): string {
 	if (!u) {
@@ -202,8 +216,12 @@ function panelWidget(p: BtnCmdPanel): Widget {
 		return { type: "webcam", url: wp.altWebCamURL || "", refreshMs: wp.altWebCamUpdateTimer ?? 0, fit: "contain", fullscreen: true };
 	}
 	if (type === "mm" || type === "machinemodel" || type === "mmvalue") {
-		// Raw OM read-out; "label" display copes with non-numeric values (booleans, strings).
-		return { type: "value", omPath: p.panelMMPath || "", label: p.panelMMPrefix || "", display: "label" };
+		// Raw OM read-out; "label" display copes with non-numeric values (booleans, strings). BtnCmd's
+		// eval-math string becomes the Value widget's expression transform.
+		return {
+			type: "value", omPath: p.panelMMPath || "", label: p.panelMMPrefix || "", display: "label",
+			expression: normalizeBtnCmdExpression(p.panelMMEvalMathStr),
+		};
 	}
 	if (type === "txtlabel") {
 		return { type: "label", variant: "text", content: p.panelMMPrefix || "", align: "start" };
@@ -293,12 +311,13 @@ export function convertBtnCmd(raw: unknown): LayoutDocument {
 		const colW = canvasW / cols;
 		const items: Array<GridItemModel> = [];
 
-		const place = (widget: Widget, xpx = 0, ypx = 0, wpx = 0, hpx = 0, autoW = 3, autoH = 2, minW = 1): void => {
+		const place = (widget: Widget, xpx = 0, ypx = 0, wpx = 0, hpx = 0, autoW = 3, autoH = 2, minW = 1,
+					   extras: Pick<GridItemModel, "tooltip" | "conditions"> = {}): void => {
 			const x = Math.min(cols - 1, Math.max(0, Math.round(xpx / colW)));
 			const y = Math.max(0, Math.round(ypx / ROW_H));
 			const w = Math.min(cols - x, Math.max(minW, wpx > 0 ? Math.round(wpx / colW) : autoW));
 			const h = Math.max(1, hpx > 0 ? Math.round(hpx / ROW_H) : autoH);
-			items.push({ i: newItemId(), x, y, w, h, widget });
+			items.push({ i: newItemId(), x, y, w, h, widget, ...extras });
 		};
 
 		for (const b of btns.filter((x) => x.btnGroupIdx === tab.tabID)) {
@@ -307,10 +326,15 @@ export function convertBtnCmd(raw: unknown): LayoutDocument {
 			const hpx = auto ? 0 : Number(b.btnHsize) || 0;
 			// Compact single-row buttons whose width tracks the label, so the dense BtnCmd grid stays
 			// dense instead of being blown up into big overlapping boxes that the grid pushes apart.
-			place(buttonWidget(b), b.btnXpos, b.btnYpos, wpx, hpx, estButtonCols(b.btnLabel || "", colW), 1, 1);
+			place(buttonWidget(b), b.btnXpos, b.btnYpos, wpx, hpx, estButtonCols(b.btnLabel || "", colW), 1, 1, {
+				tooltip: b.btnHoverText || undefined,
+				conditions: buttonConditions(b),
+			});
 		}
 		for (const p of panels.filter((x) => x.tabID === tab.tabID)) {
-			place(panelWidget(p), p.panelXpos, p.panelYpos, p.panelWSize, p.panelHSize, 4, 5, 2);
+			place(panelWidget(p), p.panelXpos, p.panelYpos, p.panelWSize, p.panelHSize, 4, 5, 2, {
+				tooltip: p.panelHoverText || undefined,
+			});
 		}
 
 		const page: PageLayout = {

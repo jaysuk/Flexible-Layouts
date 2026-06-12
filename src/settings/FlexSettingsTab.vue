@@ -182,7 +182,7 @@ import { buildReport, cleanReleaseNotes, copyReport, downloadReport, fetchReleas
 
 import { PLUGIN_MANIFEST_ID } from "../model/constants";
 import { activateFlLayout, deactivateFlLayout, isFlLayoutActive } from "../model/layoutState";
-import { applying, checking, dismissCurrentUpdate, dismissedVersion, pendingReload, runUpdateCheck, setUpdateChecksEnabled, undismissUpdate, updateChecksEnabled, updateState as update, applyUpdateNow } from "../model/updateCheck";
+import { applying, checking, dismissCurrentUpdate, dismissedVersion, pendingReload, runUpdateCheck, setUpdateChecksEnabled, undismissUpdate, updateChecksEnabled, updateDiagnostics, updateState as update, applyUpdateNow } from "../model/updateCheck";
 import { useLayoutStore } from "../model/store";
 import ImportExportDialog from "../editor/ImportExportDialog.vue";
 import ThemeEditor from "../editor/ThemeEditor.vue";
@@ -258,7 +258,7 @@ function diagnosticReport() {
 	return buildReport({
 		pluginId: PLUGIN_MANIFEST_ID,
 		model: machineStore.model,
-		state: { document: useLayoutStore().document.value },
+		state: { document: useLayoutStore().document.value, updates: updateDiagnostics() },
 	});
 }
 function downloadDiagnostics(): void {

@@ -52,6 +52,11 @@ export type Widget =
 		/** Numeric transform applied before display: value * scale + offset. */
 		scale?: number;
 		offset?: number;
+		/**
+		 * Arithmetic display transform with `x` as the live value, e.g. "x / 60" or "(x - 32) * 5 / 9".
+		 * Applied after scale/offset. Safe mini-parser (+ - * / parentheses only) - see util/mathExpr.
+		 */
+		expression?: string;
 		/** Render booleans / 0-1 as text. */
 		boolOn?: string;
 		boolOff?: string;
@@ -769,6 +774,8 @@ export interface GridItemModel {
 	widget: Widget;
 	/** Optional title shown in the edit-mode header; falls back to the widget's catalog label. */
 	title?: string;
+	/** Hover tooltip (native title attribute) shown over the whole panel in view mode. */
+	tooltip?: string;
 	colors?: PanelColors;
 	typography?: Typography;
 	/**

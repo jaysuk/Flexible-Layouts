@@ -37,6 +37,7 @@ import { computed } from "vue";
 import { useMachineStore } from "@/stores/machine";
 
 import type { Widget } from "../model/document";
+import { evalMathExpr } from "../util/mathExpr";
 import { resolveOmPath } from "../util/omPath";
 
 const props = defineProps<{ widget: Extract<Widget, { type: "value" }>; overrideColor?: string }>();
@@ -49,14 +50,15 @@ const effectiveColor = computed(() => props.overrideColor || props.widget.color)
 // computed re-runs whenever the underlying field changes.
 const raw = computed(() => resolveOmPath(machineStore.model, props.widget.omPath));
 
-/** Numeric value after scale/offset, used for both the read-out and the gauge. */
+/** Numeric value after scale/offset and the optional expression, used for read-out and gauge. */
 const numericValue = computed(() => {
 	const v = raw.value;
 	if (typeof v !== "number" || !Number.isFinite(v)) {
 		return undefined;
 	}
 	const w = props.widget;
-	return (w.scale !== undefined || w.offset !== undefined) ? v * (w.scale ?? 1) + (w.offset ?? 0) : v;
+	const linear = (w.scale !== undefined || w.offset !== undefined) ? v * (w.scale ?? 1) + (w.offset ?? 0) : v;
+	return w.expression ? evalMathExpr(w.expression, linear) : linear;
 });
 
 const formatted = computed(() => {

@@ -1,5 +1,7 @@
 <template>
-	<div class="flex-grid-item fill-height" :class="{ 'is-editing': editMode, 'is-selected': selected }" :style="colorVars">
+	<!-- Native tooltip outside edit mode only, so it doesn't fight the editor buttons' own titles. -->
+	<div class="flex-grid-item fill-height" :class="{ 'is-editing': editMode, 'is-selected': selected }" :style="colorVars"
+		 :title="!editMode && item.tooltip ? item.tooltip : undefined">
 		<!-- Edit-mode header: drag handle + title + settings + delete. The `flex-drag-handle` class is
 			 what the grid item's drag-allow-from targets, so dragging only starts from this bar. -->
 		<div v-if="editMode" class="flex-item-header flex-drag-handle" :class="{ 'has-header-color': !!item.colors?.header }">
