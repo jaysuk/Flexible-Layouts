@@ -20,6 +20,7 @@ interface BtnCmdBtn {
 	btnType?: string;
 	btnLabel?: string;
 	btnActionData?: string;
+	btnTopicData?: string;
 	btnColour?: string;
 	btnIcon?: string;
 	btnXpos?: number;
@@ -41,10 +42,17 @@ interface BtnCmdPanel {
 	panelMMSuffix?: string;
 	panelMMEvalMathStr?: string;
 	panelHoverText?: string;
+	customPanelID?: string | null;
 	chartLabel?: string;
+	chartOMDataArr?: Array<{ OMString?: string; name?: string; OMColor?: string }>;
+	chartYaxisMin?: number;
+	chartYaxisMax?: number;
+	chartYaxisLabel?: string;
+	chartXaxisLabel?: string;
 	inputVarName?: string;
 	inputType?: string;
 	inputClass?: string;
+	inputDispType?: string;
 	altWebCamParams?: { altWebCamURL?: string; altWebCamUpdateTimer?: number };
 }
 interface BtnCmdTab {
@@ -86,29 +94,58 @@ function hexColor(c?: string): string | undefined {
 	return undefined;
 }
 
+// Keys are BtnCmd panelType values lower-cased. The hyphenated names are the real strings a
+// v01.04.12 export uses (verified against test/fixtures/btncmdtest.json); the bare aliases predate
+// that fixture and are kept in case older exports used them.
 const PANEL_TO_BUILTIN: Record<string, string> = {
 	jobinfo: "JobInfoPanel",
 	jobstatus: "JobControlPanel",
 	jobcontrol: "JobControlPanel",
+	"job-control-panel": "JobControlPanel",
 	jobtimes: "JobTimesPanel",
+	// BtnCmd collects warm-up/layer/duration stats itself; DWC's job-times panel is the closest stats
+	// read-out (warm-up time is BtnCmd-specific and has no DWC counterpart).
+	collectdata: "JobTimesPanel",
 	tools: "ToolsPanel",
 	toolcontrol: "ToolsPanel",
+	"tools-panel": "ToolsPanel",
 	status: "StatusPanel",
+	"status-panel": "StatusPanel",
 	movement: "MovementPanel",
 	machinemovement: "MovementPanel",
+	"movement-panel": "MovementPanel",
 	fans: "FansPanel",
 	fan: "FanPanel",
 	atx: "ATXPanel",
 	babystep: "BabystepPanel",
+	"z-babystep-panel": "BabystepPanel",
 	speedfactor: "SpeedFactorPanel",
+	speed: "SpeedFactorPanel",
 	extrusionfactors: "ExtrusionFactorsPanel",
+	"extrusion-factors-panel": "ExtrusionFactorsPanel",
+	"extrude-panel": "ExtrudePanel",
 	spindle: "SpindleSpeedPanel",
 	macros: "MacroList",
 	macrolist: "MacroList",
-	console: "EventList",
+	eventlist: "EventList",
 	chart: "TemperatureChart",
 	temperaturechart: "TemperatureChart",
+	"temperature-chart": "TemperatureChart",
+	layerchart: "JobLayerChart",
+	joblist: "JobFileList",
+	filamentlist: "FileList",
+	// BtnCmd's plain "webcam" panel is DWC's own configured camera (its URL params belong to the
+	// altwebcam type), so use the built-in panel rather than a URL webcam widget.
+	webcam: "WebcamPanel",
 };
+
+/** Bare hostnames are common in BtnCmd window buttons ("google.co.uk"); make them absolute. */
+function ensureUrl(u: string): string {
+	if (!u) {
+		return "";
+	}
+	return /^[a-z][a-z0-9+.-]*:\/\//i.test(u) ? u : `https://${u}`;
+}
 
 /**
  * BtnCmd auto-sizes a button to its icon + label. We don't have the rendered pixels, so approximate
@@ -138,8 +175,14 @@ function buttonWidget(b: BtnCmdBtn): Widget {
 	if (type === "http") {
 		return { type: "codeButton", action: "http", code: "", url: data, ...common };
 	}
-	if (type === "url" || type === "link") {
-		return { type: "codeButton", action: "url", code: "", url: data, ...common };
+	// "window" opens a URL in a sized popup; the closest we have is open-in-new-tab.
+	if (type === "url" || type === "link" || type === "window") {
+		return { type: "codeButton", action: "url", code: "", url: ensureUrl(data), ...common };
+	}
+	if (type === "mqtt") {
+		// No MQTT action in Flexible Layouts (yet) - keep the config visible so it can be rebuilt.
+		const detail = [b.btnTopicData ? `- Topic: \`${b.btnTopicData}\`` : "", data ? `- Payload: \`${data}\`` : ""].filter(Boolean).join("\n");
+		return { type: "note", content: `**MQTT button: "${b.btnLabel || "Button"}"**\n\nMQTT buttons aren't supported by Flexible Layouts yet.${detail ? `\n\n${detail}` : ""}` };
 	}
 	// "GCode" and anything else: send the action data as a code.
 	return { type: "codeButton", action: "gcode", code: data, ...common };
@@ -151,12 +194,60 @@ function panelWidget(p: BtnCmdPanel): Widget {
 	if (builtin) {
 		return { type: "builtinPanel", component: builtin };
 	}
-	if (type === "webcam" || type === "altwebcam") {
+	if (type === "console") {
+		return { type: "console" };
+	}
+	if (type === "altwebcam") {
 		const wp = p.altWebCamParams || {};
 		return { type: "webcam", url: wp.altWebCamURL || "", refreshMs: wp.altWebCamUpdateTimer ?? 0, fit: "contain", fullscreen: true };
 	}
-	if (type === "mm" || type === "machinemodel") {
-		return { type: "value", omPath: p.panelMMPath || "", label: p.panelMMPrefix || "", display: "number", precision: 1 };
+	if (type === "mm" || type === "machinemodel" || type === "mmvalue") {
+		// Raw OM read-out; "label" display copes with non-numeric values (booleans, strings).
+		return { type: "value", omPath: p.panelMMPath || "", label: p.panelMMPrefix || "", display: "label" };
+	}
+	if (type === "txtlabel") {
+		return { type: "label", variant: "text", content: p.panelMMPrefix || "", align: "start" };
+	}
+	if (type === "jobprogress") {
+		return { type: "progress", label: "Job progress", omPath: "job.filePosition", maxPath: "job.file.size" };
+	}
+	if (type === "btncmdchart") {
+		const series = (p.chartOMDataArr ?? [])
+			.filter((s) => s.OMString)
+			.map((s) => ({ omPath: s.OMString!, label: s.name || s.OMString, color: s.OMColor || undefined }));
+		return {
+			type: "chart",
+			title: p.chartLabel || "Chart",
+			series,
+			min: p.chartYaxisMin,
+			max: p.chartYaxisMax,
+			xLabel: p.chartXaxisLabel || undefined,
+			yLabel: p.chartYaxisLabel || undefined,
+		};
+	}
+	if (type === "vinput") {
+		const varName = p.inputVarName || "";
+		return {
+			type: "input",
+			label: varName || "Input",
+			mode: "global",
+			globalName: varName.replace(/^global\./, ""),
+			inputKind: p.inputType === "number" ? "number" : "text",
+		};
+	}
+	if (type === "remsrc") {
+		// "Remote source": embedded external web content. The URL isn't always in the export; carry
+		// it over when it's a real one, otherwise leave it for the user to fill in.
+		const url = p.altWebCamParams?.altWebCamURL;
+		return { type: "web", url: url && url !== "http://" ? url : "" };
+	}
+	if (type === "custom") {
+		// A BtnCmd custom panel embeds another (hidden) tab; exports don't reliably include that tab,
+		// so there is nothing to convert from. The Group widget is the Flexible Layouts analogue.
+		return {
+			type: "note",
+			content: `**BtnCmd custom panel**\n\nCustom panels embed another BtnCmd tab, which isn't included in the export${p.customPanelID ? ` (referenced tab \`${p.customPanelID}\`)` : ""}. Rebuild it with a **Group** widget, which is the equivalent container in Flexible Layouts.`,
+		};
 	}
 	return { type: "note", content: describeUnmatchedPanel(p) };
 }
