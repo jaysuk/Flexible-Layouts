@@ -58,7 +58,7 @@ import { computed, ref, watch } from "vue";
 
 import { useMachineStore } from "@/stores/machine";
 
-import { buildOmPath, resolveOmPath } from "../util/omPath";
+import { buildOmPath, omChildren, resolveOmPath } from "../util/omPath";
 
 const props = defineProps<{ modelValue: boolean; path?: string }>();
 const emit = defineEmits<{ "update:modelValue": [boolean]; select: [string] }>();
@@ -101,6 +101,7 @@ function isContainer(v: unknown): boolean {
 function preview(v: unknown): string {
 	if (v === null) return "null";
 	if (Array.isArray(v)) return `[${v.length}]`;
+	if (v instanceof Map) return `{${v.size}}`;
 	if (typeof v === "object") return "{…}";
 	const s = String(v);
 	return s.length > 40 ? s.slice(0, 40) + "…" : s;
@@ -111,18 +112,11 @@ const entries = computed<Array<Entry>>(() => {
 	if (!isContainer(node)) {
 		return [];
 	}
-	const keys = Array.isArray(node)
-		? node.map((_, i) => String(i))
-		: Object.keys(node as Record<string, unknown>).filter((k) => !k.startsWith("_"));
-	return keys
-		.map((key) => {
-			const value = (node as Record<string, unknown>)[key];
-			if (typeof value === "function") {
-				return null;
-			}
-			return { key, expandable: isContainer(value), preview: preview(value) };
-		})
-		.filter((e): e is Entry => e !== null);
+	// omChildren handles plain objects, arrays AND Maps - parts of the model (global, plugins, ...)
+	// are Maps, which Object.keys() silently enumerates as empty.
+	return omChildren(node)
+		.filter(([key, value]) => !key.startsWith("_") && typeof value !== "function")
+		.map(([key, value]) => ({ key, expandable: isContainer(value), preview: preview(value) }));
 });
 
 const filtered = computed(() => {

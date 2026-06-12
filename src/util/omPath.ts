@@ -25,9 +25,25 @@ export function resolveOmPath(root: unknown, path: string): unknown {
 		if (typeof current !== "object") {
 			return undefined;
 		}
-		current = (current as Record<string, unknown>)[seg];
+		// Parts of the object model are Maps, not plain objects (global, plugins, ...) - plain
+		// property access on those silently returns undefined for every key.
+		current = current instanceof Map ? current.get(seg) : (current as Record<string, unknown>)[seg];
 	}
 	return current;
+}
+
+/** Enumerate an object-model node's children uniformly across plain objects, arrays and Maps. */
+export function omChildren(node: unknown): Array<[string, unknown]> {
+	if (node === null || node === undefined || typeof node !== "object") {
+		return [];
+	}
+	if (node instanceof Map) {
+		return Array.from(node.entries()).map(([k, v]) => [String(k), v]);
+	}
+	if (Array.isArray(node)) {
+		return node.map((v, i) => [String(i), v]);
+	}
+	return Object.entries(node as Record<string, unknown>);
 }
 
 /** Build a path string from segments (numeric segments become `[n]`). Inverse of resolveOmPath. */
