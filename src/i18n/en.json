@@ -626,6 +626,8 @@
 		"available": "Version {version} is available",
 		"installedNow": "You have {version}",
 		"updateNow": "Update now",
+		"skipVersion": "Skip this version",
+		"skipped": "Version {version} skipped — Check now will show it again.",
 		"notes": "Release notes",
 		"releaseNotes": "Release notes — {version}",
 		"viewOnGithub": "View on GitHub",

@@ -67,6 +67,11 @@
 				</div>
 			</v-alert>
 
+			<!-- Update offered but skipped by the user: quiet hint, Check now brings it back -->
+			<div v-else-if="update?.updateAvailable && isDismissed" class="text-caption text-medium-emphasis mb-2">
+				{{ $t("plugins.flexibleLayouts.updates.skipped", { version: update.latestVersion }) }}
+			</div>
+
 			<!-- A compatible newer release: one-click apply -->
 			<v-alert v-else-if="update?.scenario === 'pluginUpdate'" type="info" variant="tonal" density="comfortable" class="mb-2">
 				<div class="d-flex align-center flex-wrap ga-2">
@@ -80,6 +85,9 @@
 					<v-btn variant="text" @click="showReleaseNotes">
 						{{ $t("plugins.flexibleLayouts.updates.notes") }}
 					</v-btn>
+					<v-btn variant="text" size="small" @click="skipVersion">
+						{{ $t("plugins.flexibleLayouts.updates.skipVersion") }}
+					</v-btn>
 				</div>
 			</v-alert>
 
@@ -89,6 +97,9 @@
 				<div class="text-caption">{{ $t("plugins.flexibleLayouts.updates.needsDwc", { dwc: update.requiredDwc, running: update.runningDwc }) }}</div>
 				<v-btn class="mt-1" size="small" variant="text" @click="showReleaseNotes">
 					{{ $t("plugins.flexibleLayouts.updates.notes") }}
+				</v-btn>
+				<v-btn class="mt-1" size="small" variant="text" @click="skipVersion">
+					{{ $t("plugins.flexibleLayouts.updates.skipVersion") }}
 				</v-btn>
 			</v-alert>
 
@@ -171,7 +182,7 @@ import { buildReport, cleanReleaseNotes, copyReport, downloadReport, fetchReleas
 
 import { PLUGIN_MANIFEST_ID } from "../model/constants";
 import { activateFlLayout, deactivateFlLayout, isFlLayoutActive } from "../model/layoutState";
-import { applying, checking, pendingReload, runUpdateCheck, setUpdateChecksEnabled, updateChecksEnabled, updateState as update, applyUpdateNow } from "../model/updateCheck";
+import { applying, checking, dismissCurrentUpdate, dismissedVersion, pendingReload, runUpdateCheck, setUpdateChecksEnabled, undismissUpdate, updateChecksEnabled, updateState as update, applyUpdateNow } from "../model/updateCheck";
 import { useLayoutStore } from "../model/store";
 import ImportExportDialog from "../editor/ImportExportDialog.vue";
 import ThemeEditor from "../editor/ThemeEditor.vue";
@@ -227,7 +238,10 @@ watch(releaseNotesOpen, async (open) => {
 	}
 });
 
-function checkNow() { runUpdateCheck({ force: true }); }
+const isDismissed = computed(() => update.value?.latestVersion != null && update.value.latestVersion === dismissedVersion.value);
+// An explicit check means the user wants to see the offer again, so clear any skipped version first.
+function checkNow() { undismissUpdate(); runUpdateCheck({ force: true }); }
+function skipVersion() { dismissCurrentUpdate(); }
 function updateNow() { applyUpdateNow(); }
 function showReleaseNotes() { releaseNotesOpen.value = true; }
 function reloadPage() { window.location.reload(); }

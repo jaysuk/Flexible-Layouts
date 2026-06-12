@@ -82,11 +82,27 @@ export async function runUpdateCheck(opts: { force?: boolean; notify?: boolean }
 	}
 }
 
+/**
+ * Version the user chose to skip (reactive mirror of localStorage so the settings alert hides
+ * immediately). Suppresses both the load notification and the update alert until a newer release.
+ */
+export const dismissedVersion = ref<string | null>(safeGetDismissed());
+function safeGetDismissed(): string | null {
+	try { return localStorage.getItem(LS_DISMISSED); } catch { return null; }
+}
+
 /** Stop nagging about the currently-offered version (until the next, newer release). */
 export function dismissCurrentUpdate(): void {
 	if (updateState.value?.latestVersion) {
 		localStorage.setItem(LS_DISMISSED, updateState.value.latestVersion);
+		dismissedVersion.value = updateState.value.latestVersion;
 	}
+}
+
+/** Forget a skipped version (an explicit "Check now" means the user wants to see the offer again). */
+export function undismissUpdate(): void {
+	localStorage.removeItem(LS_DISMISSED);
+	dismissedVersion.value = null;
 }
 
 /**
