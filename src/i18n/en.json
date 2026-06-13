@@ -235,6 +235,24 @@
 		"from": "Entered",
 		"to": "Sent"
 	},
+	"sdBackup": {
+		"title": "SD-card backup",
+		"hint": "Saves your whole layout (all profiles) to the printer's SD card each time you finish editing, so it survives DWC settings being wiped — e.g. when switching between DWC 3.6 and 3.7.",
+		"backupNow": "Back up now",
+		"restoreNow": "Restore from SD",
+		"auto": "Back up to SD when I press Done",
+		"backupOk": "Layout backed up to the SD card.",
+		"backupEmpty": "Nothing to back up yet — add some pages or widgets first.",
+		"backupFailed": "Couldn't write the backup to the SD card.",
+		"noBackup": "No layout backup was found on the SD card.",
+		"restored": "Layout restored from the SD-card backup.",
+		"restoreNowConfirm": "Replace your current layout with the SD-card backup from {date} ({count} profile(s))? Your current layout will be replaced.",
+		"restoreTitle": "Restore layout from SD card?",
+		"restoreBody": "Your layout is empty, but a backup was found on the printer's SD card. Restore it?",
+		"restoreMeta": "Backup from {date} · {count} profile(s)",
+		"restoreConfirm": "Restore",
+		"restoreDecline": "Not now"
+	},
 	"colors": {
 		"default": "Default",
 		"custom": "Custom…",

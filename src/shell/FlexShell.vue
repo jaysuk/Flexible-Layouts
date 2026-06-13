@@ -150,6 +150,27 @@
 		<ProfilesDialog v-model="profilesOpen" />
 		<HelpDialog v-model="helpOpen" :first-run="helpFirstRun" />
 		<PasswordDialog />
+
+		<!-- SD-card restore offer: shown when the live layout is empty but a backup exists on the card. -->
+		<v-dialog v-model="restoreOpen" max-width="460" persistent>
+			<v-card>
+				<v-card-title class="d-flex align-center">
+					<v-icon class="me-2" color="primary">mdi-sd</v-icon>
+					{{ $t("plugins.flexibleLayouts.sdBackup.restoreTitle") }}
+				</v-card-title>
+				<v-card-text>
+					<p class="mb-2">{{ $t("plugins.flexibleLayouts.sdBackup.restoreBody") }}</p>
+					<div class="text-caption text-medium-emphasis">
+						{{ $t("plugins.flexibleLayouts.sdBackup.restoreMeta", { date: restoreSavedAt, count: restoreProfileCount }) }}
+					</div>
+				</v-card-text>
+				<v-card-actions>
+					<v-spacer />
+					<v-btn variant="text" @click="declineRestore">{{ $t("plugins.flexibleLayouts.sdBackup.restoreDecline") }}</v-btn>
+					<v-btn color="primary" variant="flat" @click="confirmRestore">{{ $t("plugins.flexibleLayouts.sdBackup.restoreConfirm") }}</v-btn>
+				</v-card-actions>
+			</v-card>
+		</v-dialog>
 	</v-app>
 </template>
 
@@ -169,6 +190,7 @@ import { attemptToggleEdit, editMode, exitEditMode } from "../model/editorState"
 import { runUpdateCheck } from "../model/updateCheck";
 import { applyStartupRoute } from "../model/startup";
 import { startChartSampler, stopChartSampler } from "../model/chartSampler";
+import { applyBackup, checkForRestore, dismissRestore, type FlBackup, isAutoBackupEnabled, writeBackup } from "../model/sdBackup";
 import { isLocked } from "../model/lock";
 import { applyNavOrder, isHidden } from "../model/pageManager";
 import { getActiveProfileId, listProfiles, useLayoutStore } from "../model/store";
@@ -272,20 +294,60 @@ onMounted(() => {
 	// Collect chart data in the background so a chart shows history even before its page is opened.
 	startChartSampler();
 
-	// Check GitHub for a newer plugin release (throttled, opt-out, silent on failure). Our installed
-	// version comes from the object model, so wait until connected before checking — the throttle
-	// then ensures it only fires once.
+	// Things that need a live connection: the update check (installed version comes from the object
+	// model) and the SD-card restore check (reads the backup file). Run once, when connected.
 	if (machineStore.isConnected) {
-		runUpdateCheck({ notify: true });
+		void onConnected();
 	} else {
 		stopConnWatch = watch(() => machineStore.isConnected, (connected) => {
 			if (connected) {
-				runUpdateCheck({ notify: true });
+				void onConnected();
 				stopConnWatch?.();
 			}
 		});
 	}
 });
+
+async function onConnected(): Promise<void> {
+	runUpdateCheck({ notify: true });
+	// Offer to restore from the SD card if the live layout is empty but a backup exists (e.g. DWC
+	// settings were wiped switching 3.6↔3.7). Silent/no-op otherwise.
+	try {
+		const backup = await checkForRestore();
+		if (backup) {
+			restoreBackup.value = backup;
+			restoreOpen.value = true;
+		}
+	} catch { /* best-effort */ }
+}
+
+// Persist the whole layout to the SD card whenever the user finishes editing (Done), so there's
+// always an off-settings copy to recover from. Skipped for empty layouts / no-op changes inside.
+watch(editMode, (now, was) => {
+	if (was && !now && isAutoBackupEnabled()) {
+		void writeBackup();
+	}
+});
+
+// --- SD restore prompt ---
+const restoreOpen = ref(false);
+const restoreBackup = ref<FlBackup | null>(null);
+const restoreSavedAt = computed(() =>
+	restoreBackup.value?.savedAt ? new Date(restoreBackup.value.savedAt).toLocaleString() : "");
+const restoreProfileCount = computed(() => Object.keys(restoreBackup.value?.profiles ?? {}).length);
+function confirmRestore(): void {
+	if (restoreBackup.value) {
+		applyBackup(restoreBackup.value);
+		router.push("/").catch(() => { /* already there */ });
+	}
+	restoreOpen.value = false;
+}
+function declineRestore(): void {
+	if (restoreBackup.value) {
+		dismissRestore(restoreBackup.value);
+	}
+	restoreOpen.value = false;
+}
 
 let stopConnWatch: (() => void) | undefined;
 onUnmounted(() => stopConnWatch?.());

@@ -111,6 +111,20 @@
 					  :label="$t('plugins.flexibleLayouts.updates.autoCheck')" @update:model-value="onToggleChecks" />
 
 			<v-divider class="my-4" />
+			<div class="text-title-small mb-1">{{ $t("plugins.flexibleLayouts.sdBackup.title") }}</div>
+			<p class="text-body-small text-medium-emphasis mt-0 mb-2">{{ $t("plugins.flexibleLayouts.sdBackup.hint") }}</p>
+			<div class="d-flex flex-wrap ga-2">
+				<v-btn variant="tonal" prepend-icon="mdi-content-save" :loading="backingUp" :disabled="!isConnected" @click="backupNow">
+					{{ $t("plugins.flexibleLayouts.sdBackup.backupNow") }}
+				</v-btn>
+				<v-btn variant="tonal" prepend-icon="mdi-history" :loading="restoring" :disabled="!isConnected" @click="restoreNow">
+					{{ $t("plugins.flexibleLayouts.sdBackup.restoreNow") }}
+				</v-btn>
+			</div>
+			<v-switch :model-value="sdEnabled" color="primary" density="compact" hide-details class="mt-1"
+					  :label="$t('plugins.flexibleLayouts.sdBackup.auto')" @update:model-value="onToggleSd" />
+
+			<v-divider class="my-4" />
 			<div class="text-title-small mb-1">{{ $t("plugins.flexibleLayouts.diagnostics.title") }}</div>
 			<p class="text-body-small text-medium-emphasis mt-0 mb-2">
 				{{ $t("plugins.flexibleLayouts.diagnostics.hint") }}
@@ -175,6 +189,7 @@
 import { computed, reactive, ref, watch } from "vue";
 
 import i18n from "@/i18n";
+import { showConfirmDialog } from "@/composables/useConfirmDialog";
 import { useMachineStore } from "@/stores/machine";
 import { LogLevel, useUiStore } from "@/stores/ui";
 
@@ -184,6 +199,7 @@ import { PLUGIN_MANIFEST_ID } from "../model/constants";
 import { activateFlLayout, deactivateFlLayout, isFlLayoutActive } from "../model/layoutState";
 import { applying, checking, dismissCurrentUpdate, dismissedVersion, pendingReload, runUpdateCheck, setUpdateChecksEnabled, undismissUpdate, updateChecksEnabled, updateDiagnostics, updateState as update, applyUpdateNow } from "../model/updateCheck";
 import { useLayoutStore } from "../model/store";
+import { applyBackup, isAutoBackupEnabled, readBackup, setAutoBackupEnabled, writeBackup } from "../model/sdBackup";
 import ImportExportDialog from "../editor/ImportExportDialog.vue";
 import ThemeEditor from "../editor/ThemeEditor.vue";
 import ProfilesDialog from "../editor/ProfilesDialog.vue";
@@ -295,6 +311,60 @@ function onToggleLayout() {
 		deactivateFlLayout();
 	} else {
 		activateFlLayout();
+	}
+}
+
+// --- SD-card backup ----------------------------------------------------------------------------
+const sdEnabled = ref(isAutoBackupEnabled());
+const backingUp = ref(false);
+const restoring = ref(false);
+
+function sdT(key: string, params?: Record<string, unknown>): string {
+	return i18n.global.t(`plugins.flexibleLayouts.sdBackup.${key}`, params ?? {});
+}
+function sdNotify(level: LogLevel, key: string, params?: Record<string, unknown>): void {
+	uiStore.makeNotification(level, sdT("title"), sdT(key, params));
+}
+
+function onToggleSd(value: boolean | null): void {
+	const on = value === true;
+	sdEnabled.value = on;
+	setAutoBackupEnabled(on);
+}
+
+async function backupNow(): Promise<void> {
+	backingUp.value = true;
+	try {
+		const result = await writeBackup();
+		if (result === "written" || result === "unchanged") {
+			sdNotify(LogLevel.success, "backupOk");
+		} else if (result === "skipped-empty") {
+			sdNotify(LogLevel.info, "backupEmpty");
+		} else {
+			sdNotify(LogLevel.warning, "backupFailed");
+		}
+	} finally {
+		backingUp.value = false;
+	}
+}
+
+async function restoreNow(): Promise<void> {
+	restoring.value = true;
+	try {
+		const backup = await readBackup();
+		if (!backup) {
+			sdNotify(LogLevel.warning, "noBackup");
+			return;
+		}
+		const count = Object.keys(backup.profiles).length;
+		const when = backup.savedAt ? new Date(backup.savedAt).toLocaleString() : "";
+		const ok = await showConfirmDialog(sdT("restoreTitle"), sdT("restoreNowConfirm", { date: when, count }), "mdi-sd");
+		if (ok) {
+			applyBackup(backup);
+			sdNotify(LogLevel.success, "restored");
+		}
+	} finally {
+		restoring.value = false;
 	}
 }
 </script>

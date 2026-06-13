@@ -100,6 +100,20 @@ export function setLiveDocument(doc: LayoutDocument): void {
 	(c[PROFILES_KEY] as Record<string, LayoutDocument>)[active] = doc;
 }
 
+/** Deep snapshot of every profile + the active pointer — the payload of the SD-card backup. */
+export function snapshotAllProfiles(): { profiles: Record<string, LayoutDocument>; active: string } {
+	const { profiles, active } = ensureProfiles();
+	return { profiles: JSON.parse(JSON.stringify(profiles)), active };
+}
+
+/** Replace the entire profiles structure (SD restore). Migrates each profile and validates `active`. */
+export function replaceAllProfiles(profiles: Record<string, LayoutDocument>, active: string): void {
+	const c = container();
+	c[PROFILES_KEY] = profiles;
+	c[ACTIVE_KEY] = profiles[active] ? active : (Object.keys(profiles)[0] ?? "default");
+	registerDocument();
+}
+
 // #region Profile management (pure data; route/theme side-effects live in model/profiles.ts)
 export function getActiveProfileId(): string {
 	return ensureProfiles().active;
