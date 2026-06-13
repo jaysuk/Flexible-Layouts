@@ -30,6 +30,8 @@ export type Widget =
 		label: string;
 		color?: string;
 		icon?: string;
+		/** Icon size in px. Omitted = scales with the panel's typography (em-relative). */
+		iconSize?: number;
 		/** Ask for confirmation before acting (useful for destructive commands). */
 		confirm?: boolean;
 		/** What the button does. Defaults to sending `code` as G-code. */
@@ -169,6 +171,8 @@ export type Widget =
 		inputKind: "number" | "text";
 		color?: string;
 		default?: string | number;
+		/** Transform the entered value before it's sent (see {@link InputModifier}). */
+		modifier?: InputModifier;
 	}
 	| {
 		/** NeoPixel / DotStar LED-strip control (RRF M150). */
@@ -729,10 +733,35 @@ export interface PanelColors {
 	accent?: string;
 }
 
+/**
+ * Send-time transform for the Input widget — the inverse companion to the value widget's display
+ * modifiers. The entered value is converted before it is substituted into a `{value}` command (or
+ * written to a global): the `map` is checked first (exact text match → its raw replacement),
+ * otherwise a numeric value is transformed by `value*scale+offset` and then the optional `x`-based
+ * `expression`. Mirrors the output formatting so the two read the same. (Slider/stepper deliberately
+ * stay on their own scale/offset — a second transform there would just be confusing.)
+ */
+export interface InputModifier {
+	/** Linear gain applied to the entered number. */
+	scale?: number;
+	/** Linear offset added after scaling. */
+	offset?: number;
+	/** Arithmetic with `x` = the entered value after scale/offset, e.g. "x * 60" (see util/mathExpr). */
+	expression?: string;
+	/** Exact entered-text → sent-text mapping, checked before the numeric path. */
+	map?: Array<{ from: string; to: string }>;
+}
+
 /** Per-widget typography overrides. */
 export interface Typography {
 	/** Base font size in px. */
 	fontSize?: number;
+	/**
+	 * Scale the font size down on smaller viewports instead of keeping it fixed in px. `fontSize`
+	 * becomes the maximum; the text shrinks (to a sensible floor) as the screen narrows, so it stays
+	 * legible on phones/tablets. Applied via CSS clamp() in FlexGridItem.
+	 */
+	responsive?: boolean;
 	/** CSS font-family stack. */
 	fontFamily?: string;
 	/** Font size (px) for labels — field/section labels, captions — independent of the value text. */
@@ -863,9 +892,20 @@ export interface LayoutDocument {
 		dark?: boolean;
 		colors: Record<string, string>;
 		variables?: Record<string, unknown>;
+		/**
+		 * User-defined named colours. Their literal value is what gets stored on a widget/panel (so
+		 * they work whether or not the global theme is enabled); the name is shown in colour pickers
+		 * so a palette can be reused across the layout.
+		 */
+		customColors?: Array<{ name: string; value: string }>;
 	};
 	/** Keyed by route path (`/`, `/Console`, …) or a generated id for custom pages. */
 	pages: Record<string, PageLayout>;
+	/**
+	 * Route to open on startup when this layout/profile is active (e.g. `/Console` or a custom page
+	 * path). Empty/omitted = the normal landing page (Dashboard). Applied once per page load.
+	 */
+	startupPath?: string;
 	/** Top app-bar customisation: pinned mini widgets + styling. */
 	header?: { items: Array<GridItemModel>; color?: string; title?: string; logo?: string };
 	/** Hide the persistent status panel region in the custom shell. */
@@ -1002,6 +1042,7 @@ export function migrateDocument(raw: unknown): LayoutDocument {
 		dependencies: Array.isArray(doc.dependencies) ? doc.dependencies : [],
 		...(doc.header ? { header: doc.header } : {}),
 		...(doc.statusHidden !== undefined ? { statusHidden: doc.statusHidden } : {}),
+		...(doc.startupPath ? { startupPath: doc.startupPath } : {}),
 		...(doc.migratedGlobalHides ? { migratedGlobalHides: true } : {}),
 	};
 	for (const migration of DOC_MIGRATIONS) {

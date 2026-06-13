@@ -45,58 +45,32 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from "vue";
-
-import { useMachineStore } from "@/stores/machine";
+import { computed } from "vue";
 
 import type { Widget } from "../model/document";
-import { resolveOmPath } from "../util/omPath";
+import { type ChartSample, chartVersion, getChartSamples } from "../model/chartSampler";
+import { resolveColor } from "../util/color";
 
 const props = defineProps<{ widget: Extract<Widget, { type: "chart" }> }>();
 
-const machineStore = useMachineStore();
-
-interface Sample { t: number; v: number }
-
-const buffers = ref<Array<Array<Sample>>>(props.widget.series.map(() => []));
-const version = ref(0);
-
-const intervalMs = computed(() => Math.max(200, props.widget.intervalMs ?? 1000));
 const windowMs = computed(() => Math.max(5000, (props.widget.windowSeconds ?? 120) * 1000));
 
-let timer: ReturnType<typeof setInterval> | undefined;
-
-function sample() {
-	const now = Date.now();
-	const cutoff = now - windowMs.value;
-	props.widget.series.forEach((s, i) => {
-		const raw = resolveOmPath(machineStore.model, s.omPath);
-		const num = typeof raw === "number" ? raw : Number(raw);
-		if (!buffers.value[i]) {
-			buffers.value[i] = [];
-		}
-		if (Number.isFinite(num)) {
-			buffers.value[i].push({ t: now, v: num });
-		}
-		while (buffers.value[i].length && buffers.value[i][0].t < cutoff) {
-			buffers.value[i].shift();
-		}
-	});
-	version.value++;
+// Data is collected by the app-lifetime background sampler (model/chartSampler), not here, so a chart
+// shows history even on a page that hasn't been opened yet. `version` is the shared sample counter; a
+// per-series read pulls that series' buffer sliced to this chart's window.
+const version = chartVersion;
+function bufferFor(omPath: string): Array<ChartSample> {
+	void version.value;
+	return getChartSamples(omPath, windowMs.value);
 }
-
-onMounted(() => {
-	sample();
-	timer = setInterval(sample, intervalMs.value);
-});
-onUnmounted(() => {
-	if (timer) {
-		clearInterval(timer);
-	}
+// One buffer per series, in series order (recomputed whenever a new sample lands).
+const seriesBuffers = computed<Array<Array<ChartSample>>>(() => {
+	void version.value;
+	return props.widget.series.map((s) => bufferFor(s.omPath));
 });
 
 function strokeFor(color?: string): string {
-	return color ? `rgb(var(--v-theme-${color}))` : "rgb(var(--v-theme-primary))";
+	return resolveColor(color);
 }
 
 // Y-bounds: explicit min/max win; otherwise auto-scale from the data with padding.
@@ -109,7 +83,7 @@ const bounds = computed(() => {
 	}
 	let min = wMin ?? Infinity;
 	let max = wMax ?? -Infinity;
-	for (const buf of buffers.value) {
+	for (const buf of seriesBuffers.value) {
 		for (const s of buf) {
 			if (s.v < min) min = s.v;
 			if (s.v > max) max = s.v;
@@ -168,7 +142,7 @@ const lines = computed(() => {
 	const { min, max } = bounds.value;
 	const range = max - min || 1;
 	return props.widget.series.map((s, i) => {
-		const buf = buffers.value[i] ?? [];
+		const buf = seriesBuffers.value[i] ?? [];
 		const points = buf
 			.map((p) => {
 				const x = ((p.t - tStart) / windowMs.value) * 1000;
@@ -183,7 +157,7 @@ const lines = computed(() => {
 const latest = computed(() => {
 	void version.value;
 	return props.widget.series.map((_, i) => {
-		const buf = buffers.value[i] ?? [];
+		const buf = seriesBuffers.value[i] ?? [];
 		const last = buf[buf.length - 1];
 		return last ? last.v.toFixed(1) : "—";
 	});
@@ -193,8 +167,8 @@ const latest = computed(() => {
 // sorted timeline; a blank cell means that series had no sample at that timestamp.
 function downloadCsv() {
 	const series = props.widget.series;
-	const maps = buffers.value.map((buf) => new Map(buf.map((s) => [s.t, s.v])));
-	const times = [...new Set(buffers.value.flat().map((s) => s.t))].sort((a, b) => a - b);
+	const maps = seriesBuffers.value.map((buf) => new Map(buf.map((s) => [s.t, s.v])));
+	const times = [...new Set(seriesBuffers.value.flat().map((s) => s.t))].sort((a, b) => a - b);
 
 	const header = ["time", ...series.map((s, i) => s.label || s.omPath || `series${i}`)];
 	const rows = times.map((t) => {

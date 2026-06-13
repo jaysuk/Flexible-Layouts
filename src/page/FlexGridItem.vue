@@ -143,7 +143,13 @@ const colorVars = computed(() => {
 const typographyStyle = computed(() => {
 	const t = props.item.typography;
 	const style: Record<string, string> = {};
-	if (t?.fontSize) style.fontSize = `${t.fontSize}px`;
+	if (t?.fontSize) {
+		// Responsive: the configured size is the cap; text scales down with the viewport (to a legible
+		// floor) so it stays readable on phones/tablets. ~1200px viewport reproduces the set px size.
+		style.fontSize = t.responsive
+			? `clamp(${Math.max(10, Math.round(t.fontSize * 0.6))}px, ${(t.fontSize / 12).toFixed(2)}vw, ${t.fontSize}px)`
+			: `${t.fontSize}px`;
+	}
 	if (t?.fontFamily) style.fontFamily = t.fontFamily;
 	if (t?.labelFontSize) style["--flex-label-size"] = `${t.labelFontSize}px`;
 	if (t?.labelFontFamily) style["--flex-label-family"] = t.labelFontFamily;

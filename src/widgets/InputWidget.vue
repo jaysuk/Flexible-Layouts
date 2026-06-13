@@ -21,6 +21,7 @@ import { useMachineStore } from "@/stores/machine";
 import { useUiStore } from "@/stores/ui";
 
 import type { Widget } from "../model/document";
+import { applyInputModifier, invertLinear } from "../util/inputModifier";
 import { resolveOmPath } from "../util/omPath";
 
 const props = defineProps<{ widget: Extract<Widget, { type: "input" }>; disabled?: boolean }>();
@@ -41,19 +42,30 @@ watch(
 	currentGlobal,
 	(v) => {
 		if (v !== undefined && v !== null && (val.value === "" || val.value === undefined)) {
-			val.value = v as string | number;
+			// Show the user-facing number: invert the linear part of the modifier. invertLinear returns
+			// null when an expression/map is set (can't auto-invert) — then we leave the field as-is.
+			if (typeof v === "number") {
+				const inv = invertLinear(v, props.widget.modifier);
+				if (inv !== null) {
+					val.value = inv;
+				}
+			} else {
+				val.value = v as string | number;
+			}
 		}
 	},
 	{ immediate: true },
 );
 
 async function send() {
+	// Transform the entered value before it leaves the widget (units, scaling, value map, …).
+	const sent = applyInputModifier(val.value, props.widget.modifier);
 	let code = "";
 	if (props.widget.mode === "global" && props.widget.globalName) {
-		const rhs = props.widget.inputKind === "number" ? Number(val.value) : `"${val.value}"`;
+		const rhs = props.widget.inputKind === "number" ? sent : `"${sent}"`;
 		code = `set global.${props.widget.globalName}=${rhs}`;
 	} else if (props.widget.commandTemplate) {
-		code = props.widget.commandTemplate.replace(/\{value\}/g, String(val.value));
+		code = props.widget.commandTemplate.replace(/\{value\}/g, sent);
 	}
 	if (!code) {
 		return;

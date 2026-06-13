@@ -37,6 +37,7 @@ import { computed } from "vue";
 import { useMachineStore } from "@/stores/machine";
 
 import type { Widget } from "../model/document";
+import { resolveColor } from "../util/color";
 import { evalMathExpr } from "../util/mathExpr";
 import { resolveOmPath } from "../util/omPath";
 
@@ -94,7 +95,7 @@ const formatted = computed(() => {
 const unitSuffix = computed(() => (props.widget.unit ? ` ${props.widget.unit}` : ""));
 
 const valueStyle = computed(() =>
-	effectiveColor.value ? { color: `rgb(var(--v-theme-${effectiveColor.value}))` } : {});
+	effectiveColor.value ? { color: resolveColor(effectiveColor.value) } : {});
 
 const gaugePct = computed(() => {
 	const v = numericValue.value;

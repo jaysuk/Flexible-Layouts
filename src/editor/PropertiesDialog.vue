@@ -48,8 +48,14 @@
 					<div class="text-caption text-medium-emphasis mb-1">
 						{{ $t("plugins.flexibleLayouts.pages.icon") }}
 					</div>
-					<IconPicker v-model="draft.icon" class="mb-2" />
-					<v-select v-model="draft.color" :items="colorOptions" class="mb-2" density="compact"
+					<v-row dense class="mb-2">
+						<v-col cols="6"><IconPicker v-model="draft.icon" /></v-col>
+						<v-col cols="6"><v-text-field v-model.number="draft.iconSize" type="number" :min="0" density="compact"
+									  variant="outlined" hide-details clearable suffix="px"
+									  :label="$t('plugins.flexibleLayouts.properties.iconSize')"
+									  :placeholder="$t('plugins.flexibleLayouts.properties.iconSizeAuto')" /></v-col>
+					</v-row>
+					<ColorSelect v-model="draft.color" class="mb-2" density="compact"
 							  variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" />
 					<v-switch v-model="draft.confirm" color="primary" hide-details density="compact"
 							  :label="$t('plugins.flexibleLayouts.properties.confirm')" />
@@ -94,7 +100,7 @@
 										  :label="$t('plugins.flexibleLayouts.properties.max')" />
 						</v-col>
 					</v-row>
-					<v-select v-model="draft.color" :items="colorOptions" class="mt-2" density="compact"
+					<ColorSelect v-model="draft.color" class="mt-2" density="compact"
 							  variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" />
 
 					<v-expansion-panels class="mt-3" variant="accordion">
@@ -159,8 +165,8 @@
 					<v-select v-if="draft.variant !== 'spacer'" v-model="draft.align" :items="alignOptions"
 							  class="mb-2" density="compact" variant="outlined" hide-details
 							  :label="$t('plugins.flexibleLayouts.properties.align')" />
-					<v-select v-if="draft.variant === 'text' || draft.variant === 'heading'"
-							  v-model="draft.color" :items="colorOptions" density="compact" variant="outlined"
+					<ColorSelect v-if="draft.variant === 'text' || draft.variant === 'heading'"
+							  v-model="draft.color" density="compact" variant="outlined"
 							  hide-details :label="$t('plugins.flexibleLayouts.properties.color')" />
 				</template>
 
@@ -179,7 +185,7 @@
 								  :label="$t('plugins.flexibleLayouts.properties.globalName')" />
 					<v-select v-model="draft.inputKind" :items="inputKindOptions" class="mb-2" density="compact"
 							  variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.inputKind')" />
-					<v-select v-model="draft.color" :items="colorOptions" density="compact" variant="outlined"
+					<ColorSelect v-model="draft.color" density="compact" variant="outlined"
 							  hide-details :label="$t('plugins.flexibleLayouts.properties.color')" />
 				</template>
 
@@ -203,7 +209,7 @@
 						<div class="d-flex ga-2 mt-2">
 							<v-text-field v-model="s.label" density="compact" variant="outlined" hide-details
 										  :label="$t('plugins.flexibleLayouts.properties.label')" />
-							<v-select v-model="s.color" :items="colorOptions" density="compact" variant="outlined"
+							<ColorSelect v-model="s.color" density="compact" variant="outlined"
 									  hide-details style="max-width: 180px"
 									  :label="$t('plugins.flexibleLayouts.properties.color')" />
 						</div>
@@ -289,7 +295,7 @@
 										  :label="$t('plugins.flexibleLayouts.jog.zFeed')" />
 						</v-col>
 					</v-row>
-					<v-select v-model="draft.color" :items="colorOptions" class="mt-2" density="compact"
+					<ColorSelect v-model="draft.color" class="mt-2" density="compact"
 							  variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" />
 					<div class="d-flex flex-wrap ga-x-4">
 						<v-switch v-model="draft.showZ" color="primary" density="compact" hide-details
@@ -324,7 +330,7 @@
 										  variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.neopixel.count')" />
 						</v-col>
 						<v-col cols="6">
-							<v-select v-model="draft.color" :items="colorOptions" density="compact" variant="outlined"
+							<ColorSelect v-model="draft.color" density="compact" variant="outlined"
 									  hide-details :label="$t('plugins.flexibleLayouts.properties.color')" />
 						</v-col>
 					</v-row>
@@ -373,7 +379,7 @@
 						<v-col cols="4"><v-text-field v-model.number="draft.offset" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.slider.offset')" /></v-col>
 						<v-col cols="4"><v-text-field v-model="draft.unit" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.unit')" /></v-col>
 					</v-row>
-					<v-select v-model="draft.color" :items="colorOptions" class="mt-2" density="compact" variant="outlined"
+					<ColorSelect v-model="draft.color" class="mt-2" density="compact" variant="outlined"
 							  hide-details :label="$t('plugins.flexibleLayouts.properties.color')" />
 					<v-switch v-model="draft.live" color="primary" density="compact" hide-details class="mt-1"
 							  :label="$t('plugins.flexibleLayouts.slider.live')" />
@@ -391,7 +397,7 @@
 								 :label="$t('plugins.flexibleLayouts.toggle.omPath')" />
 					<v-row dense>
 						<v-col cols="6"><v-select v-model="draft.variant" :items="toggleVariantOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.toggle.variant')" /></v-col>
-						<v-col cols="6"><v-select v-model="draft.color" :items="colorOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
+						<v-col cols="6"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
 					</v-row>
 				</template>
 
@@ -414,7 +420,7 @@
 					</v-row>
 					<v-row dense class="mt-1">
 						<v-col cols="6"><v-text-field v-model="draft.unit" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.unit')" /></v-col>
-						<v-col cols="6"><v-select v-model="draft.color" :items="colorOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
+						<v-col cols="6"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
 					</v-row>
 				</template>
 
@@ -431,7 +437,7 @@
 					</v-row>
 					<div class="d-flex flex-wrap ga-x-4 mt-1 align-center">
 						<v-switch v-model="draft.showValue" color="primary" density="compact" hide-details :label="$t('plugins.flexibleLayouts.progress.showValue')" />
-						<v-select v-model="draft.color" :items="colorOptions" density="compact" variant="outlined" hide-details style="max-width:11rem" :label="$t('plugins.flexibleLayouts.properties.color')" />
+						<ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details style="max-width:11rem" :label="$t('plugins.flexibleLayouts.properties.color')" />
 					</div>
 				</template>
 
@@ -453,12 +459,12 @@
 						<div class="d-flex ga-2 mt-2">
 							<v-text-field v-model="s.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" />
 							<v-text-field v-model="s.icon" density="compact" variant="outlined" hide-details label="mdi-…" style="max-width:9rem" />
-							<v-select v-model="s.color" :items="colorOptions" density="compact" variant="outlined" hide-details style="max-width:9rem" :label="$t('plugins.flexibleLayouts.properties.color')" />
+							<ColorSelect v-model="s.color" density="compact" variant="outlined" hide-details style="max-width:9rem" :label="$t('plugins.flexibleLayouts.properties.color')" />
 						</div>
 					</v-sheet>
 					<v-row dense>
 						<v-col cols="6"><v-text-field v-model="draft.defaultLabel" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.status.defaultLabel')" /></v-col>
-						<v-col cols="6"><v-select v-model="draft.defaultColor" :items="colorOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.status.defaultColor')" /></v-col>
+						<v-col cols="6"><ColorSelect v-model="draft.defaultColor" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.status.defaultColor')" /></v-col>
 					</v-row>
 				</template>
 
@@ -513,7 +519,7 @@
 					<v-text-field v-model="draft.folder" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.macros.folder')" placeholder="0:/macros" />
 					<v-row dense>
 						<v-col cols="6"><v-text-field v-model.number="draft.columns" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.macros.columns')" /></v-col>
-						<v-col cols="6"><v-select v-model="draft.color" :items="colorOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
+						<v-col cols="6"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
 					</v-row>
 				</template>
 
@@ -533,7 +539,7 @@
 					<v-text-field v-model="draft.offCommand" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.heater.offCommand')" placeholder="M140 S-273.15" />
 					<v-row dense>
 						<v-col cols="8"><v-text-field v-model="heaterPresetsText" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.heater.presets')" :hint="$t('plugins.flexibleLayouts.jog.stepsHint')" /></v-col>
-						<v-col cols="4"><v-select v-model="draft.color" :items="colorOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
+						<v-col cols="4"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
 					</v-row>
 				</template>
 
@@ -590,7 +596,7 @@
 						<v-col cols="4"><v-text-field v-model.number="draft.flowRate" type="number" step="0.1" density="compact" variant="outlined" hide-details suffix="mm³/s" :label="$t('plugins.flexibleLayouts.extruder.flow')" /></v-col>
 						<v-col cols="4"><v-text-field v-model.number="draft.filamentDiameter" type="number" step="0.05" density="compact" variant="outlined" hide-details suffix="mm" :label="$t('plugins.flexibleLayouts.extruder.filamentDiameter')" /></v-col>
 					</v-row>
-					<v-select v-model="draft.color" :items="colorOptions" density="compact" variant="outlined" hide-details class="mt-1" :label="$t('plugins.flexibleLayouts.properties.color')" />
+					<ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details class="mt-1" :label="$t('plugins.flexibleLayouts.properties.color')" />
 				</template>
 
 				<!-- WCS -->
@@ -598,7 +604,7 @@
 					<v-text-field v-model="draft.label" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" />
 					<v-row dense>
 						<v-col cols="6"><v-text-field v-model="wcsAxesText" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.wcs.axes')" /></v-col>
-						<v-col cols="6"><v-select v-model="draft.color" :items="colorOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
+						<v-col cols="6"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
 					</v-row>
 				</template>
 
@@ -606,7 +612,7 @@
 				<template v-else-if="draft.type === 'toolSelect'">
 					<v-row dense>
 						<v-col cols="8"><v-text-field v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
-						<v-col cols="4"><v-select v-model="draft.color" :items="colorOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
+						<v-col cols="4"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
 					</v-row>
 				</template>
 
@@ -615,7 +621,7 @@
 					<v-row dense>
 						<v-col cols="5"><v-text-field v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
 						<v-col cols="3"><v-text-field v-model.number="draft.fanIndex" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.fan.index')" /></v-col>
-						<v-col cols="4"><v-select v-model="draft.color" :items="colorOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
+						<v-col cols="4"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
 					</v-row>
 				</template>
 
@@ -623,7 +629,7 @@
 				<template v-else-if="draft.type === 'jobControl'">
 					<div class="d-flex flex-wrap ga-x-4 align-center">
 						<v-switch v-model="draft.showProgress" color="primary" density="compact" hide-details :label="$t('plugins.flexibleLayouts.progress.showValue')" />
-						<v-select v-model="draft.color" :items="colorOptions" density="compact" variant="outlined" hide-details style="max-width:11rem" :label="$t('plugins.flexibleLayouts.properties.color')" />
+						<ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details style="max-width:11rem" :label="$t('plugins.flexibleLayouts.properties.color')" />
 					</div>
 				</template>
 
@@ -633,7 +639,7 @@
 					<v-text-field v-model="draft.startCommand" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.files.startCommand')" placeholder='M32 "{path}"' />
 					<v-row dense>
 						<v-col cols="6"><v-text-field v-model.number="draft.columns" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.macros.columns')" /></v-col>
-						<v-col cols="6"><v-select v-model="draft.color" :items="colorOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
+						<v-col cols="6"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
 					</v-row>
 					<v-switch v-model="draft.thumbnails" color="primary" density="compact" hide-details class="mt-1" :label="$t('plugins.flexibleLayouts.files.thumbnails')" />
 				</template>
@@ -656,7 +662,7 @@
 							<v-text-field v-model.number="g.min" type="number" density="compact" variant="outlined" hide-details label="Min" style="max-width:5rem" />
 							<v-text-field v-model.number="g.max" type="number" density="compact" variant="outlined" hide-details label="Max" style="max-width:5rem" />
 							<v-text-field v-model="g.unit" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.unit')" style="max-width:5rem" />
-							<v-select v-model="g.color" :items="colorOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" />
+							<ColorSelect v-model="g.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" />
 						</div>
 					</v-sheet>
 				</template>
@@ -679,8 +685,8 @@
 							<v-btn icon="mdi-delete" size="small" variant="text" color="error" @click="draft.items.splice(i, 1)" />
 						</div>
 						<div class="d-flex ga-2 mt-2">
-							<v-select v-model="it.trueColor" :items="colorOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.indicators.onColor')" />
-							<v-select v-model="it.falseColor" :items="colorOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.indicators.offColor')" />
+							<ColorSelect v-model="it.trueColor" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.indicators.onColor')" />
+							<ColorSelect v-model="it.falseColor" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.indicators.offColor')" />
 						</div>
 					</v-sheet>
 				</template>
@@ -696,7 +702,7 @@
 					<v-sheet v-for="(s, i) in draft.series" :key="i" border rounded class="pa-2 mb-2">
 						<div class="d-flex ga-2">
 							<OmPathField v-model="s.omPath" class="flex-grow-1" :label="$t('plugins.flexibleLayouts.conditions.omPath')" />
-							<v-select v-model="s.color" :items="colorOptions" density="compact" variant="outlined" hide-details style="max-width:8rem" :label="$t('plugins.flexibleLayouts.properties.color')" />
+							<ColorSelect v-model="s.color" density="compact" variant="outlined" hide-details style="max-width:8rem" :label="$t('plugins.flexibleLayouts.properties.color')" />
 							<v-btn icon="mdi-delete" size="small" variant="text" color="error" @click="draft.series.splice(i, 1)" />
 						</div>
 					</v-sheet>
@@ -776,7 +782,7 @@
 						<v-col cols="3"><v-text-field v-model.number="draft.spindleIndex" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.spindle.index')" /></v-col>
 						<v-col cols="3"><v-text-field v-model.number="draft.min" type="number" density="compact" variant="outlined" hide-details label="Min RPM" /></v-col>
 						<v-col cols="3"><v-text-field v-model.number="draft.max" type="number" density="compact" variant="outlined" hide-details label="Max RPM" /></v-col>
-						<v-col cols="3"><v-select v-model="draft.color" :items="colorOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
+						<v-col cols="3"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
 					</v-row>
 				</template>
 
@@ -806,6 +812,50 @@
 					<div class="text-body-2 text-medium-emphasis">
 						{{ $t("plugins.flexibleLayouts.properties.builtinNote", { name: draft.component }) }}
 					</div>
+				</template>
+
+				<!-- Input modifier (value-entry widgets): transform the entered value before it is sent.
+					 The input-side mirror of the value widget's display formatting. -->
+				<template v-if="showInputModifier && draft.modifier">
+					<v-expansion-panels class="mt-3" variant="accordion">
+						<v-expansion-panel :title="$t('plugins.flexibleLayouts.inputModifier.title')">
+							<v-expansion-panel-text>
+								<div class="text-caption text-medium-emphasis mb-2">{{ $t("plugins.flexibleLayouts.inputModifier.help") }}</div>
+								<v-row dense>
+									<v-col cols="6">
+										<v-text-field v-model.number="draft.modifier.scale" type="number" density="compact"
+													  variant="outlined" hide-details clearable
+													  :label="$t('plugins.flexibleLayouts.properties.scale')" />
+									</v-col>
+									<v-col cols="6">
+										<v-text-field v-model.number="draft.modifier.offset" type="number" density="compact"
+													  variant="outlined" hide-details clearable
+													  :label="$t('plugins.flexibleLayouts.properties.offset')" />
+									</v-col>
+									<v-col cols="12">
+										<v-text-field v-model="draft.modifier.expression" density="compact" variant="outlined"
+													  hide-details clearable placeholder="x * 60"
+													  :label="$t('plugins.flexibleLayouts.properties.expression')" />
+										<div class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.inputModifier.expressionHint") }}</div>
+									</v-col>
+								</v-row>
+								<div class="d-flex align-center mt-2 mb-1">
+									<span class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.inputModifier.map") }}</span>
+									<v-spacer />
+									<v-btn size="x-small" variant="tonal" prepend-icon="mdi-plus" @click="addInputMap">
+										{{ $t("plugins.flexibleLayouts.conditions.add") }}
+									</v-btn>
+								</div>
+								<div v-for="(m, mi) in (draft.modifier.map ?? [])" :key="mi" class="d-flex ga-2 mb-1 align-center">
+									<v-text-field v-model="m.from" density="compact" variant="outlined" hide-details
+												  :label="$t('plugins.flexibleLayouts.inputModifier.from')" />
+									<v-text-field v-model="m.to" density="compact" variant="outlined" hide-details
+												  :label="$t('plugins.flexibleLayouts.inputModifier.to')" />
+									<v-btn icon="mdi-delete" size="x-small" variant="text" color="error" @click="draft.modifier.map.splice(mi, 1)" />
+								</div>
+							</v-expansion-panel-text>
+						</v-expansion-panel>
+					</v-expansion-panels>
 				</template>
 
 				<!-- Conditional behaviour (applies to any widget type) -->
@@ -838,7 +888,7 @@
 									  :label="$t('plugins.flexibleLayouts.conditions.value')" />
 					</div>
 					<div class="d-flex ga-3 mt-2 align-center flex-wrap">
-						<v-select v-model="rule.color" :items="colorOptions" density="compact" variant="outlined"
+						<ColorSelect v-model="rule.color" density="compact" variant="outlined"
 								  hide-details clearable style="max-width: 190px"
 								  :label="$t('plugins.flexibleLayouts.conditions.thenColor')" />
 						<v-switch v-model="rule.hide" color="primary" density="compact" hide-details
@@ -880,6 +930,9 @@
 								  :label="$t('plugins.flexibleLayouts.typography.fontFamily')" />
 					</v-col>
 				</v-row>
+				<v-switch v-model="typography.responsive" color="primary" density="compact" hide-details class="mt-1"
+						  :label="$t('plugins.flexibleLayouts.typography.responsive')" />
+				<div class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.typography.responsiveHint") }}</div>
 				<div class="text-caption text-medium-emphasis mb-1 mt-2">{{ $t("plugins.flexibleLayouts.typography.labelFont") }}</div>
 				<v-row dense>
 					<v-col cols="6"><v-text-field v-model.number="typography.labelFontSize" type="number" density="compact" variant="outlined" hide-details clearable :label="$t('plugins.flexibleLayouts.typography.fontSize')" suffix="px" /></v-col>
@@ -912,8 +965,10 @@ import i18n from "@/i18n";
 import { useMachineStore } from "@/stores/machine";
 
 import type { ConditionOperator, ConditionRule, GridItemModel, PanelColors, Typography, Widget } from "../model/document";
+import { hasInputModifier } from "../util/inputModifier";
 import { OM_VALUE_PRESETS, type OmPreset, resolveOmPath } from "../util/omPath";
 import { describeWidget } from "../widgets/registry";
+import ColorSelect from "./ColorSelect.vue";
 import IconPicker from "./IconPicker.vue";
 import OmPathField from "./OmPathField.vue";
 import WidgetView from "../widgets/WidgetView.vue";
@@ -952,6 +1007,11 @@ watch(
 	(open) => {
 		if (open && props.item) {
 			draft.value = JSON.parse(JSON.stringify(props.item.widget));
+			// Value-entry widgets get a (possibly empty) modifier object so the editor can bind to it;
+			// an unused one is stripped again on save.
+			if (MODIFIER_TYPES.has(draft.value.type) && !draft.value.modifier) {
+				draft.value.modifier = {};
+			}
 			conditions.value = JSON.parse(JSON.stringify(props.item.conditions ?? []));
 			colors.value = JSON.parse(JSON.stringify(props.item.colors ?? {}));
 			typography.value = JSON.parse(JSON.stringify(props.item.typography ?? {}));
@@ -1048,22 +1108,23 @@ function addMapping() {
 		draft.value.map.push({ value: "", text: "" });
 	}
 }
+
+// Only the free-entry Input box offers the modifier — slider/stepper already expose scale/offset for
+// their tracked value, so a second transform there would just be confusing.
+const MODIFIER_TYPES = new Set(["input"]);
+const showInputModifier = computed(() => !!draft.value && MODIFIER_TYPES.has(draft.value.type));
+function addInputMap() {
+	if (draft.value) {
+		(draft.value.modifier ??= {}).map ??= [];
+		draft.value.modifier.map.push({ from: "", to: "" });
+	}
+}
 function removeRule(index: number) {
 	conditions.value.splice(index, 1);
 }
 function needsValue(op: ConditionOperator): boolean {
 	return op !== "truthy" && op !== "falsy";
 }
-
-const colorOptions = computed(() => [
-	{ title: t("colors.default"), value: undefined },
-	{ title: t("colors.primary"), value: "primary" },
-	{ title: t("colors.secondary"), value: "secondary" },
-	{ title: t("colors.success"), value: "success" },
-	{ title: t("colors.info"), value: "info" },
-	{ title: t("colors.warning"), value: "warning" },
-	{ title: t("colors.error"), value: "error" },
-]);
 
 const displayOptions = computed(() => [
 	{ title: t("properties.displayNumber"), value: "number" },
@@ -1253,6 +1314,16 @@ const preview = computed(() => {
 
 function save() {
 	if (draft.value) {
+		// Drop blank map rows, then the whole modifier if it has no effect, so unused config isn't saved.
+		if (draft.value.modifier) {
+			if (Array.isArray(draft.value.modifier.map)) {
+				draft.value.modifier.map = draft.value.modifier.map.filter(
+					(m: { from?: string; to?: string }) => (m.from ?? "") !== "" || (m.to ?? "") !== "");
+			}
+			if (!hasInputModifier(draft.value.modifier)) {
+				delete draft.value.modifier;
+			}
+		}
 		emit("save", {
 			widget: draft.value as Widget,
 			conditions: conditions.value.filter((r) => r.omPath.trim().length > 0),

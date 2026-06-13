@@ -37,6 +37,20 @@
 			<!-- User-pinned mini widgets (temperatures, quick buttons, …) -->
 			<HeaderWidgets v-if="mdAndUp" class="me-2" />
 
+			<!-- On small screens the code box + pinned header widgets don't fit in the bar; surface them
+				 in an overflow menu so they're still reachable (the maintainer's "top section disappears"
+				 on mobile). -->
+			<v-menu v-if="!mdAndUp" :close-on-content-click="false" location="bottom end">
+				<template #activator="{ props: menuProps }">
+					<v-btn v-bind="menuProps" icon="mdi-dots-vertical" variant="text" class="me-1"
+						   :title="$t('plugins.flexibleLayouts.shell.more')" />
+				</template>
+				<v-card min-width="300" max-width="92vw" class="pa-3">
+					<CodeInput class="mb-3" />
+					<HeaderWidgets />
+				</v-card>
+			</v-menu>
+
 			<!-- Edit-mode toggle: the heart of the custom shell. Present only here, so the built-in
 				 layout is never affected -->
 			<v-btn :prepend-icon="editMode ? 'mdi-check' : (editLocked ? 'mdi-lock' : 'mdi-pencil-ruler')"
@@ -153,6 +167,8 @@ import { useSettingsStore } from "@/stores/settings";
 import { useFlexDisplay } from "../composables/useFlexDisplay";
 import { attemptToggleEdit, editMode, exitEditMode } from "../model/editorState";
 import { runUpdateCheck } from "../model/updateCheck";
+import { applyStartupRoute } from "../model/startup";
+import { startChartSampler, stopChartSampler } from "../model/chartSampler";
 import { isLocked } from "../model/lock";
 import { applyNavOrder, isHidden } from "../model/pageManager";
 import { getActiveProfileId, listProfiles, useLayoutStore } from "../model/store";
@@ -250,6 +266,12 @@ onMounted(() => {
 	});
 	Events.on("dwcPluginUnloaded", onPluginUnloaded);
 
+	// Honour the layout's "open this page on startup" setting (once per page load).
+	applyStartupRoute(router);
+
+	// Collect chart data in the background so a chart shows history even before its page is opened.
+	startChartSampler();
+
 	// Check GitHub for a newer plugin release (throttled, opt-out, silent on failure). Our installed
 	// version comes from the object model, so wait until connected before checking — the throttle
 	// then ensures it only fires once.
@@ -331,6 +353,7 @@ function resolveItemTitle(item: MenuItem): string {
 // the next activation starts clean
 onUnmounted(() => {
 	exitEditMode();
+	stopChartSampler();
 	Events.off("dwcPluginUnloaded", onPluginUnloaded);
 	dropPluginsGuard();
 });

@@ -4,7 +4,7 @@
 			   class="fill-height text-none flex-cmd-btn"
 			   :disabled="uiStore.uiFrozen || disabled" :loading="busy" @click="onClick">
 			<div class="d-flex flex-column align-center justify-center">
-				<v-icon v-if="widget.icon" :size="22" class="mb-1">{{ widget.icon }}</v-icon>
+				<v-icon v-if="widget.icon" :size="iconSize" class="mb-1">{{ widget.icon }}</v-icon>
 				<span class="text-truncate">{{ widget.label }}</span>
 			</div>
 		</v-btn>
@@ -27,7 +27,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
 
 import i18n from "@/i18n";
 import { useMachineStore } from "@/stores/machine";
@@ -43,6 +43,12 @@ const props = defineProps<{
 
 const machineStore = useMachineStore();
 const uiStore = useUiStore();
+
+// An explicit size wins; otherwise the icon is em-relative so it tracks the panel's typography
+// font-size (the button itself inherits that font-size — see the style below).
+const iconSize = computed(() => (props.widget.iconSize && props.widget.iconSize > 0
+	? `${props.widget.iconSize}px`
+	: "1.5em"));
 
 const busy = ref(false);
 const confirmOpen = ref(false);
@@ -92,5 +98,8 @@ function confirmSend() {
 .flex-cmd-btn {
 	min-height: 100%;
 	white-space: normal;
+	/* Inherit the panel's typography font-size (Vuetify buttons otherwise pin their own), so both the
+	   label and the em-sized icon scale with the per-panel typography setting. */
+	font-size: inherit;
 }
 </style>

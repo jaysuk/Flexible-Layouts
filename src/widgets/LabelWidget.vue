@@ -20,6 +20,7 @@
 import { computed } from "vue";
 
 import type { Widget } from "../model/document";
+import { resolveColor } from "../util/color";
 
 const props = defineProps<{ widget: Extract<Widget, { type: "label" }>; overrideColor?: string }>();
 
@@ -46,7 +47,7 @@ const textStyle = computed(() => ({
 
 const colorStyle = computed(() => {
 	const c = props.overrideColor || props.widget.color;
-	return c ? { color: `rgb(var(--v-theme-${c}))` } : {};
+	return c ? { color: resolveColor(c) } : {};
 });
 </script>
 

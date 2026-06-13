@@ -5,7 +5,8 @@
 		"back": "Back",
 		"editBanner": "Edit mode is on. Add widgets, drag their headers to move and a corner to resize.",
 		"notEditable": "This is a built-in DWC page and can't be customised. Open the Dashboard or one of your own pages (Manage pages) to add widgets.",
-		"showStatusBar": "Show status bar"
+		"showStatusBar": "Show status bar",
+		"more": "More controls"
 	},
 	"settings": {
 		"caption": "Flexible Layouts",
@@ -149,6 +150,8 @@
 		"webEmbedNote": "Many public sites (Google, BBC, the Duet forum…) refuse to be shown inside a frame and appear blank — that's the site's own policy, not a fault here. Embed-friendly dashboards, webcams and your own local web services work.",
 		"httpCorsNote": "The endpoint must return text/JSON and allow cross-origin requests (CORS), or be served by the Duet. Public APIs that block CORS show ⚠.",
 		"color": "Colour",
+		"iconSize": "Icon size",
+		"iconSizeAuto": "Auto",
 		"confirm": "Ask for confirmation before sending",
 		"quickPick": "Quick pick a value",
 		"omPath": "Object-model path",
@@ -224,8 +227,17 @@
 		"truthy": "is set / true",
 		"falsy": "is unset / false"
 	},
+	"inputModifier": {
+		"title": "Input modifier",
+		"help": "Transform the value before it's sent — the input equivalent of the value box's formatting. The map is checked first; otherwise the number is scaled/offset, then run through the expression.",
+		"expressionHint": "x is the entered value after scale/offset, e.g. \"x * 60\" to send minutes as seconds.",
+		"map": "Value map (entered → sent)",
+		"from": "Entered",
+		"to": "Sent"
+	},
 	"colors": {
 		"default": "Default",
+		"custom": "Custom…",
 		"primary": "Primary",
 		"secondary": "Secondary",
 		"background": "Background",
@@ -251,7 +263,10 @@
 		"headerTitle": "Top bar",
 		"headerColor": "Top bar colour",
 		"headerText": "Title text (replaces machine name)",
-		"headerLogo": "Logo image URL"
+		"headerLogo": "Logo image URL",
+		"customColors": "Custom colours",
+		"customColorsHint": "Define named colours here; they appear in every widget and panel colour picker so you can reuse a palette across the layout.",
+		"colorName": "Name"
 	},
 	"panelColors": {
 		"title": "Panel colours",
@@ -337,7 +352,9 @@
 		"fit": "Scale content to fit",
 		"fitHint": "Shrinks the widget to fit its cell instead of showing scrollbars.",
 		"autoHeight": "Auto height (fit to content)",
-		"autoHeightHint": "Resizes the cell to the panel's content and reflows the panels below — like the stock dashboard (e.g. Movement growing when axes aren't homed). Best for content-sized panels, not charts."
+		"autoHeightHint": "Resizes the cell to the panel's content and reflows the panels below — like the stock dashboard (e.g. Movement growing when axes aren't homed). Best for content-sized panels, not charts.",
+		"responsive": "Scale text on small screens",
+		"responsiveHint": "Treats the font size as a maximum and scales the text down on narrower screens (to a legible floor) so it stays readable on phones and tablets."
 	},
 	"omPresets": {
 		"tool0Current": "Tool 0 temperature",
@@ -770,6 +787,9 @@
 		"title": "Manage pages",
 		"manage": "Manage pages",
 		"addNew": "Add a new page",
+		"startupPage": "Open on startup",
+		"startupPageHint": "The page this layout opens to when it loads. Leave blank for the normal landing page.",
+		"startupDefault": "Default (Dashboard)",
 		"pageName": "Page name",
 		"icon": "Icon (mdi-…)",
 		"category": "Menu section",

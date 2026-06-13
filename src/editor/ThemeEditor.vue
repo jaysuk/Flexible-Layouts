@@ -35,6 +35,24 @@
 					</v-btn>
 				</template>
 
+				<!-- Named custom colours: a reusable palette surfaced in every widget/panel colour picker.
+					 Works whether or not the global theme above is enabled (the literal value is stored). -->
+				<v-divider class="my-4" />
+				<div class="d-flex align-center mb-1">
+					<span class="text-title-small flex-grow-1">{{ $t("plugins.flexibleLayouts.theme.customColors") }}</span>
+					<v-btn size="x-small" variant="tonal" prepend-icon="mdi-plus" @click="addCustomColor">
+						{{ $t("plugins.flexibleLayouts.conditions.add") }}
+					</v-btn>
+				</div>
+				<div class="text-caption text-medium-emphasis mb-2">{{ $t("plugins.flexibleLayouts.theme.customColorsHint") }}</div>
+				<div v-for="(c, i) in customColors" :key="i" class="d-flex align-center mb-2 ga-3">
+					<input type="color" class="flex-color-input" :value="c.value"
+						   @input="c.value = ($event.target as HTMLInputElement).value" />
+					<v-text-field v-model="c.name" density="compact" variant="outlined" hide-details class="flex-grow-1"
+								  :label="$t('plugins.flexibleLayouts.theme.colorName')" />
+					<v-btn icon="mdi-close" size="x-small" variant="text" color="error" @click="removeCustomColor(i)" />
+				</div>
+
 				<!-- Top bar styling (per profile, independent of the theme toggle) -->
 				<v-divider class="my-4" />
 				<div class="text-title-small mb-2">{{ $t("plugins.flexibleLayouts.theme.headerTitle") }}</div>
@@ -78,6 +96,21 @@ const header = computed(() => {
 });
 function setHeader(key: "color" | "title" | "logo", value: string | undefined | null) {
 	header.value[key] = value || undefined;
+}
+
+// User-defined named colours (reused via every colour picker — see ColorSelect).
+const customColors = computed(() => {
+	const t = store.document.value.theme;
+	if (!t.customColors) {
+		t.customColors = [];
+	}
+	return t.customColors;
+});
+function addCustomColor() {
+	customColors.value.push({ name: "", value: "#888888" });
+}
+function removeCustomColor(index: number) {
+	customColors.value.splice(index, 1);
 }
 
 const FALLBACKS: Record<string, string> = {

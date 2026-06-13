@@ -11,6 +11,15 @@
 			</v-card-title>
 
 			<v-card-text style="max-height: 70vh;">
+				<!-- Startup page: which route opens when this profile/layout loads -->
+				<div class="d-flex align-center mb-4 ga-2">
+					<v-icon size="small">mdi-home-import-outline</v-icon>
+					<v-select v-model="startupPath" :items="startupItems" density="compact" variant="outlined"
+							  hide-details clearable class="flex-grow-1"
+							  :label="$t('plugins.flexibleLayouts.pages.startupPage')"
+							  :hint="$t('plugins.flexibleLayouts.pages.startupPageHint')" persistent-hint />
+				</div>
+
 				<!-- Add a new page -->
 				<v-sheet class="pa-3 mb-4 rounded" border>
 					<div class="text-title-small mb-2">{{ $t("plugins.flexibleLayouts.pages.addNew") }}</div>
@@ -187,6 +196,17 @@ function requestImport(): void {
 	emit("open-import");
 	emit("update:modelValue", false);
 }
+
+// Startup page: the route opened when this layout/profile becomes active (see FlexShell). The empty
+// option (cleared) restores the normal landing page.
+const startupPath = computed<string | undefined>({
+	get: () => store.document.value.startupPath,
+	set: (v) => { store.document.value.startupPath = v || undefined; },
+});
+const startupItems = computed(() => [
+	{ title: i18n.global.t("plugins.flexibleLayouts.pages.startupDefault"), value: undefined },
+	...allNavItems.value.map((i) => ({ title: caption(i), value: i.path })),
+]);
 
 function hasLayout(path: string): boolean {
 	const page = store.getPage(path);

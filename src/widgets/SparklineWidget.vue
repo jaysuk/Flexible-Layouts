@@ -17,6 +17,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useMachineStore } from "@/stores/machine";
 
 import type { Widget } from "../model/document";
+import { resolveColor } from "../util/color";
 import { resolveOmPath } from "../util/omPath";
 
 const props = defineProps<{ widget: Extract<Widget, { type: "sparkline" }>; disabled?: boolean }>();
@@ -51,7 +52,7 @@ const lines = computed(() =>
     }
     return {
       points,
-      stroke: `rgb(var(--v-theme-${s.color || "primary"}))`,
+      stroke: resolveColor(s.color),
       last: buf.length ? Number(buf[buf.length - 1].toFixed(1)).toString() : "—",
     };
   }),

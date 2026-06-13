@@ -97,6 +97,7 @@ import { useMachineStore } from "@/stores/machine";
 import { useUiStore } from "@/stores/ui";
 
 import type { Widget } from "../model/document";
+import { resolveColor } from "../util/color";
 
 const props = defineProps<{
 	widget: Extract<Widget, { type: "jog" }>;
@@ -115,7 +116,7 @@ const xAxisLetter = computed(() => props.widget.xAxis || "X");
 const yAxisLetter = computed(() => props.widget.yAxis || "Y");
 const zAxisLetter = computed(() => props.widget.zAxis || "Z");
 const zSign = computed(() => (props.widget.invertZ ? -1 : 1));
-const sectorFill = computed(() => `rgb(var(--v-theme-${props.widget.color || "primary"}))`);
+const sectorFill = computed(() => resolveColor(props.widget.color));
 const zBtnStyle = computed(() => ({ color: sectorFill.value }));
 
 const xyFeed = computed({
