@@ -8,7 +8,7 @@
 import { getLoadedPlugins } from "@/plugins";
 import { useMachineStore } from "@/stores/machine";
 
-import { createEmptyDocument, type GridItemModel, type LayoutDependency, type LayoutDocument, type PageLayout, migrateDocument, newItemId, reidItem } from "./document";
+import { createEmptyDocument, type GridItemModel, type LayoutDependency, type LayoutDocument, type PageLayout, migrateDocument, newItemId, reidItem, sanitizeRuntimeFields, stripItemRuntimeFields } from "./document";
 import { computeDependencies, recomputeDependencies } from "./dependencies";
 import { CUSTOM_PAGE_PREFIX, registerExistingCustomPages, unregisterAllCustomPages } from "./pageManager";
 import { setLiveDocument, useLayoutStore } from "./store";
@@ -43,6 +43,7 @@ export function exportLayout(opts: ExportOptions = {}): void {
 	recomputeDependencies();
 
 	const doc = JSON.parse(JSON.stringify(live)) as LayoutDocument;
+	sanitizeRuntimeFields(doc);
 	if (!theme) {
 		doc.theme = { enabled: false, colors: {} };
 	}
@@ -339,11 +340,13 @@ export interface DwcPageFile {
 
 /** Download a single grid item (panel or group) as a `.dwcpanel.json`. */
 export function exportPanel(item: GridItemModel, label: string): void {
+	const clean = JSON.parse(JSON.stringify(item)) as GridItemModel;
+	stripItemRuntimeFields(clean);
 	const file: DwcPanelFile = {
 		kind: "dwcpanel",
 		app: "FlexibleLayouts",
 		exportedAt: new Date().toISOString(),
-		item: JSON.parse(JSON.stringify(item)),
+		item: clean,
 	};
 	triggerDownload(`${safeName(label, "panel")}.dwcpanel.json`, JSON.stringify(file, null, 2));
 }
@@ -369,13 +372,17 @@ export function exportPage(pageId: string, label: string): void {
 	if (!page) {
 		return;
 	}
+	const cleanPage = JSON.parse(JSON.stringify(page)) as PageLayout;
+	for (const item of [...(cleanPage.items ?? []), ...(cleanPage.variants?.md ?? []), ...(cleanPage.variants?.sm ?? [])]) {
+		stripItemRuntimeFields(item);
+	}
 	const file: DwcPageFile = {
 		kind: "dwcpage",
 		app: "FlexibleLayouts",
 		exportedAt: new Date().toISOString(),
 		title: page.title ?? label,
 		icon: page.icon,
-		page: JSON.parse(JSON.stringify(page)),
+		page: cleanPage,
 	};
 	triggerDownload(`${safeName(page.title ?? label, "page")}.dwcpage.json`, JSON.stringify(file, null, 2));
 }

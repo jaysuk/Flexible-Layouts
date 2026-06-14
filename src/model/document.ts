@@ -1022,6 +1022,48 @@ export function forEachWidget(doc: LayoutDocument, visit: (widget: Widget) => vo
 }
 
 /**
+ * Runtime-only keys that grid-layout-plus writes onto the layout item objects it manages (it mutates
+ * the same objects we persist). They're never part of the saved schema, so we strip them from items
+ * before they reach a backup/export and clean them out of stored documents on load.
+ */
+const TRANSIENT_ITEM_KEYS = ["moved"] as const;
+
+/** Remove transient/runtime fields from one grid item (recursing into group children). Mutates in place. */
+export function stripItemRuntimeFields(item: GridItemModel): void {
+	if (!item) {
+		return;
+	}
+	for (const key of TRANSIENT_ITEM_KEYS) {
+		delete (item as unknown as Record<string, unknown>)[key];
+	}
+	if (item.widget?.type === "group") {
+		for (const child of (item.widget as Extract<Widget, { type: "group" }>).items ?? []) {
+			stripItemRuntimeFields(child);
+		}
+	}
+}
+
+/** Strip transient fields from every item in a document (pages + responsive variants + header). */
+export function sanitizeRuntimeFields(doc: LayoutDocument): void {
+	const visit = (items?: Array<GridItemModel>): void => {
+		if (Array.isArray(items)) {
+			for (const item of items) {
+				stripItemRuntimeFields(item);
+			}
+		}
+	};
+	for (const page of Object.values(doc.pages ?? {})) {
+		if (!page) {
+			continue;
+		}
+		visit(page.items);
+		visit(page.variants?.md);
+		visit(page.variants?.sm);
+	}
+	visit(doc.header?.items);
+}
+
+/**
  * Bring a persisted document up to the current schema. Total by contract - never throws; on an
  * unrecognised/corrupt shape it returns a fresh empty document so the UI always has something valid
  * to render. Normalises the top-level shape (preserving every existing field), then runs any

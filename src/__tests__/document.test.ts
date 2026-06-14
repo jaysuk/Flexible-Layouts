@@ -7,7 +7,43 @@ import {
 	type GridItemModel,
 	migrateDocument,
 	reidItem,
+	sanitizeRuntimeFields,
+	stripItemRuntimeFields,
 } from "../model/document";
+
+describe("sanitizeRuntimeFields", () => {
+	function item(extra: Record<string, unknown> = {}): GridItemModel {
+		return { i: "a", x: 0, y: 0, w: 2, h: 2, widget: { type: "builtinPanel", component: "MovementPanel" }, ...extra } as GridItemModel;
+	}
+
+	it("strips the transient `moved` flag from an item, keeping real fields", () => {
+		const it0 = item({ moved: false, fit: true });
+		stripItemRuntimeFields(it0);
+		expect("moved" in it0).toBe(false);
+		expect(it0.fit).toBe(true);
+	});
+
+	it("recurses into group children", () => {
+		const group = item({ widget: { type: "group", title: "g", items: [item({ moved: true })] } });
+		stripItemRuntimeFields(group);
+		const child = (group.widget as { items: Array<Record<string, unknown>> }).items[0];
+		expect("moved" in child).toBe(false);
+	});
+
+	it("walks pages, responsive variants and the header", () => {
+		const doc = createEmptyDocument();
+		doc.pages["/Dashboard"] = {
+			kind: "override", grid: { cols: 12, rowHeight: 30 },
+			items: [item({ moved: false })],
+			variants: { sm: [item({ moved: true })] },
+		};
+		doc.header = { items: [item({ moved: false })] };
+		sanitizeRuntimeFields(doc);
+		expect("moved" in doc.pages["/Dashboard"].items[0]).toBe(false);
+		expect("moved" in doc.pages["/Dashboard"].variants!.sm![0]).toBe(false);
+		expect("moved" in doc.header.items[0]).toBe(false);
+	});
+});
 
 describe("migrateDocument", () => {
 	it("returns a valid empty document for junk input", () => {

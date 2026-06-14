@@ -19,6 +19,7 @@ import {
 	migrateDocument,
 	type PageLayout,
 	resolveBreakpointItems,
+	sanitizeRuntimeFields,
 } from "./document";
 
 const PLUGIN_KEY = "flexibleLayouts";
@@ -81,6 +82,9 @@ export function registerDocument(): void {
 	for (const id of Object.keys(profiles)) {
 		const before = JSON.stringify(profiles[id]);
 		const migrated = migrateDocument(profiles[id]);
+		// Also clean out any transient grid-layout-plus fields (e.g. `moved`) that leaked into storage,
+		// so stored documents tidy themselves up over time.
+		sanitizeRuntimeFields(migrated);
 		if (JSON.stringify(migrated) !== before) {
 			profiles[id] = migrated;
 		}
@@ -103,7 +107,12 @@ export function setLiveDocument(doc: LayoutDocument): void {
 /** Deep snapshot of every profile + the active pointer — the payload of the SD-card backup. */
 export function snapshotAllProfiles(): { profiles: Record<string, LayoutDocument>; active: string } {
 	const { profiles, active } = ensureProfiles();
-	return { profiles: JSON.parse(JSON.stringify(profiles)), active };
+	const clone = JSON.parse(JSON.stringify(profiles)) as Record<string, LayoutDocument>;
+	// Keep the backup tidy: drop transient grid fields that may have been re-added since load.
+	for (const doc of Object.values(clone)) {
+		sanitizeRuntimeFields(doc);
+	}
+	return { profiles: clone, active };
 }
 
 /** Replace the entire profiles structure (SD restore). Migrates each profile and validates `active`. */
