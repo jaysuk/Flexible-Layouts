@@ -20,6 +20,15 @@
 							  :hint="$t('plugins.flexibleLayouts.pages.startupPageHint')" persistent-hint />
 				</div>
 
+				<!-- Job-start page: jump here when a print starts (supplements DWC's switch-to-Job setting) -->
+				<div class="d-flex align-center mb-4 ga-2">
+					<v-icon size="small">mdi-play-box-outline</v-icon>
+					<v-select v-model="jobStartPath" :items="jobStartItems" density="compact" variant="outlined"
+							  hide-details clearable class="flex-grow-1"
+							  :label="$t('plugins.flexibleLayouts.pages.jobStartPage')"
+							  :hint="$t('plugins.flexibleLayouts.pages.jobStartPageHint')" persistent-hint />
+				</div>
+
 				<!-- Add a new page -->
 				<v-sheet class="pa-3 mb-4 rounded" border>
 					<div class="text-title-small mb-2">{{ $t("plugins.flexibleLayouts.pages.addNew") }}</div>
@@ -205,6 +214,16 @@ const startupPath = computed<string | undefined>({
 });
 const startupItems = computed(() => [
 	{ title: i18n.global.t("plugins.flexibleLayouts.pages.startupDefault"), value: undefined },
+	...allNavItems.value.map((i) => ({ title: caption(i), value: i.path })),
+]);
+
+// Page to jump to when a print/job starts (empty = don't change page).
+const jobStartPath = computed<string | undefined>({
+	get: () => store.document.value.jobStartPath,
+	set: (v) => { store.document.value.jobStartPath = v || undefined; },
+});
+const jobStartItems = computed(() => [
+	{ title: i18n.global.t("plugins.flexibleLayouts.pages.jobStartNone"), value: undefined },
 	...allNavItems.value.map((i) => ({ title: caption(i), value: i.path })),
 ]);
 

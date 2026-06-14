@@ -171,6 +171,33 @@
 				</v-card-actions>
 			</v-card>
 		</v-dialog>
+
+		<!-- New-version popup, shown on load when a newer release is available (and not skipped). -->
+		<v-dialog v-model="updateOpen" max-width="460">
+			<v-card v-if="updateState">
+				<v-card-title class="d-flex align-center">
+					<v-icon class="me-2" color="primary">mdi-rocket-launch</v-icon>
+					{{ $t("plugins.flexibleLayouts.updates.title") }}
+				</v-card-title>
+				<v-card-text>
+					<div class="font-weight-medium mb-1">{{ $t("plugins.flexibleLayouts.updates.available", { version: updateState.latestVersion }) }}</div>
+					<div class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.updates.installedNow", { version: updateState.currentVersion }) }}</div>
+					<div v-if="updateState.scenario === 'dwcUpdate'" class="text-caption text-warning mt-1">
+						{{ $t("plugins.flexibleLayouts.updates.needsDwc", { dwc: updateState.requiredDwc, running: updateState.runningDwc }) }}
+					</div>
+				</v-card-text>
+				<v-card-actions class="flex-wrap">
+					<v-btn variant="text" size="small" @click="skipUpdate">{{ $t("plugins.flexibleLayouts.updates.skipVersion") }}</v-btn>
+					<v-spacer />
+					<v-btn variant="text" @click="viewUpdateNotes">{{ $t("plugins.flexibleLayouts.updates.viewOnGithub") }}</v-btn>
+					<v-btn variant="text" @click="updateOpen = false">{{ $t("plugins.flexibleLayouts.updates.close") }}</v-btn>
+					<v-btn v-if="updateState.scenario === 'pluginUpdate'" color="primary" variant="flat"
+						   :loading="applying" :disabled="!machineStore.isConnected" @click="updateNow">
+						{{ $t("plugins.flexibleLayouts.updates.updateNow") }}
+					</v-btn>
+				</v-card-actions>
+			</v-card>
+		</v-dialog>
 	</v-app>
 </template>
 
@@ -187,7 +214,7 @@ import { useSettingsStore } from "@/stores/settings";
 
 import { useFlexDisplay } from "../composables/useFlexDisplay";
 import { attemptToggleEdit, editMode, exitEditMode } from "../model/editorState";
-import { runUpdateCheck } from "../model/updateCheck";
+import { applying, applyUpdateNow, dismissCurrentUpdate, dismissedVersion, pendingReload, runUpdateCheck, updateState } from "../model/updateCheck";
 import { applyStartupRoute } from "../model/startup";
 import { startChartSampler, stopChartSampler } from "../model/chartSampler";
 import { applyBackup, checkForRestore, dismissRestore, type FlBackup, isAutoBackupEnabled, writeBackup } from "../model/sdBackup";
@@ -309,17 +336,64 @@ onMounted(() => {
 });
 
 async function onConnected(): Promise<void> {
-	runUpdateCheck({ notify: true });
 	// Offer to restore from the SD card if the live layout is empty but a backup exists (e.g. DWC
-	// settings were wiped switching 3.6↔3.7). Silent/no-op otherwise.
+	// settings were wiped switching 3.6↔3.7). That's the more urgent prompt, so it wins if both apply.
 	try {
 		const backup = await checkForRestore();
 		if (backup) {
 			restoreBackup.value = backup;
 			restoreOpen.value = true;
+			return;
+		}
+	} catch { /* best-effort */ }
+
+	// Surface a new release as a popup on load (was only a easily-missed toast before). The check is
+	// throttled to once/day but rehydrates the last result, so the popup still shows on reloads.
+	try {
+		await runUpdateCheck();
+		const s = updateState.value;
+		if (s?.updateAvailable && dismissedVersion.value !== s.latestVersion && !pendingReload.value) {
+			updateOpen.value = true;
 		}
 	} catch { /* best-effort */ }
 }
+
+// --- New-version popup ---
+const updateOpen = ref(false);
+async function updateNow(): Promise<void> {
+	await applyUpdateNow();
+	updateOpen.value = false;
+}
+function skipUpdate(): void {
+	dismissCurrentUpdate();
+	updateOpen.value = false;
+}
+function viewUpdateNotes(): void {
+	if (updateState.value?.releaseUrl) {
+		window.open(updateState.value.releaseUrl, "_blank", "noopener");
+	}
+}
+
+// --- Jump to a chosen page when a print/job starts ---
+// Mirrors DWC's own "switch to Job page on print start": treat the whole print session (incl. paused)
+// as "printing" so the jump fires once at the real start, not again on resume. (@/utils/enums isn't
+// externalised, so the status set is replicated here.)
+const PRINTING_STATUSES = new Set(["pausing", "paused", "cancelling", "resuming", "processing", "simulating"]);
+const machineState = machineStore.model as { state?: { status?: string } };
+function isPrintingStatus(s?: string): boolean {
+	return !!s && PRINTING_STATUSES.has(s);
+}
+let wasPrinting = isPrintingStatus(machineState.state?.status);
+watch(() => machineState.state?.status, (now) => {
+	const nowPrinting = isPrintingStatus(now);
+	if (!wasPrinting && nowPrinting) {
+		const path = layoutStore.document.value.jobStartPath;
+		if (path && !editMode.value && router.currentRoute.value.path !== path && router.resolve(path).matched.length) {
+			router.push(path).catch(() => { /* navigation guard rejections are fine */ });
+		}
+	}
+	wasPrinting = nowPrinting;
+});
 
 // Persist the whole layout to the SD card whenever the user finishes editing (Done), so there's
 // always an off-settings copy to recover from. Skipped for empty layouts / no-op changes inside.

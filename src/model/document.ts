@@ -906,6 +906,12 @@ export interface LayoutDocument {
 	 * path). Empty/omitted = the normal landing page (Dashboard). Applied once per page load.
 	 */
 	startupPath?: string;
+	/**
+	 * Route to jump to when a print/job starts (e.g. a custom job-overview page). Empty/omitted = no
+	 * jump. Supplements DWC's own "switch to Job page on print start" — set DWC's off and pick any page
+	 * here. Not applied while editing.
+	 */
+	jobStartPath?: string;
 	/** Top app-bar customisation: pinned mini widgets + styling. */
 	header?: { items: Array<GridItemModel>; color?: string; title?: string; logo?: string };
 	/** Hide the persistent status panel region in the custom shell. */
@@ -1085,6 +1091,7 @@ export function migrateDocument(raw: unknown): LayoutDocument {
 		...(doc.header ? { header: doc.header } : {}),
 		...(doc.statusHidden !== undefined ? { statusHidden: doc.statusHidden } : {}),
 		...(doc.startupPath ? { startupPath: doc.startupPath } : {}),
+		...(doc.jobStartPath ? { jobStartPath: doc.jobStartPath } : {}),
 		...(doc.migratedGlobalHides ? { migratedGlobalHides: true } : {}),
 	};
 	for (const migration of DOC_MIGRATIONS) {

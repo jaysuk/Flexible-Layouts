@@ -22,6 +22,7 @@ const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000; // re-check at most once a day on
 const LS_ENABLED = "flexibleLayouts.updateCheck.enabled";
 const LS_LAST = "flexibleLayouts.updateCheck.lastCheck";
 const LS_DISMISSED = "flexibleLayouts.updateCheck.dismissed";
+const LS_RESULT = "flexibleLayouts.updateCheck.lastResult";
 
 export const updateState = ref<UpdateResult | null>(null);
 export const checking = ref(false);
@@ -43,6 +44,16 @@ export function setUpdateChecksEnabled(on: boolean): void {
 	localStorage.setItem(LS_ENABLED, on ? "true" : "false");
 }
 
+/** Last check result persisted across reloads, so a popup can be shown while the check is throttled. */
+function cachedResult(): UpdateResult | null {
+	try {
+		const s = localStorage.getItem(LS_RESULT);
+		return s ? (JSON.parse(s) as UpdateResult) : null;
+	} catch {
+		return null;
+	}
+}
+
 /** Installed plugin version, from the object model's plugins map (the authoritative source). */
 function currentVersion(): string {
 	const plugins = (useMachineStore().model as { plugins?: Map<string, { version?: string }> }).plugins;
@@ -61,6 +72,11 @@ export async function runUpdateCheck(opts: { force?: boolean; notify?: boolean }
 		}
 		const last = Number(localStorage.getItem(LS_LAST) || 0);
 		if (Date.now() - last < CHECK_INTERVAL_MS) {
+			// Throttled: don't hit the network, but rehydrate the last known result so a popup can still
+			// be shown this page load (the in-memory state is empty after a reload).
+			if (!updateState.value) {
+				updateState.value = cachedResult();
+			}
 			return updateState.value;
 		}
 	}
@@ -70,6 +86,7 @@ export async function runUpdateCheck(opts: { force?: boolean; notify?: boolean }
 		const result = await checkForUpdate({ owner: OWNER, repo: REPO, currentVersion: currentVersion() });
 		updateState.value = result;
 		localStorage.setItem(LS_LAST, String(Date.now()));
+		try { localStorage.setItem(LS_RESULT, JSON.stringify(result)); } catch { /* storage full/disabled */ }
 		if (opts.notify && result.updateAvailable && localStorage.getItem(LS_DISMISSED) !== result.latestVersion) {
 			const message = result.scenario === "dwcUpdate"
 				? t("notifyDwc", { version: result.latestVersion, dwc: result.requiredDwc })
