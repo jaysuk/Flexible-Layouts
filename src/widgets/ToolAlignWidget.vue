@@ -29,12 +29,33 @@
       <span v-if="!tools.length" class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.toolAlign.empty") }}</span>
     </div>
 
-    <!-- Fine jog to bring the nozzle onto the crosshair -->
-    <div class="ta-jog d-flex align-center ga-1 px-1 pt-1 flex-shrink-0">
+    <!-- Camera position: jump the toolhead to the saved spot, or record the current spot. -->
+    <div class="ta-cam-pos d-flex flex-wrap align-center ga-1 px-1 pt-1 flex-shrink-0">
+      <v-btn size="small" variant="tonal" prepend-icon="mdi-camera-marker" :disabled="disabledNow || !hasCameraPos" @click="gotoCamera">
+        {{ $t("plugins.flexibleLayouts.toolAlign.gotoCamera") }}
+      </v-btn>
+      <v-btn size="small" variant="text" prepend-icon="mdi-crosshairs" :disabled="disabledNow" @click="setCamera">
+        {{ $t("plugins.flexibleLayouts.toolAlign.setCamera") }}
+      </v-btn>
+      <v-spacer />
+      <v-btn v-if="widget.startCommand" size="small" variant="text" :disabled="disabledNow" @click="runStart">
+        {{ $t("plugins.flexibleLayouts.toolAlign.start") }}
+      </v-btn>
+      <v-btn v-if="widget.finishCommand" size="small" variant="text" :disabled="disabledNow" @click="runFinish">
+        {{ $t("plugins.flexibleLayouts.toolAlign.finish") }}
+      </v-btn>
+    </div>
+
+    <!-- Fine jog to bring the nozzle onto the crosshair (and down onto the Z switch) -->
+    <div class="ta-jog d-flex flex-wrap align-center ga-1 px-1 pt-1 flex-shrink-0">
       <v-btn size="small" variant="tonal" :disabled="disabledNow" @click="nudge('X', -1)">X−</v-btn>
       <v-btn size="small" variant="tonal" :disabled="disabledNow" @click="nudge('X', 1)">X+</v-btn>
       <v-btn size="small" variant="tonal" :disabled="disabledNow" @click="nudge('Y', -1)">Y−</v-btn>
       <v-btn size="small" variant="tonal" :disabled="disabledNow" @click="nudge('Y', 1)">Y+</v-btn>
+      <template v-if="widget.enableZ">
+        <v-btn size="small" variant="tonal" :disabled="disabledNow" @click="nudge('Z', -1)">Z−</v-btn>
+        <v-btn size="small" variant="tonal" :disabled="disabledNow" @click="nudge('Z', 1)">Z+</v-btn>
+      </template>
       <v-spacer />
       <v-select v-model.number="step" :items="stepItems" density="compact" variant="outlined" hide-details
                 class="ta-step" suffix="mm" />
@@ -47,6 +68,14 @@
       </v-btn>
       <v-btn size="small" variant="tonal" prepend-icon="mdi-crosshairs-gps" :disabled="disabledNow || current < 0" @click="capture">
         {{ $t("plugins.flexibleLayouts.toolAlign.capture") }}
+      </v-btn>
+      <v-btn v-if="widget.enableZ" size="small" variant="tonal" prepend-icon="mdi-arrow-collapse-down"
+             :disabled="disabledNow || current < 0" @click="captureZ">
+        {{ $t("plugins.flexibleLayouts.toolAlign.captureZ") }}
+      </v-btn>
+      <v-btn v-if="widget.enableZ && widget.zProbeCommand" size="small" variant="text" prepend-icon="mdi-arrow-down-bold-circle-outline"
+             :disabled="disabledNow || current < 0" @click="probeZ">
+        {{ $t("plugins.flexibleLayouts.toolAlign.probeZ") }}
       </v-btn>
       <v-btn size="small" variant="text" :disabled="disabledNow || !hasCaptures" @click="clearAll">
         {{ $t("plugins.flexibleLayouts.toolAlign.clear") }}
@@ -86,6 +115,10 @@
                :disabled="disabledNow || !anyApplicable" @click="applyAll">
           {{ $t("plugins.flexibleLayouts.toolAlign.applyAll") }}
         </v-btn>
+        <v-btn v-if="widget.saveCommand" size="small" variant="tonal" prepend-icon="mdi-content-save-check"
+               :disabled="disabledNow" @click="saveOffsets">
+          {{ $t("plugins.flexibleLayouts.toolAlign.save") }}
+        </v-btn>
         <v-switch v-model="invert" density="compact" hide-details color="primary"
                   :label="$t('plugins.flexibleLayouts.toolAlign.invert')" />
       </div>
@@ -103,6 +136,7 @@ import { useMachineStore } from "@/stores/machine";
 import { LogLevel, useUiStore } from "@/stores/ui";
 
 import type { Widget } from "../model/document";
+import { type AxisCapture, computeToolOffset, formatG10, type ToolOffset } from "../util/toolAlign";
 import { resolveOmPath } from "../util/omPath";
 
 const props = defineProps<{ widget: Extract<Widget, { type: "toolAlign" }>; disabled?: boolean }>();
@@ -158,18 +192,16 @@ function machinePos(letter: string): number | null {
 }
 const allHomed = computed(() => ["X", "Y"].every((l) => axisRow(l)?.homed));
 
-function refOffsetXY(): { x: number; y: number } {
+function refOffset(): ToolOffset {
   const arr = resolveOmPath(machineStore.model, "tools");
   const t = Array.isArray(arr) ? (arr as Array<RawTool | null>).find((x) => x?.number === props.widget.referenceTool) : null;
   const off = t?.offsets;
-  return {
-    x: Array.isArray(off) && typeof off[0] === "number" ? off[0] : 0,
-    y: Array.isArray(off) && typeof off[1] === "number" ? off[1] : 0,
-  };
+  const at = (i: number) => (Array.isArray(off) && typeof off[i] === "number" ? off[i] : 0);
+  return { x: at(0), y: at(1), z: at(2) };
 }
 
 // --- Alignment state (captures are a per-session measurement, not part of the saved layout) ---
-const captures = ref<Record<number, { x: number; y: number }>>({});
+const captures = ref<Record<number, AxisCapture>>({});
 const hasCaptures = computed(() => Object.keys(captures.value).length > 0);
 
 const step = ref<number>(props.widget.jogStep ?? 0.1);
@@ -180,67 +212,123 @@ const invert = computed({
   set: (v: boolean) => { props.widget.invertOffsets = v; },
 });
 
+const hasCameraPos = computed(() => typeof props.widget.cameraX === "number" && typeof props.widget.cameraY === "number");
+
 function notify(msg: string, level: LogLevel = LogLevel.warning): void {
   uiStore.makeNotification(level, i18n.global.t("plugins.flexibleLayouts.widgets.toolAlign"), msg);
 }
 function send(code: string): Promise<unknown> {
   return machineStore.sendCode(code).catch((e: unknown) => notify((e as Error)?.message ?? String(e), LogLevel.error));
 }
+const taT = (k: string) => i18n.global.t(`plugins.flexibleLayouts.toolAlign.${k}`);
 
 function select(n: number): void {
   if (disabledNow.value) return;
   void send(`T${n}`);
 }
-function nudge(letter: "X" | "Y", dir: number): void {
+function nudge(letter: "X" | "Y" | "Z", dir: number): void {
   if (disabledNow.value) return;
   const d = dir * step.value;
   const feed = props.widget.jogFeed || 6000;
   void send(`M120\nG91\nG1 ${letter}${d} F${feed}\nG90\nM121`);
 }
-function captureFor(t: number): boolean {
+
+// --- Captures: XY from the camera crosshair, Z from a switch/probe (independent) ---
+function captureXY(t: number): boolean {
   const x = machinePos("X"), y = machinePos("Y");
-  if (x == null || y == null) { notify(i18n.global.t("plugins.flexibleLayouts.toolAlign.noPos")); return false; }
-  captures.value = { ...captures.value, [t]: { x, y } };
+  if (x == null || y == null) { notify(taT("noPos")); return false; }
+  captures.value = { ...captures.value, [t]: { ...captures.value[t], x, y } };
   return true;
 }
+function captureZ(): void {
+  if (current.value < 0) { notify(taT("selectTool")); return; }
+  const z = machinePos("Z");
+  if (z == null) { notify(taT("noPos")); return; }
+  captures.value = { ...captures.value, [current.value]: { ...captures.value[current.value], z } };
+}
 function capture(): void {
-  if (current.value < 0) { notify(i18n.global.t("plugins.flexibleLayouts.toolAlign.selectTool")); return; }
-  captureFor(current.value);
+  if (current.value < 0) { notify(taT("selectTool")); return; }
+  captureXY(current.value);
 }
 function setReference(): void {
-  if (current.value < 0) { notify(i18n.global.t("plugins.flexibleLayouts.toolAlign.selectTool")); return; }
+  if (current.value < 0) { notify(taT("selectTool")); return; }
   props.widget.referenceTool = current.value;
-  captureFor(current.value);
+  captureXY(current.value);
 }
 function clearAll(): void { captures.value = {}; }
 
-// O_t = O_ref + (M_t − M_ref). The reference's existing G10 offset is preserved; the invert switch
-// flips the correction term if a machine's convention comes out mirrored (verify by re-selecting a
-// tool after applying — its nozzle should sit on the crosshair).
-function offsetFor(t: number): { x: number; y: number } | null {
+function probeZ(): void {
+  if (disabledNow.value || !props.widget.zProbeCommand) return;
+  void send(props.widget.zProbeCommand);
+}
+
+// --- Camera position (machine coords) + lifecycle hooks ---
+function setCamera(): void {
+  const x = machinePos("X"), y = machinePos("Y"), z = machinePos("Z");
+  if (x == null || y == null) { notify(taT("noPos")); return; }
+  props.widget.cameraX = x;
+  props.widget.cameraY = y;
+  if (z != null) props.widget.cameraZ = z;
+  notify(taT("cameraSaved"), LogLevel.success);
+}
+function gotoCamera(): void {
+  if (disabledNow.value) return;
+  const w = props.widget;
+  if (w.cameraX == null || w.cameraY == null) { notify(taT("setCameraFirst")); return; }
+  // G53 = machine coordinates for that line, so the active tool's (mid-calibration) offset can't shift
+  // where the move lands. Lift to a safe Z first (if set), travel in XY, then descend to the focus Z.
+  const g = (w.useG53 ?? true) ? "G53 " : "";
+  const f = w.travelFeed || 6000;
+  const zf = w.jogFeed || 1200;
+  const lines = ["M120", "G90"];
+  if (typeof w.safeZ === "number") lines.push(`${g}G1 Z${w.safeZ} F${zf}`);
+  lines.push(`${g}G1 X${w.cameraX} Y${w.cameraY} F${f}`);
+  if (typeof w.cameraZ === "number") lines.push(`${g}G1 Z${w.cameraZ} F${zf}`);
+  lines.push("M121");
+  void send(lines.join("\n"));
+}
+function runStart(): void { if (props.widget.startCommand) void send(props.widget.startCommand); }
+function runFinish(): void { if (props.widget.finishCommand) void send(props.widget.finishCommand); }
+
+// --- Offsets -----------------------------------------------------------------
+function offsetFor(t: number): ToolOffset | null {
   if (props.widget.referenceTool == null) return null;
   const ct = captures.value[t], cr = captures.value[props.widget.referenceTool];
   if (!ct || !cr) return null;
-  const s = props.widget.invertOffsets ? -1 : 1;
-  const ro = refOffsetXY();
-  return { x: ro.x + s * (ct.x - cr.x), y: ro.y + s * (ct.y - cr.y) };
+  return computeToolOffset(cr, ct, refOffset(), !!props.widget.invertOffsets);
 }
 function g10For(t: number): string | null {
   const o = offsetFor(t);
-  return o ? `G10 P${t} X${o.x.toFixed(3)} Y${o.y.toFixed(3)}` : null;
+  return o ? formatG10(t, o) : null;
 }
 const anyApplicable = computed(() =>
   tools.value.some((t) => t.number !== props.widget.referenceTool && g10For(t.number)));
 
+function fmtTriple(c?: AxisCapture): string {
+  if (!c) return "—";
+  const parts: Array<string> = [];
+  if (typeof c.x === "number") parts.push(c.x.toFixed(2));
+  if (typeof c.y === "number") parts.push(c.y.toFixed(2));
+  if (props.widget.enableZ && typeof c.z === "number") parts.push(`Z${c.z.toFixed(2)}`);
+  return parts.length ? parts.join(", ") : "—";
+}
+function fmtOffset(o: ToolOffset | null): string {
+  if (!o) return "—";
+  const parts: Array<string> = [];
+  if (typeof o.x === "number") parts.push(o.x.toFixed(3));
+  if (typeof o.y === "number") parts.push(o.y.toFixed(3));
+  if (props.widget.enableZ && typeof o.z === "number") parts.push(`Z${o.z.toFixed(3)}`);
+  return parts.length ? parts.join(", ") : "—";
+}
+
 const rows = computed(() => tools.value.map((t) => {
-  const cap = captures.value[t.number];
   const off = offsetFor(t.number);
   return {
     number: t.number,
     name: t.name || ("T" + t.number),
     isRef: t.number === props.widget.referenceTool,
-    captured: cap ? `${cap.x.toFixed(2)}, ${cap.y.toFixed(2)}` : "—",
-    offset: off ? `${off.x.toFixed(3)}, ${off.y.toFixed(3)}` : "—",
+    captured: fmtTriple(captures.value[t.number]),
+    offset: fmtOffset(off),
     g10: g10For(t.number),
   };
 }));
@@ -256,12 +344,17 @@ async function applyAll(): Promise<void> {
     .map((t) => g10For(t.number))
     .filter((c): c is string => !!c);
   if (!cmds.length) return;
+  if (props.widget.saveCommand) cmds.push(props.widget.saveCommand);
   if (await confirmApply(cmds)) void send(cmds.join("\n"));
+}
+async function saveOffsets(): Promise<void> {
+  if (!props.widget.saveCommand) return;
+  if (await confirmApply([props.widget.saveCommand])) void send(props.widget.saveCommand);
 }
 function confirmApply(cmds: Array<string>): Promise<boolean> {
   return showConfirmDialog(
-    i18n.global.t("plugins.flexibleLayouts.toolAlign.confirmTitle"),
-    `${i18n.global.t("plugins.flexibleLayouts.toolAlign.confirmBody")}\n\n${cmds.join("\n")}`,
+    taT("confirmTitle"),
+    `${taT("confirmBody")}\n\n${cmds.join("\n")}`,
     "mdi-content-save-cog",
   );
 }

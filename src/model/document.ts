@@ -316,6 +316,25 @@ export type Widget =
 		jogFeed?: number;
 		/** Flip the sign of computed offsets if a machine's convention comes out mirrored. */
 		invertOffsets?: boolean;
+		/** Also calibrate the Z tool offset (jog/probe onto a switch + capture machine Z). */
+		enableZ?: boolean;
+		/** Optional G-code that drives the current tool down onto a Z switch / tool-setter to measure Z. */
+		zProbeCommand?: string;
+		/** Saved machine-coordinate camera position; "Go to camera" travels here. */
+		cameraX?: number;
+		cameraY?: number;
+		cameraZ?: number;
+		/** Use machine coordinates (G53) for the go-to-camera move, so the active tool's (mid-calibration)
+		 *  offset can't shift where it lands. Default true. */
+		useG53?: boolean;
+		/** Travel feed (mm/min) for the go-to-camera move, and an optional safe Z to lift to first. */
+		travelFeed?: number;
+		safeZ?: number;
+		/** Optional G-code run by the Start / Finish buttons (e.g. home, park, dock-clean). */
+		startCommand?: string;
+		finishCommand?: string;
+		/** Optional G-code to persist offsets (e.g. M500); shown as a Save button and appended to Apply all. */
+		saveCommand?: string;
 		color?: string;
 	}
 	| {
@@ -633,6 +652,7 @@ export function createDefaultWidget(type: WidgetType): Widget {
 				type: "toolAlign", url: "", refreshMs: 0, fit: "contain",
 				overlay: "crosshair", overlayColor: "#39FF14", overlayX: 50, overlayY: 50, overlaySize: 60,
 				jogStep: 0.1, jogFeed: 6000,
+				enableZ: false, useG53: true, travelFeed: 6000, saveCommand: "M500",
 			};
 		case "macros":
 			return { type: "macros", folder: "0:/macros", columns: 2, color: "primary" };

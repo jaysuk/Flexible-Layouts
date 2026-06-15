@@ -512,6 +512,35 @@
 						<v-col cols="6"><v-text-field v-model.number="draft.jogStep" type="number" step="0.01" density="compact" variant="outlined" hide-details suffix="mm" :label="$t('plugins.flexibleLayouts.toolAlign.jogStep')" /></v-col>
 						<v-col cols="6"><v-text-field v-model.number="draft.jogFeed" type="number" density="compact" variant="outlined" hide-details suffix="mm/min" :label="$t('plugins.flexibleLayouts.toolAlign.jogFeed')" /></v-col>
 					</v-row>
+
+					<div class="text-caption text-medium-emphasis mb-1 mt-2">{{ $t("plugins.flexibleLayouts.toolAlign.zHeading") }}</div>
+					<v-switch v-model="draft.enableZ" color="primary" density="compact" hide-details
+							  :label="$t('plugins.flexibleLayouts.toolAlign.enableZ')" />
+					<v-text-field v-if="draft.enableZ" v-model="draft.zProbeCommand" class="mt-1" density="compact" variant="outlined"
+								  hide-details clearable :label="$t('plugins.flexibleLayouts.toolAlign.zProbeCommand')"
+								  placeholder="G30 S-1" :hint="$t('plugins.flexibleLayouts.toolAlign.zProbeHint')" persistent-hint />
+
+					<div class="text-caption text-medium-emphasis mb-1 mt-3">{{ $t("plugins.flexibleLayouts.toolAlign.cameraHeading") }}</div>
+					<div class="text-caption text-medium-emphasis mb-1">{{ $t("plugins.flexibleLayouts.toolAlign.cameraConfigHint") }}</div>
+					<v-row dense>
+						<v-col cols="4"><v-text-field v-model.number="draft.cameraX" type="number" density="compact" variant="outlined" hide-details clearable label="X" /></v-col>
+						<v-col cols="4"><v-text-field v-model.number="draft.cameraY" type="number" density="compact" variant="outlined" hide-details clearable label="Y" /></v-col>
+						<v-col cols="4"><v-text-field v-model.number="draft.cameraZ" type="number" density="compact" variant="outlined" hide-details clearable label="Z" /></v-col>
+						<v-col cols="6"><v-text-field v-model.number="draft.travelFeed" type="number" density="compact" variant="outlined" hide-details suffix="mm/min" :label="$t('plugins.flexibleLayouts.toolAlign.travelFeed')" /></v-col>
+						<v-col cols="6"><v-text-field v-model.number="draft.safeZ" type="number" density="compact" variant="outlined" hide-details clearable suffix="mm" :label="$t('plugins.flexibleLayouts.toolAlign.safeZ')" /></v-col>
+					</v-row>
+					<v-switch v-model="draft.useG53" color="primary" density="compact" hide-details
+							  :label="$t('plugins.flexibleLayouts.toolAlign.useG53')" />
+					<div class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.toolAlign.useG53Hint") }}</div>
+
+					<div class="text-caption text-medium-emphasis mb-1 mt-3">{{ $t("plugins.flexibleLayouts.toolAlign.hooksHeading") }}</div>
+					<v-text-field v-model="draft.startCommand" class="mb-2" density="compact" variant="outlined" hide-details clearable
+								  :label="$t('plugins.flexibleLayouts.toolAlign.startCommand')" placeholder="G28" />
+					<v-text-field v-model="draft.finishCommand" class="mb-2" density="compact" variant="outlined" hide-details clearable
+								  :label="$t('plugins.flexibleLayouts.toolAlign.finishCommand')" placeholder="T-1" />
+					<v-text-field v-model="draft.saveCommand" density="compact" variant="outlined" hide-details clearable
+								  :label="$t('plugins.flexibleLayouts.toolAlign.saveCommand')" placeholder="M500"
+								  :hint="$t('plugins.flexibleLayouts.toolAlign.saveHint')" persistent-hint />
 				</template>
 
 				<!-- Macro grid -->
