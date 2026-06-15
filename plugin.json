@@ -2,7 +2,7 @@
 	"id": "FlexibleLayouts",
 	"name": "Flexible Layouts",
 	"author": "James Skitt",
-	"version": "1.0.30",
+	"version": "1.0.31",
 	"license": "GPL-3.0-or-later",
 	"homepage": "https://github.com/Duet3D/DuetWebControl",
 	"dwcVersion": "auto-major",
