@@ -180,7 +180,11 @@
 					{{ $t("plugins.flexibleLayouts.updates.title") }}
 				</v-card-title>
 				<v-card-text>
-					<div class="font-weight-medium mb-1">{{ $t("plugins.flexibleLayouts.updates.available", { version: updateState.latestVersion }) }}</div>
+					<div class="d-flex align-center ga-2 mb-1">
+						<v-icon size="small">mdi-view-dashboard-edit</v-icon>
+						<span class="font-weight-medium">{{ pluginName }}</span>
+					</div>
+					<div>{{ $t("plugins.flexibleLayouts.updates.available", { version: updateState.latestVersion }) }}</div>
 					<div class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.updates.installedNow", { version: updateState.currentVersion }) }}</div>
 					<div v-if="updateState.scenario === 'dwcUpdate'" class="text-caption text-warning mt-1">
 						{{ $t("plugins.flexibleLayouts.updates.needsDwc", { dwc: updateState.requiredDwc, running: updateState.runningDwc }) }}
@@ -361,6 +365,7 @@ async function onConnected(): Promise<void> {
 
 // --- New-version popup ---
 const updateOpen = ref(false);
+const pluginName = i18n.global.t("plugins.flexibleLayouts.settings.caption");
 async function updateNow(): Promise<void> {
 	await applyUpdateNow();
 	updateOpen.value = false;

@@ -7,7 +7,7 @@
  */
 import { ref } from "vue";
 
-import { applyUpdate, checkForUpdate, type UpdateResult } from "dwc-plugin-runtime";
+import { applyUpdate, checkForUpdate, compareVersions, type UpdateResult } from "dwc-plugin-runtime";
 
 import i18n from "@/i18n";
 import { useMachineStore } from "@/stores/machine";
@@ -54,6 +54,25 @@ function cachedResult(): UpdateResult | null {
 	}
 }
 
+/**
+ * Re-evaluate a (cached) result against the version installed right now: the cache may have been
+ * written before the user updated, so its `currentVersion`/`updateAvailable` can be stale. If the
+ * installed version already meets the latest, the update is no longer available — clear the cache so
+ * the popup doesn't reappear after a successful update.
+ */
+function revalidate(result: UpdateResult | null): UpdateResult | null {
+	if (!result) {
+		return null;
+	}
+	const cur = currentVersion();
+	const stillNewer = !!result.latestVersion && compareVersions(result.latestVersion, cur) > 0;
+	if (!stillNewer) {
+		try { localStorage.removeItem(LS_RESULT); } catch { /* ignore */ }
+		return { ...result, currentVersion: cur, updateAvailable: false, scenario: "upToDate" };
+	}
+	return { ...result, currentVersion: cur };
+}
+
 /** Installed plugin version, from the object model's plugins map (the authoritative source). */
 function currentVersion(): string {
 	const plugins = (useMachineStore().model as { plugins?: Map<string, { version?: string }> }).plugins;
@@ -73,9 +92,11 @@ export async function runUpdateCheck(opts: { force?: boolean; notify?: boolean }
 		const last = Number(localStorage.getItem(LS_LAST) || 0);
 		if (Date.now() - last < CHECK_INTERVAL_MS) {
 			// Throttled: don't hit the network, but rehydrate the last known result so a popup can still
-			// be shown this page load (the in-memory state is empty after a reload).
+			// be shown this page load (the in-memory state is empty after a reload). Re-validate it
+			// against the version installed RIGHT NOW — after the user updates, the cached result still
+			// names the old version, so recompute "available" instead of trusting the stale flag.
 			if (!updateState.value) {
-				updateState.value = cachedResult();
+				updateState.value = revalidate(cachedResult());
 			}
 			return updateState.value;
 		}
