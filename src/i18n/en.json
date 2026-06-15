@@ -235,6 +235,13 @@
 		"from": "Entered",
 		"to": "Sent"
 	},
+	"printLock": {
+		"widgetLabel": "Lock while printing",
+		"widgetHint": "Blocks interaction with this widget while a print is running, so it can't move the machine unexpectedly. On by default for motion / tool-change controls; off for safe ones like pause.",
+		"pageLabel": "Lock this page while printing",
+		"pageHint": "Blocks interaction with every widget on this page during a print, regardless of each widget's own setting.",
+		"locked": "Locked while printing"
+	},
 	"sdBackup": {
 		"title": "SD-card backup",
 		"hint": "Saves your whole layout (all profiles) to the printer's SD card each time you finish editing, so it survives DWC settings being wiped — e.g. when switching between DWC 3.6 and 3.7.",

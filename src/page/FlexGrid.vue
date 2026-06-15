@@ -11,7 +11,7 @@
 				  @move="(i: string, x: number, y: number) => emit('itemMove', i, x, y)"
 				  @moved="(i: string, x: number, y: number) => emit('itemMoved', i, x, y)">
 			<FlexGridItem :item="item" :edit-mode="editMode" :row-height="rowHeight"
-						  :selected="selectedIds?.has(item.i)"
+						  :selected="selectedIds?.has(item.i)" :page-lock="pageLock"
 						  @remove="emit('remove', item.i)" @edit="emit('edit', item.i)"
 						  @edit-contents="emit('editContents', item.i)" @export="emit('exportItem', item.i)"
 						  @duplicate="emit('duplicate', item.i)" @toggle-lock="emit('toggleLock', item.i)"
@@ -36,6 +36,8 @@ const props = defineProps<{
 	editMode: boolean;
 	/** Ids of currently multi-selected items (for the align/distribute highlight). */
 	selectedIds?: Set<string>;
+	/** Force every item on this page to lock while the printer is printing. */
+	pageLock?: boolean;
 }>();
 const emit = defineEmits<{
 	"update:layout": [Array<GridItemModel>];

@@ -815,6 +815,12 @@ export interface GridItemModel {
 	/** Locked items can't be dragged or resized (but can still be configured). */
 	locked?: boolean;
 	/**
+	 * Block interaction with this widget while the printer is printing (so it can't move the machine
+	 * unexpectedly). Undefined = use the per-widget-type default (see util/printLock): on for motion /
+	 * tool-change / extrusion controls, off for safe ones like pause/resume.
+	 */
+	lockWhilePrinting?: boolean;
+	/**
 	 * Size the cell to the panel's natural content height (and reflow the panels below it) instead of
 	 * a fixed height - so dynamic panels like Movement grow/shrink as their content changes, the way
 	 * the stock DWC dashboard does. Best for content-sized panels; not charts (which need a fixed box).
@@ -846,6 +852,8 @@ export interface PageLayout {
 	background?: { color?: string; image?: string; size?: "cover" | "contain" | "auto" };
 	/** Show this page in navigation only while this object-model rule matches. */
 	showWhen?: ConditionRule;
+	/** Lock every interactive widget on this page while the printer is printing (page-wide override). */
+	lockWhilePrinting?: boolean;
 	grid: { cols: number; rowHeight: number; /** Gap (px) between panels. Default 8. */ gap?: number };
 	/** Base (desktop / lg) layout. */
 	items: Array<GridItemModel>;

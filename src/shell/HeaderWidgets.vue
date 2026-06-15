@@ -15,7 +15,7 @@
 				<v-btn icon="mdi-delete" size="x-small" variant="text" density="comfortable" @click="remove(i)" />
 			</div>
 			<div class="header-item-body" :style="bodyStyle(item)">
-				<WidgetView :widget="item.widget" />
+				<WidgetView :widget="item.widget" :disabled="!editMode && headerLocked(item)" />
 			</div>
 			<!-- right-edge handle to set this widget's width within the bar -->
 			<div v-if="editMode" class="header-resizer" @mousedown.stop.prevent="startResize(i, $event)" />
@@ -41,12 +41,21 @@ import {
 	newItemId,
 } from "../model/document";
 import { useLayoutStore } from "../model/store";
+import { useMachineStore } from "@/stores/machine";
 import { editMode } from "../model/editorState";
+import { effectiveLockForItem, isPrintingStatus } from "../util/printLock";
 import WidgetView from "../widgets/WidgetView.vue";
 import WidgetPalette from "../editor/WidgetPalette.vue";
 import PropertiesDialog from "../editor/PropertiesDialog.vue";
 
 const store = useLayoutStore();
+const machineStore = useMachineStore();
+
+// Lock a header widget while printing (same policy as grid items: explicit choice, else type default).
+const isPrinting = computed(() => isPrintingStatus((machineStore.model as { state?: { status?: string } }).state?.status));
+function headerLocked(item: GridItemModel): boolean {
+	return isPrinting.value && effectiveLockForItem(item.widget, item.lockWhilePrinting);
+}
 
 const DEFAULT_WIDTH = 110;
 const MIN_WIDTH = 48;
@@ -165,7 +174,7 @@ function edit(i: number) {
 	propsOpen.value = true;
 }
 
-function onSave(payload: { widget: Widget; conditions: Array<ConditionRule>; colors: PanelColors; typography: Typography; fit: boolean | undefined; geometry: { x: number; y: number; w: number; h: number } }) {
+function onSave(payload: { widget: Widget; conditions: Array<ConditionRule>; colors: PanelColors; typography: Typography; fit: boolean | undefined; lockWhilePrinting: boolean | undefined; geometry: { x: number; y: number; w: number; h: number } }) {
 	const list = headerItems();
 	if (editingIndex.value >= 0 && list[editingIndex.value]) {
 		list[editingIndex.value] = {
@@ -175,6 +184,7 @@ function onSave(payload: { widget: Widget; conditions: Array<ConditionRule>; col
 			colors: payload.colors,
 			typography: payload.typography,
 			fit: payload.fit,
+			lockWhilePrinting: payload.lockWhilePrinting,
 		};
 	}
 }

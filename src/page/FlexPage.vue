@@ -76,7 +76,7 @@
 		<!-- Live grid -->
 		<FlexGrid v-if="layout.length > 0" v-model:layout="layout"
 				  :cols="grid.cols" :row-height="grid.rowHeight" :gap="grid.gap ?? 8" :edit-mode="editMode"
-				  :selected-ids="selectedIds"
+				  :selected-ids="selectedIds" :page-lock="pageLockWhilePrinting"
 				  @changed="onLayoutUpdated" @remove="removeItem" @edit="openProperties"
 				  @edit-contents="openGroupEditor" @export-item="exportPanelById"
 				  @duplicate="duplicateItem" @toggle-lock="toggleLock" @toggle-select="toggleSelect"
@@ -177,6 +177,12 @@
 					<v-select v-if="bgImage" :model-value="bgSize" :items="bgSizeOptions" density="compact"
 							  variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.background.size')"
 							  @update:model-value="setBgSize" />
+
+					<v-divider class="my-3" />
+					<v-switch :model-value="pageLockWhilePrinting" color="primary" density="compact" hide-details
+							  :label="$t('plugins.flexibleLayouts.printLock.pageLabel')"
+							  @update:model-value="setPageLock" />
+					<div class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.printLock.pageHint") }}</div>
 				</v-card-text>
 				<v-card-actions>
 					<v-btn variant="text" color="error" prepend-icon="mdi-backup-restore" @click="openResetDialog">
@@ -252,6 +258,12 @@ function setGridGap(v: string) {
 	const gap = Math.max(0, Math.min(48, Math.round(Number(v) || 0)));
 	grid.value = { ...grid.value, gap };
 	store.ensurePage(props.pageId, props.kind ?? "custom").grid = { ...grid.value };
+}
+
+// Page-wide "lock while printing": forces every widget on the page to lock during a print.
+const pageLockWhilePrinting = computed(() => store.getPage(props.pageId)?.lockWhilePrinting ?? false);
+function setPageLock(v: boolean | null) {
+	store.ensurePage(props.pageId, props.kind ?? "custom").lockWhilePrinting = v === true ? true : undefined;
 }
 
 function resetBreakpoint() {
@@ -725,10 +737,10 @@ function openProperties(id: string) {
 	propertiesOpen.value = true;
 }
 
-function saveProperties(payload: { widget: Widget; conditions: Array<ConditionRule>; colors: PanelColors; typography: Typography; fit: boolean | undefined; autoHeight: boolean | undefined; tooltip: string | undefined; geometry: { x: number; y: number; w: number; h: number } }) {
+function saveProperties(payload: { widget: Widget; conditions: Array<ConditionRule>; colors: PanelColors; typography: Typography; fit: boolean | undefined; autoHeight: boolean | undefined; tooltip: string | undefined; lockWhilePrinting: boolean | undefined; geometry: { x: number; y: number; w: number; h: number } }) {
 	layout.value = layout.value.map((it) =>
 		it.i === editingId.value
-			? { ...it, widget: payload.widget, conditions: payload.conditions, colors: payload.colors, typography: payload.typography, fit: payload.fit, autoHeight: payload.autoHeight, tooltip: payload.tooltip, ...payload.geometry }
+			? { ...it, widget: payload.widget, conditions: payload.conditions, colors: payload.colors, typography: payload.typography, fit: payload.fit, autoHeight: payload.autoHeight, tooltip: payload.tooltip, lockWhilePrinting: payload.lockWhilePrinting, ...payload.geometry }
 			: it);
 	persist();
 	commit();

@@ -44,14 +44,19 @@
 			<div v-else class="fill-height" :class="{ 'condition-dimmed': effects.hidden && editMode }">
 				<WidgetErrorBoundary :reset-key="widgetKey">
 					<ScaleToFit v-if="fitEnabled">
-						<WidgetView :widget="item.widget" :override-color="effects.color" :disabled="effects.disabled" />
+						<WidgetView :widget="item.widget" :override-color="effects.color" :disabled="effects.disabled || printLocked" />
 					</ScaleToFit>
 					<!-- Auto-height (view mode only): render at natural content height in a measuring wrapper
 						 so the cell can be resized to fit and the panels below reflow. -->
 					<div v-else-if="autoMeasure" ref="measureRef" class="flex-auto-measure">
-						<WidgetView :widget="item.widget" :override-color="effects.color" :disabled="effects.disabled" />
+						<WidgetView :widget="item.widget" :override-color="effects.color" :disabled="effects.disabled || printLocked" />
 					</div>
-					<WidgetView v-else :widget="item.widget" :override-color="effects.color" :disabled="effects.disabled" />
+					<WidgetView v-else :widget="item.widget" :override-color="effects.color" :disabled="effects.disabled || printLocked" />
+
+					<!-- Guaranteed interaction block while print-locked (covers widgets that ignore `disabled`). -->
+					<div v-if="printLocked" class="flex-print-lock" :title="$t('plugins.flexibleLayouts.printLock.locked')">
+						<v-icon size="x-small">mdi-lock</v-icon>
+					</div>
 
 					<template #error="{ message, reset }">
 						<div class="flex-widget-error fill-height">
@@ -82,12 +87,13 @@ import { buildReport, downloadReport } from "dwc-plugin-runtime";
 import type { GridItemModel } from "../model/document";
 import { PLUGIN_MANIFEST_ID } from "../model/constants";
 import { evaluateConditions } from "../util/conditions";
+import { effectiveLockForItem, isPrintingStatus } from "../util/printLock";
 import { describeWidget } from "../widgets/registry";
 import ScaleToFit from "../widgets/ScaleToFit.vue";
 import WidgetErrorBoundary from "../widgets/WidgetErrorBoundary.vue";
 import WidgetView from "../widgets/WidgetView.vue";
 
-const props = defineProps<{ item: GridItemModel; editMode: boolean; rowHeight?: number; selected?: boolean }>();
+const props = defineProps<{ item: GridItemModel; editMode: boolean; rowHeight?: number; selected?: boolean; pageLock?: boolean }>();
 const emit = defineEmits<{ remove: []; edit: []; editContents: []; export: []; duplicate: []; toggleLock: []; toggleSelect: []; autoHeight: [number] }>();
 
 // Give every placed widget its own component-settings scope keyed by the grid item's GUID, so a
@@ -123,6 +129,14 @@ const widgetKey = computed(() => JSON.stringify(props.item.widget));
 
 // Reactive condition effects (colour / hide / disable) driven by the live object model.
 const effects = computed(() => evaluateConditions(machineStore.model, props.item.conditions));
+
+// Lock-while-printing: block interaction during a print so the machine can't be moved unexpectedly.
+// Active only in view mode (edit must always be usable). The page-level flag forces it for every
+// widget; otherwise it's the item's explicit choice or the per-widget-type default.
+const isPrinting = computed(() => isPrintingStatus((machineStore.model as { state?: { status?: string } }).state?.status));
+const printLocked = computed(() =>
+	!props.editMode && isPrinting.value
+	&& (props.pageLock || effectiveLockForItem(props.item.widget, props.item.lockWhilePrinting)));
 
 // Per-panel colour overrides exposed as CSS variables consumed by the styles below.
 const colorVars = computed(() => {
@@ -285,6 +299,23 @@ onBeforeUnmount(() => {
 }
 .condition-dimmed {
 	opacity: 0.4;
+}
+
+/* Print-lock overlay: a transparent layer that swallows clicks (so the widget can't be operated mid
+   print) with a faint lock badge in the corner. Sits above the widget but below the edit header. */
+.flex-print-lock {
+	position: absolute;
+	inset: 0;
+	z-index: 3;
+	cursor: not-allowed;
+	display: flex;
+	align-items: flex-start;
+	justify-content: flex-end;
+	padding: 3px;
+	background: rgba(var(--v-theme-surface), 0.04);
+}
+.flex-print-lock .v-icon {
+	opacity: 0.45;
 }
 
 /* Per-panel colour overrides. background + text reach built-in panel cards via :deep. */

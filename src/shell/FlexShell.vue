@@ -218,6 +218,7 @@ import { applying, applyUpdateNow, dismissCurrentUpdate, dismissedVersion, pendi
 import { applyStartupRoute } from "../model/startup";
 import { startChartSampler, stopChartSampler } from "../model/chartSampler";
 import { applyBackup, checkForRestore, dismissRestore, type FlBackup, isAutoBackupEnabled, writeBackup } from "../model/sdBackup";
+import { isPrintingStatus } from "../util/printLock";
 import { isLocked } from "../model/lock";
 import { applyNavOrder, isHidden } from "../model/pageManager";
 import { getActiveProfileId, listProfiles, useLayoutStore } from "../model/store";
@@ -375,14 +376,9 @@ function viewUpdateNotes(): void {
 }
 
 // --- Jump to a chosen page when a print/job starts ---
-// Mirrors DWC's own "switch to Job page on print start": treat the whole print session (incl. paused)
-// as "printing" so the jump fires once at the real start, not again on resume. (@/utils/enums isn't
-// externalised, so the status set is replicated here.)
-const PRINTING_STATUSES = new Set(["pausing", "paused", "cancelling", "resuming", "processing", "simulating"]);
+// Mirrors DWC's own "switch to Job page on print start": isPrintingStatus treats the whole print
+// session (incl. paused) as "printing" so the jump fires once at the real start, not again on resume.
 const machineState = machineStore.model as { state?: { status?: string } };
-function isPrintingStatus(s?: string): boolean {
-	return !!s && PRINTING_STATUSES.has(s);
-}
 let wasPrinting = isPrintingStatus(machineState.state?.status);
 watch(() => machineState.state?.status, (now) => {
 	const nowPrinting = isPrintingStatus(now);

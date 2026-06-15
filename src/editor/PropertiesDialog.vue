@@ -947,6 +947,10 @@
 				<v-text-field v-model="tooltip" class="mt-3" density="compact" variant="outlined" hide-details clearable
 							  :label="$t('plugins.flexibleLayouts.properties.tooltip')" />
 				<div class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.properties.tooltipHint") }}</div>
+
+				<v-switch v-model="lockWhilePrinting" color="primary" density="compact" hide-details class="mt-2"
+						  :label="$t('plugins.flexibleLayouts.printLock.widgetLabel')" />
+				<div class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.printLock.widgetHint") }}</div>
 			</v-card-text>
 
 			<v-card-actions>
@@ -967,6 +971,7 @@ import { useMachineStore } from "@/stores/machine";
 import type { ConditionOperator, ConditionRule, GridItemModel, PanelColors, Typography, Widget } from "../model/document";
 import { hasInputModifier } from "../util/inputModifier";
 import { OM_VALUE_PRESETS, type OmPreset, resolveOmPath } from "../util/omPath";
+import { defaultLockForWidget } from "../util/printLock";
 import { describeWidget } from "../widgets/registry";
 import ColorSelect from "./ColorSelect.vue";
 import IconPicker from "./IconPicker.vue";
@@ -976,7 +981,7 @@ import WidgetView from "../widgets/WidgetView.vue";
 const props = defineProps<{ modelValue: boolean; item: GridItemModel | null }>();
 const emit = defineEmits<{
 	"update:modelValue": [boolean];
-	save: [{ widget: Widget; conditions: Array<ConditionRule>; colors: PanelColors; typography: Typography; fit: boolean | undefined; autoHeight: boolean | undefined; tooltip: string | undefined; geometry: { x: number; y: number; w: number; h: number } }];
+	save: [{ widget: Widget; conditions: Array<ConditionRule>; colors: PanelColors; typography: Typography; fit: boolean | undefined; autoHeight: boolean | undefined; tooltip: string | undefined; lockWhilePrinting: boolean | undefined; geometry: { x: number; y: number; w: number; h: number } }];
 }>();
 
 const machineStore = useMachineStore();
@@ -1001,6 +1006,7 @@ const typography = ref<Typography>({});
 const fit = ref<boolean | undefined>(undefined);
 const autoHeight = ref<boolean | undefined>(undefined);
 const tooltip = ref<string>("");
+const lockWhilePrinting = ref<boolean>(false);
 const geom = ref({ x: 0, y: 0, w: 2, h: 2 });
 watch(
 	() => props.modelValue,
@@ -1021,6 +1027,8 @@ watch(
 			fit.value = props.item.fit ?? false;
 			autoHeight.value = props.item.autoHeight ?? false;
 			tooltip.value = props.item.tooltip ?? "";
+			// Default reflects the widget-type policy (motion/tool widgets default on) until set explicitly.
+			lockWhilePrinting.value = props.item.lockWhilePrinting ?? defaultLockForWidget(props.item.widget);
 		}
 	},
 	{ immediate: true },
@@ -1332,6 +1340,7 @@ function save() {
 			fit: fit.value,
 			autoHeight: autoHeight.value,
 			tooltip: tooltip.value.trim() || undefined,
+			lockWhilePrinting: lockWhilePrinting.value,
 			geometry: {
 				x: Math.max(0, Math.round(geom.value.x) || 0),
 				y: Math.max(0, Math.round(geom.value.y) || 0),
