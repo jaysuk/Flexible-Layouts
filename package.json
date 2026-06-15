@@ -1,6 +1,6 @@
 {
   "name": "flexible-layouts",
-  "version": "1.0.29",
+  "version": "1.0.30",
   "description": "Flexible Layouts — drag-and-drop UI customisation plugin for DuetWebControl (Vue 3).",
   "private": true,
   "license": "GPL-3.0-or-later",
