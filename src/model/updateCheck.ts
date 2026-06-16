@@ -7,7 +7,7 @@
  */
 import { ref } from "vue";
 
-import { applyUpdate, checkForUpdate, compareVersions, type UpdateResult } from "dwc-plugin-runtime";
+import { announceUpdate, applyUpdate, checkForUpdate, clearAnnouncedUpdate, compareVersions, type UpdateResult } from "dwc-plugin-runtime";
 
 import i18n from "@/i18n";
 import { useMachineStore } from "@/stores/machine";
@@ -35,6 +35,20 @@ export const applying = ref(false);
 export const pendingReload = ref(false);
 
 const t = (key: string, named?: Record<string, unknown>) => i18n.global.t(`plugins.flexibleLayouts.updates.${key}`, named ?? {});
+
+/**
+ * Mirror the current result into the cross-plugin update hub, so the shell's aggregated popup can show
+ * FL's update alongside any other plugin's. Announces a not-yet-dismissed available update; otherwise
+ * clears FL's entry.
+ */
+function syncHub(): void {
+	const s = updateState.value;
+	if (s?.updateAvailable && dismissedVersion.value !== s.latestVersion) {
+		announceUpdate(PLUGIN_MANIFEST_ID, i18n.global.t("plugins.flexibleLayouts.settings.caption"), s);
+	} else {
+		clearAnnouncedUpdate(PLUGIN_MANIFEST_ID);
+	}
+}
 
 /** Whether on-load update checks are enabled (default on; users can opt out in settings). */
 export function updateChecksEnabled(): boolean {
@@ -98,6 +112,7 @@ export async function runUpdateCheck(opts: { force?: boolean; notify?: boolean }
 			if (!updateState.value) {
 				updateState.value = revalidate(cachedResult());
 			}
+			syncHub();
 			return updateState.value;
 		}
 	}
@@ -114,6 +129,7 @@ export async function runUpdateCheck(opts: { force?: boolean; notify?: boolean }
 				: t("notifyPlugin", { version: result.latestVersion });
 			useUiStore().makeNotification(LogLevel.info, t("title"), message);
 		}
+		syncHub();
 		return result;
 	} finally {
 		checking.value = false;
@@ -134,6 +150,7 @@ export function dismissCurrentUpdate(): void {
 	if (updateState.value?.latestVersion) {
 		localStorage.setItem(LS_DISMISSED, updateState.value.latestVersion);
 		dismissedVersion.value = updateState.value.latestVersion;
+		clearAnnouncedUpdate(PLUGIN_MANIFEST_ID); // drop FL from the aggregated popup
 	}
 }
 

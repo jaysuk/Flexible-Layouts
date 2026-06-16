@@ -172,33 +172,42 @@
 			</v-card>
 		</v-dialog>
 
-		<!-- New-version popup, shown on load when a newer release is available (and not skipped). -->
-		<v-dialog v-model="updateOpen" max-width="460">
-			<v-card v-if="updateState">
+		<!-- Aggregated new-version popup: one dialog listing every plugin (not just FL) with an update. -->
+		<v-dialog v-model="updateOpen" max-width="480">
+			<v-card>
 				<v-card-title class="d-flex align-center">
 					<v-icon class="me-2" color="primary">mdi-rocket-launch</v-icon>
-					{{ $t("plugins.flexibleLayouts.updates.title") }}
+					{{ updates.length > 1
+						? $t("plugins.flexibleLayouts.updates.titleCount", { count: updates.length })
+						: $t("plugins.flexibleLayouts.updates.title") }}
 				</v-card-title>
-				<v-card-text>
-					<div class="d-flex align-center ga-2 mb-1">
-						<v-icon size="small">mdi-view-dashboard-edit</v-icon>
-						<span class="font-weight-medium">{{ pluginName }}</span>
-					</div>
-					<div>{{ $t("plugins.flexibleLayouts.updates.available", { version: updateState.latestVersion }) }}</div>
-					<div class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.updates.installedNow", { version: updateState.currentVersion }) }}</div>
-					<div v-if="updateState.scenario === 'dwcUpdate'" class="text-caption text-warning mt-1">
-						{{ $t("plugins.flexibleLayouts.updates.needsDwc", { dwc: updateState.requiredDwc, running: updateState.runningDwc }) }}
+				<v-card-text class="pt-0">
+					<div v-for="u in updates" :key="u.pluginId" class="flex-upd-row">
+						<div class="d-flex align-center ga-2">
+							<v-icon size="small">mdi-puzzle</v-icon>
+							<span class="font-weight-medium">{{ u.name }}</span>
+							<v-spacer />
+							<span class="text-caption text-medium-emphasis">{{ u.currentVersion }} → {{ u.latestVersion }}</span>
+						</div>
+						<div v-if="u.scenario === 'dwcUpdate'" class="text-caption text-warning">
+							{{ $t("plugins.flexibleLayouts.updates.needsDwc", { dwc: u.requiredDwc, running: u.runningDwc }) }}
+						</div>
+						<div class="d-flex align-center ga-1 mt-1 flex-wrap">
+							<v-btn size="x-small" variant="text" @click="skipRow(u)">{{ $t("plugins.flexibleLayouts.updates.skipVersion") }}</v-btn>
+							<v-spacer />
+							<v-btn v-if="u.releaseUrl" size="small" variant="text" @click="notesRow(u)">{{ $t("plugins.flexibleLayouts.updates.viewOnGithub") }}</v-btn>
+							<v-btn v-if="u.scenario === 'pluginUpdate' && u.assetUrl" size="small" color="primary" variant="flat"
+								   :loading="applyingId === u.pluginId" :disabled="!machineStore.isConnected || applyingId !== null"
+								   @click="applyRow(u)">
+								{{ $t("plugins.flexibleLayouts.updates.updateNow") }}
+							</v-btn>
+						</div>
+						<v-divider class="mt-2" />
 					</div>
 				</v-card-text>
-				<v-card-actions class="flex-wrap">
-					<v-btn variant="text" size="small" @click="skipUpdate">{{ $t("plugins.flexibleLayouts.updates.skipVersion") }}</v-btn>
+				<v-card-actions>
 					<v-spacer />
-					<v-btn variant="text" @click="viewUpdateNotes">{{ $t("plugins.flexibleLayouts.updates.viewOnGithub") }}</v-btn>
-					<v-btn variant="text" @click="updateOpen = false">{{ $t("plugins.flexibleLayouts.updates.close") }}</v-btn>
-					<v-btn v-if="updateState.scenario === 'pluginUpdate'" color="primary" variant="flat"
-						   :loading="applying" :disabled="!machineStore.isConnected" @click="updateNow">
-						{{ $t("plugins.flexibleLayouts.updates.updateNow") }}
-					</v-btn>
+					<v-btn variant="text" @click="closeUpdates">{{ $t("plugins.flexibleLayouts.updates.close") }}</v-btn>
 				</v-card-actions>
 			</v-card>
 		</v-dialog>
@@ -215,10 +224,13 @@ import { type MenuItem, useMenuStore } from "@/stores/menu";
 import { useCacheStore } from "@/stores/cache";
 import { useMachineStore } from "@/stores/machine";
 import { useSettingsStore } from "@/stores/settings";
+import { LogLevel, useUiStore } from "@/stores/ui";
+
+import { type AnnouncedUpdate, applyUpdate, claimUpdateHost, clearAnnouncedUpdate, getAnnouncedUpdates, subscribeToUpdates } from "dwc-plugin-runtime";
 
 import { useFlexDisplay } from "../composables/useFlexDisplay";
 import { attemptToggleEdit, editMode, exitEditMode } from "../model/editorState";
-import { applying, applyUpdateNow, dismissCurrentUpdate, dismissedVersion, pendingReload, runUpdateCheck, updateState } from "../model/updateCheck";
+import { applyUpdateNow, dismissCurrentUpdate, dismissedVersion, pendingReload, runUpdateCheck } from "../model/updateCheck";
 import { applyStartupRoute } from "../model/startup";
 import { startChartSampler, stopChartSampler } from "../model/chartSampler";
 import { applyBackup, checkForRestore, dismissRestore, type FlBackup, isAutoBackupEnabled, writeBackup } from "../model/sdBackup";
@@ -245,6 +257,7 @@ import PasswordDialog from "../editor/PasswordDialog.vue";
 const machineStore = useMachineStore();
 const menuStore = useMenuStore();
 const settingsStore = useSettingsStore();
+const uiStore = useUiStore();
 
 const router = useRouter();
 
@@ -320,6 +333,12 @@ onMounted(() => {
 	});
 	Events.on("dwcPluginUnloaded", onPluginUnloaded);
 
+	// Be the update-popup host: claim it (so other plugins suppress their own notifications), listen for
+	// announcements, and show anything already announced before the shell mounted.
+	releaseUpdateHost = claimUpdateHost();
+	unsubscribeUpdates = subscribeToUpdates(refreshUpdates);
+	refreshUpdates();
+
 	// Honour the layout's "open this page on startup" setting (once per page load).
 	applyStartupRoute(router);
 
@@ -352,31 +371,85 @@ async function onConnected(): Promise<void> {
 		}
 	} catch { /* best-effort */ }
 
-	// Surface a new release as a popup on load (was only a easily-missed toast before). The check is
-	// throttled to once/day but rehydrates the last result, so the popup still shows on reloads.
+	// Run FL's own check (announces into the shared hub via updateCheck.syncHub), then refresh the
+	// aggregated list. The hub subscription keeps it live if other plugins announce later.
 	try {
 		await runUpdateCheck();
-		const s = updateState.value;
-		if (s?.updateAvailable && dismissedVersion.value !== s.latestVersion && !pendingReload.value) {
-			updateOpen.value = true;
-		}
+		refreshUpdates();
 	} catch { /* best-effort */ }
 }
 
-// --- New-version popup ---
+// --- Aggregated new-version popup (cross-plugin update hub) ---
+// FL's shell is the host: it lists FL's own update AND any other plugin that announced one, so users
+// see a single popup instead of one per plugin.
 const updateOpen = ref(false);
-const pluginName = i18n.global.t("plugins.flexibleLayouts.settings.caption");
-async function updateNow(): Promise<void> {
-	await applyUpdateNow();
-	updateOpen.value = false;
+const updates = ref<Array<AnnouncedUpdate>>([]);
+const applyingId = ref<string | null>(null);
+let shownSignature = "";
+let releaseUpdateHost: (() => void) | null = null;
+let unsubscribeUpdates: (() => void) | null = null;
+const SKIP_KEY = "flexibleLayouts.updateHub.skipped";
+
+function hubSkipped(): Record<string, string> {
+	try { return JSON.parse(localStorage.getItem(SKIP_KEY) || "{}") as Record<string, string>; } catch { return {}; }
 }
-function skipUpdate(): void {
-	dismissCurrentUpdate();
-	updateOpen.value = false;
+function isSkipped(u: AnnouncedUpdate): boolean {
+	// FL's own dismissal lives with the rest of FL's update state; other plugins use the hub-skip map.
+	return u.pluginId === PLUGIN_MANIFEST_ID
+		? dismissedVersion.value === u.latestVersion
+		: hubSkipped()[u.pluginId] === u.latestVersion;
 }
-function viewUpdateNotes(): void {
-	if (updateState.value?.releaseUrl) {
-		window.open(updateState.value.releaseUrl, "_blank", "noopener");
+
+function refreshUpdates(): void {
+	updates.value = getAnnouncedUpdates().filter((u) => !isSkipped(u));
+	const sig = updates.value.map((u) => `${u.pluginId}@${u.latestVersion}`).sort().join(",");
+	if (!updates.value.length) {
+		updateOpen.value = false;
+	} else if (sig !== shownSignature && !pendingReload.value) {
+		// Auto-open only when the set changed since last shown, so closing it doesn't immediately reopen.
+		updateOpen.value = true;
+		shownSignature = sig;
+	}
+}
+function closeUpdates(): void {
+	updateOpen.value = false;
+	shownSignature = updates.value.map((u) => `${u.pluginId}@${u.latestVersion}`).sort().join(",");
+}
+function notesRow(u: AnnouncedUpdate): void {
+	if (u.releaseUrl) window.open(u.releaseUrl, "_blank", "noopener");
+}
+function skipRow(u: AnnouncedUpdate): void {
+	if (u.pluginId === PLUGIN_MANIFEST_ID) {
+		dismissCurrentUpdate(); // also clears FL from the hub
+	} else {
+		const map = hubSkipped();
+		map[u.pluginId] = u.latestVersion ?? "";
+		try { localStorage.setItem(SKIP_KEY, JSON.stringify(map)); } catch { /* ignore */ }
+		clearAnnouncedUpdate(u.pluginId);
+	}
+	refreshUpdates();
+}
+async function applyRow(u: AnnouncedUpdate): Promise<void> {
+	if (u.pluginId === PLUGIN_MANIFEST_ID) {
+		// FL's own apply path keeps FL's reload prompt + diagnostics wiring.
+		applyingId.value = u.pluginId;
+		try { await applyUpdateNow(); } finally { applyingId.value = null; }
+		clearAnnouncedUpdate(u.pluginId);
+		refreshUpdates();
+		return;
+	}
+	if (!u.assetUrl || !u.assetName) return;
+	applyingId.value = u.pluginId;
+	try {
+		await applyUpdate({ assetUrl: u.assetUrl, assetName: u.assetName, installPlugin: (f, b, s) => machineStore.installPlugin(f, b, s) });
+		uiStore.makeNotification(LogLevel.success, u.name, i18n.global.t("plugins.flexibleLayouts.updates.installedOther", { version: u.latestVersion }));
+		clearAnnouncedUpdate(u.pluginId);
+		refreshUpdates();
+	} catch {
+		// One-click usually fails on the GitHub asset CDN (CORS) — fall back to a direct download.
+		window.location.href = u.assetUrl;
+	} finally {
+		applyingId.value = null;
 	}
 }
 
@@ -491,6 +564,8 @@ function resolveItemTitle(item: MenuItem): string {
 onUnmounted(() => {
 	exitEditMode();
 	stopChartSampler();
+	releaseUpdateHost?.();
+	unsubscribeUpdates?.();
 	Events.off("dwcPluginUnloaded", onPluginUnloaded);
 	dropPluginsGuard();
 });

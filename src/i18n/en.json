@@ -713,7 +713,9 @@
 		"corsBlocked": "One-click update blocked by CORS. Downloading the ZIP directly — upload it to DWC's plugin installer.",
 		"installedReload": "Flexible Layouts {version} installed. Reload the page to finish.",
 		"installedReloadBanner": "Update installed — reload the page to start using the new version.",
-		"reloadNow": "Reload now"
+		"reloadNow": "Reload now",
+		"titleCount": "{count} updates available",
+		"installedOther": "Updated to {version} — reload to finish."
 	},
 	"dro": {
 		"work": "Work",
