@@ -52,13 +52,11 @@
       <v-btn size="small" variant="tonal" :disabled="disabledNow" @click="nudge('X', 1)">X+</v-btn>
       <v-btn size="small" variant="tonal" :disabled="disabledNow" @click="nudge('Y', -1)">Y−</v-btn>
       <v-btn size="small" variant="tonal" :disabled="disabledNow" @click="nudge('Y', 1)">Y+</v-btn>
-      <template v-if="widget.enableZ">
-        <v-btn size="small" variant="tonal" :disabled="disabledNow" @click="nudge('Z', -1)">Z−</v-btn>
-        <v-btn size="small" variant="tonal" :disabled="disabledNow" @click="nudge('Z', 1)">Z+</v-btn>
-      </template>
+      <v-btn size="small" variant="tonal" :disabled="disabledNow" @click="nudge('Z', -1)">Z−</v-btn>
+      <v-btn size="small" variant="tonal" :disabled="disabledNow" @click="nudge('Z', 1)">Z+</v-btn>
       <v-spacer />
-      <v-select v-model.number="step" :items="stepItems" density="compact" variant="outlined" hide-details
-                class="ta-step" suffix="mm" />
+      <v-select v-model="step" :items="stepItems" item-title="title" item-value="value"
+                density="compact" variant="outlined" hide-details class="ta-step" />
     </div>
 
     <!-- Capture / reference actions -->
@@ -205,7 +203,8 @@ const captures = ref<Record<number, AxisCapture>>({});
 const hasCaptures = computed(() => Object.keys(captures.value).length > 0);
 
 const step = ref<number>(props.widget.jogStep ?? 0.1);
-const stepItems = [0.01, 0.05, 0.1, 0.5, 1];
+// Titles carry the unit so the value isn't clipped by a suffix inside the narrow select.
+const stepItems = [0.01, 0.05, 0.1, 0.5, 1].map((n) => ({ title: `${n} mm`, value: n }));
 
 const invert = computed({
   get: () => !!props.widget.invertOffsets,
@@ -381,7 +380,7 @@ onBeforeUnmount(() => { if (timer) clearInterval(timer); });
 .ta-dot { position: absolute; left: var(--ta-cx); top: var(--ta-cy); width: 4px; height: 4px; transform: translate(-50%, -50%); border-radius: 50%; background: var(--ta-col); }
 
 .ta-btn { min-width: 0; }
-.ta-step { max-width: 96px; }
+.ta-step { max-width: 116px; min-width: 92px; }
 
 .ta-table { min-height: 0; overflow: auto; }
 .ta-grid { width: 100%; border-collapse: collapse; font-size: 0.8em; }

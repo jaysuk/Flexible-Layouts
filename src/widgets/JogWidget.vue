@@ -71,12 +71,12 @@
 						:title="$t('plugins.flexibleLayouts.jog.homeZ')" @click="homeZ">
 					<v-icon size="x-small">mdi-home</v-icon>
 				</button>
-				<button v-for="(s, k) in zStepList" :key="'zn' + k" type="button" class="jog-zbtn"
+				<button v-for="(z, i) in zStepsDown" :key="'zn' + z.k" type="button" class="jog-zbtn"
 						:style="zBtnStyle" :disabled="disabledNow"
-						:title="`${zAxisLetter} -${fmt(s)} mm`"
-						@click="jog(zAxisLetter, -zSign * s, zFeed)" @contextmenu.prevent="editStep('z', k)">
-					<span class="jog-zval">{{ fmt(s) }}</span>
-					<v-icon v-if="k === zStepList.length - 1" size="x-small">mdi-chevron-down</v-icon>
+						:title="`${zAxisLetter} -${fmt(z.s)} mm`"
+						@click="jog(zAxisLetter, -zSign * z.s, zFeed)" @contextmenu.prevent="editStep('z', z.k)">
+					<span class="jog-zval">{{ fmt(z.s) }}</span>
+					<v-icon v-if="i === zStepsDown.length - 1" size="x-small">mdi-chevron-down</v-icon>
 				</button>
 			</div>
 		</div>
@@ -112,6 +112,9 @@ const disabledNow = computed(() => props.disabled || uiStore.uiFrozen);
 // --- configuration with fallbacks -------------------------------------------------
 const xySteps = computed(() => (props.widget.xySteps?.length ? props.widget.xySteps : [100, 10, 1, 0.1]));
 const zStepList = computed(() => (props.widget.zSteps?.length ? props.widget.zSteps : [10, 1, 0.1]));
+// Down (−Z) buttons render in reverse so the SMALLEST step sits nearest the home hub (mirrors the +Z
+// column above). Carry the original index so right-click step editing still targets the right entry.
+const zStepsDown = computed(() => zStepList.value.map((s, k) => ({ s, k })).reverse());
 const xAxisLetter = computed(() => props.widget.xAxis || "X");
 const yAxisLetter = computed(() => props.widget.yAxis || "Y");
 const zAxisLetter = computed(() => props.widget.zAxis || "Z");
