@@ -110,6 +110,12 @@ export type Widget =
 		/** Cached caption/icon so the tile still reads sensibly when the plugin isn't loaded. */
 		label?: string;
 		icon?: string;
+		/**
+		 * Per-instance config for plugins that publish a config schema via dwc-plugin-runtime's
+		 * widget-config framework. Edited in the properties dialog and passed to the component as its
+		 * `config` prop; defaults are applied from the schema. Absent for plugins that ship no schema.
+		 */
+		config?: Record<string, unknown>;
 	}
 	| {
 		/** Embed an external web page / local web service in an iframe. */

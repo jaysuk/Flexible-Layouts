@@ -704,6 +704,15 @@
 					</v-sheet>
 				</template>
 
+				<!-- Embeddable plugin widget: render the plugin's published config schema (if any) -->
+				<template v-else-if="draft.type === 'embeddable'">
+					<PluginWidgetConfigForm v-if="embeddableSchema" :schema="embeddableSchema"
+						:model-value="draft.config || {}" @update:model-value="(v) => (draft.config = v)" />
+					<div v-else class="text-medium-emphasis text-body-2">
+						{{ $t("plugins.flexibleLayouts.properties.embeddableNoSchema") }}
+					</div>
+				</template>
+
 				<!-- Indicators -->
 				<template v-else-if="draft.type === 'indicators'">
 					<v-row dense class="mb-1">
@@ -1002,6 +1011,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 
+import { getWidgetConfig, PluginWidgetConfigForm } from "dwc-plugin-runtime";
+
 import i18n from "@/i18n";
 import { useMachineStore } from "@/stores/machine";
 
@@ -1027,6 +1038,12 @@ const machineStore = useMachineStore();
 // is cast back to Widget on save. Re-cloned every time the dialog opens.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const draft = ref<any>(null);
+
+// Config schema a plugin published for an embedded widget (dwc-plugin-runtime widget-config registry).
+// When present, the properties dialog renders the shared schema-driven form so the user can configure
+// the third-party widget per instance.
+const embeddableSchema = computed(() =>
+	draft.value?.type === "embeddable" ? (getWidgetConfig(draft.value.id)?.schema ?? null) : null);
 // Name + icon of the panel being edited, shown in the dialog header.
 const described = computed(() => draft.value ? describeWidget(draft.value as Widget) : { title: "", icon: "mdi-cog" });
 

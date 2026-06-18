@@ -133,6 +133,7 @@
 	},
 	"properties": {
 		"title": "Widget settings",
+		"embeddableNoSchema": "This plugin widget has no configurable options.",
 		"label": "Label",
 		"code": "G-code / command",
 		"codeHint": "Multiple lines allowed. Run a macro with M98 P\"/macros/Name\".",
