@@ -97,3 +97,18 @@ DWC 3.7 is still in alpha; its plugin API and component set move. After pulling 
 re-type-check. The activation/escape/lock flows depend on `settings.useCustomLayout`,
 `settings.layoutUserSet`, the `/BuiltInLayout` route, and the `dwcPluginUnloaded` event remaining
 available.
+
+## Hosting other plugins' widgets (planned — RFC)
+
+Other plugins reach FL today only as **embeddable components** (`registerEmbeddableComponent`), which
+FL renders with no props and no editor — so a placed third-party widget can't be configured. A draft
+framework proposes letting plugins ship a **declarative config schema** so FL can render an editor
+(in `PropertiesDialog`) and pass **per-instance** config into the component, with FL injecting its
+object-model-aware field renderers (OM-path, colour, icon, gcode).
+
+FL's host role: pass persisted per-instance `config` + host context from `EmbeddableWidget`, render
+the shared schema form for `embeddable` widgets that registered a schema, and add a `config` field to
+the `embeddable` widget model.
+
+Spec (design only, not yet implemented): **`dwc-plugin-runtime/docs/rfc-widget-config.md`**.
+Related: native-DWC suggestions in `dwc-plugin-runtime/docs/dwc-native-proposal.md`.
