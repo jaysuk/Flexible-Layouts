@@ -81,6 +81,14 @@ const layoutModel = computed({
 	--vgl-resizer-border-width: 3px;
 	--vgl-resizer-border-color: rgb(var(--v-theme-primary));
 }
+/* Let the edit-mode header bar overhang a narrow item without being clipped, and raise the hovered
+   item so its overhanging bar draws above its neighbours. */
+.flex-grid .vgl-item {
+	overflow: visible;
+}
+.flex-grid .vgl-item:hover {
+	z-index: 5;
+}
 .flex-grid .vgl-item__resizer {
 	z-index: 4;
 	opacity: 0.75;

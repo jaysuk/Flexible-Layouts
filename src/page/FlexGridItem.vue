@@ -4,33 +4,39 @@
 		 :title="!editMode && item.tooltip ? item.tooltip : undefined">
 		<!-- Edit-mode header: drag handle + title + settings + delete. The `flex-drag-handle` class is
 			 what the grid item's drag-allow-from targets, so dragging only starts from this bar. -->
-		<div v-if="editMode" class="flex-item-header flex-drag-handle" :class="{ 'has-header-color': !!item.colors?.header }">
-			<v-btn :icon="selected ? 'mdi-checkbox-marked' : 'mdi-checkbox-blank-outline'" size="x-small" variant="text"
-				   density="comfortable" :color="selected ? 'primary' : undefined"
-				   :title="$t('plugins.flexibleLayouts.editor.selectItem')" @click="emit('toggleSelect')" />
+		<!-- Compact: only drag + configure + delete + an overflow menu stay inline (the rest moved into
+			 the menu), and the bar grows to its content (overhanging) so a widget can be made very narrow. -->
+		<div v-if="editMode" class="flex-item-header flex-drag-handle"
+			 :class="{ 'has-header-color': !!item.colors?.header, 'is-selected-head': selected }">
 			<v-icon size="small" class="me-1">mdi-drag</v-icon>
 			<v-icon size="small" class="me-1">{{ meta.icon }}</v-icon>
 			<span class="flex-item-title text-truncate">{{ meta.title }}</span>
 			<v-icon v-if="effects.hidden" size="x-small" class="ms-1" color="warning"
 					:title="$t('plugins.flexibleLayouts.conditions.hiddenHint')">mdi-eye-off</v-icon>
 			<v-spacer />
-			<v-btn v-if="item.widget.type === 'group'" icon="mdi-view-grid-plus" size="x-small" variant="text"
-				   density="comfortable" :title="$t('plugins.flexibleLayouts.group.editContents')"
-				   @click="emit('editContents')" />
-			<v-btn :icon="item.locked ? 'mdi-lock' : 'mdi-lock-open-variant'" size="x-small" variant="text"
-				   density="comfortable" :color="item.locked ? 'warning' : undefined"
-				   :title="item.locked ? $t('plugins.flexibleLayouts.editor.unlock') : $t('plugins.flexibleLayouts.editor.lock')"
-				   @click="emit('toggleLock')" />
-			<v-btn icon="mdi-content-copy" size="x-small" variant="text" density="comfortable"
-				   :title="$t('plugins.flexibleLayouts.editor.duplicate')" @click="emit('duplicate')" />
-			<v-btn icon="mdi-content-save" size="x-small" variant="text" density="comfortable"
-				   :title="$t('plugins.flexibleLayouts.io.exportPanel')" @click="emit('export')" />
 			<v-btn icon="mdi-cog" size="x-small" variant="text" density="comfortable"
-				   :title="$t('plugins.flexibleLayouts.editor.configureWidget')"
-				   @click="emit('edit')" />
+				   :title="$t('plugins.flexibleLayouts.editor.configureWidget')" @click="emit('edit')" />
 			<v-btn icon="mdi-delete" size="x-small" variant="text" density="comfortable"
-				   :title="$t('plugins.flexibleLayouts.editor.removeWidget')"
-				   @click="emit('remove')" />
+				   :title="$t('plugins.flexibleLayouts.editor.removeWidget')" @click="emit('remove')" />
+			<v-menu location="bottom end">
+				<template #activator="{ props: menuProps }">
+					<v-btn v-bind="menuProps" icon="mdi-dots-vertical" size="x-small" variant="text"
+						   density="comfortable" :title="$t('plugins.flexibleLayouts.shell.more')" />
+				</template>
+				<v-list density="compact">
+					<v-list-item :prepend-icon="selected ? 'mdi-checkbox-marked' : 'mdi-checkbox-blank-outline'"
+								 :title="$t('plugins.flexibleLayouts.editor.selectItem')" @click="emit('toggleSelect')" />
+					<v-list-item v-if="item.widget.type === 'group'" prepend-icon="mdi-view-grid-plus"
+								 :title="$t('plugins.flexibleLayouts.group.editContents')" @click="emit('editContents')" />
+					<v-list-item :prepend-icon="item.locked ? 'mdi-lock' : 'mdi-lock-open-variant'"
+								 :title="item.locked ? $t('plugins.flexibleLayouts.editor.unlock') : $t('plugins.flexibleLayouts.editor.lock')"
+								 @click="emit('toggleLock')" />
+					<v-list-item prepend-icon="mdi-content-copy"
+								 :title="$t('plugins.flexibleLayouts.editor.duplicate')" @click="emit('duplicate')" />
+					<v-list-item prepend-icon="mdi-content-save"
+								 :title="$t('plugins.flexibleLayouts.io.exportPanel')" @click="emit('export')" />
+				</v-list>
+			</v-menu>
 		</div>
 
 		<!-- In edit mode the body becomes pointer-inert (so dragging/clicking the tile never actuates
@@ -252,7 +258,12 @@ onBeforeUnmount(() => {
 	position: absolute;
 	top: 0;
 	left: 0;
-	right: 0;
+	/* Grow to fit the (now compact) controls but never narrower than the panel; on a narrow panel the
+	   bar overhangs to the right rather than clipping the buttons, so panels can be made very small. */
+	right: auto;
+	width: max-content;
+	max-width: 320px;
+	min-width: 100%;
 	z-index: 4;
 	display: flex;
 	align-items: center;
@@ -269,6 +280,10 @@ onBeforeUnmount(() => {
 .flex-item-header:hover {
 	opacity: 1;
 	background: rgba(var(--v-theme-surface), 0.92);
+	z-index: 6;
+}
+.flex-item-header.is-selected-head {
+	box-shadow: inset 0 0 0 2px rgb(var(--v-theme-primary));
 }
 .flex-item-title {
 	font-size: 0.8rem;

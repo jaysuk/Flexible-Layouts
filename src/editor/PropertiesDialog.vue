@@ -6,6 +6,7 @@
 				<v-icon class="me-2">{{ described.icon }}</v-icon>
 				{{ $t("plugins.flexibleLayouts.properties.title") }}
 				<span class="text-medium-emphasis text-truncate ms-2">— {{ described.title }}</span>
+				<v-chip size="x-small" label class="ms-2 flex-type-chip" :title="$t('plugins.flexibleLayouts.properties.widgetType')">{{ typeLabel }}</v-chip>
 				<v-spacer />
 				<v-btn icon="mdi-close" variant="text" density="comfortable"
 					   @click="emit('update:modelValue', false)" />
@@ -55,10 +56,17 @@
 									  :label="$t('plugins.flexibleLayouts.properties.iconSize')"
 									  :placeholder="$t('plugins.flexibleLayouts.properties.iconSizeAuto')" /></v-col>
 					</v-row>
+					<v-select v-if="draft.icon" v-model="iconPos" :items="iconPositionOptions" class="mb-2"
+							  density="compact" variant="outlined" hide-details
+							  :label="$t('plugins.flexibleLayouts.properties.iconPosition')" />
 					<ColorSelect v-model="draft.color" class="mb-2" density="compact"
 							  variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" />
 					<v-switch v-model="draft.confirm" color="primary" hide-details density="compact"
 							  :label="$t('plugins.flexibleLayouts.properties.confirm')" />
+					<v-text-field v-model.number="draft.debounceMs" type="number" :min="0" density="compact"
+								  variant="outlined" hide-details clearable class="mt-2" suffix="ms"
+								  :label="$t('plugins.flexibleLayouts.properties.debounce')"
+								  :hint="$t('plugins.flexibleLayouts.properties.debounceHint')" persistent-hint />
 				</template>
 
 				<!-- Object-model value -->
@@ -1022,6 +1030,22 @@ const draft = ref<any>(null);
 // Name + icon of the panel being edited, shown in the dialog header.
 const described = computed(() => draft.value ? describeWidget(draft.value as Widget) : { title: "", icon: "mdi-cog" });
 
+// Raw widget type shown as a chip in the header — handy for support/troubleshooting from screenshots.
+const typeLabel = computed(() => {
+	const w = draft.value;
+	if (!w) return "";
+	if (w.type === "builtinPanel") return `builtinPanel · ${w.component}`;
+	if (w.type === "pluginPage") return `pluginPage · ${w.source ?? "page"}`;
+	if (w.type === "embeddable") return `embeddable · ${w.id}`;
+	return w.type as string;
+});
+
+// Icon position for the command button (shows "top" by default until explicitly changed).
+const iconPos = computed<string>({
+	get: () => draft.value?.iconPosition ?? "top",
+	set: (v) => { if (draft.value) { draft.value.iconPosition = v; } },
+});
+
 // Shared "how URLs are interpreted" help for the web + http widgets.
 const urlFormatsHtml = computed(() =>
 	`<strong>${t("properties.urlFormatsTitle")}</strong><br>`
@@ -1316,6 +1340,13 @@ const liveGlobalNames = computed(() => {
 	const g = (machineStore.model as unknown as { global?: Map<string, unknown> }).global;
 	return g instanceof Map ? Array.from(g.keys()).sort() : [];
 });
+
+const iconPositionOptions = computed(() => [
+	{ title: t("properties.iconPosTop"), value: "top" },
+	{ title: t("properties.iconPosLeft"), value: "left" },
+	{ title: t("properties.iconPosRight"), value: "right" },
+	{ title: t("properties.iconPosBottom"), value: "bottom" },
+]);
 
 const actionOptions = computed(() => [
 	{ title: t("properties.actionGcode"), value: "gcode" },

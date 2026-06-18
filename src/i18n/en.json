@@ -204,7 +204,15 @@
 		"xLabel": "X-axis title",
 		"yLabel": "Y-axis title",
 		"autoScaleHint": "Leave Min/Max blank to auto-scale.",
-		"builtinNote": "“{name}” is a built-in DWC panel. It has no extra settings here; configure it via its own controls."
+		"builtinNote": "“{name}” is a built-in DWC panel. It has no extra settings here; configure it via its own controls.",
+		"iconPosition": "Icon position",
+		"iconPosTop": "Above text",
+		"iconPosLeft": "Left of text",
+		"iconPosRight": "Right of text",
+		"iconPosBottom": "Below text",
+		"widgetType": "Widget type",
+		"debounce": "Debounce (ignore rapid re-presses)",
+		"debounceHint": "Ignore repeat presses within this many milliseconds. 0 = off."
 	},
 	"conditions": {
 		"title": "Conditional behaviour",
@@ -856,7 +864,9 @@
 		"show": "Show in menu",
 		"condition": "Visibility condition",
 		"conditionHelp": "Show this page in the menu only while the object-model rule below matches. Leave the path blank to always show it.",
-		"conditionClear": "Always show"
+		"conditionClear": "Always show",
+		"addSection": "+ New section…",
+		"newSectionName": "New section name"
 	},
 	"panels": {
 		"status": "Status",

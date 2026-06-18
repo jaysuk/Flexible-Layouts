@@ -13,8 +13,6 @@ import { type ConditionRule, createEmptyDocument, type GridItemModel, type Layou
 // Same value as pageManager.CUSTOM_PAGE_PREFIX; inlined to keep this converter free of the
 // route-registration import chain.
 const CUSTOM_PAGE_PREFIX = "/Plugins/FlexibleLayouts/p/";
-const ROW_H = 30;
-const DEFAULT_CANVAS_W = 1920;
 
 interface BtnCmdBtn {
 	btnGroupIdx?: string;
@@ -63,6 +61,8 @@ interface BtnCmdTab {
 	caption?: string;
 	icon?: string;
 	numberOfColumns?: number;
+	/** BtnCmd's snap grid, e.g. [20, 20]; used as the pixel→grid cell so positions are preserved. */
+	tabGridSize?: Array<number>;
 }
 interface BtnCmdFile {
 	btnCmdVer?: string;
@@ -162,12 +162,11 @@ function ensureUrl(u: string): string {
 }
 
 /**
- * BtnCmd auto-sizes a button to its icon + label. We don't have the rendered pixels, so approximate
- * the width from the label and map it to grid columns (1-4). Buttons are a single row tall.
+ * BtnCmd auto-sizes a button to its icon + label; we don't have the rendered pixels, so approximate
+ * the width in pixels from the label (plus icon + padding) and let the caller map it onto the grid.
  */
-function estButtonCols(label: string, colW: number): number {
-	const px = Math.max(110, (label || "").length * 8.5 + 64); // icon + padding + text
-	return Math.min(4, Math.max(1, Math.round(px / colW)));
+function estButtonPx(label: string): number {
+	return Math.max(72, (label || "").length * 9 + 52); // icon + padding + ~9px/char
 }
 
 function buttonWidget(b: BtnCmdBtn): Widget {
@@ -176,6 +175,9 @@ function buttonWidget(b: BtnCmdBtn): Widget {
 	const common = {
 		label: b.btnLabel || "Button",
 		icon: b.btnIcon || undefined,
+		// BtnCmd renders the icon inline to the left of the label; match that so converted buttons look
+		// right and fit in short cells (the default "top" needs more height).
+		iconPosition: "left" as const,
 		color: hexColor(b.btnColour),
 		confirm: b.btnReqConf || undefined,
 	};
@@ -295,54 +297,84 @@ function describeUnmatchedPanel(p: BtnCmdPanel): string {
 	return `**Unmatched BtnCmd panel: \`${p.panelType || "unknown"}\`**\n\nThis panel type isn't auto-converted yet. Recreate it with an equivalent widget (e.g. a Value read-out pointing at the object-model path below).${detail}`;
 }
 
+// BtnCmd lays everything out in absolute pixels on a wide canvas (buttons ~120px apart, value
+// read-outs ~20px apart). We map those pixels straight onto a fine FL grid whose cell = BtnCmd's snap
+// size, deriving the column count from the actual content width — so positions and spacing are
+// preserved instead of being collapsed into a coarse 12-column grid (which overlapped/clipped them).
+const DEFAULT_CELL = 20;   // px per grid cell (BtnCmd's default snap)
+const BTN_PX_H = 40;       // assumed button height (BtnCmd's auto buttons are ~one 40px row)
+const TEXT_PX_H = 24;      // assumed height of a value/text read-out (panelHSize is 0 for these)
+const PANEL_PX_H = 100;    // fallback height for a sized panel with no explicit size
+const MAX_COLS = 96;       // guard against an absurd grid
+
+/** True for BtnCmd panel types that render as a single line of text (so they get a short default height). */
+function isTextPanel(type: string): boolean {
+	return type === "mmvalue" || type === "mm" || type === "machinemodel" || type === "txtlabel";
+}
+
+interface PlacedElement {
+	widget: Widget;
+	xpx: number;
+	ypx: number;
+	wpx: number;
+	hpx: number;
+	extras: Pick<GridItemModel, "tooltip" | "conditions">;
+}
+
 /** Convert a BtnCmd export into a Flexible Layouts document (one custom page per tab). */
 export function convertBtnCmd(raw: unknown): LayoutDocument {
 	const file = (raw ?? {}) as BtnCmdFile;
 	const doc = createEmptyDocument();
 	doc.meta.name = file.exportComment || "Imported from BtnCmd";
 
-	const canvasW = file.exportResW && file.exportResW > 0 ? file.exportResW : DEFAULT_CANVAS_W;
 	const tabs = Array.isArray(file.tabs) ? file.tabs : [];
 	const btns = Array.isArray(file.btns) ? file.btns : [];
 	const panels = Array.isArray(file.panels) ? file.panels : [];
 
 	for (const tab of tabs) {
-		const cols = tab.numberOfColumns && tab.numberOfColumns > 0 ? tab.numberOfColumns : 12;
-		const colW = canvasW / cols;
-		const items: Array<GridItemModel> = [];
+		// Cell size = BtnCmd's snap grid (≤ the smallest gap between elements), clamped sane.
+		const cell = Math.max(10, Math.min(40, (tab.tabGridSize?.[0] ?? 0) || DEFAULT_CELL));
 
-		const place = (widget: Widget, xpx = 0, ypx = 0, wpx = 0, hpx = 0, autoW = 3, autoH = 2, minW = 1,
-					   extras: Pick<GridItemModel, "tooltip" | "conditions"> = {}): void => {
-			const x = Math.min(cols - 1, Math.max(0, Math.round(xpx / colW)));
-			const y = Math.max(0, Math.round(ypx / ROW_H));
-			const w = Math.min(cols - x, Math.max(minW, wpx > 0 ? Math.round(wpx / colW) : autoW));
-			const h = Math.max(1, hpx > 0 ? Math.round(hpx / ROW_H) : autoH);
-			items.push({ i: newItemId(), x, y, w, h, widget, ...extras });
-		};
-
+		// 1) Gather every element with its pixel rectangle (estimating sizes BtnCmd leaves to "auto").
+		const elements: Array<PlacedElement> = [];
 		for (const b of btns.filter((x) => x.btnGroupIdx === tab.tabID)) {
 			const auto = b.autoSize !== false || b.btnWsize === "auto" || b.btnHsize === "auto";
-			const wpx = auto ? 0 : Number(b.btnWsize) || 0;
-			const hpx = auto ? 0 : Number(b.btnHsize) || 0;
-			// Compact single-row buttons whose width tracks the label, so the dense BtnCmd grid stays
-			// dense instead of being blown up into big overlapping boxes that the grid pushes apart.
-			place(buttonWidget(b), b.btnXpos, b.btnYpos, wpx, hpx, estButtonCols(b.btnLabel || "", colW), 1, 1, {
-				tooltip: b.btnHoverText || undefined,
-				conditions: buttonConditions(b),
+			const wpx = (!auto && Number(b.btnWsize) > 0) ? Number(b.btnWsize) : estButtonPx(b.btnLabel || "");
+			const hpx = (!auto && Number(b.btnHsize) > 0) ? Number(b.btnHsize) : BTN_PX_H;
+			elements.push({
+				widget: buttonWidget(b), xpx: b.btnXpos ?? 0, ypx: b.btnYpos ?? 0, wpx, hpx,
+				extras: { tooltip: b.btnHoverText || undefined, conditions: buttonConditions(b) },
 			});
 		}
 		for (const p of panels.filter((x) => x.tabID === tab.tabID)) {
-			place(panelWidget(p), p.panelXpos, p.panelYpos, p.panelWSize, p.panelHSize, 4, 5, 2, {
-				tooltip: p.panelHoverText || undefined,
+			const text = isTextPanel((p.panelType || "").toLowerCase());
+			const wpx = (p.panelWSize ?? 0) > 0 ? p.panelWSize! : (text ? 120 : 160);
+			const hpx = (p.panelHSize ?? 0) > 0 ? p.panelHSize! : (text ? TEXT_PX_H : PANEL_PX_H);
+			elements.push({
+				widget: panelWidget(p), xpx: p.panelXpos ?? 0, ypx: p.panelYpos ?? 0, wpx, hpx,
+				extras: { tooltip: p.panelHoverText || undefined },
 			});
 		}
+
+		// 2) Column count from the widest element's right edge (so nothing is squashed off-grid).
+		const maxRight = elements.reduce((m, e) => Math.max(m, e.xpx + e.wpx), 0);
+		const cols = Math.max(4, Math.min(MAX_COLS, Math.ceil(maxRight / cell) || 12));
+
+		// 3) Map pixels → grid cells, preserving relative positions and spans.
+		const items: Array<GridItemModel> = elements.map((e) => {
+			const x = Math.min(cols - 1, Math.max(0, Math.round(e.xpx / cell)));
+			const y = Math.max(0, Math.round(e.ypx / cell));
+			const w = Math.min(cols - x, Math.max(1, Math.round(e.wpx / cell)));
+			const h = Math.max(1, Math.round(e.hpx / cell));
+			return { i: newItemId(), x, y, w, h, widget: e.widget, ...e.extras };
+		});
 
 		const page: PageLayout = {
 			kind: "custom",
 			title: tab.caption || "Imported",
 			icon: tab.icon || "mdi-view-dashboard-outline",
 			category: "control",
-			grid: { cols, rowHeight: ROW_H },
+			grid: { cols, rowHeight: cell },
 			items,
 		};
 		const path = CUSTOM_PAGE_PREFIX + newItemId();

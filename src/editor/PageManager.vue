@@ -45,6 +45,10 @@
 									  variant="outlined" hide-details
 									  :label="$t('plugins.flexibleLayouts.pages.category')" />
 						</v-col>
+						<v-col v-if="newCategory === NEW_SECTION" cols="12">
+							<v-text-field v-model="newSectionName" density="compact" variant="outlined" hide-details
+										  :label="$t('plugins.flexibleLayouts.pages.newSectionName')" autofocus />
+						</v-col>
 					</v-row>
 					<div class="d-flex justify-end mt-2 ga-2">
 						<v-btn variant="text" size="small" prepend-icon="mdi-upload" @click="requestImport">
@@ -149,7 +153,12 @@
 				<v-card-text>
 					<v-text-field v-model="editTitle" density="compact" variant="outlined"
 								  :label="$t('plugins.flexibleLayouts.pages.pageName')" autofocus class="mb-2" />
-					<IconPicker v-model="editIcon" />
+					<IconPicker v-model="editIcon" class="mb-2" />
+					<v-select v-model="editCategory" :items="categoryItems" density="compact" variant="outlined"
+							  hide-details :label="$t('plugins.flexibleLayouts.pages.category')" />
+					<v-text-field v-if="editCategory === NEW_SECTION" v-model="editSectionName" class="mt-2"
+								  density="compact" variant="outlined" hide-details
+								  :label="$t('plugins.flexibleLayouts.pages.newSectionName')" />
 				</v-card-text>
 				<v-card-actions>
 					<v-spacer />
@@ -174,12 +183,12 @@ import type { ConditionRule } from "../model/document";
 
 import {
 	applyNavOrder,
+	addCustomCategory,
 	createCustomPage,
 	CUSTOM_PAGE_PREFIX,
 	deleteCustomPage,
 	isHidden,
-	type PageCategory,
-	PAGE_CATEGORIES,
+	listCategories,
 	renameCustomPage,
 	setHidden,
 	setNavOrder,
@@ -196,9 +205,11 @@ const menuStore = useMenuStore();
 const router = useRouter();
 const store = useLayoutStore();
 
+const NEW_SECTION = "__new__";
 const newTitle = ref("");
 const newIcon = ref("mdi-view-dashboard-outline");
-const newCategory = ref<PageCategory>("control");
+const newCategory = ref<string>("control");
+const newSectionName = ref("");
 // Importing a page is handled by the shared Backup & share dialog (same mechanism for layouts, pages,
 // panels and BtnCmd files: additive by default, with a pre-import backup). We just open it.
 function requestImport(): void {
@@ -278,11 +289,19 @@ function clearCond() {
 // #endregion
 
 
-const categoryItems = computed(() =>
-	PAGE_CATEGORIES.map((key) => ({ title: categoryLabel(key), value: key })));
+// Built-in + custom sections, plus a "new section" entry that reveals a name field.
+const categoryItems = computed(() => [
+	...listCategories().map((c) => ({ title: c.name, value: c.key })),
+	{ title: i18n.global.t("plugins.flexibleLayouts.pages.addSection"), value: NEW_SECTION },
+]);
 
-function categoryLabel(key?: string): string {
-	return key ? i18n.global.t(`menu.${key}.caption`) : "";
+/** Resolve a section selection to a real category key, creating a custom section for "new". */
+function resolveCategory(selected: string, sectionName: string): string | null {
+	if (selected !== NEW_SECTION) {
+		return selected;
+	}
+	const name = sectionName.trim();
+	return name ? addCustomCategory(name) : null;
 }
 
 function caption(item: MenuItem): string {
@@ -362,9 +381,15 @@ function onAdd() {
 	if (!title) {
 		return;
 	}
-	const path = createCustomPage({ title, icon: newIcon.value.trim() || undefined, category: newCategory.value });
+	const category = resolveCategory(newCategory.value, newSectionName.value);
+	if (category === null) {
+		return; // "new section" chosen but no name given
+	}
+	const path = createCustomPage({ title, icon: newIcon.value.trim() || undefined, category });
 	newTitle.value = "";
 	newIcon.value = "mdi-view-dashboard-outline";
+	newCategory.value = "control";
+	newSectionName.value = "";
 	emit("update:modelValue", false);
 	router.push(path);
 }
@@ -382,21 +407,29 @@ function confirmDelete() {
 	deleteOpen.value = false;
 }
 
-// Rename sub-dialog
+// Rename / move sub-dialog
 const editOpen = ref(false);
 const editPath = ref("");
 const editTitle = ref("");
 const editIcon = ref("");
+const editCategory = ref<string>("control");
+const editSectionName = ref("");
 
 function startEdit(item: MenuItem) {
 	editPath.value = item.path;
 	editTitle.value = item.translated ? item.caption : i18n.global.t(item.caption);
 	editIcon.value = item.icon;
+	editCategory.value = store.getPage(item.path)?.category ?? item.category ?? "control";
+	editSectionName.value = "";
 	editOpen.value = true;
 }
 
 function saveEdit() {
-	renameCustomPage(editPath.value, editTitle.value.trim(), editIcon.value.trim() || undefined);
+	const category = resolveCategory(editCategory.value, editSectionName.value);
+	if (category === null) {
+		return; // "new section" chosen but no name given
+	}
+	renameCustomPage(editPath.value, editTitle.value.trim(), editIcon.value.trim() || undefined, category);
 	editOpen.value = false;
 }
 </script>

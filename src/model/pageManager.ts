@@ -11,6 +11,7 @@
  * applied by the custom shell's drawer.
  */
 import { registerRoute, unregisterRoute } from "@/plugins";
+import i18n from "@/i18n";
 import { useMenuStore } from "@/stores/menu";
 import { useSettingsStore } from "@/stores/settings";
 
@@ -77,7 +78,7 @@ function addRoute(path: string, page: PageLayout): void {
 }
 
 /** Create a new custom page, persist it, and register its route. Returns the new page's path. */
-export function createCustomPage(opts: { title: string; icon?: string; category?: PageCategory }): string {
+export function createCustomPage(opts: { title: string; icon?: string; category?: string }): string {
 	const path = CUSTOM_PAGE_PREFIX + newItemId();
 	const page: PageLayout = {
 		...createEmptyPage("custom"),
@@ -106,8 +107,11 @@ export function deleteCustomPage(path: string): void {
 	}
 }
 
-/** Rename / re-icon a custom page (updates the document and the live menu entry). */
-export function renameCustomPage(path: string, title: string, icon?: string): void {
+/**
+ * Rename / re-icon / re-section a custom page (updates the document and the live menu entry). Passing
+ * `category` moves the page to another navigation section (built-in or custom).
+ */
+export function renameCustomPage(path: string, title: string, icon?: string, category?: string): void {
 	const page = liveDoc().pages[path];
 	if (!page) {
 		return;
@@ -115,6 +119,9 @@ export function renameCustomPage(path: string, title: string, icon?: string): vo
 	page.title = title;
 	if (icon) {
 		page.icon = icon;
+	}
+	if (category) {
+		page.category = category;
 	}
 	const menu = useMenuStore();
 	menu.unregisterItem(path);
@@ -127,6 +134,53 @@ export function renameCustomPage(path: string, title: string, icon?: string): vo
 		condition: customPageVisible,
 	});
 }
+
+// #region Custom navigation sections
+
+const CUSTOM_CAT_ORDER_BASE = 60; // after the built-ins (plugins = 50)
+
+function captionKeyFor(key: string): string {
+	return `plugins.flexibleLayouts.customCat.${key}`;
+}
+
+/** Built-in + user-defined sections, for the section picker (key + display name). */
+export function listCategories(): Array<{ key: string; name: string }> {
+	const builtin = PAGE_CATEGORIES.map((k) => ({ key: k, name: i18n.global.t(`menu.${k}.caption`) }));
+	const custom = (liveDoc().nav.customCategories ?? []).map((c) => ({ key: c.key, name: c.name }));
+	return [...builtin, ...custom];
+}
+
+/** Push every persisted custom section into the menu store (idempotent). Called at load + on change. */
+export function ensureCustomCategories(): void {
+	const menu = useMenuStore();
+	const cats = liveDoc().nav.customCategories ?? [];
+	let order = CUSTOM_CAT_ORDER_BASE;
+	for (const c of cats) {
+		// Register the caption so $t(captionKey) returns the user's name (no missing-key warning).
+		i18n.global.mergeLocaleMessage(i18n.global.locale.value, { plugins: { flexibleLayouts: { customCat: { [c.key]: c.name } } } });
+		if (!menu.categories.some((x) => x.key === c.key)) {
+			menu.categories.push({ key: c.key, icon: c.icon ?? "mdi-folder-outline", captionKey: captionKeyFor(c.key), order: order++ });
+		}
+	}
+}
+
+/** Create a new navigation section, persist it, register it with the menu store, and return its key. */
+export function addCustomCategory(name: string, icon?: string): string {
+	const trimmed = name.trim();
+	const base = "flx-" + (trimmed.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "section");
+	const doc = liveDoc();
+	const existing = new Set([...PAGE_CATEGORIES as ReadonlyArray<string>, ...(doc.nav.customCategories ?? []).map((c) => c.key)]);
+	let key = base;
+	let n = 2;
+	while (existing.has(key)) {
+		key = `${base}-${n++}`;
+	}
+	doc.nav.customCategories = [...(doc.nav.customCategories ?? []), { key, name: trimmed || key, icon }];
+	ensureCustomCategories();
+	return key;
+}
+
+// #endregion
 
 /**
  * One-time cleanup of hides that an earlier build wrote into DWC's GLOBAL hidden list (which
@@ -149,6 +203,7 @@ export function migrateGlobalHides(): void {
 
 /** Re-register every persisted custom page. Called once at plugin load. */
 export function registerExistingCustomPages(): void {
+	ensureCustomCategories(); // sections must exist before pages register under them
 	for (const { path, page } of listCustomPages()) {
 		addRoute(path, page);
 	}

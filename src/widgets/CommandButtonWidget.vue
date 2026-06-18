@@ -3,9 +3,9 @@
 		<v-btn :color="overrideColor || widget.color || 'primary'" variant="flat" block
 			   class="fill-height text-none flex-cmd-btn"
 			   :disabled="uiStore.uiFrozen || disabled" :loading="busy" @click="onClick">
-			<div class="d-flex flex-column align-center justify-center">
-				<v-icon v-if="widget.icon" :size="iconSize" class="mb-1">{{ widget.icon }}</v-icon>
-				<span class="text-truncate">{{ widget.label }}</span>
+			<div class="d-flex align-center justify-center ga-1" :class="iconLayoutClass">
+				<v-icon v-if="widget.icon" :size="iconSize">{{ widget.icon }}</v-icon>
+				<span v-if="widget.label" class="text-truncate flex-cmd-label">{{ widget.label }}</span>
 			</div>
 		</v-btn>
 
@@ -50,8 +50,33 @@ const iconSize = computed(() => (props.widget.iconSize && props.widget.iconSize 
 	? `${props.widget.iconSize}px`
 	: "1.5em"));
 
+// Icon placement relative to the label: top (default, stacked), bottom, or inline left/right.
+const iconLayoutClass = computed(() => {
+	switch (props.widget.iconPosition) {
+		case "left": return "flex-row";
+		case "right": return "flex-row-reverse";
+		case "bottom": return "flex-column-reverse";
+		default: return "flex-column";
+	}
+});
+
 const busy = ref(false);
 const confirmOpen = ref(false);
+
+// Debounce guard: ignore repeat presses within `debounceMs` of the last accepted one.
+let lastFire = 0;
+function debounced(): boolean {
+	const ms = props.widget.debounceMs ?? 0;
+	if (ms <= 0) {
+		return false;
+	}
+	const now = Date.now();
+	if (now - lastFire < ms) {
+		return true;
+	}
+	lastFire = now;
+	return false;
+}
 
 async function send() {
 	const action = props.widget.action ?? "gcode";
@@ -81,6 +106,9 @@ async function send() {
 }
 
 function onClick() {
+	if (debounced()) {
+		return;
+	}
 	if (props.widget.confirm) {
 		confirmOpen.value = true;
 	} else {
@@ -101,5 +129,9 @@ function confirmSend() {
 	/* Inherit the panel's typography font-size (Vuetify buttons otherwise pin their own), so both the
 	   label and the em-sized icon scale with the per-panel typography setting. */
 	font-size: inherit;
+}
+/* Allow the label to ellipsis inside a flex row (icon-left/right layouts). */
+.flex-cmd-label {
+	min-width: 0;
 }
 </style>

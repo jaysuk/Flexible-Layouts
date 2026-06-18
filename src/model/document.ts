@@ -32,8 +32,12 @@ export type Widget =
 		icon?: string;
 		/** Icon size in px. Omitted = scales with the panel's typography (em-relative). */
 		iconSize?: number;
+		/** Where the icon sits relative to the label. Default "top". */
+		iconPosition?: "top" | "left" | "right" | "bottom";
 		/** Ask for confirmation before acting (useful for destructive commands). */
 		confirm?: boolean;
+		/** Ignore repeat presses within this many milliseconds (anti-double-tap). 0/undefined = off. */
+		debounceMs?: number;
 		/** What the button does. Defaults to sending `code` as G-code. */
 		action?: "gcode" | "http" | "url";
 		/** Target URL for action "http" (GET) or "url" (open in new tab). */
@@ -944,7 +948,12 @@ export interface LayoutDocument {
 	header?: { items: Array<GridItemModel>; color?: string; title?: string; logo?: string };
 	/** Hide the persistent status panel region in the custom shell. */
 	statusHidden?: boolean;
-	nav: { order: Array<string>; hidden: Array<string> };
+	nav: {
+		order: Array<string>;
+		hidden: Array<string>;
+		/** User-created navigation sections (beyond the built-in control/job/files/preferences/plugins). */
+		customCategories?: Array<{ key: string; name: string; icon?: string }>;
+	};
 	dependencies: Array<LayoutDependency>;
 	/** One-time flag: legacy global hides have been migrated into nav.hidden (see pageManager). */
 	migratedGlobalHides?: boolean;

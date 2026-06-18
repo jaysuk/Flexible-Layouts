@@ -38,7 +38,9 @@ describe("BtnCmd import", () => {
 		const page = doc.pages[paths[0]];
 		expect(page.kind).toBe("custom");
 		expect(page.title).toBe("Layout 1");
-		expect(page.grid.cols).toBe(12);
+		// Columns are derived from the pixel content width at a fine (20px) cell, not a fixed 12.
+		expect(page.grid.cols).toBe(15);
+		expect(page.grid.rowHeight).toBe(20);
 		expect(doc.nav.order).toContain(paths[0]);
 	});
 
@@ -50,8 +52,9 @@ describe("BtnCmd import", () => {
 		expect(btn.code).toBe('M98 P"MacroName.g"');
 		expect(btn.icon).toBe("mdi-polymer");
 		expect(btn.color).toBe("#00DBFF"); // alpha stripped from #RRGGBBAA
-		expect(item.h).toBe(1); // single-row, not a big 2-row box
-		expect(item.w).toBeLessThanOrEqual(2); // width tracks the label, not a fixed 3 columns
+		expect(btn.iconPosition).toBe("left"); // BtnCmd renders the icon inline-left
+		expect(item.h).toBe(2); // ~40px button at the 20px cell = 2 rows
+		expect(item.w).toBe(6); // width tracks the label ("Example" ≈ 115px / 20px cell)
 	});
 
 	it("maps a jobinfo panel to the JobInfoPanel built-in, positioned on the grid", () => {
@@ -59,8 +62,8 @@ describe("BtnCmd import", () => {
 		const panelItem = page.items.find((i) => i.widget.type === "builtinPanel");
 		expect(panelItem).toBeTruthy();
 		expect((panelItem!.widget as Extract<Widget, { type: "builtinPanel" }>).component).toBe("JobInfoPanel");
-		// 150px / 30px-row ≈ row 5; pixel position is mapped to a grid cell, not kept as pixels.
-		expect(panelItem!.y).toBe(5);
+		// 150px / 20px cell ≈ row 8; pixel position is mapped to a grid cell, not kept as pixels.
+		expect(panelItem!.y).toBe(8);
 		expect(panelItem!.w).toBeGreaterThanOrEqual(2);
 	});
 
@@ -127,6 +130,30 @@ describe("BtnCmd import", () => {
 		const note = Object.values(doc.pages)[0].items.map((i) => i.widget).find((w) => w.type === "note") as Extract<Widget, { type: "note" }>;
 		expect(note?.content).toContain("home/lights");
 		expect(note?.content).toContain("on");
+	});
+
+	it("places closely-spaced buttons without overlap (the X-Y offset GET row)", () => {
+		// Six GET T0..T5 buttons 120px apart at y=0 — the case that collapsed/overlapped on the old
+		// coarse 12-column grid. They must land on one row, side by side, icon inline-left.
+		const get = (n: number) => ({
+			btnType: "gcode", btnLabel: `GET T${n}`, btnIcon: "mdi-printer-3d-nozzle",
+			btnGroupIdx: "t", btnXpos: 380 + n * 120, btnYpos: 0, autoSize: true, btnWsize: "auto", btnHsize: "auto",
+		});
+		const doc = convertBtnCmd({
+			btnCmdVer: "01.04.12",
+			tabs: [{ tabID: "t", caption: "X-Y Offset", numberOfColumns: 12, tabGridSize: [20, 20] }],
+			btns: [get(0), get(1), get(2), get(3), get(4), get(5)],
+			panels: [],
+		});
+		const items = Object.values(doc.pages)[0].items
+			.filter((i) => i.widget.type === "codeButton")
+			.sort((a, b) => a.x - b.x);
+		expect(items.length).toBe(6);
+		expect(items.every((i) => i.y === 0)).toBe(true); // all on the same row
+		for (let k = 1; k < items.length; k++) {
+			expect(items[k].x).toBeGreaterThanOrEqual(items[k - 1].x + items[k - 1].w); // no overlap
+		}
+		expect((items[0].widget as Extract<Widget, { type: "codeButton" }>).iconPosition).toBe("left");
 	});
 });
 

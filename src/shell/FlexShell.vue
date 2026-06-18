@@ -108,7 +108,7 @@
 				 turns into an editable grid the moment the user adds a widget to it. -->
 			<template v-if="statusPanelVisible && !statusHidden">
 				<ErrorBoundary>
-					<FlexPage page-id="__status__" kind="custom" :fallback="StatusFallback" />
+					<FlexPage page-id="__status__" kind="custom" :fallback="StatusFallback" :seed="statusBarSeed" />
 				</ErrorBoundary>
 				<v-divider />
 			</template>
@@ -239,7 +239,7 @@ import { isLocked } from "../model/lock";
 import { applyNavOrder, isHidden } from "../model/pageManager";
 import { getActiveProfileId, listProfiles, useLayoutStore } from "../model/store";
 import { switchProfile } from "../model/profiles";
-import { BUILTIN_PAGES } from "../model/builtinPages";
+import { BUILTIN_PAGES, statusBarSeed } from "../model/builtinPages";
 import { PLUGIN_MANIFEST_ID } from "../model/constants";
 import { CUSTOM_PAGE_PREFIX } from "../model/pageManager";
 import { evaluateRule } from "../util/conditions";

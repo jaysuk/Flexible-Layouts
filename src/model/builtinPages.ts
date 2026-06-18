@@ -55,6 +55,27 @@ function dashboardSeed(): Array<GridItemModel> {
 	];
 }
 
+/**
+ * Editable equivalent of the stock persistent status region (Status / Tools / Temperatures, or the
+ * CNC equivalents), offered as "use current layout" the first time the status bar is edited.
+ */
+export function statusBarSeed(): Array<GridItemModel> {
+	const mode = useMachineStore().model.state.machineMode;
+	const isCnc = mode === MachineMode.cnc || mode === MachineMode.laser;
+	if (isCnc) {
+		return [
+			panel("StatusPanel", 0, 0, 3, 6),
+			panel("MovementPanel", 3, 0, 5, 9),
+			panel("SpindleSpeedPanel", 8, 0, 4, 6),
+		];
+	}
+	return [
+		panel("StatusPanel", 0, 0, 3, 6),
+		panel("ToolsPanel", 3, 0, 5, 6),
+		panel("TemperatureChart", 8, 0, 4, 6),
+	];
+}
+
 export const BUILTIN_PAGES: ReadonlyArray<BuiltinPageDef> = [
 	{ paths: ["/", "/Dashboard"], pageId: "/Dashboard", fallback: DashboardFallback, seed: dashboardSeed },
 	{ paths: ["/Console"], pageId: "/Console", fallback: ConsoleFallback },
