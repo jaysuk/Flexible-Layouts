@@ -7,7 +7,7 @@
  */
 import { ref } from "vue";
 
-import { announceUpdate, applyUpdate, checkForUpdate, clearAnnouncedUpdate, compareVersions, type UpdateResult } from "dwc-plugin-runtime";
+import { announceUpdate, applyUpdate, checkForUpdate, clearAnnouncedUpdate, compareVersions, registerUpdateChecker, type UpdateResult } from "dwc-plugin-runtime";
 
 import i18n from "@/i18n";
 import { useMachineStore } from "@/stores/machine";
@@ -49,6 +49,9 @@ function syncHub(): void {
 		clearAnnouncedUpdate(PLUGIN_MANIFEST_ID);
 	}
 }
+
+// Expose FL's own check to the shared hub, so any plugin's "Check now" (incl. FL's) refreshes it too.
+registerUpdateChecker(PLUGIN_MANIFEST_ID, async () => { await runUpdateCheck({ force: true }); });
 
 /** Whether on-load update checks are enabled (default on; users can opt out in settings). */
 export function updateChecksEnabled(): boolean {

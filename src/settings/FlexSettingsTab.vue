@@ -53,7 +53,7 @@
 			<div class="d-flex align-center mb-1">
 				<div class="text-title-small">{{ $t("plugins.flexibleLayouts.updates.title") }}</div>
 				<v-spacer />
-				<v-btn size="small" variant="text" :loading="checking" prepend-icon="mdi-refresh"
+				<v-btn size="small" variant="text" :loading="checking || checkingAll" prepend-icon="mdi-refresh"
 					   @click="checkNow">{{ $t("plugins.flexibleLayouts.updates.checkNow") }}</v-btn>
 			</div>
 
@@ -193,7 +193,7 @@ import { showConfirmDialog } from "@/composables/useConfirmDialog";
 import { useMachineStore } from "@/stores/machine";
 import { LogLevel, useUiStore } from "@/stores/ui";
 
-import { buildReport, cleanReleaseNotes, copyReport, downloadReport, fetchReleaseHistory, formatReleaseNotesHtml, type ReleaseHistoryEntry } from "dwc-plugin-runtime";
+import { buildReport, cleanReleaseNotes, copyReport, downloadReport, fetchReleaseHistory, formatReleaseNotesHtml, type ReleaseHistoryEntry, runAllUpdateChecks } from "dwc-plugin-runtime";
 
 import { PLUGIN_MANIFEST_ID } from "../model/constants";
 import { activateFlLayout, deactivateFlLayout, isFlLayoutActive } from "../model/layoutState";
@@ -256,7 +256,17 @@ watch(releaseNotesOpen, async (open) => {
 
 const isDismissed = computed(() => update.value?.latestVersion != null && update.value.latestVersion === dismissedVersion.value);
 // An explicit check means the user wants to see the offer again, so clear any skipped version first.
-function checkNow() { undismissUpdate(); runUpdateCheck({ force: true }); }
+// Check FL AND every other plugin registered with the runtime update hub, so one button refreshes all.
+const checkingAll = ref(false);
+async function checkNow() {
+	undismissUpdate();
+	checkingAll.value = true;
+	try {
+		await runAllUpdateChecks();
+	} finally {
+		checkingAll.value = false;
+	}
+}
 function skipVersion() { dismissCurrentUpdate(); }
 function updateNow() { applyUpdateNow(); }
 function showReleaseNotes() { releaseNotesOpen.value = true; }
