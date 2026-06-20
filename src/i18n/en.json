@@ -17,7 +17,8 @@
 		"switchToFlex": "Switch to Flexible Layouts",
 		"switchToDefault": "Switch to built-in layout",
 		"pickerHint": "You can also pick the active layout under Settings → General → Display (use that when several layout plugins are installed).",
-		"escapeHint": "Stuck? You can always return to the built-in layout by visiting"
+		"escapeHint": "Stuck? You can always return to the built-in layout by visiting",
+		"switchHelp": "Switch between the standard DuetWebControl layout and your Flexible Layouts dashboard."
 	},
 	"editor": {
 		"editLayout": "Edit layout",
@@ -64,7 +65,8 @@
 		"seedTitle": "Edit this page",
 		"seedHelp": "Start with a blank page, or begin from the panels this page currently shows so you can rearrange them.",
 		"seedUseCurrent": "Use current layout",
-		"seedStartBlank": "Start blank"
+		"seedStartBlank": "Start blank",
+		"addWidgetHelp": "Open the widget palette to add a panel to this page."
 	},
 	"widget": {
 		"panelError": "The “{name}” panel could not be displayed here.",
@@ -213,7 +215,13 @@
 		"iconPosBottom": "Below text",
 		"widgetType": "Widget type",
 		"debounce": "Debounce (ignore rapid re-presses)",
-		"debounceHint": "Ignore repeat presses within this many milliseconds. 0 = off."
+		"debounceHint": "Ignore repeat presses within this many milliseconds. 0 = off.",
+		"geometryHelp": "Where this panel sits on the grid and how big it is, in grid cells. X/Y are the top-left corner; W/H are width and height.",
+		"geomX": "Column of the panel's left edge (0 = far left).",
+		"geomY": "Row of the panel's top edge (0 = top).",
+		"geomW": "Width, in grid columns.",
+		"geomH": "Height, in grid rows.",
+		"precisionHelp": "How many digits to show after the decimal point."
 	},
 	"conditions": {
 		"title": "Conditional behaviour",
@@ -267,7 +275,9 @@
 		"restoreBody": "Your layout is empty, but a backup was found on the printer's SD card. Restore it?",
 		"restoreMeta": "Backup from {date} · {count} profile(s)",
 		"restoreConfirm": "Restore",
-		"restoreDecline": "Not now"
+		"restoreDecline": "Not now",
+		"backupNowHelp": "Save the whole layout (all profiles) to the printer's SD card now, so it survives a DWC settings reset.",
+		"restoreNowHelp": "Restore the layout from the backup file on the printer's SD card."
 	},
 	"colors": {
 		"default": "Default",
@@ -300,13 +310,15 @@
 		"headerLogo": "Logo image URL",
 		"customColors": "Custom colours",
 		"customColorsHint": "Define named colours here; they appear in every widget and panel colour picker so you can reuse a palette across the layout.",
-		"colorName": "Name"
+		"colorName": "Name",
+		"editHelp": "Edit the dashboard theme: colours, top bar, and named custom colours."
 	},
 	"panelColors": {
 		"title": "Panel colours",
 		"background": "Background",
 		"header": "Header bar",
-		"text": "Text"
+		"text": "Text",
+		"help": "Override this panel's background, header and text colours. Leave a colour unset to follow the current theme."
 	},
 	"activate": {
 		"title": "Use Flexible Layouts?",
@@ -314,7 +326,8 @@
 	},
 	"help": {
 		"title": "Help & guide",
-		"welcomeTitle": "Welcome to Flexible Layouts"
+		"welcomeTitle": "Welcome to Flexible Layouts",
+		"openHelp": "Open the Flexible Layouts help and getting-started guide."
 	},
 	"lock": {
 		"title": "Edit lock",
@@ -347,7 +360,8 @@
 		"newName": "Profile name",
 		"create": "Create",
 		"delete": "Delete profile",
-		"deleteConfirm": "Delete the profile “{name}” and everything in it? This can't be undone."
+		"deleteConfirm": "Delete the profile “{name}” and everything in it? This can't be undone.",
+		"manageHelp": "Create and switch between separate layout profiles (e.g. one per machine or task)."
 	},
 	"responsive": {
 		"desktop": "Desktop layout",
@@ -366,7 +380,11 @@
 		"reset": "Reset to default",
 		"resetTitle": "Reset this page to default",
 		"resetHelp": "Choose what to clear. A single screen size removes just that layout (tablet/phone revert to inheriting); “Everything” also clears the background and grid. This can't be undone.",
-		"resetAll": "Everything (all screen sizes)"
+		"resetAll": "Everything (all screen sizes)",
+		"columnsHelp": "How many columns the page grid is divided into. More columns give finer placement.",
+		"rowHeightHelp": "Height of one grid row, in pixels. Panel heights are multiples of this.",
+		"gapHelp": "Space between panels, in pixels.",
+		"buttonHelp": "Page settings: grid size, background, and lock-while-printing for this page."
 	},
 	"background": {
 		"button": "Background",
@@ -388,7 +406,8 @@
 		"autoHeight": "Auto height (fit to content)",
 		"autoHeightHint": "Resizes the cell to the panel's content and reflows the panels below — like the stock dashboard (e.g. Movement growing when axes aren't homed). Best for content-sized panels, not charts.",
 		"responsive": "Scale text on small screens",
-		"responsiveHint": "Treats the font size as a maximum and scales the text down on narrower screens (to a legible floor) so it stays readable on phones and tablets."
+		"responsiveHint": "Treats the font size as a maximum and scales the text down on narrower screens (to a legible floor) so it stays readable on phones and tablets.",
+		"help": "Font size and family for this panel, plus how its content fits and scales inside the cell."
 	},
 	"omPresets": {
 		"tool0Current": "Tool 0 temperature",
@@ -697,7 +716,9 @@
 		"copy": "Copy to clipboard",
 		"report": "Report",
 		"copied": "Diagnostics copied to clipboard.",
-		"copyFailed": "Couldn't copy — use Download report instead."
+		"copyFailed": "Couldn't copy — use Download report instead.",
+		"downloadHelp": "Download a diagnostics report (versions, recent errors and the current layout) to attach to a bug report.",
+		"copyHelp": "Copy the diagnostics report to the clipboard."
 	},
 	"updates": {
 		"title": "Updates",
@@ -724,7 +745,8 @@
 		"installedReloadBanner": "Update installed — reload the page to start using the new version.",
 		"reloadNow": "Reload now",
 		"titleCount": "{count} updates available",
-		"installedOther": "Updated to {version} — reload to finish."
+		"installedOther": "Updated to {version} — reload to finish.",
+		"checkNowHelp": "Check now for a newer release of this plugin (and any other plugins using the shared update system)."
 	},
 	"dro": {
 		"work": "Work",
@@ -827,7 +849,9 @@
 			"notAPanel": "That isn’t a Flexible Layouts panel file.",
 			"notAPage": "That isn’t a Flexible Layouts page file.",
 			"generic": "Could not read that file."
-		}
+		},
+		"importPanelHelp": "Add a panel from a .dwcpanel.json file you exported earlier.",
+		"openHelp": "Back up, restore, share or import whole layouts, and browse the community gallery."
 	},
 	"omPicker": {
 		"title": "Pick an object-model value",
@@ -867,7 +891,8 @@
 		"conditionHelp": "Show this page in the menu only while the object-model rule below matches. Leave the path blank to always show it.",
 		"conditionClear": "Always show",
 		"addSection": "+ New section…",
-		"newSectionName": "New section name"
+		"newSectionName": "New section name",
+		"manageHelp": "Add, rename, hide, reorder or delete pages, and set the startup / job-start page."
 	},
 	"panels": {
 		"status": "Status",

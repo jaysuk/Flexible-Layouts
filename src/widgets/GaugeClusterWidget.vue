@@ -30,11 +30,12 @@ const gauges = computed(() =>
     const lo = g.min ?? 0;
     const hi = g.max ?? 100;
     const pct = num === null || hi <= lo ? 0 : Math.max(0, Math.min(100, ((num - lo) / (hi - lo)) * 100));
+    const dp = Math.max(0, props.widget.precision ?? 0);
     return {
       label: g.label || g.omPath,
       color: g.color,
       pct,
-      text: num === null ? "—" : `${Math.round(num)}${g.unit || ""}`,
+      text: num === null ? "—" : `${num.toFixed(dp)}${g.unit || ""}`,
     };
   }),
 );

@@ -53,7 +53,7 @@ const lines = computed(() =>
     return {
       points,
       stroke: resolveColor(s.color),
-      last: buf.length ? Number(buf[buf.length - 1].toFixed(1)).toString() : "—",
+      last: buf.length ? buf[buf.length - 1].toFixed(Math.max(0, props.widget.precision ?? 1)) : "—",
     };
   }),
 );

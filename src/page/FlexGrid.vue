@@ -3,6 +3,7 @@
 				:col-num="cols" :row-height="rowHeight" :margin="margin"
 				:is-draggable="editMode" :is-resizable="editMode"
 				:vertical-compact="false" :prevent-collision="false" :use-css-transforms="true"
+				:restore-on-drag="restoreOnDrag"
 				@layout-updated="emit('changed')">
 		<GridItem v-for="item in layout" :key="item.i"
 				  :x="item.x" :y="item.y" :w="item.w" :h="item.h" :i="item.i"
@@ -61,6 +62,13 @@ const margin = computed<[number, number]>(() => {
 	const g = Math.max(0, props.gap ?? 8);
 	return [g, g];
 });
+
+// "Free placement" dragging: with restore-on-drag, neighbours that a dragged panel crosses are
+// pushed aside momentarily but snapped back to their original spots, so the dragged panel lands
+// where you drop it without permanently disturbing the others (overlap is allowed). We DON'T enable
+// it during a multi-select group drag (2+ selected) — that path deliberately moves the followers
+// itself (FlexPage.onGroupDragMove), and restoring from the grid's drag-start snapshot would fight it.
+const restoreOnDrag = computed(() => (props.selectedIds?.size ?? 0) <= 1);
 
 // grid-layout-plus reassigns the layout array on add/remove and mutates items in place on
 // drag/resize; bridge both back to the parent via v-model.

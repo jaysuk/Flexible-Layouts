@@ -19,7 +19,7 @@
 
 			<v-btn :color="active ? undefined : 'primary'" :variant="active ? 'tonal' : 'flat'"
 				   :prepend-icon="active ? 'mdi-view-dashboard-outline' : 'mdi-view-dashboard-edit'"
-				   @click="onToggleLayout">
+				   :title="$t('plugins.flexibleLayouts.settings.switchHelp')" @click="onToggleLayout">
 				{{ active
 					? $t("plugins.flexibleLayouts.settings.switchToDefault")
 					: $t("plugins.flexibleLayouts.settings.switchToFlex") }}
@@ -29,19 +29,24 @@
 			<v-divider class="my-4" />
 
 			<div class="d-flex flex-wrap ga-2">
-				<v-btn variant="tonal" prepend-icon="mdi-file-tree" @click="openGated('pageManager')">
+				<v-btn variant="tonal" prepend-icon="mdi-file-tree"
+					   :title="$t('plugins.flexibleLayouts.pages.manageHelp')" @click="openGated('pageManager')">
 					{{ $t("plugins.flexibleLayouts.pages.title") }}
 				</v-btn>
-				<v-btn variant="tonal" prepend-icon="mdi-palette" @click="openGated('theme')">
+				<v-btn variant="tonal" prepend-icon="mdi-palette"
+					   :title="$t('plugins.flexibleLayouts.theme.editHelp')" @click="openGated('theme')">
 					{{ $t("plugins.flexibleLayouts.theme.title") }}
 				</v-btn>
-				<v-btn variant="tonal" prepend-icon="mdi-share-variant" @click="openGated('io')">
+				<v-btn variant="tonal" prepend-icon="mdi-share-variant"
+					   :title="$t('plugins.flexibleLayouts.io.openHelp')" @click="openGated('io')">
 					{{ $t("plugins.flexibleLayouts.io.title") }}
 				</v-btn>
-				<v-btn variant="tonal" prepend-icon="mdi-layers-triple" @click="openGated('profiles')">
+				<v-btn variant="tonal" prepend-icon="mdi-layers-triple"
+					   :title="$t('plugins.flexibleLayouts.profiles.manageHelp')" @click="openGated('profiles')">
 					{{ $t("plugins.flexibleLayouts.profiles.title") }}
 				</v-btn>
-				<v-btn variant="tonal" prepend-icon="mdi-help-circle" @click="dialogs.help = true">
+				<v-btn variant="tonal" prepend-icon="mdi-help-circle"
+					   :title="$t('plugins.flexibleLayouts.help.openHelp')" @click="dialogs.help = true">
 					{{ $t("plugins.flexibleLayouts.help.title") }}
 				</v-btn>
 			</div>
@@ -54,7 +59,7 @@
 				<div class="text-title-small">{{ $t("plugins.flexibleLayouts.updates.title") }}</div>
 				<v-spacer />
 				<v-btn size="small" variant="text" :loading="checking || checkingAll" prepend-icon="mdi-refresh"
-					   @click="checkNow">{{ $t("plugins.flexibleLayouts.updates.checkNow") }}</v-btn>
+					   :title="$t('plugins.flexibleLayouts.updates.checkNowHelp')" @click="checkNow">{{ $t("plugins.flexibleLayouts.updates.checkNow") }}</v-btn>
 			</div>
 
 			<!-- Reload prompt: shown after a successful one-click update (stale code runs until reload) -->
@@ -114,10 +119,12 @@
 			<div class="text-title-small mb-1">{{ $t("plugins.flexibleLayouts.sdBackup.title") }}</div>
 			<p class="text-body-small text-medium-emphasis mt-0 mb-2">{{ $t("plugins.flexibleLayouts.sdBackup.hint") }}</p>
 			<div class="d-flex flex-wrap ga-2">
-				<v-btn variant="tonal" prepend-icon="mdi-content-save" :loading="backingUp" :disabled="!isConnected" @click="backupNow">
+				<v-btn variant="tonal" prepend-icon="mdi-content-save" :loading="backingUp" :disabled="!isConnected"
+					   :title="$t('plugins.flexibleLayouts.sdBackup.backupNowHelp')" @click="backupNow">
 					{{ $t("plugins.flexibleLayouts.sdBackup.backupNow") }}
 				</v-btn>
-				<v-btn variant="tonal" prepend-icon="mdi-history" :loading="restoring" :disabled="!isConnected" @click="restoreNow">
+				<v-btn variant="tonal" prepend-icon="mdi-history" :loading="restoring" :disabled="!isConnected"
+					   :title="$t('plugins.flexibleLayouts.sdBackup.restoreNowHelp')" @click="restoreNow">
 					{{ $t("plugins.flexibleLayouts.sdBackup.restoreNow") }}
 				</v-btn>
 			</div>
@@ -130,10 +137,12 @@
 				{{ $t("plugins.flexibleLayouts.diagnostics.hint") }}
 			</p>
 			<div class="d-flex flex-wrap ga-2">
-				<v-btn variant="tonal" prepend-icon="mdi-download" @click="downloadDiagnostics">
+				<v-btn variant="tonal" prepend-icon="mdi-download"
+					   :title="$t('plugins.flexibleLayouts.diagnostics.downloadHelp')" @click="downloadDiagnostics">
 					{{ $t("plugins.flexibleLayouts.diagnostics.download") }}
 				</v-btn>
-				<v-btn variant="tonal" prepend-icon="mdi-content-copy" @click="copyDiagnostics">
+				<v-btn variant="tonal" prepend-icon="mdi-content-copy"
+					   :title="$t('plugins.flexibleLayouts.diagnostics.copyHelp')" @click="copyDiagnostics">
 					{{ $t("plugins.flexibleLayouts.diagnostics.copy") }}
 				</v-btn>
 			</div>

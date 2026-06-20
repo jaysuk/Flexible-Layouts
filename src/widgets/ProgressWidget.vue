@@ -3,7 +3,7 @@
     <div class="d-flex align-center mb-1">
       <span v-if="widget.label" class="pr-label text-truncate">{{ widget.label }}</span>
       <v-spacer />
-      <span v-if="widget.showValue !== false" class="pr-val">{{ pct }}%</span>
+      <span v-if="widget.showValue !== false" class="pr-val">{{ pctText }}%</span>
     </div>
     <v-progress-linear :model-value="pct" :color="widget.color || 'primary'" height="10" rounded />
   </div>
@@ -32,8 +32,11 @@ const pct = computed(() => {
     const hi = props.widget.max ?? 100;
     frac = hi > lo ? (v * (props.widget.scale ?? 1) - lo) / (hi - lo) : 0;
   }
-  return Math.max(0, Math.min(100, Math.round(frac * 100)));
+  return Math.max(0, Math.min(100, frac * 100));
 });
+
+// The numeric label honours the configured decimal places (default 0 = whole percent).
+const pctText = computed(() => pct.value.toFixed(Math.max(0, props.widget.precision ?? 0)));
 </script>
 
 <style scoped>

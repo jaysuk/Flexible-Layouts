@@ -43,6 +43,10 @@ const dragging = ref<number | null>(null);
 const position = computed(() => dragging.value ?? omPosition.value ?? min.value);
 const displayValue = computed(() => {
   const v = position.value;
+  // Explicit decimal places win; otherwise default to whole numbers for a whole step, else 2 dp.
+  if (props.widget.precision !== undefined) {
+    return Number(v.toFixed(Math.max(0, props.widget.precision)));
+  }
   return Number.isInteger(step.value) ? Math.round(v) : Number(v.toFixed(2));
 });
 

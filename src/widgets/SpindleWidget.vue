@@ -8,13 +8,13 @@
     <div class="d-flex align-center ga-2 mb-1">
       <v-slider v-model="rpm" :min="min" :max="max" :step="stepSize" density="compact" hide-details thumb-size="14"
                 :color="widget.color || 'primary'" :disabled="disabledNow" />
-      <span class="spn-rpm">{{ Math.round(rpm) }}</span>
+      <span class="spn-rpm">{{ rpmText }}</span>
     </div>
     <div class="d-flex ga-1">
       <v-btn size="small" variant="tonal" :color="widget.color || 'primary'" class="flex-grow-1" :disabled="disabledNow"
-             icon="mdi-rotate-right" :title="$t('plugins.flexibleLayouts.spindle.forward')" @click="run(`M3 S${Math.round(rpm)}`)" />
+             icon="mdi-rotate-right" :title="$t('plugins.flexibleLayouts.spindle.forward')" @click="run(`M3 S${rpmText}`)" />
       <v-btn size="small" variant="tonal" :color="widget.color || 'primary'" class="flex-grow-1" :disabled="disabledNow"
-             icon="mdi-rotate-left" :title="$t('plugins.flexibleLayouts.spindle.reverse')" @click="run(`M4 S${Math.round(rpm)}`)" />
+             icon="mdi-rotate-left" :title="$t('plugins.flexibleLayouts.spindle.reverse')" @click="run(`M4 S${rpmText}`)" />
       <v-btn size="small" variant="tonal" color="error" class="flex-grow-1" :disabled="disabledNow"
              icon="mdi-stop" :title="$t('plugins.flexibleLayouts.spindle.stop')" @click="run('M5')" />
     </div>
@@ -57,6 +57,9 @@ const rpm = computed({
   set: (v: number) => { local.value = v; },
 });
 watch(active, () => { local.value = null; });
+
+// RPM shown in the read-out and sent in M3/M4: whole RPM by default, or the configured decimals.
+const rpmText = computed(() => rpm.value.toFixed(Math.max(0, props.widget.precision ?? 0)));
 
 function run(code: string): void {
   if (disabledNow.value) return;

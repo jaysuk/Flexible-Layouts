@@ -11,11 +11,11 @@
 					: $t("plugins.flexibleLayouts.editor.editLayout") }}
 			</v-btn>
 			<v-btn v-if="editMode" color="primary" variant="flat" size="small" prepend-icon="mdi-plus"
-				   @click="paletteOpen = true">
+				   :title="$t('plugins.flexibleLayouts.editor.addWidgetHelp')" @click="paletteOpen = true">
 				{{ $t("plugins.flexibleLayouts.editor.addWidget") }}
 			</v-btn>
 			<v-btn v-if="editMode" variant="tonal" size="small" prepend-icon="mdi-cog"
-				   @click="bgDialogOpen = true">
+				   :title="$t('plugins.flexibleLayouts.pageSettings.buttonHelp')" @click="bgDialogOpen = true">
 				{{ $t("plugins.flexibleLayouts.pageSettings.button") }}
 			</v-btn>
 			<v-btn v-if="editMode" icon="mdi-undo" size="small" variant="text" :disabled="!canUndo"
@@ -151,17 +151,23 @@
 						<v-col cols="6">
 							<v-text-field :model-value="grid.cols" type="number" density="compact" variant="outlined"
 										  hide-details :label="$t('plugins.flexibleLayouts.pageSettings.columns')"
-										  @update:model-value="setGridCols" />
+										  @update:model-value="setGridCols">
+								<template #append-inner><HelpTip :text="$t('plugins.flexibleLayouts.pageSettings.columnsHelp')" /></template>
+							</v-text-field>
 						</v-col>
 						<v-col cols="6">
 							<v-text-field :model-value="grid.rowHeight" type="number" density="compact" variant="outlined"
 										  hide-details :label="$t('plugins.flexibleLayouts.pageSettings.rowHeight')" suffix="px"
-										  @update:model-value="setGridRowHeight" />
+										  @update:model-value="setGridRowHeight">
+								<template #append-inner><HelpTip :text="$t('plugins.flexibleLayouts.pageSettings.rowHeightHelp')" /></template>
+							</v-text-field>
 						</v-col>
 						<v-col cols="6">
 							<v-text-field :model-value="grid.gap ?? 8" type="number" :min="0" density="compact" variant="outlined"
 										  hide-details :label="$t('plugins.flexibleLayouts.pageSettings.gap')" suffix="px"
-										  @update:model-value="setGridGap" />
+										  @update:model-value="setGridGap">
+								<template #append-inner><HelpTip :text="$t('plugins.flexibleLayouts.pageSettings.gapHelp')" /></template>
+							</v-text-field>
 						</v-col>
 					</v-row>
 					<div class="text-title-small mb-2">{{ $t("plugins.flexibleLayouts.background.title") }}</div>
@@ -210,6 +216,7 @@ import { exportPanel } from "../model/io";
 import { attemptToggleEdit, editMode } from "../model/editorState";
 import { describeWidget } from "../widgets/registry";
 import FlexGrid from "./FlexGrid.vue";
+import HelpTip from "../editor/HelpTip.vue";
 import WidgetPalette from "../editor/WidgetPalette.vue";
 import PropertiesDialog from "../editor/PropertiesDialog.vue";
 import GroupEditor from "../editor/GroupEditor.vue";

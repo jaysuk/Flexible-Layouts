@@ -224,6 +224,8 @@ export type Widget =
 		max?: number;
 		step?: number;
 		unit?: string;
+		/** Decimal places for the value read-out (default: 0 when the step is whole, else 2). */
+		precision?: number;
 		/** Command template; `{value}` is replaced with the slider value. */
 		command?: string;
 		/** Send continuously while dragging, vs only on release (default). */
@@ -271,6 +273,8 @@ export type Widget =
 		max?: number;
 		scale?: number;
 		showValue?: boolean;
+		/** Decimal places for the percentage read-out (default 0). */
+		precision?: number;
 		color?: string;
 	}
 	| {
@@ -371,6 +375,8 @@ export type Widget =
 		/** Command to switch the heater off. */
 		offCommand?: string;
 		presets?: Array<number>;
+		/** Decimal places for the live temperature read-out (default 1). */
+		precision?: number;
 		color?: string;
 	}
 	| {
@@ -434,6 +440,8 @@ export type Widget =
 		type: "fan";
 		label?: string;
 		fanIndex?: number;
+		/** Decimal places for the % read-out (default 0). */
+		precision?: number;
 		color?: string;
 	}
 	| {
@@ -457,6 +465,8 @@ export type Widget =
 		/** Several radial gauges in one tile. */
 		type: "gaugeCluster";
 		title?: string;
+		/** Decimal places for every gauge's value (default 0). */
+		precision?: number;
 		gauges?: Array<{ label?: string; omPath: string; min?: number; max?: number; unit?: string; color?: string }>;
 	}
 	| {
@@ -500,6 +510,8 @@ export type Widget =
 		series?: Array<{ omPath: string; color?: string }>;
 		windowSeconds?: number;
 		intervalMs?: number;
+		/** Decimal places for the latest-value read-out under each line (default 1). */
+		precision?: number;
 	}
 	| {
 		/** Digital read-out of axis positions with homed indicators. */
@@ -517,6 +529,8 @@ export type Widget =
 		spindleIndex?: number;
 		min?: number;
 		max?: number;
+		/** Decimal places for the RPM read-out and sent value (default 0 = whole RPM). */
+		precision?: number;
 		color?: string;
 	}
 	| {

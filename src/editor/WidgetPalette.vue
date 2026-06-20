@@ -6,7 +6,8 @@
 				<v-icon class="me-2">mdi-plus-box-multiple</v-icon>
 				{{ $t("plugins.flexibleLayouts.editor.addWidgetTitle") }}
 				<v-spacer />
-				<v-btn variant="text" size="small" prepend-icon="mdi-upload" @click="pickPanel">
+				<v-btn variant="text" size="small" prepend-icon="mdi-upload"
+					   :title="$t('plugins.flexibleLayouts.io.importPanelHelp')" @click="pickPanel">
 					{{ $t("plugins.flexibleLayouts.io.importPanel") }}
 				</v-btn>
 				<v-btn icon="mdi-close" variant="text" density="comfortable"
@@ -37,6 +38,7 @@
 						<div class="palette-grid">
 							<button v-for="it in g.items" :key="it.id" type="button" class="palette-tile"
 									:class="{ 'palette-tile--active': hovered && hovered.id === it.id }"
+									:title="it.sub ? `${it.label} — ${it.sub}` : it.label"
 									@click="it.choose()" @mouseenter="hovered = it" @focus="hovered = it">
 								<v-icon size="26" class="palette-tile-icon">{{ it.icon }}</v-icon>
 								<span class="palette-tile-label">{{ it.label }}</span>

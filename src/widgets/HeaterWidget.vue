@@ -36,7 +36,7 @@ function num(path: string): number | null {
   const v = resolveOmPath(machineStore.model, path);
   return typeof v === "number" ? v : null;
 }
-const current = computed(() => { const v = num(`${base.value}.current`); return v === null ? "—" : v.toFixed(1); });
+const current = computed(() => { const v = num(`${base.value}.current`); return v === null ? "—" : v.toFixed(Math.max(0, props.widget.precision ?? 1)); });
 const active = computed(() => { const v = num(`${base.value}.active`); return v === null ? "—" : `${v.toFixed(0)}°C`; });
 const state = computed(() => {
   const v = resolveOmPath(machineStore.model, `${base.value}.state`);

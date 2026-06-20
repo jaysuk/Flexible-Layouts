@@ -39,7 +39,7 @@ const rpm = computed(() => {
 
 const dragging = ref<number | null>(null);
 const position = computed(() => dragging.value ?? omPct.value);
-const displayPct = computed(() => Math.round(position.value));
+const displayPct = computed(() => position.value.toFixed(Math.max(0, props.widget.precision ?? 0)));
 
 function send(pct: number): void {
   if (disabledNow.value) return;

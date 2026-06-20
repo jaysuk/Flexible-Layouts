@@ -19,19 +19,18 @@
 					<WidgetView :key="previewKey" :widget="(draft as Widget)" />
 				</v-sheet>
 
-				<!-- Position & size (for precise alignment) -->
-				<v-expansion-panels class="mb-3" variant="accordion">
-					<v-expansion-panel :title="$t('plugins.flexibleLayouts.properties.geometry')">
-						<v-expansion-panel-text>
-							<v-row dense>
-								<v-col cols="3"><v-text-field v-model.number="geom.x" type="number" density="compact" variant="outlined" hide-details label="X" /></v-col>
-								<v-col cols="3"><v-text-field v-model.number="geom.y" type="number" density="compact" variant="outlined" hide-details label="Y" /></v-col>
-								<v-col cols="3"><v-text-field v-model.number="geom.w" type="number" density="compact" variant="outlined" hide-details label="W" /></v-col>
-								<v-col cols="3"><v-text-field v-model.number="geom.h" type="number" density="compact" variant="outlined" hide-details label="H" /></v-col>
-							</v-row>
-						</v-expansion-panel-text>
-					</v-expansion-panel>
-				</v-expansion-panels>
+				<!-- Position & size — always visible (no click to expand) for quick precise placement. -->
+				<div class="d-flex align-center mb-1">
+					<v-icon size="small" class="me-1">mdi-arrow-all</v-icon>
+					<span class="text-title-small">{{ $t("plugins.flexibleLayouts.properties.geometry") }}</span>
+					<HelpTip class="ms-1" :text="$t('plugins.flexibleLayouts.properties.geometryHelp')" />
+				</div>
+				<v-row dense class="mb-3">
+					<v-col cols="3"><v-text-field v-model.number="geom.x" type="number" density="compact" variant="outlined" hide-details label="X" :title="$t('plugins.flexibleLayouts.properties.geomX')" /></v-col>
+					<v-col cols="3"><v-text-field v-model.number="geom.y" type="number" density="compact" variant="outlined" hide-details label="Y" :title="$t('plugins.flexibleLayouts.properties.geomY')" /></v-col>
+					<v-col cols="3"><v-text-field v-model.number="geom.w" type="number" density="compact" variant="outlined" hide-details label="W" :title="$t('plugins.flexibleLayouts.properties.geomW')" /></v-col>
+					<v-col cols="3"><v-text-field v-model.number="geom.h" type="number" density="compact" variant="outlined" hide-details label="H" :title="$t('plugins.flexibleLayouts.properties.geomH')" /></v-col>
+				</v-row>
 
 				<!-- Command button -->
 				<template v-if="draft.type === 'codeButton'">
@@ -91,9 +90,11 @@
 										  :label="$t('plugins.flexibleLayouts.properties.unit')" />
 						</v-col>
 						<v-col cols="6">
-							<v-text-field v-model.number="draft.precision" type="number" density="compact"
+							<v-text-field v-model.number="draft.precision" type="number" :min="0" density="compact"
 										  variant="outlined" hide-details
-										  :label="$t('plugins.flexibleLayouts.properties.precision')" />
+										  :label="$t('plugins.flexibleLayouts.properties.precision')">
+								<template #append-inner><HelpTip :text="$t('plugins.flexibleLayouts.properties.precisionHelp')" /></template>
+							</v-text-field>
 						</v-col>
 					</v-row>
 					<v-row v-if="draft.display === 'gauge'" dense class="mt-1">
@@ -378,9 +379,12 @@
 					<OmPathField v-model="draft.omPath" class="mb-2"
 								 :label="$t('plugins.flexibleLayouts.slider.omPath')" />
 					<v-row dense>
-						<v-col cols="4"><v-text-field v-model.number="draft.min" type="number" density="compact" variant="outlined" hide-details label="Min" /></v-col>
-						<v-col cols="4"><v-text-field v-model.number="draft.max" type="number" density="compact" variant="outlined" hide-details label="Max" /></v-col>
-						<v-col cols="4"><v-text-field v-model.number="draft.step" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.slider.step')" /></v-col>
+						<v-col cols="3"><v-text-field v-model.number="draft.min" type="number" density="compact" variant="outlined" hide-details label="Min" /></v-col>
+						<v-col cols="3"><v-text-field v-model.number="draft.max" type="number" density="compact" variant="outlined" hide-details label="Max" /></v-col>
+						<v-col cols="3"><v-text-field v-model.number="draft.step" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.slider.step')" /></v-col>
+						<v-col cols="3"><v-text-field v-model.number="draft.precision" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.precision')">
+							<template #append-inner><HelpTip :text="$t('plugins.flexibleLayouts.properties.precisionHelp')" /></template>
+						</v-text-field></v-col>
 					</v-row>
 					<v-row dense class="mt-1">
 						<v-col cols="4"><v-text-field v-model.number="draft.scale" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.slider.scale')" /></v-col>
@@ -424,7 +428,9 @@
 						<v-col cols="3"><v-text-field v-model.number="draft.step" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.slider.step')" /></v-col>
 						<v-col cols="3"><v-text-field v-model.number="draft.min" type="number" density="compact" variant="outlined" hide-details label="Min" /></v-col>
 						<v-col cols="3"><v-text-field v-model.number="draft.max" type="number" density="compact" variant="outlined" hide-details label="Max" /></v-col>
-						<v-col cols="3"><v-text-field v-model.number="draft.precision" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.stepper.precision')" /></v-col>
+						<v-col cols="3"><v-text-field v-model.number="draft.precision" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.stepper.precision')">
+							<template #append-inner><HelpTip :text="$t('plugins.flexibleLayouts.properties.precisionHelp')" /></template>
+						</v-text-field></v-col>
 					</v-row>
 					<v-row dense class="mt-1">
 						<v-col cols="6"><v-text-field v-model="draft.unit" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.unit')" /></v-col>
@@ -439,9 +445,12 @@
 					<OmPathField v-model="draft.omPath" class="mb-2" :label="$t('plugins.flexibleLayouts.progress.omPath')" />
 					<OmPathField v-model="draft.maxPath" class="mb-2" :label="$t('plugins.flexibleLayouts.progress.maxPath')" />
 					<v-row dense>
-						<v-col cols="4"><v-text-field v-model.number="draft.min" type="number" density="compact" variant="outlined" hide-details label="Min" /></v-col>
-						<v-col cols="4"><v-text-field v-model.number="draft.max" type="number" density="compact" variant="outlined" hide-details label="Max" /></v-col>
-						<v-col cols="4"><v-text-field v-model.number="draft.scale" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.slider.scale')" /></v-col>
+						<v-col cols="3"><v-text-field v-model.number="draft.min" type="number" density="compact" variant="outlined" hide-details label="Min" /></v-col>
+						<v-col cols="3"><v-text-field v-model.number="draft.max" type="number" density="compact" variant="outlined" hide-details label="Max" /></v-col>
+						<v-col cols="3"><v-text-field v-model.number="draft.scale" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.slider.scale')" /></v-col>
+						<v-col cols="3"><v-text-field v-model.number="draft.precision" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.precision')">
+							<template #append-inner><HelpTip :text="$t('plugins.flexibleLayouts.properties.precisionHelp')" /></template>
+						</v-text-field></v-col>
 					</v-row>
 					<div class="d-flex flex-wrap ga-x-4 mt-1 align-center">
 						<v-switch v-model="draft.showValue" color="primary" density="compact" hide-details :label="$t('plugins.flexibleLayouts.progress.showValue')" />
@@ -575,8 +584,11 @@
 					<v-text-field v-model="draft.setCommand" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.heater.setCommand')" placeholder="M140 S{value}" />
 					<v-text-field v-model="draft.offCommand" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.heater.offCommand')" placeholder="M140 S-273.15" />
 					<v-row dense>
-						<v-col cols="8"><v-text-field v-model="heaterPresetsText" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.heater.presets')" :hint="$t('plugins.flexibleLayouts.jog.stepsHint')" /></v-col>
-						<v-col cols="4"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
+						<v-col cols="6"><v-text-field v-model="heaterPresetsText" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.heater.presets')" :hint="$t('plugins.flexibleLayouts.jog.stepsHint')" /></v-col>
+						<v-col cols="3"><v-text-field v-model.number="draft.precision" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.precision')">
+							<template #append-inner><HelpTip :text="$t('plugins.flexibleLayouts.properties.precisionHelp')" /></template>
+						</v-text-field></v-col>
+						<v-col cols="3"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
 					</v-row>
 				</template>
 
@@ -615,7 +627,9 @@
 						</div>
 						<div class="d-flex ga-2 mt-2">
 							<v-text-field v-model="r.unit" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.unit')" style="max-width:8rem" />
-							<v-text-field v-model.number="r.precision" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.stepper.precision')" style="max-width:8rem" />
+							<v-text-field v-model.number="r.precision" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.stepper.precision')" style="max-width:8rem">
+								<template #append-inner><HelpTip :text="$t('plugins.flexibleLayouts.properties.precisionHelp')" /></template>
+							</v-text-field>
 						</div>
 					</v-sheet>
 				</template>
@@ -656,9 +670,12 @@
 				<!-- Fan -->
 				<template v-else-if="draft.type === 'fan'">
 					<v-row dense>
-						<v-col cols="5"><v-text-field v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
+						<v-col cols="4"><v-text-field v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
 						<v-col cols="3"><v-text-field v-model.number="draft.fanIndex" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.fan.index')" /></v-col>
-						<v-col cols="4"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
+						<v-col cols="2"><v-text-field v-model.number="draft.precision" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.precision')">
+							<template #append-inner><HelpTip :text="$t('plugins.flexibleLayouts.properties.precisionHelp')" /></template>
+						</v-text-field></v-col>
+						<v-col cols="3"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
 					</v-row>
 				</template>
 
@@ -683,7 +700,12 @@
 
 				<!-- Gauge cluster -->
 				<template v-else-if="draft.type === 'gaugeCluster'">
-					<v-text-field v-model="draft.title" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.jog.titleField')" />
+					<v-row dense class="mb-2">
+						<v-col cols="8"><v-text-field v-model="draft.title" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.jog.titleField')" /></v-col>
+						<v-col cols="4"><v-text-field v-model.number="draft.precision" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.precision')">
+							<template #append-inner><HelpTip :text="$t('plugins.flexibleLayouts.properties.precisionHelp')" /></template>
+						</v-text-field></v-col>
+					</v-row>
 					<div class="d-flex align-center mb-1">
 						<span class="text-title-small">{{ $t("plugins.flexibleLayouts.gaugeCluster.gauges") }}</span>
 						<v-spacer />
@@ -753,8 +775,11 @@
 						</div>
 					</v-sheet>
 					<v-row dense>
-						<v-col cols="6"><v-text-field v-model.number="draft.windowSeconds" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.windowSeconds')" /></v-col>
-						<v-col cols="6"><v-text-field v-model.number="draft.intervalMs" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.intervalMs')" /></v-col>
+						<v-col cols="4"><v-text-field v-model.number="draft.windowSeconds" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.windowSeconds')" /></v-col>
+						<v-col cols="4"><v-text-field v-model.number="draft.intervalMs" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.intervalMs')" /></v-col>
+						<v-col cols="4"><v-text-field v-model.number="draft.precision" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.precision')">
+							<template #append-inner><HelpTip :text="$t('plugins.flexibleLayouts.properties.precisionHelp')" /></template>
+						</v-text-field></v-col>
 					</v-row>
 				</template>
 
@@ -817,7 +842,9 @@
 					<v-text-field v-model="droAxesText" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.dro.axes')" :hint="$t('plugins.flexibleLayouts.dro.axesHint')" persistent-hint />
 					<v-row dense>
 						<v-col cols="6"><v-select v-model="draft.coord" :items="droCoordOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.dro.coord')" /></v-col>
-						<v-col cols="6"><v-text-field v-model.number="draft.precision" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.stepper.precision')" /></v-col>
+						<v-col cols="6"><v-text-field v-model.number="draft.precision" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.stepper.precision')">
+							<template #append-inner><HelpTip :text="$t('plugins.flexibleLayouts.properties.precisionHelp')" /></template>
+						</v-text-field></v-col>
 					</v-row>
 				</template>
 
@@ -828,6 +855,9 @@
 						<v-col cols="3"><v-text-field v-model.number="draft.spindleIndex" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.spindle.index')" /></v-col>
 						<v-col cols="3"><v-text-field v-model.number="draft.min" type="number" density="compact" variant="outlined" hide-details label="Min RPM" /></v-col>
 						<v-col cols="3"><v-text-field v-model.number="draft.max" type="number" density="compact" variant="outlined" hide-details label="Max RPM" /></v-col>
+						<v-col cols="3"><v-text-field v-model.number="draft.precision" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.precision')">
+							<template #append-inner><HelpTip :text="$t('plugins.flexibleLayouts.properties.precisionHelp')" /></template>
+						</v-text-field></v-col>
 						<v-col cols="3"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
 					</v-row>
 				</template>
@@ -909,6 +939,7 @@
 				<div class="d-flex align-center mb-1">
 					<v-icon size="small" class="me-1">mdi-state-machine</v-icon>
 					<span class="text-title-small">{{ $t("plugins.flexibleLayouts.conditions.title") }}</span>
+					<HelpTip class="ms-1" :text="$t('plugins.flexibleLayouts.conditions.help')" />
 					<v-spacer />
 					<v-btn size="x-small" variant="tonal" prepend-icon="mdi-plus" @click="addRule">
 						{{ $t("plugins.flexibleLayouts.conditions.add") }}
@@ -949,6 +980,7 @@
 				<div class="d-flex align-center mb-2">
 					<v-icon size="small" class="me-1">mdi-palette</v-icon>
 					<span class="text-title-small">{{ $t("plugins.flexibleLayouts.panelColors.title") }}</span>
+					<HelpTip class="ms-1" :text="$t('plugins.flexibleLayouts.panelColors.help')" />
 				</div>
 				<div v-for="field in colorFields" :key="field.key" class="d-flex align-center mb-2 ga-3">
 					<input type="color" class="flex-color-input" :value="colors[field.key] || '#888888'"
@@ -963,6 +995,7 @@
 				<div class="d-flex align-center mb-2">
 					<v-icon size="small" class="me-1">mdi-format-size</v-icon>
 					<span class="text-title-small">{{ $t("plugins.flexibleLayouts.typography.title") }}</span>
+					<HelpTip class="ms-1" :text="$t('plugins.flexibleLayouts.typography.help')" />
 				</div>
 				<v-row dense>
 					<v-col cols="6">
@@ -1022,6 +1055,7 @@ import { OM_VALUE_PRESETS, type OmPreset, resolveOmPath } from "../util/omPath";
 import { defaultLockForWidget } from "../util/printLock";
 import { describeWidget } from "../widgets/registry";
 import ColorSelect from "./ColorSelect.vue";
+import HelpTip from "./HelpTip.vue";
 import IconPicker from "./IconPicker.vue";
 import OmPathField from "./OmPathField.vue";
 import WidgetView from "../widgets/WidgetView.vue";
