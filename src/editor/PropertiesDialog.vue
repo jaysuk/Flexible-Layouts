@@ -1044,7 +1044,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 
-import { getWidgetConfig, PluginWidgetConfigForm } from "dwc-plugin-runtime";
+import { getWidgetConfig, HelpTip, PluginWidgetConfigForm } from "dwc-plugin-runtime";
 
 import i18n from "@/i18n";
 import { useMachineStore } from "@/stores/machine";
@@ -1055,7 +1055,6 @@ import { OM_VALUE_PRESETS, type OmPreset, resolveOmPath } from "../util/omPath";
 import { defaultLockForWidget } from "../util/printLock";
 import { describeWidget } from "../widgets/registry";
 import ColorSelect from "./ColorSelect.vue";
-import HelpTip from "./HelpTip.vue";
 import IconPicker from "./IconPicker.vue";
 import OmPathField from "./OmPathField.vue";
 import WidgetView from "../widgets/WidgetView.vue";

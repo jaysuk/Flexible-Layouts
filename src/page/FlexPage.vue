@@ -221,6 +221,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch, type Component } from "vue";
+import { HelpTip } from "dwc-plugin-runtime";
 
 import i18n from "@/i18n";
 
@@ -233,7 +234,6 @@ import { exportPanel } from "../model/io";
 import { attemptToggleEdit, editMode } from "../model/editorState";
 import { describeWidget } from "../widgets/registry";
 import FlexGrid from "./FlexGrid.vue";
-import HelpTip from "../editor/HelpTip.vue";
 import WidgetPalette from "../editor/WidgetPalette.vue";
 import PropertiesDialog from "../editor/PropertiesDialog.vue";
 import GroupEditor from "../editor/GroupEditor.vue";
