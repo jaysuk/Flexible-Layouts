@@ -371,7 +371,7 @@
 		"resetInherit": "Reset to inherit"
 	},
 	"pageSettings": {
-		"button": "Page",
+		"button": "Page & background",
 		"title": "Page settings",
 		"grid": "Grid",
 		"columns": "Columns",
@@ -391,10 +391,23 @@
 		"title": "Background",
 		"color": "Background colour",
 		"image": "Background image URL",
+		"imageSd": "Background image (SD card)",
 		"size": "Image fit",
 		"cover": "Cover",
 		"contain": "Contain",
-		"tile": "Tile"
+		"tile": "Tile",
+		"sourceUrl": "Web URL",
+		"sourceSd": "SD card"
+	},
+	"sdImage": {
+		"title": "Choose image from SD card",
+		"choose": "Choose…",
+		"none": "No image selected",
+		"up": "Up one folder",
+		"upload": "Upload image…",
+		"uploadFailed": "Couldn't upload the image to the printer.",
+		"offline": "Connect to the printer to browse its SD card.",
+		"empty": "No images or folders here."
 	},
 	"typography": {
 		"title": "Text & size",

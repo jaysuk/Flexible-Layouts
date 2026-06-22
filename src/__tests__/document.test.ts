@@ -61,6 +61,20 @@ describe("migrateDocument", () => {
 		expect(out.pages["/Dashboard"]).toBeDefined();
 		expect(out.schemaVersion).toBe(DOCUMENT_SCHEMA_VERSION);
 	});
+
+	it("round-trips a page background (colour + SD image source)", () => {
+		const doc = createEmptyDocument();
+		doc.pages["/Dashboard"] = {
+			kind: "custom",
+			grid: { cols: 12, rowHeight: 30 },
+			items: [],
+			background: { color: "primary", image: "0:/www/img/bg.png", imageSource: "sd", size: "contain" },
+		};
+		const out = migrateDocument(doc);
+		expect(out.pages["/Dashboard"].background).toEqual({
+			color: "primary", image: "0:/www/img/bg.png", imageSource: "sd", size: "contain",
+		});
+	});
 });
 
 describe("reidItem", () => {

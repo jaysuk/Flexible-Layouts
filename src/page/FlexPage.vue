@@ -171,18 +171,35 @@
 						</v-col>
 					</v-row>
 					<div class="text-title-small mb-2">{{ $t("plugins.flexibleLayouts.background.title") }}</div>
-					<div class="d-flex align-center mb-3 ga-3">
-						<input type="color" class="flex-bg-color" :value="bgColor || '#222222'"
-							   @input="setBgColor(($event.target as HTMLInputElement).value)" />
-						<span class="flex-grow-1">{{ $t("plugins.flexibleLayouts.background.color") }}</span>
-						<v-btn v-if="bgColor" icon="mdi-close" size="x-small" variant="text" @click="setBgColor(undefined)" />
-					</div>
-					<v-text-field :model-value="bgImage" density="compact" variant="outlined" hide-details clearable
-								  class="mb-2" :label="$t('plugins.flexibleLayouts.background.image')" placeholder="https://…"
+					<ColorSelect :model-value="bgColor" :label="$t('plugins.flexibleLayouts.background.color')"
+								 class="mb-3" @update:model-value="setBgColor" />
+
+					<v-btn-toggle :model-value="bgImageSource" density="compact" variant="outlined" divided
+								  mandatory class="mb-2 d-flex" @update:model-value="setBgImageSource">
+						<v-btn value="url" size="small" class="flex-grow-1" prepend-icon="mdi-web">
+							{{ $t("plugins.flexibleLayouts.background.sourceUrl") }}
+						</v-btn>
+						<v-btn value="sd" size="small" class="flex-grow-1" prepend-icon="mdi-sd">
+							{{ $t("plugins.flexibleLayouts.background.sourceSd") }}
+						</v-btn>
+					</v-btn-toggle>
+					<v-text-field v-if="bgImageSource === 'url'" :model-value="bgImage" density="compact"
+								  variant="outlined" hide-details clearable class="mb-2"
+								  :label="$t('plugins.flexibleLayouts.background.image')" placeholder="https://…"
 								  @update:model-value="setBgImage" />
+					<div v-else class="d-flex align-center ga-2 mb-2">
+						<v-text-field :model-value="bgImage" density="compact" variant="outlined" hide-details readonly
+									  class="flex-grow-1" :label="$t('plugins.flexibleLayouts.background.imageSd')"
+									  :placeholder="$t('plugins.flexibleLayouts.sdImage.none')" />
+						<v-btn size="small" variant="tonal" prepend-icon="mdi-folder-image" @click="sdPickerOpen = true">
+							{{ $t("plugins.flexibleLayouts.sdImage.choose") }}
+						</v-btn>
+						<v-btn v-if="bgImage" icon="mdi-close" size="x-small" variant="text" @click="setBgImage(null)" />
+					</div>
 					<v-select v-if="bgImage" :model-value="bgSize" :items="bgSizeOptions" density="compact"
 							  variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.background.size')"
 							  @update:model-value="setBgSize" />
+					<SdImagePicker v-model="sdPickerOpen" @pick="onPickSdImage" />
 
 					<v-divider class="my-3" />
 					<v-switch :model-value="pageLockWhilePrinting" color="primary" density="compact" hide-details
@@ -220,6 +237,10 @@ import HelpTip from "../editor/HelpTip.vue";
 import WidgetPalette from "../editor/WidgetPalette.vue";
 import PropertiesDialog from "../editor/PropertiesDialog.vue";
 import GroupEditor from "../editor/GroupEditor.vue";
+import ColorSelect from "../editor/ColorSelect.vue";
+import SdImagePicker from "../editor/SdImagePicker.vue";
+import { resolveColor } from "../util/color";
+import { useMachineStore } from "@/stores/machine";
 
 const props = defineProps<{
 	/** Document key for this page - a route path (`/`, `/Console`) or a custom-page id. */
@@ -236,17 +257,19 @@ const store = useLayoutStore();
 const paletteOpen = ref(false);
 
 // #region Page background
+const machineStore = useMachineStore();
 const bgDialogOpen = ref(false);
+const sdPickerOpen = ref(false);
 const pageBg = computed(() => store.getPage(props.pageId)?.background);
 const bgColor = computed(() => pageBg.value?.color);
 const bgImage = computed(() => pageBg.value?.image);
+const bgImageSource = computed(() => pageBg.value?.imageSource ?? "url");
 const bgSize = computed(() => pageBg.value?.size ?? "cover");
 const bgSizeOptions = computed(() => [
 	{ title: i18n.global.t("plugins.flexibleLayouts.background.cover"), value: "cover" },
 	{ title: i18n.global.t("plugins.flexibleLayouts.background.contain"), value: "contain" },
 	{ title: i18n.global.t("plugins.flexibleLayouts.background.tile"), value: "auto" },
 ]);
-
 function updateBg(patch: Partial<NonNullable<PageLayout["background"]>>) {
 	const current = store.getPage(props.pageId)?.background ?? {};
 	store.setPageBackground(props.pageId, props.kind ?? "custom", { ...current, ...patch });
@@ -314,6 +337,48 @@ function confirmReset() {
 function setBgColor(v: string | undefined) { updateBg({ color: v || undefined }); }
 function setBgImage(v: string | null) { updateBg({ image: v || undefined }); }
 function setBgSize(v: "cover" | "contain" | "auto") { updateBg({ size: v }); }
+function setBgImageSource(v: "url" | "sd") { updateBg({ imageSource: v, image: undefined }); }
+function onPickSdImage(path: string) { updateBg({ image: path, imageSource: "sd" }); }
+
+// The image actually rendered: a web URL is used directly; an SD path is fetched off the printer and
+// shown via an object URL (SD files aren't URL-addressable). Recomputed whenever the source changes.
+const resolvedBgImage = ref<string>();
+let sdObjectUrl: string | undefined;
+function clearSdObjectUrl() {
+	if (sdObjectUrl) {
+		URL.revokeObjectURL(sdObjectUrl);
+		sdObjectUrl = undefined;
+	}
+}
+async function refreshResolvedImage() {
+	const image = bgImage.value;
+	const source = bgImageSource.value;
+	if (!image) {
+		clearSdObjectUrl();
+		resolvedBgImage.value = undefined;
+		return;
+	}
+	if (source !== "sd") {
+		clearSdObjectUrl();
+		resolvedBgImage.value = image;
+		return;
+	}
+	// SD image: fetch as a blob when connected, else leave nothing to show.
+	if (!machineStore.isConnected) {
+		resolvedBgImage.value = undefined;
+		return;
+	}
+	try {
+		const blob = await machineStore.download({ filename: image, type: "blob" }, false, false, false) as Blob;
+		clearSdObjectUrl();
+		sdObjectUrl = URL.createObjectURL(blob);
+		resolvedBgImage.value = sdObjectUrl;
+	} catch {
+		resolvedBgImage.value = undefined;
+	}
+}
+watch([bgImage, bgImageSource, () => machineStore.isConnected], refreshResolvedImage, { immediate: true });
+onBeforeUnmount(clearSdObjectUrl);
 
 const backgroundStyle = computed(() => {
 	const bg = pageBg.value;
@@ -322,10 +387,10 @@ const backgroundStyle = computed(() => {
 	}
 	const s: Record<string, string> = {};
 	if (bg.color) {
-		s.backgroundColor = bg.color;
+		s.backgroundColor = resolveColor(bg.color);
 	}
-	if (bg.image) {
-		s.backgroundImage = `url("${bg.image}")`;
+	if (resolvedBgImage.value) {
+		s.backgroundImage = `url("${resolvedBgImage.value}")`;
 		s.backgroundSize = bg.size ?? "cover";
 		s.backgroundPosition = "center";
 		s.backgroundRepeat = bg.size === "auto" ? "repeat" : "no-repeat";
@@ -805,15 +870,6 @@ onBeforeUnmount(() => {
 <style scoped>
 .flex-page {
 	min-height: 200px;
-}
-.flex-bg-color {
-	width: 40px;
-	height: 28px;
-	border: 1px solid rgba(var(--v-border-color), 0.4);
-	border-radius: 4px;
-	background: none;
-	cursor: pointer;
-	padding: 0;
 }
 .flex-page-toolbar {
 	display: flex;

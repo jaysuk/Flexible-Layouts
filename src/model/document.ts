@@ -892,8 +892,12 @@ export interface PageLayout {
 	category?: string;
 	/** Hide this page from navigation entirely. */
 	hidden?: boolean;
-	/** Page backdrop shown behind all widgets. */
-	background?: { color?: string; image?: string; size?: "cover" | "contain" | "auto" };
+	/**
+	 * Page backdrop shown behind all widgets. `color` is a Vuetify theme token or a literal CSS colour
+	 * (resolved via util/color). `image` is either a web URL (`imageSource` "url"/undefined) or a path
+	 * on the printer's SD card (`imageSource` "sd"), which is fetched and shown as an object URL.
+	 */
+	background?: { color?: string; image?: string; imageSource?: "url" | "sd"; size?: "cover" | "contain" | "auto" };
 	/** Show this page in navigation only while this object-model rule matches. */
 	showWhen?: ConditionRule;
 	/** Lock every interactive widget on this page while the printer is printing (page-wide override). */
