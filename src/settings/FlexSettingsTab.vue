@@ -147,6 +147,20 @@
 				</v-btn>
 			</div>
 
+			<v-divider class="my-4" />
+			<div class="text-title-small mb-1">More plugins by jaysuk</div>
+			<div v-for="p in familyPlugins" :key="p.id" class="d-flex align-center py-1" style="border-bottom:1px solid rgba(127,127,127,0.15)">
+				<div>
+					<div class="text-body-2 font-weight-medium">
+						{{ p.name }}
+						<v-chip v-if="p.installed" size="x-small" color="success" variant="flat" class="ml-2">installed</v-chip>
+					</div>
+					<div class="text-caption text-medium-emphasis">{{ p.description }}</div>
+				</div>
+				<v-spacer />
+				<v-btn size="small" variant="text" :href="p.repo" target="_blank" rel="noopener">GitHub</v-btn>
+			</div>
+
 			<p class="text-body-small text-medium-emphasis mt-4 mb-0">
 				{{ $t("plugins.flexibleLayouts.settings.escapeHint") }}
 				<code>/BuiltInLayout</code>
@@ -202,7 +216,7 @@ import { showConfirmDialog } from "@/composables/useConfirmDialog";
 import { useMachineStore } from "@/stores/machine";
 import { LogLevel, useUiStore } from "@/stores/ui";
 
-import { buildReport, cleanReleaseNotes, copyReport, downloadReport, fetchReleaseHistory, formatReleaseNotesHtml, type ReleaseHistoryEntry, runAllUpdateChecks } from "dwc-plugin-runtime";
+import { buildReport, cleanReleaseNotes, copyReport, downloadReport, fetchReleaseHistory, formatReleaseNotesHtml, isPluginInstalled, otherFamilyPlugins, type ReleaseHistoryEntry, runAllUpdateChecks } from "dwc-plugin-runtime";
 
 import { PLUGIN_MANIFEST_ID } from "../model/constants";
 import { activateFlLayout, deactivateFlLayout, isFlLayoutActive } from "../model/layoutState";
@@ -219,6 +233,9 @@ import PasswordDialog from "../editor/PasswordDialog.vue";
 import { isLocked, requestUnlock } from "../model/lock";
 
 const machineStore = useMachineStore();
+
+// Other plugins in the family (cross-links), from the shared runtime registry.
+const familyPlugins = computed(() => otherFamilyPlugins(PLUGIN_MANIFEST_ID).map((p) => ({ ...p, installed: isPluginInstalled(machineStore.model, p.id) })));
 const uiStore = useUiStore();
 
 const active = computed(() => isFlLayoutActive());
