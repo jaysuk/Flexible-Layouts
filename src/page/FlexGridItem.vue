@@ -1,6 +1,8 @@
 <template>
 	<!-- Native tooltip outside edit mode only, so it doesn't fight the editor buttons' own titles. -->
-	<div class="flex-grid-item fill-height" :class="{ 'is-editing': editMode, 'is-selected': selected }" :style="colorVars"
+	<div class="flex-grid-item fill-height"
+		 :class="{ 'is-editing': editMode, 'is-selected': selected, 'is-shaped-btn': isShapedButton && !editMode }"
+		 :style="[colorVars, itemZStyle]"
 		 :title="!editMode && item.tooltip ? item.tooltip : undefined">
 		<!-- Edit-mode header: drag handle + title + settings + delete. The `flex-drag-handle` class is
 			 what the grid item's drag-allow-from targets, so dragging only starts from this bar. -->
@@ -144,6 +146,20 @@ const printLocked = computed(() =>
 	!props.editMode && isPrinting.value
 	&& (props.pageLock || effectiveLockForItem(props.item.widget, props.item.lockWhilePrinting)));
 
+// Shaped button detection: when a codeButton has a non-rect shape, remove the rectangular
+// chrome (no border-radius, no background box) in view mode so the shape itself is the button.
+const isShapedButton = computed(() =>
+	props.item.widget.type === "codeButton"
+	&& !!(props.item.widget as Extract<typeof props.item.widget, { type: "codeButton" }>).shape
+	&& (props.item.widget as Extract<typeof props.item.widget, { type: "codeButton" }>).shape!.kind !== "rect");
+
+// Z-index for shaped buttons (so they stack correctly when overlapping).
+const itemZStyle = computed((): Record<string, string> => {
+	if (!isShapedButton.value || props.editMode) { return {}; }
+	const z = (props.item.widget as Extract<typeof props.item.widget, { type: "codeButton" }>).z;
+	return z != null ? { zIndex: String(z) } : {};
+});
+
 // Per-panel colour overrides exposed as CSS variables consumed by the styles below.
 const colorVars = computed(() => {
 	const c = props.item.colors;
@@ -232,6 +248,18 @@ onBeforeUnmount(() => {
 .flex-auto-measure {
 	width: 100%;
 	height: auto;
+}
+
+/* Shaped button grid items: remove the rectangular box chrome so the SVG shape shows cleanly.
+   The shape itself provides the visual boundary; the bounding-box background is transparent. */
+.flex-grid-item.is-shaped-btn {
+	background: transparent;
+	border-radius: 0;
+	outline: none;
+}
+.flex-grid-item.is-shaped-btn .flex-item-body {
+	background: transparent;
+	overflow: visible;
 }
 
 .flex-grid-item {

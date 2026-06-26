@@ -9,7 +9,7 @@
  */
 
 /** Bump whenever the shape below changes incompatibly; add a migration in migrateDocument(). */
-export const DOCUMENT_SCHEMA_VERSION = 1;
+export const DOCUMENT_SCHEMA_VERSION = 2;
 
 /**
  * A widget is the thing that lives inside a grid cell.
@@ -42,6 +42,23 @@ export type Widget =
 		action?: "gcode" | "http" | "url";
 		/** Target URL for action "http" (GET) or "url" (open in new tab). */
 		url?: string;
+		/**
+		 * Optional shape for the button. When present (and kind !== "rect"), the button is rendered
+		 * as an inline SVG shape; corners outside the shape are transparent and click-through.
+		 * Default kind "rect" keeps existing behaviour (a plain v-btn fills the whole cell).
+		 */
+		shape?: ButtonShape;
+		/** Stroke around the button shape (view mode only). */
+		stroke?: { width?: number; color?: string; dash?: string };
+		/** Fill opacity override (0–1). Default 1. */
+		fillOpacity?: number;
+		/** Rotation of the button in degrees (applied to the outer wrapper in view mode). */
+		rotation?: number;
+		/**
+		 * Z-order within the grid (higher = in front). Used in view mode for overlapping shaped buttons.
+		 * Values are normalised across the page; bring-to-front / send-to-back sets this.
+		 */
+		z?: number;
 	}
 	| {
 		type: "value";
@@ -581,6 +598,44 @@ export type Widget =
 		variant?: "switch" | "button";
 	};
 
+/**
+ * Shape descriptor for a codeButton widget.  Only `kind` is required; all other
+ * fields are shape-specific parameters.  Default kind = "rect" (backward-compatible:
+ * the plain v-btn render path is used when shape is absent or kind === "rect").
+ */
+export interface ButtonShape {
+	kind: "rect" | "rounded" | "pill" | "circle" | "ellipse"
+		| "polygon" | "star" | "wedge" | "chevron" | "arrow"
+		| "diamond" | "trapezoid" | "polygonPoints" | "path";
+	/** Corner radius for "rect" variant (alias for kind="rounded"). */
+	rx?: number;
+	/** Curvature for "squircle" (0–1). */
+	curvature?: number;
+	/** Number of sides for "polygon". */
+	sides?: number;
+	/** Rotation of the shape itself in degrees (for "polygon", "star"). */
+	shapeRotation?: number;
+	/** Number of points for "star". */
+	points?: number;
+	/** Inner-to-outer radius ratio for "star". */
+	innerRatio?: number;
+	/** For "wedge": angle settings in degrees, radii as fractions of half min(w,h). */
+	startAngle?: number;
+	sweepAngle?: number;
+	innerRadius?: number;
+	outerRadius?: number;
+	/** For "chevron"/"arrow": direction and indent/head params. */
+	direction?: "right" | "left" | "up" | "down";
+	indent?: number;
+	headRatio?: number;
+	/** For "trapezoid": top edge width as fraction of total width. */
+	topRatio?: number;
+	/** For "polygonPoints": list of {x,y} in 0–1 normalised space. */
+	customPoints?: Array<{ x: number; y: number }>;
+	/** For "path": a literal SVG path `d` string. */
+	d?: string;
+}
+
 /** Widget type discriminator, handy for palettes and factories. */
 export type WidgetType = Widget["type"];
 
@@ -1066,7 +1121,11 @@ interface DocMigration {
  *       delete (w as Record<string, unknown>).speed; } }) },
  */
 const DOC_MIGRATIONS: Array<DocMigration> = [
-	// (no structural migrations yet - v1 is the first schema)
+	// v1 → v2: codeButton gains optional `shape`, `stroke`, `fillOpacity`, `rotation`, `z` fields.
+	// These are all optional with no required backfill — existing buttons continue to render as a
+	// plain v-btn (shape absent / kind "rect"). A no-op migration is registered so the version
+	// stamp is bumped on load and re-saved documents carry the current version.
+	{ to: 2, up: (_doc) => { /* new fields are all optional, nothing to rewrite */ } },
 ];
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {

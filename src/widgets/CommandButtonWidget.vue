@@ -1,5 +1,48 @@
 <template>
-	<div class="fill-height pa-1">
+	<!-- Shaped button: render as inline SVG for non-rect shapes so clicks outside the shape
+		 pass through to widgets beneath (for nestling / overlapping layouts). -->
+	<div v-if="isShapedMode" class="fill-height cmd-shaped-outer" :style="outerStyle" @click="onShapeClick">
+		<svg class="cmd-shape-svg" :viewBox="`0 0 ${SVG_W} ${SVG_H}`" preserveAspectRatio="none"
+			 :style="svgPointerStyle">
+			<!-- Shape fill + stroke -->
+			<path :d="shapedPathD" :fill="shapeColor" :fill-opacity="widget.fillOpacity ?? 1"
+				  :stroke="widget.stroke?.color ?? 'none'"
+				  :stroke-width="widget.stroke?.width ?? 0"
+				  :stroke-dasharray="widget.stroke?.dash ?? undefined"
+				  class="cmd-shape-path" />
+			<!-- Clip the label/icon so it doesn't bleed outside the shape -->
+			<clipPath id="shape-clip">
+				<path :d="shapedPathD" />
+			</clipPath>
+			<foreignObject x="0" y="0" :width="SVG_W" :height="SVG_H" clip-path="url(#shape-clip)"
+						   class="cmd-shape-fo" style="pointer-events:none;">
+				<div class="cmd-shape-content d-flex align-center justify-center ga-1"
+					 :style="{ width: `${SVG_W}px`, height: `${SVG_H}px` }"
+					 :class="iconLayoutClass">
+					<v-icon v-if="widget.icon" :size="iconSize" :color="labelColor">{{ widget.icon }}</v-icon>
+					<span v-if="widget.label" class="text-truncate" :style="{ color: labelColor }">{{ widget.label }}</span>
+				</div>
+			</foreignObject>
+		</svg>
+
+		<v-dialog v-model="confirmOpen" max-width="400">
+			<v-card>
+				<v-card-title>{{ $t("plugins.flexibleLayouts.widgets.confirmTitle") }}</v-card-title>
+				<v-card-text>
+					<div class="mb-2">{{ $t("plugins.flexibleLayouts.widgets.confirmText") }}</div>
+					<pre class="text-body-2 bg-surface-variant rounded pa-2">{{ widget.code }}</pre>
+				</v-card-text>
+				<v-card-actions>
+					<v-spacer />
+					<v-btn variant="text" @click="confirmOpen = false">{{ $t("generic.cancel") }}</v-btn>
+					<v-btn :color="widget.color || 'primary'" @click="confirmSend">{{ $t("generic.ok") }}</v-btn>
+				</v-card-actions>
+			</v-card>
+		</v-dialog>
+	</div>
+
+	<!-- Standard rect button (existing behaviour, unchanged) -->
+	<div v-else class="fill-height pa-1">
 		<v-btn :color="overrideColor || widget.color || 'primary'" variant="flat" block
 			   class="fill-height text-none flex-cmd-btn"
 			   :disabled="uiStore.uiFrozen || disabled" :loading="busy" @click="onClick">
@@ -33,7 +76,9 @@ import i18n from "@/i18n";
 import { useMachineStore } from "@/stores/machine";
 import { LogLevel, useUiStore } from "@/stores/ui";
 
-import type { Widget } from "../model/document";
+import type { ButtonShape, Widget } from "../model/document";
+import { resolveColor } from "../util/color";
+import { shapePath, type ShapeParams } from "../util/shapes";
 
 const props = defineProps<{
 	widget: Extract<Widget, { type: "codeButton" }>;
@@ -44,36 +89,114 @@ const props = defineProps<{
 const machineStore = useMachineStore();
 const uiStore = useUiStore();
 
-// An explicit size wins; otherwise the icon is em-relative so it tracks the panel's typography
-// font-size (the button itself inherits that font-size — see the style below).
+// ---- Icon helpers (shared between shaped and rect paths) ---------------------
+
 const iconSize = computed(() => (props.widget.iconSize && props.widget.iconSize > 0
 	? `${props.widget.iconSize}px`
 	: "1.5em"));
 
-// Icon placement relative to the label: top (default, stacked), bottom, or inline left/right.
 const iconLayoutClass = computed(() => {
 	switch (props.widget.iconPosition) {
-		case "left": return "flex-row";
-		case "right": return "flex-row-reverse";
+		case "left":   return "flex-row";
+		case "right":  return "flex-row-reverse";
 		case "bottom": return "flex-column-reverse";
-		default: return "flex-column";
+		default:       return "flex-column";
 	}
 });
 
+// ---- Shape mode detection ---------------------------------------------------
+
+const isShapedMode = computed(() => {
+	const s = props.widget.shape;
+	return !!s && s.kind !== "rect";
+});
+
+// ---- SVG viewBox (fixed logical size; scales with CSS) ----------------------
+const SVG_W = 100;
+const SVG_H = 100;
+
+/** Convert a ButtonShape descriptor to a ShapeParams object for shapePath(). */
+function toShapeParams(s: ButtonShape): ShapeParams {
+	switch (s.kind) {
+		case "rect":
+		case "rounded":
+			return { kind: "rect", rx: s.rx ?? (s.kind === "rounded" ? 8 : 0) };
+		case "pill":
+			return { kind: "pill" };
+		case "circle":
+			return { kind: "circle" };
+		case "ellipse":
+			return { kind: "ellipse" };
+		case "polygon":
+			return { kind: "polygon", sides: s.sides ?? 6, rotation: s.shapeRotation ?? 0 };
+		case "star":
+			return { kind: "star", points: s.points ?? 5, innerRatio: s.innerRatio ?? 0.4, rotation: s.shapeRotation ?? 0 };
+		case "wedge":
+			return {
+				kind: "wedge",
+				startAngle:  s.startAngle ?? 0,
+				sweepAngle:  s.sweepAngle ?? 90,
+				innerRadius: s.innerRadius ?? 0.3,
+				outerRadius: s.outerRadius ?? 1.0,
+			};
+		case "chevron":
+			return { kind: "chevron", direction: s.direction ?? "right", indent: s.indent ?? 0.3 };
+		case "arrow":
+			return { kind: "arrow", direction: s.direction ?? "right", headRatio: s.headRatio ?? 0.4 };
+		case "diamond":
+			return { kind: "diamond" };
+		case "trapezoid":
+			return { kind: "trapezoid", topRatio: s.topRatio ?? 0.6 };
+		case "polygonPoints":
+			return { kind: "polygonPoints", points: s.customPoints ?? [] };
+		case "path":
+			return { kind: "path", d: s.d ?? "" };
+	}
+}
+
+const shapedPathD = computed(() => {
+	const s = props.widget.shape;
+	if (!s) { return ""; }
+	return shapePath(toShapeParams(s), { w: SVG_W, h: SVG_H });
+});
+
+/** Resolve the fill colour for the shape. */
+const shapeColor = computed(() => resolveColor(props.overrideColor || props.widget.color || "primary"));
+
+/** Label/icon colour: white on dark fills, black on light — use Vuetify's on-* convention.
+ *  Simple heuristic: if color is a Vuetify token we can't introspect at runtime,
+ *  so default to white (Vuetify flat button contrast). */
+const labelColor = computed(() => "white");
+
+const outerStyle = computed(() => {
+	const style: Record<string, string> = {};
+	if (props.widget.rotation) {
+		style.transform = `rotate(${props.widget.rotation}deg)`;
+	}
+	if (props.widget.z != null) {
+		style.zIndex = String(props.widget.z);
+	}
+	// The shaped button wrapper should not clip — let the SVG overflow
+	style.overflow = "visible";
+	return style;
+});
+
+/** SVG gets pointer-events:none on most of its area; the path itself has pointer-events:fill. */
+const svgPointerStyle = computed(() => ({
+	cursor: (uiStore.uiFrozen || props.disabled) ? "not-allowed" : "pointer",
+	opacity: (uiStore.uiFrozen || props.disabled) ? "0.5" : "1",
+}));
+
+// ---- Confirm dialog ---------------------------------------------------------
 const busy = ref(false);
 const confirmOpen = ref(false);
 
-// Debounce guard: ignore repeat presses within `debounceMs` of the last accepted one.
 let lastFire = 0;
 function debounced(): boolean {
 	const ms = props.widget.debounceMs ?? 0;
-	if (ms <= 0) {
-		return false;
-	}
+	if (ms <= 0) { return false; }
 	const now = Date.now();
-	if (now - lastFire < ms) {
-		return true;
-	}
+	if (now - lastFire < ms) { return true; }
 	lastFire = now;
 	return false;
 }
@@ -106,9 +229,7 @@ async function send() {
 }
 
 function onClick() {
-	if (debounced()) {
-		return;
-	}
+	if (debounced()) { return; }
 	if (props.widget.confirm) {
 		confirmOpen.value = true;
 	} else {
@@ -119,6 +240,12 @@ function onClick() {
 function confirmSend() {
 	confirmOpen.value = false;
 	void send();
+}
+
+/** Click handler for shaped SVG mode — guard disabled + debounce. */
+function onShapeClick() {
+	if (uiStore.uiFrozen || props.disabled) { return; }
+	onClick();
 }
 </script>
 
@@ -133,5 +260,33 @@ function confirmSend() {
 /* Allow the label to ellipsis inside a flex row (icon-left/right layouts). */
 .flex-cmd-label {
 	min-width: 0;
+}
+
+/* Shaped button outer wrapper: fills the cell, clips nothing (shape does the clipping). */
+.cmd-shaped-outer {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+.cmd-shape-svg {
+	width: 100%;
+	height: 100%;
+	display: block;
+	/* Pointer events only on the filled shape path, not the bounding-box background. */
+	pointer-events: none;
+}
+/* The shape path itself captures clicks */
+.cmd-shape-path {
+	pointer-events: fill;
+	cursor: pointer;
+	transition: filter 0.12s;
+}
+.cmd-shape-path:hover {
+	filter: brightness(1.12);
+}
+.cmd-shape-fo {
+	pointer-events: none;
+	overflow: visible;
 }
 </style>

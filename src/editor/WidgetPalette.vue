@@ -86,6 +86,7 @@ import i18n from "@/i18n";
 import { createDefaultWidget, type GridItemModel, type Widget } from "../model/document";
 import { parsePanelFile } from "../model/io";
 import { type EmbeddableComponentInfo, type EmbeddablePage, listEmbeddableComponents, listEmbeddablePages } from "../model/pluginPages";
+import { createHexPadPreset, createJogDialPreset } from "../util/presets";
 import WidgetView from "../widgets/WidgetView.vue";
 import {
 	BUILTIN_PANELS,
@@ -147,6 +148,11 @@ function chooseFreeform(entry: FreeformCatalogEntry) {
 	emit("add", { widget: createDefaultWidget(entry.type), size: entry.defaultSize, configure: true });
 	emit("update:modelValue", false);
 }
+
+function choosePreset(item: GridItemModel) {
+	emit("addItem", item);
+	emit("update:modelValue", false);
+}
 function choosePanel(entry: PanelCatalogEntry) {
 	emit("add", { widget: { type: "builtinPanel", component: entry.component }, size: entry.defaultSize, configure: false });
 	emit("update:modelValue", false);
@@ -180,6 +186,28 @@ interface PaletteItem {
 // One flat, categorised list of everything that can be added.
 const allItems = computed<Array<PaletteItem>>(() => {
 	const items: Array<PaletteItem> = [];
+
+	// Presets — composite groups, fully editable after insertion
+	const t = (k: string) => i18n.global.t(`plugins.flexibleLayouts.${k}`);
+	items.push({
+		id: "preset:jogDial",
+		icon: "mdi-circle-double",
+		label: t("presets.jogDial"),
+		category: "controls",
+		size: { w: 8, h: 9 },
+		choose: () => choosePreset(createJogDialPreset()),
+		previewWidget: createJogDialPreset().widget,
+	});
+	items.push({
+		id: "preset:hexPad",
+		icon: "mdi-hexagon-multiple",
+		label: t("presets.hexPad"),
+		category: "controls",
+		size: { w: 12, h: 7 },
+		choose: () => choosePreset(createHexPadPreset()),
+		previewWidget: createHexPadPreset().widget,
+	});
+
 	for (const e of FREEFORM_WIDGETS) {
 		items.push({ id: `f:${e.type}`, icon: e.icon, label: freeformLabel(e), category: e.category, choose: () => chooseFreeform(e), size: e.defaultSize, previewWidget: createDefaultWidget(e.type) });
 	}

@@ -66,6 +66,56 @@
 								  variant="outlined" hide-details clearable class="mt-2" suffix="ms"
 								  :label="$t('plugins.flexibleLayouts.properties.debounce')"
 								  :hint="$t('plugins.flexibleLayouts.properties.debounceHint')" persistent-hint />
+
+					<!-- Shape options -->
+					<v-expansion-panels class="mt-3" variant="accordion">
+						<v-expansion-panel :title="$t('plugins.flexibleLayouts.shape.heading')">
+							<v-expansion-panel-text>
+								<v-select v-model="shapeKind" :items="shapeKindOptions" density="compact"
+										  variant="outlined" hide-details class="mb-2"
+										  :label="$t('plugins.flexibleLayouts.shape.kind')" />
+								<template v-if="draft.shape && draft.shape.kind !== 'rect'">
+									<v-row v-if="draft.shape.kind === 'polygon'" dense class="mb-2">
+										<v-col cols="6"><v-text-field v-model.number="draft.shape.sides" type="number" :min="3" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.shape.sides')" /></v-col>
+										<v-col cols="6"><v-text-field v-model.number="draft.shape.shapeRotation" type="number" density="compact" variant="outlined" hide-details suffix="°" :label="$t('plugins.flexibleLayouts.shape.rotation')" /></v-col>
+									</v-row>
+									<v-row v-if="draft.shape.kind === 'star'" dense class="mb-2">
+										<v-col cols="4"><v-text-field v-model.number="draft.shape.points" type="number" :min="3" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.shape.points')" /></v-col>
+										<v-col cols="4"><v-text-field v-model.number="draft.shape.innerRatio" type="number" step="0.05" :min="0" :max="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.shape.innerRatio')" /></v-col>
+										<v-col cols="4"><v-text-field v-model.number="draft.shape.shapeRotation" type="number" density="compact" variant="outlined" hide-details suffix="°" :label="$t('plugins.flexibleLayouts.shape.rotation')" /></v-col>
+									</v-row>
+									<v-row v-if="draft.shape.kind === 'wedge'" dense class="mb-2">
+										<v-col cols="6"><v-text-field v-model.number="draft.shape.startAngle" type="number" density="compact" variant="outlined" hide-details suffix="°" :label="$t('plugins.flexibleLayouts.shape.startAngle')" /></v-col>
+										<v-col cols="6"><v-text-field v-model.number="draft.shape.sweepAngle" type="number" density="compact" variant="outlined" hide-details suffix="°" :label="$t('plugins.flexibleLayouts.shape.sweepAngle')" /></v-col>
+										<v-col cols="6"><v-text-field v-model.number="draft.shape.innerRadius" type="number" step="0.05" :min="0" :max="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.shape.innerRadius')" /></v-col>
+										<v-col cols="6"><v-text-field v-model.number="draft.shape.outerRadius" type="number" step="0.05" :min="0" :max="2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.shape.outerRadius')" /></v-col>
+									</v-row>
+									<v-row v-if="draft.shape.kind === 'chevron' || draft.shape.kind === 'arrow'" dense class="mb-2">
+										<v-col cols="6"><v-select v-model="draft.shape.direction" :items="directionOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.shape.direction')" /></v-col>
+										<v-col cols="6" v-if="draft.shape.kind === 'chevron'"><v-text-field v-model.number="draft.shape.indent" type="number" step="0.05" :min="0" :max="0.9" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.shape.indent')" /></v-col>
+										<v-col cols="6" v-if="draft.shape.kind === 'arrow'"><v-text-field v-model.number="draft.shape.headRatio" type="number" step="0.05" :min="0" :max="0.9" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.shape.headRatio')" /></v-col>
+									</v-row>
+									<v-row v-if="draft.shape.kind === 'trapezoid'" dense class="mb-2">
+										<v-col cols="6"><v-text-field v-model.number="draft.shape.topRatio" type="number" step="0.05" :min="0" :max="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.shape.topRatio')" /></v-col>
+									</v-row>
+									<v-row v-if="draft.shape.kind === 'path'" dense class="mb-2">
+										<v-col cols="12"><v-textarea v-model="draft.shape.d" density="compact" variant="outlined" hide-details rows="2" auto-grow :label="$t('plugins.flexibleLayouts.shape.pathD')" /></v-col>
+									</v-row>
+									<!-- Stroke, fill opacity, rotation (for all non-rect shapes) -->
+									<v-row dense class="mb-2">
+										<v-col cols="4"><v-text-field v-model.number="draft.fillOpacity" type="number" step="0.05" :min="0" :max="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.shape.fillOpacity')" /></v-col>
+										<v-col cols="4"><v-text-field v-model.number="draft.rotation" type="number" density="compact" variant="outlined" hide-details suffix="°" :label="$t('plugins.flexibleLayouts.shape.itemRotation')" /></v-col>
+										<v-col cols="4"><v-text-field v-model.number="draft.z" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.shape.zOrder')" /></v-col>
+									</v-row>
+									<v-row dense>
+										<v-col cols="4"><v-text-field v-model.number="shapeStroke.width" type="number" :min="0" density="compact" variant="outlined" hide-details suffix="px" :label="$t('plugins.flexibleLayouts.shape.strokeWidth')" /></v-col>
+										<v-col cols="4"><v-text-field v-model="shapeStroke.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.shape.strokeColor')" placeholder="#fff" /></v-col>
+										<v-col cols="4"><v-text-field v-model="shapeStroke.dash" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.shape.strokeDash')" placeholder="4 2" /></v-col>
+									</v-row>
+								</template>
+							</v-expansion-panel-text>
+						</v-expansion-panel>
+					</v-expansion-panels>
 				</template>
 
 				<!-- Object-model value -->
@@ -1113,7 +1163,7 @@ import { getWidgetConfig, HelpTip, PluginWidgetConfigForm } from "dwc-plugin-run
 import i18n from "@/i18n";
 import { useMachineStore } from "@/stores/machine";
 
-import type { ConditionOperator, ConditionRule, GridItemModel, PanelColors, Typography, Widget } from "../model/document";
+import type { ButtonShape, ConditionOperator, ConditionRule, GridItemModel, PanelColors, Typography, Widget } from "../model/document";
 import { hasInputModifier } from "../util/inputModifier";
 import { OM_VALUE_PRESETS, type OmPreset, resolveOmPath } from "../util/omPath";
 import { defaultLockForWidget } from "../util/printLock";
@@ -1254,6 +1304,57 @@ const zStepsText = computed({
 });
 
 const t = (k: string) => i18n.global.t(`plugins.flexibleLayouts.${k}`);
+
+// ---- Shape configuration for codeButton widgets --------------------------------
+
+const shapeKindOptions = [
+	{ title: t("shape.kindRect"),          value: "rect" },
+	{ title: t("shape.kindRounded"),       value: "rounded" },
+	{ title: t("shape.kindPill"),          value: "pill" },
+	{ title: t("shape.kindCircle"),        value: "circle" },
+	{ title: t("shape.kindEllipse"),       value: "ellipse" },
+	{ title: t("shape.kindPolygon"),       value: "polygon" },
+	{ title: t("shape.kindStar"),          value: "star" },
+	{ title: t("shape.kindWedge"),         value: "wedge" },
+	{ title: t("shape.kindChevron"),       value: "chevron" },
+	{ title: t("shape.kindArrow"),         value: "arrow" },
+	{ title: t("shape.kindDiamond"),       value: "diamond" },
+	{ title: t("shape.kindTrapezoid"),     value: "trapezoid" },
+	{ title: t("shape.kindPath"),          value: "path" },
+];
+
+const directionOptions = [
+	{ title: "Right", value: "right" },
+	{ title: "Left",  value: "left" },
+	{ title: "Up",    value: "up" },
+	{ title: "Down",  value: "down" },
+];
+
+/** Get/set the shape kind on a codeButton draft, creating/removing the shape object as needed. */
+const shapeKind = computed<string>({
+	get: () => (draft.value?.type === "codeButton" ? (draft.value.shape?.kind ?? "rect") : "rect"),
+	set: (kind: string) => {
+		if (draft.value?.type !== "codeButton") { return; }
+		if (kind === "rect") {
+			// Remove shape so existing v-btn path is used
+			delete draft.value.shape;
+			return;
+		}
+		// Initialise or update shape
+		draft.value.shape = { ...draft.value.shape, kind: kind as ButtonShape["kind"] };
+		// Ensure stroke object exists for the stroke fields
+		if (!draft.value.stroke) { draft.value.stroke = {}; }
+	},
+});
+
+/** Proxy for the stroke sub-object, auto-initialising it if absent (avoids template ! assertions). */
+const shapeStroke = computed(() => {
+	if (draft.value?.type !== "codeButton") { return {} as { width?: number; color?: string; dash?: string }; }
+	if (!draft.value.stroke) { draft.value.stroke = {}; }
+	return draft.value.stroke;
+});
+
+// ---- /Shape configuration --------------------------------------------------
 
 const operatorOptions = computed<Array<{ title: string; value: ConditionOperator }>>(() => [
 	{ title: t("conditions.eq"), value: "eq" },

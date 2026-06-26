@@ -71,7 +71,61 @@
 				   :title="$t('plugins.flexibleLayouts.editor.align.sameWidth')" @click="sameWidth" />
 			<v-btn icon="mdi-arrow-expand-vertical" size="small" variant="text" :disabled="selectedCount < 2"
 				   :title="$t('plugins.flexibleLayouts.editor.align.sameHeight')" @click="sameHeight" />
+			<v-divider vertical class="mx-1" />
+			<!-- Z-order controls -->
+			<v-btn icon="mdi-arrange-bring-to-front" size="small" variant="text" :disabled="selectedCount < 1"
+				   :title="$t('plugins.flexibleLayouts.editor.align.bringToFront')" @click="bringToFront" />
+			<v-btn icon="mdi-arrange-send-to-back" size="small" variant="text" :disabled="selectedCount < 1"
+				   :title="$t('plugins.flexibleLayouts.editor.align.sendToBack')" @click="sendToBack" />
+			<!-- Auto-arrange -->
+			<v-btn size="small" variant="tonal" color="primary" prepend-icon="mdi-auto-fix" :disabled="selectedCount < 2"
+				   :title="$t('plugins.flexibleLayouts.editor.align.arrange')" @click="arrangeDialogOpen = true">
+				{{ $t("plugins.flexibleLayouts.editor.align.arrangeBtn") }}
+			</v-btn>
 		</div>
+
+		<!-- Auto-arrange dialog -->
+		<v-dialog v-model="arrangeDialogOpen" max-width="420">
+			<v-card>
+				<v-card-title>{{ $t("plugins.flexibleLayouts.arrange.title") }}</v-card-title>
+				<v-card-text>
+					<v-btn-toggle v-model="arrangeMode" mandatory density="compact" variant="outlined" class="mb-3">
+						<v-btn value="ring" :title="$t('plugins.flexibleLayouts.arrange.ringMode')">
+							<v-icon>mdi-circle-double</v-icon> {{ $t("plugins.flexibleLayouts.arrange.ringMode") }}
+						</v-btn>
+						<v-btn value="hex" :title="$t('plugins.flexibleLayouts.arrange.hexMode')">
+							<v-icon>mdi-hexagon-multiple</v-icon> {{ $t("plugins.flexibleLayouts.arrange.hexMode") }}
+						</v-btn>
+					</v-btn-toggle>
+
+					<template v-if="arrangeMode === 'ring'">
+						<v-row dense>
+							<v-col cols="6"><v-text-field v-model.number="ringOpts.cx" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.arrange.cx')" /></v-col>
+							<v-col cols="6"><v-text-field v-model.number="ringOpts.cy" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.arrange.cy')" /></v-col>
+							<v-col cols="6"><v-text-field v-model.number="ringOpts.radius" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.arrange.radius')" /></v-col>
+							<v-col cols="6"><v-text-field v-model.number="ringOpts.startAngle" type="number" density="compact" variant="outlined" hide-details suffix="°" :label="$t('plugins.flexibleLayouts.arrange.startAngle')" /></v-col>
+						</v-row>
+						<v-switch v-model="ringOpts.faceOutward" color="primary" density="compact" hide-details class="mt-2"
+								  :label="$t('plugins.flexibleLayouts.arrange.faceOutward')" />
+					</template>
+
+					<template v-else>
+						<v-row dense>
+							<v-col cols="6"><v-text-field v-model.number="hexOpts.cols" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.arrange.cols')" /></v-col>
+							<v-col cols="6"><v-text-field v-model.number="hexOpts.spacing" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.arrange.spacing')" /></v-col>
+							<v-col cols="6"><v-text-field v-model.number="hexOpts.originX" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.arrange.originX')" /></v-col>
+							<v-col cols="6"><v-text-field v-model.number="hexOpts.originY" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.arrange.originY')" /></v-col>
+						</v-row>
+						<v-select v-model="hexOpts.orientation" :items="hexOrientOptions" density="compact" variant="outlined" hide-details class="mt-2" :label="$t('plugins.flexibleLayouts.arrange.orientation')" />
+					</template>
+				</v-card-text>
+				<v-card-actions>
+					<v-spacer />
+					<v-btn variant="text" @click="arrangeDialogOpen = false">{{ $t("generic.cancel") }}</v-btn>
+					<v-btn color="primary" @click="applyArrange">{{ $t("plugins.flexibleLayouts.arrange.apply") }}</v-btn>
+				</v-card-actions>
+			</v-card>
+		</v-dialog>
 
 		<!-- Live grid -->
 		<FlexGrid v-if="layout.length > 0" v-model:layout="layout"
@@ -240,6 +294,7 @@ import GroupEditor from "../editor/GroupEditor.vue";
 import ColorSelect from "../editor/ColorSelect.vue";
 import SdImagePicker from "../editor/SdImagePicker.vue";
 import { resolveColor } from "../util/color";
+import { hexLayout, ringLayout } from "../util/shapes";
 import { useMachineStore } from "@/stores/machine";
 
 const props = defineProps<{
@@ -572,6 +627,89 @@ function sameWidth() { applySelection(matchSize(layout.value, selectedIds.value,
 function sameHeight() { applySelection(matchSize(layout.value, selectedIds.value, "h", grid.value.cols)); }
 function distributeH() { applySelection(distributeItems(layout.value, selectedIds.value, "x", grid.value.cols)); }
 function distributeV() { applySelection(distributeItems(layout.value, selectedIds.value, "y", grid.value.cols)); }
+
+// ---- Z-order controls -------------------------------------------------------
+/** Set z on all selected codeButton widgets, bring the highest to front. */
+function bringToFront() {
+	const maxZ = layout.value.reduce((m, it) => {
+		const z = it.widget.type === "codeButton" ? (it.widget.z ?? 0) : 0;
+		return Math.max(m, z);
+	}, 0);
+	const next = layout.value.map(it => {
+		if (!selectedIds.value.has(it.i)) { return it; }
+		if (it.widget.type !== "codeButton") { return it; }
+		return { ...it, widget: { ...it.widget, z: maxZ + 1 } };
+	});
+	if (next !== layout.value) { layout.value = next; persist(); commit(); }
+}
+
+function sendToBack() {
+	const minZ = layout.value.reduce((m, it) => {
+		const z = it.widget.type === "codeButton" ? (it.widget.z ?? 0) : 0;
+		return Math.min(m, z);
+	}, 0);
+	const next = layout.value.map(it => {
+		if (!selectedIds.value.has(it.i)) { return it; }
+		if (it.widget.type !== "codeButton") { return it; }
+		return { ...it, widget: { ...it.widget, z: minZ - 1 } };
+	});
+	if (next !== layout.value) { layout.value = next; persist(); commit(); }
+}
+
+// ---- Auto-arrange dialog ----------------------------------------------------
+const arrangeDialogOpen = ref(false);
+const arrangeMode = ref<"ring" | "hex">("ring");
+
+const ringOpts = ref({ cx: 6, cy: 4, radius: 3, startAngle: 0, faceOutward: false });
+const hexOpts  = ref({ cols: 3, spacing: 3, originX: 0, originY: 0, orientation: "pointy" as "pointy" | "flat" });
+const hexOrientOptions = [{ title: "Pointy-top", value: "pointy" }, { title: "Flat-top", value: "flat" }];
+
+function applyArrange() {
+	const selected = layout.value.filter(it => selectedIds.value.has(it.i));
+	if (selected.length < 2) { arrangeDialogOpen.value = false; return; }
+
+	let positions: Array<{ x: number; y: number; rotation?: number }>;
+
+	if (arrangeMode.value === "ring") {
+		const items = ringLayout({
+			cx: ringOpts.value.cx,
+			cy: ringOpts.value.cy,
+			radius: ringOpts.value.radius,
+			count: selected.length,
+			startAngle: ringOpts.value.startAngle,
+			faceOutward: ringOpts.value.faceOutward,
+		});
+		positions = items.map(it => ({ x: Math.round(it.x), y: Math.round(it.y), rotation: it.rotation }));
+	} else {
+		const items = hexLayout({
+			cols: hexOpts.value.cols,
+			count: selected.length,
+			spacing: hexOpts.value.spacing,
+			orientation: hexOpts.value.orientation,
+			originX: hexOpts.value.originX,
+			originY: hexOpts.value.originY,
+		});
+		positions = items.map(it => ({ x: Math.round(it.x), y: Math.round(it.y) }));
+	}
+
+	const next = layout.value.map(it => {
+		if (!selectedIds.value.has(it.i)) { return it; }
+		const idx = selected.indexOf(it);
+		if (idx < 0 || !positions[idx]) { return it; }
+		const pos = positions[idx];
+		const updated = { ...it, x: pos.x, y: pos.y };
+		// Apply rotation to codeButton widgets that support it
+		if (pos.rotation != null && it.widget.type === "codeButton" && it.widget.shape) {
+			updated.widget = { ...it.widget, rotation: pos.rotation };
+		}
+		return updated;
+	});
+
+	layout.value = next;
+	persist();
+	commit();
+	arrangeDialogOpen.value = false;
+}
 
 // #region ── Group drag: dragging a selected item moves all other selected items in sync ──────────
 //
