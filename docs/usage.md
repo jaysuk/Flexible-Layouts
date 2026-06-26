@@ -30,6 +30,24 @@ Click **Edit** in the top bar to start; **Done** to finish.
 The **Dashboard** and any page you create are editable grids. On a built-in page's first edit you're
 offered *Use current layout* (seed it from the stock content) or *Start blank*.
 
+## Shaped buttons & nestling
+
+Command buttons aren't limited to rectangles. In a button's **properties → Shape**, pick a circle,
+hexagon (or any polygon), star, wedge, chevron/arrow, diamond, trapezoid or a custom path, and set its
+stroke, fill opacity and rotation. A shaped button only reacts **within the shape**, so buttons can
+overlap and **nestle** together. (The properties **preview** is look-only — it shows exactly what the
+button will look like on the page and never triggers the command.)
+
+To assemble nestled controls precisely, put shaped buttons in a **group** and switch the group to
+**free mode** (the toggle in *edit contents*). In free mode you drag, **resize**, **rotate** (the
+handle above a selected item) and overlap children freely, with **bring-to-front / send-to-back** for
+z-order. **Arrange…** lays the children out automatically in a **ring** (centre, radius, count, start
+angle, optionally rotating each to face outward) or a **hex** grid. The same Arrange tool is on the
+page edit toolbar for a multi-selection.
+
+Ready-made **presets** in the palette (e.g. a **Hex Pad**) are just free-mode groups you can edit. For
+a movement dial, prefer the dedicated **CNC / Octopus jog** widget.
+
 ## Pages
 
 Open **Manage pages** (the edit toolbar, the drawer, or *Settings → Flexible Layouts*) to:
@@ -61,8 +79,10 @@ From **Backup & share** (settings tab) or the per-item / per-page buttons you ca
 - a single **page** as `.dwcpage.json`,
 - a single **panel** as `.dwcpanel.json`.
 
-Exports record which plugins a layout depends on; importing shows a **dependency diff** and warns
-about anything you don't have installed before it replaces/merges. There's also an **Add sample CNC
+Exports record which plugins a layout depends on **and the Flexible Layouts version** that produced
+them; importing shows a **dependency diff** and warns about anything you don't have installed — and if
+the file was made with a **newer Flexible Layouts** than you're running (update for full
+compatibility) — before it replaces/merges. There's also an **Add sample CNC
 page** preset to see a worked example.
 
 ## Theming

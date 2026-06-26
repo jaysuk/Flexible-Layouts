@@ -9,14 +9,15 @@ Add widgets with **Add widget** while editing. Every widget can additionally be 
 |--------|------------|
 | **Built-in DWC panel** | Any of DWC's own panels (Status, Tools, Movement, Extrude, Fans, Job…) reused on any page. |
 | **Plugin page / tab** | A page, settings tab or job-view tab registered by another plugin, embedded inline. Records that plugin as a dependency. |
-| **Custom panel (group)** | A titled container with its own mini-grid of widgets — a reusable sub-layout you can back up and share on its own. |
+| **Custom panel (group)** | A titled container with its own mini-grid of widgets — a reusable sub-layout you can back up and share on its own. Switch a group to **free mode** to position its children precisely (drag / resize / rotate, free overlap, z-order) — this is the canvas for nestled and shaped layouts. |
 
 ## Freeform widgets
 
 | Widget | What it does | Key options |
 |--------|--------------|-------------|
-| **Command button** | Sends G-code / runs a macro, makes an HTTP GET, or opens a URL. | code/URL, label, icon, colour, confirm-before-run, action type |
-| **Jog control** | Pronterface-style movement pad: concentric step rings for two planar axes + a Z bar. | axis letters, XY/Z step rings (right-click a ring to change it), feedrates, home buttons, motors-off, per-axis invert, title |
+| **Command button** | Sends G-code / runs a macro, makes an HTTP GET, or opens a URL. Render it as a **shape** — rectangle, rounded/pill, circle/ellipse, polygon (hexagon…), star, wedge, chevron/arrow, diamond, trapezoid or a custom path. A shaped button only reacts within the shape itself, so buttons can **overlap and nestle**. | code/URL, label, icon, colour, **shape + stroke / fill-opacity / rotation / z-order**, confirm-before-run, action type |
+| **Jog control (Pronterface)** | Movement pad with concentric step rings for two planar axes + a Z bar. | axis letters, XY/Z step rings (right-click a ring to change it), feedrates, home buttons, motors-off, per-axis invert, title |
+| **CNC / Octopus jog** | EstlCam-style 8-way pad: 4 cardinal + 4 diagonal arms (diagonals move both axes at once), concentric rings = jog distances with a colour-keyed distance legend, a centre **Home-all** hub + per-axis home row, a Z bar, and an optional position (DRO) header. | axis letters / invert, XY/Z distance rings, feedrates, toggles for diagonals / distance legend / DRO / Z / homing / feedrate / motors-off, title |
 | **Input field** | Runs a command template with the entered value (`{value}`), or sets an RRF `global` variable. | mode, command template / global name, number vs text, default |
 | **Slider** | Sends a command template (`{value}`) as you drag, and optionally tracks a live OM value. Fan %, speed/flow factor, brightness, RPM… | live value path (+scale/offset), min/max/step, command, unit, send-while-dragging, colour |
 | **Toggle / switch** | Stateful on/off bound to an OM value, sending separate on/off commands. ATX power (`M80`/`M81`), pins (`M42`), a `global` bool… | state path, on/off commands, switch vs button, colour |
@@ -27,6 +28,18 @@ Add widgets with **Add widget** while editing. Every widget can additionally be 
 | **LED strip (NeoPixel)** | Control NeoPixel/DotStar strips via `M150`: colour picker, master brightness, all-off, and optional per-LED painting (pick a colour, click pips to paint them). RGBW strips get a white channel. | which strip (first detected / choose / fixed), LED count, per-LED painting on/off, editable count on/off, colour |
 | **Globals editor** | View and edit RRF `global.*` variables inline — booleans toggle live, numbers/strings/arrays edit + Set. | show all vs a chosen list of variables, filter box, allow-edit (read-only) |
 | **Web page** | Embeds an external page / local web service in an iframe. | URL |
+
+### Presets & nestling
+
+The palette includes ready-made **preset groups** you drop in and then edit — e.g. a **Hex Pad** (a
+honeycomb of hexagon command buttons). A preset is just a normal **free-mode group**, so you can
+re-wire or restyle every button in it.
+
+To build your own nestled controls (custom pads, dials, clusters), drop shaped command buttons into a
+**free-mode group** and use **Arrange…** — in the group editor, or the page toolbar for a multi-selection
+— to lay them out in a **ring** (centre, radius, count, start angle, face-outward) or a **hex** grid.
+**Bring-to-front / send-to-back** set the overlap order, and each item has its own rotate handle. (For a
+ready-made jog dial, the **CNC / Octopus jog** widget above is usually the better choice.)
 
 ## Display & dashboard widgets
 

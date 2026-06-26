@@ -26,8 +26,9 @@ multiple switchable interfaces, and share it all as a file.
 - **Page management** — create / rename / hide / reorder / delete pages, set per-page grid size and
   background, and show a page only when an object-model condition is true.
 - **Widgets** — built-in DWC panels, pages/tabs from other plugins, custom-panel groups, command
-  buttons (G-code / macros / HTTP / open-URL), a Pronterface-style **jog** control, a
-  **NeoPixel/LED-strip** controller, a **`global.*` variables editor**, input fields, **sliders**,
+  buttons (G-code / macros / HTTP / open-URL) **in many shapes (circle, hexagon, star, wedge,
+  chevron…) that can overlap and nestle**, a Pronterface-style **jog** control **and a CNC 'octopus'
+  jog** (8-way with diagonals), a **NeoPixel/LED-strip** controller, a **`global.*` variables editor**, input fields, **sliders**,
   **toggles/switches** and **+/- steppers** (all command-driven, optionally OM-bound), live value
   read-outs, live charts (with CSV download), **progress bars**, **status indicators**, **alert
   banners**, **webcam/snapshot**, **macro grids**, a **mini console**, **heater tiles**, a
@@ -35,13 +36,18 @@ multiple switchable interfaces, and share it all as a file.
 - **Smart behaviour** — per-widget object-model **conditions** (recolour / hide / disable), **value
   formatting** (units, on/off, value→text maps), **colours**, **font size & family**, and
   **scale-to-fit**.
+- **Shapes & nestling** — give command buttons non-rectangular shapes that react only within the
+  shape, drop them into a **free-mode group** (drag / resize / rotate / overlap with z-order), and use
+  **Arrange…** to lay them out in a ring or hex grid. Ready-made **presets** (e.g. a Hex Pad) get you
+  started.
 - **Responsive** — a separate layout per screen size (desktop / tablet / phone).
 - **Editing aids** — undo/redo (Ctrl+Z / Ctrl+Y), duplicate, lock, and an object-model **path
   picker** so you never have to type paths.
 - **Layout profiles** — several complete interfaces (e.g. FFF / CNC) you switch between from the top
   bar.
 - **Backup & share** — export the whole layout (`.dwclayout.json`), a single page (`.dwcpage.json`)
-  or a single panel (`.dwcpanel.json`); imports warn about any plugins you're missing.
+  or a single panel (`.dwcpanel.json`); imports warn about any plugins you're missing (and if the layout
+was made with a newer Flexible Layouts than you have installed).
 - **Header** — pin mini widgets into the top bar and restyle it (colour / title / logo).
 - **Optional password lock** — a soft kiosk lock that gates editing and the escape-to-built-in
   switch behind a password (see [docs/usage.md](docs/usage.md#password-lock) for its limits).

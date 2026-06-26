@@ -45,8 +45,26 @@
 							<strong>Add widget</strong> opens a palette with a live preview: built-in DWC panels, pages/tabs
 							from other plugins, a <strong>custom panel (group)</strong>, command buttons (G-code / macros /
 							HTTP / open-URL), input fields, live value read-outs, charts, text/images and web embeds.
-							Use the 🌳 browse button to pick object-model values without typing paths. See the full list in
-							<em>Widget &amp; panel reference</em> below.
+							Movement has both a Pronterface-style <strong>jog</strong> and a <strong>CNC "octopus" jog</strong>
+							(8-way with diagonals). Use the 🌳 browse button to pick object-model values without typing paths.
+							See the full list in <em>Widget &amp; panel reference</em> below.
+						</v-expansion-panel-text>
+					</v-expansion-panel>
+
+					<v-expansion-panel title="Shapes &amp; nestling">
+						<v-expansion-panel-text>
+							Command buttons aren't just rectangles — in a button's settings pick a <strong>Shape</strong>
+							(circle, hexagon/polygon, star, wedge, chevron/arrow, diamond, trapezoid or a custom path) with
+							its own stroke, opacity and rotation. A shaped button only reacts <em>within the shape</em>, so
+							buttons can <strong>overlap and nestle</strong>. The settings preview is look-only — it shows
+							exactly what the button will look like and never fires the command.
+							<br><br>
+							To assemble nestled controls, drop shaped buttons into a <strong>group</strong> and switch it to
+							<strong>free mode</strong> (in <em>edit contents</em>): drag, resize, <strong>rotate</strong> and
+							overlap children freely, with <strong>bring-to-front / send-to-back</strong> for order.
+							<strong>Arrange…</strong> lays them out in a <strong>ring</strong> or <strong>hex</strong> grid.
+							Palette <strong>presets</strong> (e.g. a <strong>Hex Pad</strong>) are ready-made free-mode groups
+							you can edit.
 						</v-expansion-panel-text>
 					</v-expansion-panel>
 
@@ -104,7 +122,8 @@
 							<strong>Pages</strong>, <strong>Status &amp; nav</strong> — so you can make a <em>theme-only</em>
 							backup, or one that <em>excludes</em> the theme. You can also back up a <strong>single page</strong>
 							from the dropdown. On <strong>restore</strong>, choose which parts and which pages to apply (it
-							merges over your current layout) and you're warned about any plugins the file needs.
+							merges over your current layout) and you're warned about any plugins the file needs — and if it
+							was made with a <strong>newer Flexible Layouts</strong> than you have installed.
 							Browse and download layouts others have shared at the
 							<a href="https://jaysuk.github.io/flexible-layouts-gallery/" target="_blank" rel="noopener">community layout gallery</a>.
 						</v-expansion-panel-text>
