@@ -27,6 +27,10 @@
 						<v-btn value="grid" size="small" prepend-icon="mdi-view-grid">Grid</v-btn>
 						<v-btn value="free" size="small" prepend-icon="mdi-move">Free</v-btn>
 					</v-btn-toggle>
+					<v-btn v-if="isFree && draft && draft.items.length >= 2" size="small" variant="tonal"
+						   prepend-icon="mdi-vector-arrange-above" @click="arrangeOpen = true">
+						{{ $t("plugins.flexibleLayouts.editor.align.arrangeBtn") }}
+					</v-btn>
 					<v-spacer />
 					<!-- Selected item controls (free mode) -->
 					<template v-if="isFree && selectedId !== null">
@@ -67,6 +71,11 @@
 						<div v-if="selectedId === item.i"
 							 class="free-resize-grip"
 							 @pointerdown.stop="onResizePointerDown($event, item)" />
+						<!-- Rotate grip (top-centre) -->
+						<div v-if="selectedId === item.i"
+							 class="free-rotate-grip"
+							 title="Drag to rotate (hold Shift for 15° steps)"
+							 @pointerdown.stop="onRotatePointerDown($event, item)" />
 					</div>
 				</div>
 
@@ -92,6 +101,43 @@
 
 		<WidgetPalette v-model="paletteOpen" @add="addWidget" @add-item="addItem" />
 		<PropertiesDialog v-model="propertiesOpen" :item="editingItem" @save="saveProperties" />
+
+		<!-- Auto-arrange dialog (free mode): lay all children out in a ring or hex tiling -->
+		<v-dialog v-model="arrangeOpen" max-width="420">
+			<v-card>
+				<v-card-title>{{ $t("plugins.flexibleLayouts.arrange.title") }}</v-card-title>
+				<v-card-text>
+					<v-btn-toggle v-model="arrangeMode" mandatory density="compact" variant="outlined" class="mb-3">
+						<v-btn value="ring"><v-icon>mdi-circle-double</v-icon> {{ $t("plugins.flexibleLayouts.arrange.ringMode") }}</v-btn>
+						<v-btn value="hex"><v-icon>mdi-hexagon-multiple</v-icon> {{ $t("plugins.flexibleLayouts.arrange.hexMode") }}</v-btn>
+					</v-btn-toggle>
+					<template v-if="arrangeMode === 'ring'">
+						<v-row dense>
+							<v-col cols="6"><v-text-field v-model.number="ringOpts.cx" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.arrange.cx')" /></v-col>
+							<v-col cols="6"><v-text-field v-model.number="ringOpts.cy" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.arrange.cy')" /></v-col>
+							<v-col cols="6"><v-text-field v-model.number="ringOpts.radius" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.arrange.radius')" /></v-col>
+							<v-col cols="6"><v-text-field v-model.number="ringOpts.startAngle" type="number" density="compact" variant="outlined" hide-details suffix="°" :label="$t('plugins.flexibleLayouts.arrange.startAngle')" /></v-col>
+						</v-row>
+						<v-checkbox v-model="ringOpts.faceOutward" density="compact" hide-details :label="$t('plugins.flexibleLayouts.arrange.faceOutward')" />
+					</template>
+					<template v-else>
+						<v-row dense>
+							<v-col cols="6"><v-text-field v-model.number="hexOpts.cols" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.arrange.cols')" /></v-col>
+							<v-col cols="6"><v-text-field v-model.number="hexOpts.spacing" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.arrange.spacing')" /></v-col>
+							<v-col cols="6"><v-text-field v-model.number="hexOpts.originX" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.arrange.originX')" /></v-col>
+							<v-col cols="6"><v-text-field v-model.number="hexOpts.originY" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.arrange.originY')" /></v-col>
+						</v-row>
+						<v-select v-model="hexOpts.orientation" :items="hexOrientOptions" density="compact" variant="outlined" hide-details class="mt-2" :label="$t('plugins.flexibleLayouts.arrange.orientation')" />
+					</template>
+					<div class="text-caption text-medium-emphasis mt-3">{{ $t("plugins.flexibleLayouts.arrange.appliesAllHint") }}</div>
+				</v-card-text>
+				<v-card-actions>
+					<v-spacer />
+					<v-btn variant="text" @click="arrangeOpen = false">{{ $t("generic.cancel") }}</v-btn>
+					<v-btn color="primary" @click="applyGroupArrange">{{ $t("plugins.flexibleLayouts.arrange.apply") }}</v-btn>
+				</v-card-actions>
+			</v-card>
+		</v-dialog>
 	</v-dialog>
 </template>
 
@@ -108,6 +154,7 @@ import {
 	reidItem,
 } from "../model/document";
 import { exportPanel } from "../model/io";
+import { hexLayout, ringLayout } from "../util/shapes";
 import { describeWidget } from "../widgets/registry";
 import FlexGrid from "../page/FlexGrid.vue";
 import WidgetView from "../widgets/WidgetView.vue";
@@ -272,19 +319,87 @@ function sendToBack(): void {
 	updateItem(selectedId.value, { freeZ: minZ - 1 });
 }
 
+// ── Free-mode rotate handle ───────────────────────────────────────────────────
+// A grip above the selected item; dragging it spins the item about its centre. Shift snaps to 15°.
+let rotateState: { itemId: string; cx: number; cy: number } | null = null;
+function onRotatePointerDown(e: PointerEvent, item: GridItemModel): void {
+	e.stopPropagation();
+	const el = freeCanvasRef.value;
+	if (!el) return;
+	const rect = el.getBoundingClientRect();
+	rotateState = {
+		itemId: item.i,
+		cx: rect.left + ((item.x + item.w / 2) / 100) * rect.width,
+		cy: rect.top + ((item.y + item.h / 2) / 100) * rect.height,
+	};
+	(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+	window.addEventListener("pointermove", onRotateMove);
+	window.addEventListener("pointerup", onRotateUp, { once: true });
+}
+function onRotateMove(e: PointerEvent): void {
+	if (!rotateState) return;
+	const ang = (Math.atan2(e.clientY - rotateState.cy, e.clientX - rotateState.cx) * 180) / Math.PI;
+	let deg = Math.round(ang + 90); // grip sits at the top (north) → "up" reads as 0°
+	if (e.shiftKey) { deg = Math.round(deg / 15) * 15; }
+	updateItem(rotateState.itemId, { freeRotation: ((deg % 360) + 360) % 360 });
+}
+function onRotateUp(): void {
+	rotateState = null;
+	window.removeEventListener("pointermove", onRotateMove);
+}
+
+// ── Free-mode auto-arrange (ring / hex) ───────────────────────────────────────
+const arrangeOpen = ref(false);
+const arrangeMode = ref<"ring" | "hex">("ring");
+const ringOpts = ref({ cx: 50, cy: 50, radius: 30, startAngle: 0, faceOutward: true });
+const hexOpts = ref({ cols: 3, spacing: 18, originX: 20, originY: 20, orientation: "pointy" as "pointy" | "flat" });
+const hexOrientOptions = [{ title: "Pointy-top", value: "pointy" }, { title: "Flat-top", value: "flat" }];
+function applyGroupArrange(): void {
+	if (!draft.value) { arrangeOpen.value = false; return; }
+	const items = draft.value.items;
+	if (items.length < 2) { arrangeOpen.value = false; return; }
+	const ring = arrangeMode.value === "ring";
+	const positions = ring
+		? ringLayout({ cx: ringOpts.value.cx, cy: ringOpts.value.cy, radius: ringOpts.value.radius, count: items.length, startAngle: ringOpts.value.startAngle, faceOutward: ringOpts.value.faceOutward })
+		: hexLayout({ cols: hexOpts.value.cols, count: items.length, spacing: hexOpts.value.spacing, orientation: hexOpts.value.orientation, originX: hexOpts.value.originX, originY: hexOpts.value.originY });
+	draft.value.items = items.map((it, idx) => {
+		const pos = positions[idx];
+		if (!pos) return it;
+		// Ring positions are the item CENTRE (so the ring is concentric); hex positions are a top-left grid anchor.
+		const px = ring ? pos.x - it.w / 2 : pos.x;
+		const py = ring ? pos.y - it.h / 2 : pos.y;
+		const next: GridItemModel = { ...it, x: Math.max(0, Math.min(100 - it.w, px)), y: Math.max(0, Math.min(100 - it.h, py)) };
+		const rot = (pos as { rotation?: number }).rotation;
+		if (rot != null) { next.freeRotation = Math.round(rot); }
+		return next;
+	});
+	arrangeOpen.value = false;
+}
+
 // ── Grid-mode item management ─────────────────────────────────────────────────
 
 function nextY(): number {
 	return (draft.value?.items ?? []).reduce((max, it) => Math.max(max, it.y + it.h), 0);
 }
 
+/**
+ * Placement + default size for a NEW item added to a FREE-mode group. In free mode x/y/w/h are
+ * PERCENTAGES of the group box (not grid cells), so a grid `nextY()` would push it off-canvas — drop
+ * it near the centre with a small cascade so repeated adds don't stack exactly on top of each other.
+ */
+function freePlace(): { x: number; y: number; w: number; h: number } {
+	const n = draft.value?.items.length ?? 0;
+	const off = (n % 6) * 4;
+	return { x: 30 + off, y: 30 + off, w: 20, h: 15 };
+}
+
 function addWidget(payload: { widget: Widget; size: { w: number; h: number }; configure: boolean }) {
 	if (!draft.value) {
 		return;
 	}
-	const item: GridItemModel = {
-		i: newItemId(), x: 0, y: nextY(), w: payload.size.w, h: payload.size.h, widget: payload.widget,
-	};
+	const item: GridItemModel = isFree.value
+		? { i: newItemId(), ...freePlace(), widget: payload.widget }
+		: { i: newItemId(), x: 0, y: nextY(), w: payload.size.w, h: payload.size.h, widget: payload.widget };
 	draft.value.items = [...draft.value.items, item];
 	if (payload.configure) {
 		openProperties(item.i);
@@ -293,7 +408,8 @@ function addWidget(payload: { widget: Widget; size: { w: number; h: number }; co
 
 function addItem(item: GridItemModel) {
 	if (draft.value) {
-		draft.value.items = [...draft.value.items, { ...item, x: 0, y: nextY() }];
+		const placed = isFree.value ? { ...item, ...freePlace() } : { ...item, x: 0, y: nextY() };
+		draft.value.items = [...draft.value.items, placed];
 	}
 }
 
@@ -317,7 +433,8 @@ function duplicateChild(id: string) {
 	}
 	const item = draft.value.items.find((it) => it.i === id);
 	if (item) {
-		draft.value.items = [...draft.value.items, { ...reidItem(item), x: 0, y: nextY() }];
+		const dup = isFree.value ? { ...reidItem(item), ...freePlace() } : { ...reidItem(item), x: 0, y: nextY() };
+		draft.value.items = [...draft.value.items, dup];
 	}
 }
 
@@ -411,6 +528,25 @@ function save() {
 	opacity: 0.85;
 }
 .free-resize-grip:hover {
+	opacity: 1;
+}
+
+/* Rotate grip: a small circle floating above the item's top edge. */
+.free-rotate-grip {
+	position: absolute;
+	left: 50%;
+	top: -18px;
+	width: 14px;
+	height: 14px;
+	margin-left: -7px;
+	background: rgb(var(--v-theme-primary));
+	border: 2px solid rgb(var(--v-theme-surface));
+	border-radius: 50%;
+	cursor: grab;
+	z-index: 100;
+	opacity: 0.85;
+}
+.free-rotate-grip:hover {
 	opacity: 1;
 }
 </style>

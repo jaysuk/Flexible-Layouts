@@ -149,6 +149,10 @@
 									:label="p.label" density="compact" hide-details />
 					</template>
 
+					<v-alert v-if="pending.newerVersion" type="warning" variant="tonal" density="compact" class="mt-3" icon="mdi-update">
+						{{ $t("plugins.flexibleLayouts.io.newerVersion", { exported: pending.newerVersion.exported, running: pending.newerVersion.running }) }}
+					</v-alert>
+
 					<v-alert v-if="pending.missing.length > 0" type="warning" variant="tonal" density="compact" class="mt-3">
 						<div class="text-body-2 mb-1">{{ $t("plugins.flexibleLayouts.io.missingHelp") }}</div>
 						<div v-for="dep in pending.missing" :key="dep.pluginId" class="text-caption">• {{ dep.name }} ({{ dep.pluginId }})</div>

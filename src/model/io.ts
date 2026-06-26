@@ -8,6 +8,9 @@
 import { getLoadedPlugins } from "@/plugins";
 import { useMachineStore } from "@/stores/machine";
 
+import { compareVersions } from "dwc-plugin-runtime";
+
+import { PLUGIN_MANIFEST_ID } from "./constants";
 import { createEmptyDocument, type GridItemModel, type LayoutDependency, type LayoutDocument, type PageLayout, migrateDocument, newItemId, reidItem, sanitizeRuntimeFields, stripItemRuntimeFields } from "./document";
 import { computeDependencies, recomputeDependencies } from "./dependencies";
 import { CUSTOM_PAGE_PREFIX, registerExistingCustomPages, unregisterAllCustomPages } from "./pageManager";
@@ -21,8 +24,20 @@ export interface DwcLayoutFile {
 	kind: typeof FILE_KIND;
 	app: "FlexibleLayouts";
 	fileVersion: number;
+	/** Flexible Layouts plugin version that produced the file (for the "created with a newer FL" warning). */
+	appVersion?: string;
 	exportedAt: string;
 	document: LayoutDocument;
+}
+
+/** The installed Flexible Layouts plugin version, or "" if it can't be read (e.g. no machine connected). */
+function flVersion(): string {
+	try {
+		const plugins = useMachineStore().model.plugins as unknown as { get?: (k: string) => { version?: string } | undefined };
+		return plugins?.get?.(PLUGIN_MANIFEST_ID)?.version ?? "";
+	} catch {
+		return "";
+	}
 }
 
 /** Which parts of the layout to include in a backup. Omitted parts default to included. */
@@ -64,6 +79,7 @@ export function exportLayout(opts: ExportOptions = {}): void {
 		kind: FILE_KIND,
 		app: "FlexibleLayouts",
 		fileVersion: FILE_VERSION,
+		appVersion: flVersion(),
 		exportedAt: new Date().toISOString(),
 		document: doc,
 	};
@@ -89,6 +105,8 @@ export interface ParsedImport {
 	document: LayoutDocument;
 	/** Dependencies the recipient does not currently have loaded/installed. */
 	missing: Array<LayoutDependency>;
+	/** Set when the file was exported by a NEWER Flexible Layouts than the one running — prompt to update. */
+	newerVersion?: { exported: string; running: string };
 }
 
 /** Plugins this machine doesn't have loaded or installed. */
@@ -125,7 +143,14 @@ export function parseLayoutFile(text: string): ParsedImport {
 	// stale dependency list the exporter may have shipped.
 	const deps = computeDependencies(document);
 	document.dependencies = deps;
-	return { document, missing: computeMissing(deps) };
+	// Warn if the file came from a newer Flexible Layouts than this one: migrateDocument can only
+	// migrate UP to the current schema, so a future schema's fields may not render/behave correctly.
+	const exported = typeof file.appVersion === "string" ? file.appVersion : "";
+	const running = flVersion();
+	const newerVersion = exported && running && compareVersions(exported, running) > 0
+		? { exported, running }
+		: undefined;
+	return { document, missing: computeMissing(deps), newerVersion };
 }
 
 /** Which parts of an imported backup to restore over the current layout. */
