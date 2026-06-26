@@ -522,10 +522,10 @@
 		"originX": "Origin X (grid cols)",
 		"originY": "Origin Y (grid rows)",
 		"orientation": "Orientation",
-		"apply": "Apply"
+		"apply": "Apply",
+		"appliesAllHint": "Positions are percentages of the group (0–100). Applies to all widgets in this group."
 	},
 	"presets": {
-		"jogDial": "Jog Dial (preset group)",
 		"hexPad": "Hex Pad (preset group)"
 	},
 	"octopusJog": {
@@ -902,6 +902,7 @@
 		"replaceWarning": "Importing replaces your current layout (all pages, widgets and theme).",
 		"missingHeading": "Missing plugins",
 		"missingHelp": "This layout embeds pages from plugins you don’t have. Those tiles will show a placeholder until you install them.",
+		"newerVersion": "This layout was created with Flexible Layouts v{exported}; you have v{running}. Some widgets or options may not import correctly — update the plugin for full compatibility.",
 		"allPresent": "All required plugins are present.",
 		"importAnyway": "Import anyway",
 		"applyImport": "Import",

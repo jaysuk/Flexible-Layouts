@@ -17,6 +17,9 @@
 				<div class="text-caption text-medium-emphasis mb-1">{{ $t("plugins.flexibleLayouts.properties.preview") }}</div>
 				<v-sheet border rounded class="flex-preview mb-3" :style="previewStyle">
 					<WidgetView :key="previewKey" :widget="(draft as Widget)" />
+					<!-- Inert shield: a preview must never actuate the widget (e.g. fire G-code). This overlay sits
+						 above the rendered widget and swallows all pointer events, so the preview is look-only. -->
+					<div class="flex-preview-shield" />
 				</v-sheet>
 
 				<!-- Position & size — always visible (no click to expand) for quick precise placement. -->
@@ -1630,9 +1633,17 @@ function save() {
 
 <style scoped>
 .flex-preview {
+	position: relative;
 	height: 130px;
 	overflow: auto;
 	background: rgba(var(--v-theme-on-surface), 0.03);
+}
+/* Covers the rendered widget so the preview is non-interactive (sits above the shape's
+   pointer-events:fill path, which a parent pointer-events:none can't override). */
+.flex-preview-shield {
+	position: absolute;
+	inset: 0;
+	z-index: 2;
 }
 .flex-color-input {
 	width: 40px;

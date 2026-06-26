@@ -259,7 +259,9 @@ onBeforeUnmount(() => {
 }
 .flex-grid-item.is-shaped-btn .flex-item-body {
 	background: transparent;
-	overflow: visible;
+	/* Clip the shape to its own tile so it can't bleed across the page; with aspect-correct
+	   rendering the shape fits inside the tile, and overlap/nestling works via z-index, not overflow. */
+	overflow: hidden;
 }
 
 .flex-grid-item {

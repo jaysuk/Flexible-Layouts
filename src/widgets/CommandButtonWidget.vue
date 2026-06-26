@@ -2,7 +2,7 @@
 	<!-- Shaped button: render as inline SVG for non-rect shapes so clicks outside the shape
 		 pass through to widgets beneath (for nestling / overlapping layouts). -->
 	<div v-if="isShapedMode" class="fill-height cmd-shaped-outer" :style="outerStyle" @click="onShapeClick">
-		<svg class="cmd-shape-svg" :viewBox="`0 0 ${SVG_W} ${SVG_H}`" preserveAspectRatio="none"
+		<svg class="cmd-shape-svg" :viewBox="`0 0 ${SVG_W} ${SVG_H}`" :preserveAspectRatio="preserveAspect"
 			 :style="svgPointerStyle">
 			<!-- Shape fill + stroke -->
 			<path :d="shapedPathD" :fill="shapeColor" :fill-opacity="widget.fillOpacity ?? 1"
@@ -10,11 +10,12 @@
 				  :stroke-width="widget.stroke?.width ?? 0"
 				  :stroke-dasharray="widget.stroke?.dash ?? undefined"
 				  class="cmd-shape-path" />
-			<!-- Clip the label/icon so it doesn't bleed outside the shape -->
-			<clipPath id="shape-clip">
+			<!-- Clip the label/icon so it doesn't bleed outside the shape. The id MUST be unique per
+				 instance — a shared id makes every shaped button on the page clip to the first one. -->
+			<clipPath :id="clipId">
 				<path :d="shapedPathD" />
 			</clipPath>
-			<foreignObject x="0" y="0" :width="SVG_W" :height="SVG_H" clip-path="url(#shape-clip)"
+			<foreignObject x="0" y="0" :width="SVG_W" :height="SVG_H" :clip-path="`url(#${clipId})`"
 						   class="cmd-shape-fo" style="pointer-events:none;">
 				<div class="cmd-shape-content d-flex align-center justify-center ga-1"
 					 :style="{ width: `${SVG_W}px`, height: `${SVG_H}px` }"
@@ -70,7 +71,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, useId } from "vue";
 
 import i18n from "@/i18n";
 import { useMachineStore } from "@/stores/machine";
@@ -114,6 +115,18 @@ const isShapedMode = computed(() => {
 // ---- SVG viewBox (fixed logical size; scales with CSS) ----------------------
 const SVG_W = 100;
 const SVG_H = 100;
+
+// Unique clip-path id per instance (Vue useId is stable + collision-free).
+const clipId = `cmd-shape-clip-${useId()}`;
+
+// Proportional shapes (round/regular) must keep their aspect ratio or they distort into ellipses /
+// skewed polygons; box-filling shapes (rect, pill, ellipse, directional) are meant to fill the cell.
+const preserveAspect = computed(() => {
+	const k = props.widget.shape?.kind;
+	return (k === "circle" || k === "polygon" || k === "star" || k === "wedge" || k === "polygonPoints" || k === "path")
+		? "xMidYMid meet"
+		: "none";
+});
 
 /** Convert a ButtonShape descriptor to a ShapeParams object for shapePath(). */
 function toShapeParams(s: ButtonShape): ShapeParams {
@@ -163,10 +176,24 @@ const shapedPathD = computed(() => {
 /** Resolve the fill colour for the shape. */
 const shapeColor = computed(() => resolveColor(props.overrideColor || props.widget.color || "primary"));
 
-/** Label/icon colour: white on dark fills, black on light — use Vuetify's on-* convention.
- *  Simple heuristic: if color is a Vuetify token we can't introspect at runtime,
- *  so default to white (Vuetify flat button contrast). */
-const labelColor = computed(() => "white");
+/** Label/icon colour: pick black or white for legibility against the fill. Vuetify theme tokens
+ *  resolve to `rgb(var(--v-theme-…))` which we can't read at build time → default white (matches the
+ *  flat-button convention); explicit hex/rgb fills get a luminance-based choice so light custom
+ *  colours don't end up with invisible white text. */
+function readableText(css: string): string {
+	const hex = /^#?([0-9a-fA-F]{6})$/.exec(css.trim());
+	const rgb = /rgba?\(\s*(\d+)\D+(\d+)\D+(\d+)/.exec(css);
+	let r: number, g: number, b: number;
+	if (hex) {
+		r = parseInt(hex[1].slice(0, 2), 16); g = parseInt(hex[1].slice(2, 4), 16); b = parseInt(hex[1].slice(4, 6), 16);
+	} else if (rgb) {
+		r = +rgb[1]; g = +rgb[2]; b = +rgb[3];
+	} else {
+		return "white"; // unparseable (e.g. a Vuetify theme token) → default
+	}
+	return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.6 ? "black" : "white";
+}
+const labelColor = computed(() => readableText(shapeColor.value));
 
 const outerStyle = computed(() => {
 	const style: Record<string, string> = {};
@@ -176,8 +203,6 @@ const outerStyle = computed(() => {
 	if (props.widget.z != null) {
 		style.zIndex = String(props.widget.z);
 	}
-	// The shaped button wrapper should not clip — let the SVG overflow
-	style.overflow = "visible";
 	return style;
 });
 

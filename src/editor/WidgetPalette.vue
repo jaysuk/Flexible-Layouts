@@ -86,7 +86,7 @@ import i18n from "@/i18n";
 import { createDefaultWidget, type GridItemModel, type Widget } from "../model/document";
 import { parsePanelFile } from "../model/io";
 import { type EmbeddableComponentInfo, type EmbeddablePage, listEmbeddableComponents, listEmbeddablePages } from "../model/pluginPages";
-import { createHexPadPreset, createJogDialPreset } from "../util/presets";
+import { createHexPadPreset } from "../util/presets";
 import WidgetView from "../widgets/WidgetView.vue";
 import {
 	BUILTIN_PANELS,
@@ -189,15 +189,6 @@ const allItems = computed<Array<PaletteItem>>(() => {
 
 	// Presets — composite groups, fully editable after insertion
 	const t = (k: string) => i18n.global.t(`plugins.flexibleLayouts.${k}`);
-	items.push({
-		id: "preset:jogDial",
-		icon: "mdi-circle-double",
-		label: t("presets.jogDial"),
-		category: "controls",
-		size: { w: 8, h: 9 },
-		choose: () => choosePreset(createJogDialPreset()),
-		previewWidget: createJogDialPreset().widget,
-	});
 	items.push({
 		id: "preset:hexPad",
 		icon: "mdi-hexagon-multiple",
