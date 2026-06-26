@@ -137,7 +137,7 @@ const anchor = computed<{ x: number; y: number }>(() => {
 	}
 	return { x: 50, y: 50 };
 });
-const contentStyle = computed(() => ({
+const contentStyle = computed<Record<string, string>>(() => ({
 	position: "absolute",
 	left: `${anchor.value.x}%`,
 	top: `${anchor.value.y}%`,
