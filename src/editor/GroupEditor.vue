@@ -18,20 +18,69 @@
 						   @click="paletteOpen = true">
 						{{ $t("plugins.flexibleLayouts.editor.addWidget") }}
 					</v-btn>
+					<!-- Mode toggle -->
+					<v-btn-toggle
+						:model-value="draft.layoutMode ?? 'grid'"
+						mandatory density="compact" variant="outlined"
+						@update:model-value="(v: string) => { if (draft) draft.layoutMode = v as 'grid' | 'free'; }"
+					>
+						<v-btn value="grid" size="small" prepend-icon="mdi-view-grid">Grid</v-btn>
+						<v-btn value="free" size="small" prepend-icon="mdi-move">Free</v-btn>
+					</v-btn-toggle>
 					<v-spacer />
+					<!-- Selected item controls (free mode) -->
+					<template v-if="isFree && selectedId !== null">
+						<v-btn icon="mdi-arrange-bring-to-front" size="small" variant="text"
+							   title="Bring to front" @click="bringToFront" />
+						<v-btn icon="mdi-arrange-send-to-back" size="small" variant="text"
+							   title="Send to back" @click="sendToBack" />
+						<v-btn icon="mdi-cog" size="small" variant="text"
+							   title="Properties" @click="openProperties(selectedId!)" />
+						<v-btn icon="mdi-delete" size="small" variant="text" color="error"
+							   title="Delete" @click="removeItem(selectedId!)" />
+					</template>
 					<v-chip size="small" variant="tonal">
 						{{ $t("plugins.flexibleLayouts.editor.itemCount", { count: draft.items.length }) }}
 					</v-chip>
 				</div>
 
-				<FlexGrid v-if="draft.items.length > 0" v-model:layout="draft.items"
-						  :cols="draft.cols ?? 12" :row-height="draft.rowHeight ?? 30" :edit-mode="true"
-						  @remove="removeItem" @edit="openProperties" @export-item="exportChild"
-						  @duplicate="duplicateChild" @toggle-lock="toggleChildLock" />
-				<v-container v-else class="text-center py-12 text-medium-emphasis">
-					<v-icon size="48">mdi-group</v-icon>
-					<div>{{ $t("plugins.flexibleLayouts.group.empty") }}</div>
-				</v-container>
+				<!-- FREE mode canvas editor -->
+				<div v-if="isFree"
+					 ref="freeCanvasRef"
+					 class="free-editor-canvas"
+					 @click.self="selectedId = null"
+				>
+					<div
+						v-for="item in sortedItems"
+						:key="item.i"
+						class="free-editor-item"
+						:class="{ 'free-editor-item--selected': selectedId === item.i }"
+						:style="freeItemStyle(item)"
+						@pointerdown.stop="onItemPointerDown($event, item)"
+						@click.stop="selectedId = item.i"
+					>
+						<!-- Widget preview (pointer-inert so drag doesn't fire widget) -->
+						<div class="free-editor-preview" style="pointer-events: none; width: 100%; height: 100%;">
+							<WidgetView :widget="item.widget" />
+						</div>
+						<!-- Resize grip (bottom-right) -->
+						<div v-if="selectedId === item.i"
+							 class="free-resize-grip"
+							 @pointerdown.stop="onResizePointerDown($event, item)" />
+					</div>
+				</div>
+
+				<!-- GRID mode: existing FlexGrid editor -->
+				<template v-else>
+					<FlexGrid v-if="draft.items.length > 0" v-model:layout="draft.items"
+							  :cols="draft.cols ?? 12" :row-height="draft.rowHeight ?? 30" :edit-mode="true"
+							  @remove="removeItem" @edit="openProperties" @export-item="exportChild"
+							  @duplicate="duplicateChild" @toggle-lock="toggleChildLock" />
+					<v-container v-else class="text-center py-12 text-medium-emphasis">
+						<v-icon size="48">mdi-group</v-icon>
+						<div>{{ $t("plugins.flexibleLayouts.group.empty") }}</div>
+					</v-container>
+				</template>
 			</v-card-text>
 
 			<v-card-actions>
@@ -47,7 +96,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 
 import {
 	type ConditionRule,
@@ -61,6 +110,7 @@ import {
 import { exportPanel } from "../model/io";
 import { describeWidget } from "../widgets/registry";
 import FlexGrid from "../page/FlexGrid.vue";
+import WidgetView from "../widgets/WidgetView.vue";
 import WidgetPalette from "./WidgetPalette.vue";
 import PropertiesDialog from "./PropertiesDialog.vue";
 
@@ -71,16 +121,158 @@ const emit = defineEmits<{ "update:modelValue": [boolean]; save: [GroupWidget] }
 
 const draft = ref<GroupWidget | null>(null);
 const paletteOpen = ref(false);
+const selectedId = ref<string | null>(null);
+const freeCanvasRef = ref<HTMLElement | null>(null);
 
 watch(
 	() => props.modelValue,
 	(open) => {
 		if (open && props.group) {
 			draft.value = JSON.parse(JSON.stringify(props.group));
+			selectedId.value = null;
 		}
 	},
 	{ immediate: true },
 );
+
+const isFree = computed(() => draft.value?.layoutMode === "free");
+
+/** Items sorted by freeZ ascending for rendering (higher z on top). */
+const sortedItems = computed<Array<GridItemModel>>(() => {
+	if (!draft.value) return [];
+	return [...draft.value.items].sort((a, b) => (a.freeZ ?? 0) - (b.freeZ ?? 0));
+});
+
+function freeItemStyle(item: GridItemModel): Record<string, string> {
+	const rot = item.freeRotation ?? 0;
+	const z = item.freeZ ?? 0;
+	const style: Record<string, string> = {
+		position: "absolute",
+		left: `${item.x}%`,
+		top: `${item.y}%`,
+		width: `${item.w}%`,
+		height: `${item.h}%`,
+		zIndex: String(z + 10), // +10 so even z=0 is above the canvas background
+		cursor: "move",
+		boxSizing: "border-box",
+	};
+	if (rot !== 0) {
+		style.transform = `rotate(${rot}deg)`;
+		style.transformOrigin = "center center";
+	}
+	return style;
+}
+
+// ── Free-mode drag / resize ──────────────────────────────────────────────────
+
+interface DragState {
+	itemId: string;
+	startX: number;
+	startY: number;
+	origX: number;
+	origY: number;
+}
+interface ResizeState {
+	itemId: string;
+	startX: number;
+	startY: number;
+	origW: number;
+	origH: number;
+}
+
+let dragState: DragState | null = null;
+let resizeState: ResizeState | null = null;
+
+function canvasPct(): { w: number; h: number } {
+	const el = freeCanvasRef.value;
+	if (!el) return { w: 1, h: 1 };
+	return { w: el.clientWidth || 1, h: el.clientHeight || 1 };
+}
+
+function updateItem(id: string, patch: Partial<GridItemModel>): void {
+	if (!draft.value) return;
+	draft.value.items = draft.value.items.map(it =>
+		it.i === id ? { ...it, ...patch } : it,
+	);
+}
+
+function onItemPointerDown(e: PointerEvent, item: GridItemModel): void {
+	selectedId.value = item.i;
+	(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+	dragState = {
+		itemId: item.i,
+		startX: e.clientX,
+		startY: e.clientY,
+		origX: item.x,
+		origY: item.y,
+	};
+	window.addEventListener("pointermove", onDragMove);
+	window.addEventListener("pointerup", onDragUp, { once: true });
+}
+
+function onDragMove(e: PointerEvent): void {
+	if (!dragState) return;
+	const { w, h } = canvasPct();
+	const dx = ((e.clientX - dragState.startX) / w) * 100;
+	const dy = ((e.clientY - dragState.startY) / h) * 100;
+	const it = draft.value?.items.find(i => i.i === dragState!.itemId);
+	if (!it) return;
+	updateItem(dragState.itemId, {
+		x: Math.max(0, Math.min(100 - it.w, dragState.origX + dx)),
+		y: Math.max(0, Math.min(100 - it.h, dragState.origY + dy)),
+	});
+}
+
+function onDragUp(): void {
+	dragState = null;
+	window.removeEventListener("pointermove", onDragMove);
+}
+
+function onResizePointerDown(e: PointerEvent, item: GridItemModel): void {
+	e.stopPropagation();
+	(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+	resizeState = {
+		itemId: item.i,
+		startX: e.clientX,
+		startY: e.clientY,
+		origW: item.w,
+		origH: item.h,
+	};
+	window.addEventListener("pointermove", onResizeMove);
+	window.addEventListener("pointerup", onResizeUp, { once: true });
+}
+
+function onResizeMove(e: PointerEvent): void {
+	if (!resizeState) return;
+	const { w, h } = canvasPct();
+	const dw = ((e.clientX - resizeState.startX) / w) * 100;
+	const dh = ((e.clientY - resizeState.startY) / h) * 100;
+	updateItem(resizeState.itemId, {
+		w: Math.max(2, resizeState.origW + dw),
+		h: Math.max(2, resizeState.origH + dh),
+	});
+}
+
+function onResizeUp(): void {
+	resizeState = null;
+	window.removeEventListener("pointermove", onResizeMove);
+}
+
+// ── Z-order controls ─────────────────────────────────────────────────────────
+
+function bringToFront(): void {
+	if (!selectedId.value || !draft.value) return;
+	const maxZ = draft.value.items.reduce((m, it) => Math.max(m, it.freeZ ?? 0), 0);
+	updateItem(selectedId.value, { freeZ: maxZ + 1 });
+}
+
+function sendToBack(): void {
+	if (!selectedId.value || !draft.value) return;
+	const minZ = draft.value.items.reduce((m, it) => Math.min(m, it.freeZ ?? 0), 0);
+	updateItem(selectedId.value, { freeZ: minZ - 1 });
+}
+
+// ── Grid-mode item management ─────────────────────────────────────────────────
 
 function nextY(): number {
 	return (draft.value?.items ?? []).reduce((max, it) => Math.max(max, it.y + it.h), 0);
@@ -108,6 +300,7 @@ function addItem(item: GridItemModel) {
 function removeItem(id: string) {
 	if (draft.value) {
 		draft.value.items = draft.value.items.filter((it) => it.i !== id);
+		if (selectedId.value === id) selectedId.value = null;
 	}
 }
 
@@ -148,7 +341,7 @@ function openProperties(id: string) {
 	propertiesOpen.value = true;
 }
 
-function saveProperties(payload: { widget: Widget; conditions: Array<ConditionRule>; colors: PanelColors; typography: Typography; fit: boolean | undefined; autoHeight: boolean | undefined; geometry: { x: number; y: number; w: number; h: number } }) {
+function saveProperties(payload: { widget: Widget; conditions: Array<ConditionRule>; colors: PanelColors; typography: Typography; fit: boolean | undefined; autoHeight: boolean | undefined; tooltip?: string; lockWhilePrinting?: boolean; geometry: { x: number; y: number; w: number; h: number } }) {
 	if (!draft.value) {
 		return;
 	}
@@ -165,3 +358,59 @@ function save() {
 	emit("update:modelValue", false);
 }
 </script>
+
+<style scoped>
+/* Free-mode edit canvas: fills the available height, serves as the percent reference frame. */
+.free-editor-canvas {
+	position: relative;
+	width: 100%;
+	height: calc(70vh - 96px);
+	background: repeating-linear-gradient(
+		0deg,
+		transparent,
+		transparent 9px,
+		rgba(var(--v-border-color), 0.08) 9px,
+		rgba(var(--v-border-color), 0.08) 10px
+	),
+	repeating-linear-gradient(
+		90deg,
+		transparent,
+		transparent 9px,
+		rgba(var(--v-border-color), 0.08) 9px,
+		rgba(var(--v-border-color), 0.08) 10px
+	);
+	border: 1px solid rgba(var(--v-border-color), 0.3);
+	border-radius: 4px;
+	overflow: hidden;
+}
+
+/* Each free child item in the editor. */
+.free-editor-item {
+	position: absolute;
+	box-sizing: border-box;
+	user-select: none;
+}
+
+/* Selection outline */
+.free-editor-item--selected {
+	outline: 2px solid rgb(var(--v-theme-primary));
+	outline-offset: 1px;
+}
+
+/* Resize grip: bottom-right corner handle. */
+.free-resize-grip {
+	position: absolute;
+	right: -4px;
+	bottom: -4px;
+	width: 16px;
+	height: 16px;
+	background: rgb(var(--v-theme-primary));
+	border-radius: 3px;
+	cursor: se-resize;
+	z-index: 100;
+	opacity: 0.85;
+}
+.free-resize-grip:hover {
+	opacity: 1;
+}
+</style>

@@ -9,7 +9,7 @@
  */
 
 /** Bump whenever the shape below changes incompatibly; add a migration in migrateDocument(). */
-export const DOCUMENT_SCHEMA_VERSION = 2;
+export const DOCUMENT_SCHEMA_VERSION = 3;
 
 /**
  * A widget is the thing that lives inside a grid cell.
@@ -101,6 +101,14 @@ export type Widget =
 		items: Array<GridItemModel>;
 		cols?: number;
 		rowHeight?: number;
+		/**
+		 * Layout mode for the group's children.
+		 * - `"grid"` (default / undefined) — the existing integer-cell FlexGrid, unchanged.
+		 * - `"free"` — children are positioned by float % values of the group box
+		 *   (x/y/w/h in 0–100, rotation in degrees, z for draw order).  Set only by the
+		 *   free-position presets; never set on old groups, so back-compat is guaranteed.
+		 */
+		layoutMode?: "grid" | "free";
 	}
 	| {
 		/** Embed a page or tab registered by another DWC plugin. */
@@ -969,6 +977,17 @@ export interface GridItemModel {
 	autoHeight?: boolean;
 	/** Object-model-driven rules that recolour / hide / disable this widget at runtime. */
 	conditions?: Array<ConditionRule>;
+	/**
+	 * Rotation in degrees applied to this item when it is placed inside a free-mode group.
+	 * Ignored in normal grid layout. The codeButton widget's own `rotation` field drives the
+	 * shape rotation separately; this one positions the whole item box.
+	 */
+	freeRotation?: number;
+	/**
+	 * Z-order when placed inside a free-mode group (higher = rendered in front).
+	 * Separate from the codeButton widget's own `z` field which controls z in a normal grid.
+	 */
+	freeZ?: number;
 	/** Pixel width when placed in the header strip (which is a horizontal row, not a grid). */
 	headerWidth?: number;
 	/**
@@ -1126,6 +1145,10 @@ const DOC_MIGRATIONS: Array<DocMigration> = [
 	// plain v-btn (shape absent / kind "rect"). A no-op migration is registered so the version
 	// stamp is bumped on load and re-saved documents carry the current version.
 	{ to: 2, up: (_doc) => { /* new fields are all optional, nothing to rewrite */ } },
+	// v2 → v3: group widget gains optional `layoutMode` ("grid"|"free"). All existing groups stay
+	// as "grid" mode — the field is absent/undefined which the runtime treats as "grid". No data
+	// change needed; the migration just bumps the version stamp so re-saved documents carry v3.
+	{ to: 3, up: (_doc) => { /* layoutMode is optional; existing groups unaffected */ } },
 ];
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
