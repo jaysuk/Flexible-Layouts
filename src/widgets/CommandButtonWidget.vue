@@ -10,18 +10,18 @@
 				  :stroke-width="widget.stroke?.width ?? 0"
 				  :stroke-dasharray="widget.stroke?.dash ?? undefined"
 				  class="cmd-shape-path" />
-			<!-- Clip the label/icon so it doesn't bleed outside the shape. The id MUST be unique per
-				 instance — a shared id makes every shaped button on the page clip to the first one. -->
-			<clipPath :id="clipId">
-				<path :d="shapedPathD" />
-			</clipPath>
-			<foreignObject x="0" y="0" :width="SVG_W" :height="SVG_H" :clip-path="`url(#${clipId})`"
-						   class="cmd-shape-fo" style="pointer-events:none;">
-				<div class="cmd-shape-content d-flex align-center justify-center ga-1"
-					 :style="{ width: `${SVG_W}px`, height: `${SVG_H}px` }"
-					 :class="iconLayoutClass">
-					<v-icon v-if="widget.icon" :size="iconSize" :color="labelColor">{{ widget.icon }}</v-icon>
-					<span v-if="widget.label" class="text-truncate" :style="{ color: labelColor }">{{ widget.label }}</span>
+			<foreignObject x="0" y="0" :width="SVG_W" :height="SVG_H" class="cmd-shape-fo"
+						   style="pointer-events:none; overflow:visible;">
+				<div xmlns="http://www.w3.org/1999/xhtml" style="position:relative; width:100%; height:100%;">
+					<!-- Label/icon anchored at the shape's visual centre — the CENTROID for wedges, so the
+						 text sits inside the wedge instead of at the box centre (which is outside it). The
+						 label is deliberately NOT clipped to the shape: clipping mis-placed text was exactly
+						 what garbled wedge labels. -->
+					<div class="cmd-shape-content d-flex align-center justify-center ga-1" :class="iconLayoutClass"
+						 :style="contentStyle">
+						<v-icon v-if="widget.icon" :size="iconSize" :color="labelColor">{{ widget.icon }}</v-icon>
+						<span v-if="widget.label" class="text-truncate" :style="{ color: labelColor }">{{ widget.label }}</span>
+					</div>
 				</div>
 			</foreignObject>
 		</svg>
@@ -71,7 +71,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, useId } from "vue";
+import { computed, ref } from "vue";
 
 import i18n from "@/i18n";
 import { useMachineStore } from "@/stores/machine";
@@ -116,9 +116,6 @@ const isShapedMode = computed(() => {
 const SVG_W = 100;
 const SVG_H = 100;
 
-// Unique clip-path id per instance (Vue useId is stable + collision-free).
-const clipId = `cmd-shape-clip-${useId()}`;
-
 // Proportional shapes (round/regular) must keep their aspect ratio or they distort into ellipses /
 // skewed polygons; box-filling shapes (rect, pill, ellipse, directional) are meant to fill the cell.
 const preserveAspect = computed(() => {
@@ -127,6 +124,26 @@ const preserveAspect = computed(() => {
 		? "xMidYMid meet"
 		: "none";
 });
+
+// Where to place the label/icon, in viewBox percent. Most shapes are centred on the box; a wedge's
+// box centre is empty, so anchor on its centroid (mid-radius along the bisector). Polar convention
+// matches shapes.ts: x = cx + r·sin(θ), y = cy − r·cos(θ), θ clockwise from up.
+const anchor = computed<{ x: number; y: number }>(() => {
+	const s = props.widget.shape;
+	if (s?.kind === "wedge") {
+		const midA = ((s.startAngle ?? 0) + (s.sweepAngle ?? 90) / 2) * Math.PI / 180;
+		const midR = (((s.innerRadius ?? 0.3) + (s.outerRadius ?? 1.0)) / 2) * 50; // radii are fractions of the half-box (50)
+		return { x: 50 + midR * Math.sin(midA), y: 50 - midR * Math.cos(midA) };
+	}
+	return { x: 50, y: 50 };
+});
+const contentStyle = computed(() => ({
+	position: "absolute",
+	left: `${anchor.value.x}%`,
+	top: `${anchor.value.y}%`,
+	transform: "translate(-50%, -50%)",
+	maxWidth: "100%",
+}));
 
 /** Convert a ButtonShape descriptor to a ShapeParams object for shapePath(). */
 function toShapeParams(s: ButtonShape): ShapeParams {
