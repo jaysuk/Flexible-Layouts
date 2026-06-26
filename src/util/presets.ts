@@ -12,7 +12,7 @@
 
 import type { GridItemModel, Widget } from "../model/document";
 import { newItemId } from "../model/document";
-import { hexLayout, ringLayout } from "./shapes";
+import { hexLayout } from "./shapes";
 
 // --- types -------------------------------------------------------------------
 
@@ -116,30 +116,6 @@ export function createJogDialPreset(color = "primary"): GridItemModel {
 	const cellHalf = WEDGE_CELL / 2;
 
 	const items: Array<GridItemModel> = [];
-
-	// ── 8 directions for XY jogging ──────────────────────────────────────────
-	const directions = [
-		{ name: "Y-", angle: 0,    xCode: "",   yCode: `-${xySteps[0]}`, diagX: "",              diagY: ""              },
-		{ name: "XY+", angle: 45,  xCode: `${xySteps[0]}`,  yCode: `-${xySteps[0]}`, diagX: "x", diagY: "y" },
-		{ name: "X+", angle: 90,   xCode: `${xySteps[0]}`,  yCode: "",   diagX: "",              diagY: ""              },
-		{ name: "XY+Y-", angle: 135, xCode: `${xySteps[0]}`, yCode: `${xySteps[0]}`, diagX: "x", diagY: "y" },
-		{ name: "Y+", angle: 180,  xCode: "",   yCode: `${xySteps[0]}`, diagX: "",              diagY: ""              },
-		{ name: "XY-Y+", angle: 225, xCode: `-${xySteps[0]}`, yCode: `${xySteps[0]}`, diagX: "x", diagY: "y" },
-		{ name: "X-", angle: 270,  xCode: `-${xySteps[0]}`, yCode: "",   diagX: "",              diagY: ""              },
-		{ name: "XY-", angle: 315, xCode: `-${xySteps[0]}`, yCode: `-${xySteps[0]}`, diagX: "x", diagY: "y" },
-	];
-
-	// Labels and codes for each direction at each step distance
-	const dirLabels = [
-		["Y−", "Y+"],            // 0°  (up = Y-)
-		["↗", "↗"],              // 45°
-		["X+", "X+"],            // 90°
-		["↘", "↘"],              // 135°
-		["Y+", "Y−"],            // 180° (down = Y+)
-		["↙", "↙"],              // 225°
-		["X−", "X−"],            // 270°
-		["↖", "↖"],              // 315°
-	];
 
 	// Helper: build gcode for one direction + step
 	function jogCode(angleIdx: number, step: number): string {
