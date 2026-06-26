@@ -68,8 +68,9 @@ export interface FreeformCatalogEntry {
 
 export const FREEFORM_WIDGETS: ReadonlyArray<FreeformCatalogEntry> = [
 	// Controls — interactive, send commands
-	{ type: "codeButton", labelKey: "widgets.codeButton", icon: "mdi-gesture-tap-button", defaultSize: { w: 3, h: 3 }, category: "controls" },
-	{ type: "jog",        labelKey: "widgets.jog",        icon: "mdi-circle-double",      defaultSize: { w: 5, h: 8 }, category: "controls" },
+	{ type: "codeButton",  labelKey: "widgets.codeButton",  icon: "mdi-gesture-tap-button", defaultSize: { w: 3, h: 3 }, category: "controls" },
+	{ type: "jog",         labelKey: "widgets.jog",         icon: "mdi-circle-double",      defaultSize: { w: 5, h: 8 }, category: "controls" },
+	{ type: "octopusJog",  labelKey: "widgets.octopusJog",  icon: "mdi-arrow-all",          defaultSize: { w: 6, h: 9 }, category: "controls" },
 	{ type: "slider",     labelKey: "widgets.slider",     icon: "mdi-tune-variant",       defaultSize: { w: 4, h: 2 }, category: "controls" },
 	{ type: "toggle",     labelKey: "widgets.toggle",     icon: "mdi-toggle-switch",      defaultSize: { w: 3, h: 2 }, category: "controls" },
 	{ type: "stepper",    labelKey: "widgets.stepper",    icon: "mdi-plus-minus-variant", defaultSize: { w: 3, h: 2 }, category: "controls" },
@@ -171,6 +172,11 @@ export function describeWidget(widget: Widget): { title: string; icon: string } 
 			return {
 				title: widget.title || i18n.global.t("plugins.flexibleLayouts.widgets.group"),
 				icon: "mdi-group",
+			};
+		case "octopusJog":
+			return {
+				title: widget.title || i18n.global.t("plugins.flexibleLayouts.widgets.octopusJog"),
+				icon: "mdi-arrow-all",
 			};
 		case "jog":
 			return {

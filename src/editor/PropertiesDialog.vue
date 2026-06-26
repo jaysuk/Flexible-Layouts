@@ -324,6 +324,70 @@
 					</div>
 				</template>
 
+				<!-- 8-arm octopus jog control -->
+				<template v-else-if="draft.type === 'octopusJog'">
+					<div class="text-caption text-medium-emphasis mb-2">
+						{{ $t("plugins.flexibleLayouts.jog.configHint") }}
+					</div>
+					<v-text-field v-model="draft.title" class="mb-2" density="compact" variant="outlined" hide-details
+								  clearable :label="$t('plugins.flexibleLayouts.jog.titleField')" />
+					<v-row dense>
+						<v-col cols="4">
+							<v-text-field v-model="draft.xAxis" density="compact" variant="outlined" hide-details
+										  :label="$t('plugins.flexibleLayouts.jog.xAxis')" />
+						</v-col>
+						<v-col cols="4">
+							<v-text-field v-model="draft.yAxis" density="compact" variant="outlined" hide-details
+										  :label="$t('plugins.flexibleLayouts.jog.yAxis')" />
+						</v-col>
+						<v-col cols="4">
+							<v-text-field v-model="draft.zAxis" density="compact" variant="outlined" hide-details
+										  :label="$t('plugins.flexibleLayouts.jog.zAxis')" />
+						</v-col>
+					</v-row>
+					<v-text-field v-model="xyStepsText" class="mt-2" density="compact" variant="outlined" hide-details
+								  :label="$t('plugins.flexibleLayouts.jog.xySteps')"
+								  :hint="$t('plugins.flexibleLayouts.jog.stepsHint')" persistent-hint />
+					<v-text-field v-model="zStepsText" class="mt-2" density="compact" variant="outlined" hide-details
+								  :label="$t('plugins.flexibleLayouts.jog.zSteps')" />
+					<v-row dense class="mt-1">
+						<v-col cols="6">
+							<v-text-field v-model.number="draft.xyFeedrate" type="number" density="compact"
+										  variant="outlined" hide-details suffix="mm/min"
+										  :label="$t('plugins.flexibleLayouts.jog.xyFeed')" />
+						</v-col>
+						<v-col cols="6">
+							<v-text-field v-model.number="draft.zFeedrate" type="number" density="compact"
+										  variant="outlined" hide-details suffix="mm/min"
+										  :label="$t('plugins.flexibleLayouts.jog.zFeed')" />
+						</v-col>
+					</v-row>
+					<ColorSelect v-model="draft.color" class="mt-2" density="compact"
+							  variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" />
+					<div class="d-flex flex-wrap ga-x-4">
+						<v-switch v-model="draft.showZ" color="primary" density="compact" hide-details
+								  :label="$t('plugins.flexibleLayouts.jog.showZ')" />
+						<v-switch v-model="draft.showHome" color="primary" density="compact" hide-details
+								  :label="$t('plugins.flexibleLayouts.jog.showHome')" />
+						<v-switch v-model="draft.showFeedrate" color="primary" density="compact" hide-details
+								  :label="$t('plugins.flexibleLayouts.jog.showFeedrate')" />
+						<v-switch v-model="draft.showMotorsOff" color="primary" density="compact" hide-details
+								  :label="$t('plugins.flexibleLayouts.jog.showMotorsOff')" />
+						<v-switch v-model="draft.showDiagonals" color="primary" density="compact" hide-details
+								  :label="$t('plugins.flexibleLayouts.octopusJog.showDiagonals')" />
+						<v-switch v-model="draft.showDistanceBullets" color="primary" density="compact" hide-details
+								  :label="$t('plugins.flexibleLayouts.octopusJog.showDistanceBullets')" />
+						<v-switch v-model="draft.showDro" color="primary" density="compact" hide-details
+								  :label="$t('plugins.flexibleLayouts.octopusJog.showDro')" />
+						<v-switch v-model="draft.invertX" color="primary" density="compact" hide-details
+								  :label="$t('plugins.flexibleLayouts.jog.invertX')" />
+						<v-switch v-model="draft.invertY" color="primary" density="compact" hide-details
+								  :label="$t('plugins.flexibleLayouts.jog.invertY')" />
+						<v-switch v-model="draft.invertZ" color="primary" density="compact" hide-details
+								  :label="$t('plugins.flexibleLayouts.jog.invertZ')" />
+					</div>
+				</template>
+
 				<!-- NeoPixel / LED strip -->
 				<template v-else-if="draft.type === 'neopixel'">
 					<v-text-field v-model="draft.title" class="mb-2" density="compact" variant="outlined" hide-details

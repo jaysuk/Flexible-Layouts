@@ -139,6 +139,36 @@ export type Widget =
 		yLabel?: string;
 	}
 	| {
+		/**
+		 * 8-arm octopus jog: 4 cardinal + 4 diagonal wedge-sector rings, each ring independently
+		 * clickable for its distance. Diagonal arms jog both axes simultaneously. Visually similar
+		 * to the standard jog widget but with full 8-direction coverage.
+		 */
+		type: "octopusJog";
+		title?: string;
+		xAxis?: string;
+		yAxis?: string;
+		zAxis?: string;
+		xySteps?: Array<number>;
+		zSteps?: Array<number>;
+		xyFeedrate?: number;
+		zFeedrate?: number;
+		invertX?: boolean;
+		invertY?: boolean;
+		invertZ?: boolean;
+		showZ?: boolean;
+		showHome?: boolean;
+		showFeedrate?: boolean;
+		showMotorsOff?: boolean;
+		/** Show diagonal (dual-axis) arms. Default true. */
+		showDiagonals?: boolean;
+		/** Show the Pronterface-style distance bullet legend. Default true. */
+		showDistanceBullets?: boolean;
+		/** Show a live X/Y/Z DRO header (machine position from object model). Default false. */
+		showDro?: boolean;
+		color?: string;
+	}
+	| {
 		/** Pronterface-style movement/jog control: concentric step rings for two planar axes plus a
 		 *  vertical bar for a third. Step amounts are right-click editable at runtime. */
 		type: "jog";
@@ -574,6 +604,18 @@ export function createDefaultWidget(type: WidgetType): Widget {
 				series: [{ omPath: "heat.heaters[1].current", label: "Tool", color: "primary" }],
 				windowSeconds: 120,
 				intervalMs: 1000,
+			};
+		case "octopusJog":
+			return {
+				type: "octopusJog",
+				title: "8-Arm Jog",
+				xAxis: "X", yAxis: "Y", zAxis: "Z",
+				xySteps: [100, 10, 1, 0.1],
+				zSteps: [10, 1, 0.1],
+				xyFeedrate: 3000, zFeedrate: 600,
+				showZ: true, showHome: true, showFeedrate: true, showMotorsOff: false,
+				showDiagonals: true, showDistanceBullets: true, showDro: false,
+				color: "primary",
 			};
 		case "jog":
 			return {

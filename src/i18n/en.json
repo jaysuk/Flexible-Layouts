@@ -82,6 +82,7 @@
 		"label": "Text / image",
 		"web": "Web page (iframe)",
 		"jog": "Movement / jog (Pronterface)",
+		"octopusJog": "8-arm jog (octopus)",
 		"neopixel": "LED strip (NeoPixel)",
 		"globals": "Globals editor",
 		"slider": "Slider",
@@ -466,6 +467,11 @@
 		"motorsOff": "Motors off",
 		"editStepTitle": "Change step amount",
 		"stepAmount": "Step (mm)"
+	},
+	"octopusJog": {
+		"showDiagonals": "Diagonal arms (X+Y combined)",
+		"showDistanceBullets": "Distance legend bullets",
+		"showDro": "Live position header (DRO)"
 	},
 	"neopixel": {
 		"titleField": "Panel title",

@@ -7,6 +7,7 @@
 	<InputWidget v-else-if="widget.type === 'input'" :widget="widget" :disabled="disabled" />
 	<ChartWidget v-else-if="widget.type === 'chart'" :widget="widget" />
 	<JogWidget v-else-if="widget.type === 'jog'" :widget="widget" :disabled="disabled" />
+	<OctopusJogWidget v-else-if="widget.type === 'octopusJog'" :widget="widget" :disabled="disabled" />
 	<NeopixelWidget v-else-if="widget.type === 'neopixel'" :widget="widget" :disabled="disabled" />
 	<GlobalsWidget v-else-if="widget.type === 'globals'" :widget="widget" :disabled="disabled" />
 	<SliderWidget v-else-if="widget.type === 'slider'" :widget="widget" :disabled="disabled" />
@@ -75,6 +76,7 @@ import IndicatorsWidget from "./IndicatorsWidget.vue";
 import InputWidget from "./InputWidget.vue";
 import JobControlWidget from "./JobControlWidget.vue";
 import JogWidget from "./JogWidget.vue";
+import OctopusJogWidget from "./OctopusJogWidget.vue";
 import LabelWidget from "./LabelWidget.vue";
 import MacrosWidget from "./MacrosWidget.vue";
 import MessageBoxWidget from "./MessageBoxWidget.vue";
