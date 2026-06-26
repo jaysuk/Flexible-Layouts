@@ -98,6 +98,7 @@ import { useUiStore } from "@/stores/ui";
 
 import type { Widget } from "../model/document";
 import { resolveColor } from "../util/color";
+import { polar, sectorPath as _sectorPath } from "../util/shapes";
 
 const props = defineProps<{
 	widget: Extract<Widget, { type: "jog" }>;
@@ -150,20 +151,15 @@ const hubIconTransform = computed(() => {
 	return `translate(${(C - 12 * s).toFixed(2)} ${(C - 12 * s).toFixed(2)}) scale(${s.toFixed(3)})`;
 });
 
-function polar(r: number, deg: number): [number, number] {
-	const a = (deg * Math.PI) / 180;
-	return [C + r * Math.sin(a), C - r * Math.cos(a)];
+// Re-export wrappers so the rest of this component keeps the same polar(r,deg) / sectorPath(a0,a1,rIn,rOut) call shapes.
+function polarLocal(r: number, deg: number): [number, number] {
+	return polar(C, C, r, deg);
 }
 function f(n: number): string {
 	return n.toFixed(2);
 }
 function sectorPath(a0: number, a1: number, rIn: number, rOut: number): string {
-	const [x1, y1] = polar(rOut, a0);
-	const [x2, y2] = polar(rOut, a1);
-	const [x3, y3] = polar(rIn, a1);
-	const [x4, y4] = polar(rIn, a0);
-	return `M${f(x1)} ${f(y1)} A${rOut} ${rOut} 0 0 1 ${f(x2)} ${f(y2)} `
-		+ `L${f(x3)} ${f(y3)} A${rIn} ${rIn} 0 0 0 ${f(x4)} ${f(y4)} Z`;
+	return _sectorPath(C, C, a0, a1, rIn, rOut);
 }
 function fmt(v: number): string {
 	return Number(Math.abs(v).toFixed(4)).toString();
@@ -213,14 +209,14 @@ const stepLabels = computed(() => {
 	const n = steps.length;
 	const bw = (RMAX - RHUB) / n;
 	return steps.map((s, k) => {
-		const [x, y] = polar(RMAX - (k + 0.5) * bw, 45);
+		const [x, y] = polarLocal(RMAX - (k + 0.5) * bw, 45);
 		return { id: `sl-${k}`, x: f(x), y: f(y), text: fmt(s) };
 	});
 });
 
 const dirLabels = computed(() =>
 	cardinals.value.map((card) => {
-		const [x, y] = polar(RMAX + 5, card.angle);
+		const [x, y] = polarLocal(RMAX + 5, card.angle);
 		const sign = (card.positive ? 1 : -1) * (card.invert() ? -1 : 1);
 		return { id: `dl-${card.key}`, x: f(x), y: f(y), text: `${sign > 0 ? "+" : "-"}${card.axis()}` };
 	}),
