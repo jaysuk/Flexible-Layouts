@@ -107,8 +107,10 @@ describe("createJogDialPreset", () => {
 		const innerWedges = wedges.filter(w => (w.freeZ ?? 0) === 1);
 		const outerWedges = wedges.filter(w => (w.freeZ ?? 0) === 2);
 		if (innerWedges.length === 0 || outerWedges.length === 0) return;
-		const firstInner = (innerWedges[0].widget as Extract<typeof innerWedges[0].widget, { type: "codeButton" }>).shape as { kind: "wedge"; innerRadius: number; outerRadius: number };
-		const firstOuter = (outerWedges[0].widget as Extract<typeof outerWedges[0].widget, { type: "codeButton" }>).shape as { kind: "wedge"; innerRadius: number; outerRadius: number };
+		const innerW = innerWedges[0].widget;
+		const outerW = outerWedges[0].widget;
+		const firstInner = (innerW as Extract<typeof innerW, { type: "codeButton" }>).shape as { kind: "wedge"; innerRadius: number; outerRadius: number };
+		const firstOuter = (outerW as Extract<typeof outerW, { type: "codeButton" }>).shape as { kind: "wedge"; innerRadius: number; outerRadius: number };
 		// Outer ring's inner radius should be ≥ inner ring's outer radius (no gap or exact match)
 		expect(firstOuter.innerRadius).toBeGreaterThanOrEqual(firstInner.outerRadius - 0.01);
 	});
