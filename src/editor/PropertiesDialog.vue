@@ -772,7 +772,38 @@
 					<v-text-field v-model="draft.label" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" />
 					<v-row dense>
 						<v-col cols="6"><v-text-field v-model="wcsAxesText" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.wcs.axes')" /></v-col>
-						<v-col cols="6"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
+						<v-col cols="3"><v-text-field v-model.number="draft.precision" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.precision')" /></v-col>
+						<v-col cols="3"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
+					</v-row>
+					<v-switch v-model="draft.showMachine" color="primary" density="compact" hide-details :label="$t('plugins.flexibleLayouts.wcs.showMachine')" />
+					<v-switch v-model="draft.goto" color="primary" density="compact" hide-details :label="$t('plugins.flexibleLayouts.wcs.showGoto')" />
+				</template>
+
+				<!-- Touch probe -->
+				<template v-else-if="draft.type === 'probe'">
+					<v-row dense>
+						<v-col cols="8"><v-text-field v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
+						<v-col cols="4"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
+					</v-row>
+					<v-row dense class="mt-1">
+						<v-col cols="6"><v-text-field v-model.number="draft.diameter" type="number" :min="0.01" :step="0.01" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.probe.diameter')" /></v-col>
+						<v-col cols="6" class="d-flex align-center"><v-switch v-model="draft.confirm" color="primary" density="compact" hide-details :label="$t('plugins.flexibleLayouts.probe.confirmOpt')" /></v-col>
+					</v-row>
+					<v-select v-model="draft.ops" :items="probeOpsItems" multiple chips density="compact" variant="outlined" hide-details class="mt-2" :label="$t('plugins.flexibleLayouts.probe.opsLabel')" />
+					<div class="text-caption text-medium-emphasis mt-2 mb-1">{{ $t('plugins.flexibleLayouts.probe.cmdHelp') }}</div>
+					<v-text-field v-model="draft.zCmd" class="mb-1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.probe.opZ')" :placeholder="PROBE_DEFAULTS.z" />
+					<v-text-field v-model="draft.xCmd" class="mb-1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.probe.opX')" :placeholder="PROBE_DEFAULTS.x" />
+					<v-text-field v-model="draft.yCmd" class="mb-1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.probe.opY')" :placeholder="PROBE_DEFAULTS.y" />
+					<v-text-field v-model="draft.cornerCmd" class="mb-1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.probe.opCorner')" :placeholder="PROBE_DEFAULTS.corner" />
+					<v-text-field v-model="draft.centreCmd" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.probe.opCentre')" :placeholder="PROBE_DEFAULTS.centre" />
+				</template>
+
+				<!-- MDI -->
+				<template v-else-if="draft.type === 'mdi'">
+					<v-row dense>
+						<v-col cols="5"><v-text-field v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
+						<v-col cols="4"><v-text-field v-model.number="draft.historyLength" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.mdi.historyLength')" /></v-col>
+						<v-col cols="3"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
 					</v-row>
 				</template>
 
@@ -1168,6 +1199,7 @@ import { useMachineStore } from "@/stores/machine";
 
 import type { ButtonShape, ConditionOperator, ConditionRule, GridItemModel, PanelColors, Typography, Widget } from "../model/document";
 import { hasInputModifier } from "../util/inputModifier";
+import { DEFAULT_PROBE_COMMANDS as PROBE_DEFAULTS } from "../util/probe";
 import { OM_VALUE_PRESETS, type OmPreset, resolveOmPath } from "../util/omPath";
 import { defaultLockForWidget } from "../util/printLock";
 import { describeWidget } from "../widgets/registry";
@@ -1529,6 +1561,13 @@ const wcsAxesText = computed({
 	get: () => (draft.value?.axes ?? []).join(", "),
 	set: (text: string) => { if (draft.value) { draft.value.axes = text.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean); } },
 });
+const probeOpsItems = [
+	{ title: i18n.global.t("plugins.flexibleLayouts.probe.opZ"), value: "z" },
+	{ title: i18n.global.t("plugins.flexibleLayouts.probe.opX"), value: "x" },
+	{ title: i18n.global.t("plugins.flexibleLayouts.probe.opY"), value: "y" },
+	{ title: i18n.global.t("plugins.flexibleLayouts.probe.opCorner"), value: "corner" },
+	{ title: i18n.global.t("plugins.flexibleLayouts.probe.opCentre"), value: "centre" },
+];
 function addGauge(): void {
 	if (draft.value?.type === "gaugeCluster") { (draft.value.gauges ??= []).push({ label: "", omPath: "", min: 0, max: 100, unit: "", color: "primary" }); }
 }

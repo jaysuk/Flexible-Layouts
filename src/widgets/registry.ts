@@ -82,7 +82,9 @@ export const FREEFORM_WIDGETS: ReadonlyArray<FreeformCatalogEntry> = [
 	{ type: "fan",        labelKey: "widgets.fan",        icon: "mdi-fan",                defaultSize: { w: 4, h: 2 }, category: "machine" },
 	{ type: "heater",     labelKey: "widgets.heater",     icon: "mdi-radiator",           defaultSize: { w: 4, h: 3 }, category: "machine" },
 	{ type: "spindle",    labelKey: "widgets.spindle",    icon: "mdi-saw-blade",          defaultSize: { w: 4, h: 3 }, category: "machine" },
-	{ type: "wcs",        labelKey: "widgets.wcs",        icon: "mdi-axis-arrow",         defaultSize: { w: 4, h: 3 }, category: "machine" },
+	{ type: "wcs",        labelKey: "widgets.wcs",        icon: "mdi-axis-arrow",         defaultSize: { w: 4, h: 5 }, category: "machine" },
+	{ type: "probe",      labelKey: "widgets.probe",      icon: "mdi-target-variant",     defaultSize: { w: 4, h: 5 }, category: "machine" },
+	{ type: "mdi",        labelKey: "widgets.mdi",        icon: "mdi-console",            defaultSize: { w: 5, h: 3 }, category: "machine" },
 	{ type: "toolSelect", labelKey: "widgets.toolSelect", icon: "mdi-tools",              defaultSize: { w: 4, h: 2 }, category: "machine" },
 	{ type: "toolAlign",  labelKey: "widgets.toolAlign",  icon: "mdi-image-filter-center-focus", defaultSize: { w: 6, h: 12 }, category: "machine" },
 	{ type: "jobControl", labelKey: "widgets.jobControl", icon: "mdi-play-pause",         defaultSize: { w: 4, h: 3 }, category: "machine" },
@@ -232,6 +234,10 @@ export function describeWidget(widget: Widget): { title: string; icon: string } 
 			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.extruder"), icon: "mdi-printer-3d-nozzle" };
 		case "wcs":
 			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.wcs"), icon: "mdi-axis-arrow" };
+		case "probe":
+			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.probe"), icon: "mdi-target-variant" };
+		case "mdi":
+			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.mdi"), icon: "mdi-console" };
 		case "toolSelect":
 			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.toolSelect"), icon: "mdi-tools" };
 		case "toolAlign":

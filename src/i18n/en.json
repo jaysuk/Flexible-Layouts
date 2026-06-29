@@ -104,6 +104,8 @@
 		"table": "Value table",
 		"extruder": "Extruder",
 		"wcs": "Work offsets (CNC)",
+		"probe": "Touch probe (CNC)",
+		"mdi": "MDI (CNC)",
 		"toolSelect": "Tool selector",
 		"toolAlign": "Tool alignment",
 		"fan": "Fan slider",
@@ -670,8 +672,37 @@
 		"filamentDiameter": "Filament Ø (mm)"
 	},
 	"wcs": {
-		"axes": "Axes to zero",
-		"zeroHere": "Zero here"
+		"axes": "Axes",
+		"zero": "Zero",
+		"zeroHere": "Zero all",
+		"gotoZero": "Go to 0",
+		"gotoZeroHint": "Rapid to work XY zero (X0 Y0) — Z is not moved",
+		"showMachine": "Show machine position",
+		"showGoto": "Show \"go to 0\" button"
+	},
+	"mdi": {
+		"placeholder": "G-code…",
+		"send": "Send",
+		"historyLength": "History"
+	},
+	"probe": {
+		"diameter": "Endmill Ø (mm)",
+		"corner": "Corner",
+		"fl": "Front-left",
+		"fr": "Front-right",
+		"bl": "Back-left",
+		"br": "Back-right",
+		"opZ": "Probe Z",
+		"opX": "Probe X",
+		"opY": "Probe Y",
+		"opCorner": "Probe corner",
+		"opCentre": "Probe centre",
+		"opsLabel": "Operations",
+		"confirmOpt": "Confirm before probing",
+		"cmdHelp": "Each operation runs this command/macro. Use {dia} and {corner} placeholders. Point these at your own vetted probe macros.",
+		"confirmTitle": "Run probe?",
+		"confirmText": "This will move the machine to probe. Make sure the probe is connected and positioned safely.",
+		"run": "Probe"
 	},
 	"toolSelect": {
 		"none": "Deselect",

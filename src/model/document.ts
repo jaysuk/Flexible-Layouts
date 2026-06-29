@@ -477,12 +477,44 @@ export type Widget =
 		color?: string;
 	}
 	| {
-		/** Work coordinate system (CNC): select G54–G59 and zero/go-to axes. */
+		/** Work coordinate system (CNC): select G54–G59.3, show machine+work position, zero/go-to axes. */
 		type: "wcs";
 		label?: string;
-		/** Axis letters offered for zeroing. */
+		/** Axis letters shown / offered for zeroing. */
 		axes?: Array<string>;
 		color?: string;
+		/** Show machine position alongside the work position (default true). */
+		showMachine?: boolean;
+		/** Show the "go to work XY zero" button (default true). */
+		goto?: boolean;
+		/** Decimal places for positions (default 2). */
+		precision?: number;
+	}
+	| {
+		/** MDI (CNC): one-line manual G-code entry with recall history. */
+		type: "mdi";
+		label?: string;
+		color?: string;
+		/** How many recent commands to keep (default 8). */
+		historyLength?: number;
+	}
+	| {
+		/** Touch-probe (CNC): each operation runs a configurable command/macro template. */
+		type: "probe";
+		label?: string;
+		color?: string;
+		/** Default endmill / probe diameter (mm). */
+		diameter?: number;
+		/** Confirm before probing (default true). */
+		confirm?: boolean;
+		/** Which operations to offer. */
+		ops?: Array<"z" | "x" | "y" | "corner" | "centre">;
+		/** Per-op command templates. Placeholders: {dia} endmill diameter, {corner} selected corner. */
+		zCmd?: string;
+		xCmd?: string;
+		yCmd?: string;
+		cornerCmd?: string;
+		centreCmd?: string;
 	}
 	| {
 		/** Tool selector: a button per configured tool. */
@@ -813,7 +845,12 @@ export function createDefaultWidget(type: WidgetType): Widget {
 		case "extruder":
 			return { type: "extruder", label: "Extruder", amounts: [1, 5, 10, 50], mode: "length", feedrate: 300, flowRate: 5, filamentDiameter: 1.75, tool: null, color: "primary" };
 		case "wcs":
-			return { type: "wcs", label: "Work offsets", axes: ["X", "Y", "Z"], color: "primary" };
+			return { type: "wcs", label: "Work offsets", axes: ["X", "Y", "Z"], color: "primary", showMachine: true, goto: true, precision: 2 };
+		case "mdi":
+			return { type: "mdi", label: "MDI", color: "primary", historyLength: 8 };
+		case "probe":
+			// Command templates left unset → ProbeWidget falls back to DEFAULT_PROBE_COMMANDS (editable in properties).
+			return { type: "probe", label: "Touch probe", color: "primary", diameter: 6, confirm: true, ops: ["z", "x", "y", "corner"] };
 		case "toolSelect":
 			return { type: "toolSelect", label: "Tools", color: "primary" };
 		case "fan":
