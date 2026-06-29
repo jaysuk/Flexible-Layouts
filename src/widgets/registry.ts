@@ -36,6 +36,7 @@ export const BUILTIN_PANELS: ReadonlyArray<PanelCatalogEntry> = [
 	{ component: "SpeedFactorPanel",     labelKey: "panels.speedFactor",     icon: "mdi-speedometer",         defaultSize: { w: 4, h: 4 },  mode: "any" },
 	{ component: "ExtrusionFactorsPanel", labelKey: "panels.extrusionFactors", icon: "mdi-percent",          defaultSize: { w: 4, h: 5 },  mode: "fff" },
 	{ component: "SpindleSpeedPanel",    labelKey: "panels.spindleSpeed",    icon: "mdi-saw-blade",           defaultSize: { w: 4, h: 4 },  mode: "cnc" },
+	{ component: "CNCAxesPosition",      labelKey: "panels.cncAxes",         icon: "mdi-axis-arrow-info",     defaultSize: { w: 6, h: 4 },  mode: "cnc" },
 	{ component: "JobControlPanel",      labelKey: "panels.jobControl",      icon: "mdi-play-pause",          defaultSize: { w: 6, h: 6 },  mode: "any" },
 	{ component: "JobInfoPanel",         labelKey: "panels.jobInfo",         icon: "mdi-information-outline",  defaultSize: { w: 6, h: 7 },  mode: "any" },
 	{ component: "JobTimesPanel",        labelKey: "panels.jobTimes",        icon: "mdi-clock-outline",       defaultSize: { w: 6, h: 5 },  mode: "any" },

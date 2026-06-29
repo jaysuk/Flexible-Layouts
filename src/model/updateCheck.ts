@@ -208,9 +208,8 @@ export async function applyUpdateNow(): Promise<void> {
 		ui.makeNotification(LogLevel.success, t("title"), t("installedReload", { version: result.latestVersion }));
 	} catch (e) {
 		console.warn("[FlexibleLayouts] update failed:", e);
-		// One-click failed (likely CORS). Offer direct download link instead.
-		ui.makeNotification(LogLevel.warning, t("title"), t("corsBlocked"));
-		// Open the direct asset link so user can download manually
+		// One-click currently always fails on the GitHub asset CDN (CORS), so don't nag with a popup —
+		// just fall back to a direct download of the ZIP (self-heals if CORS is ever allowed).
 		window.location.href = result.assetUrl;
 	} finally {
 		applying.value = false;
