@@ -105,7 +105,6 @@
 		"extruder": "Extruder",
 		"wcs": "Work offsets (CNC)",
 		"probe": "Touch probe (CNC)",
-		"mdi": "MDI (CNC)",
 		"toolSelect": "Tool selector",
 		"toolAlign": "Tool alignment",
 		"fan": "Fan slider",
@@ -679,11 +678,6 @@
 		"gotoZeroHint": "Rapid to work XY zero (X0 Y0) — Z is not moved",
 		"showMachine": "Show machine position",
 		"showGoto": "Show \"go to 0\" button"
-	},
-	"mdi": {
-		"placeholder": "G-code…",
-		"send": "Send",
-		"historyLength": "History"
 	},
 	"probe": {
 		"diameter": "Endmill Ø (mm)",

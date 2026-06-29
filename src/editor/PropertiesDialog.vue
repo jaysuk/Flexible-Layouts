@@ -798,15 +798,6 @@
 					<v-text-field v-model="draft.centreCmd" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.probe.opCentre')" :placeholder="PROBE_DEFAULTS.centre" />
 				</template>
 
-				<!-- MDI -->
-				<template v-else-if="draft.type === 'mdi'">
-					<v-row dense>
-						<v-col cols="5"><v-text-field v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
-						<v-col cols="4"><v-text-field v-model.number="draft.historyLength" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.mdi.historyLength')" /></v-col>
-						<v-col cols="3"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
-					</v-row>
-				</template>
-
 				<!-- Tool selector -->
 				<template v-else-if="draft.type === 'toolSelect'">
 					<v-row dense>

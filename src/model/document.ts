@@ -491,14 +491,6 @@ export type Widget =
 		precision?: number;
 	}
 	| {
-		/** MDI (CNC): one-line manual G-code entry with recall history. */
-		type: "mdi";
-		label?: string;
-		color?: string;
-		/** How many recent commands to keep (default 8). */
-		historyLength?: number;
-	}
-	| {
 		/** Touch-probe (CNC): each operation runs a configurable command/macro template. */
 		type: "probe";
 		label?: string;
@@ -846,8 +838,6 @@ export function createDefaultWidget(type: WidgetType): Widget {
 			return { type: "extruder", label: "Extruder", amounts: [1, 5, 10, 50], mode: "length", feedrate: 300, flowRate: 5, filamentDiameter: 1.75, tool: null, color: "primary" };
 		case "wcs":
 			return { type: "wcs", label: "Work offsets", axes: ["X", "Y", "Z"], color: "primary", showMachine: true, goto: true, precision: 2 };
-		case "mdi":
-			return { type: "mdi", label: "MDI", color: "primary", historyLength: 8 };
 		case "probe":
 			// Command templates left unset → ProbeWidget falls back to DEFAULT_PROBE_COMMANDS (editable in properties).
 			return { type: "probe", label: "Touch probe", color: "primary", diameter: 6, confirm: true, ops: ["z", "x", "y", "corner"] };

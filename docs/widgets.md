@@ -62,7 +62,6 @@ ready-made jog dial, the **CNC / Octopus jog** widget above is usually the bette
 | **Extruder** | Extrude / retract by a chosen amount + feedrate (`M83` + `G1 E…`), optional tool select. | amounts, feedrate, tool |
 | **Work offsets (CNC)** | Select **G54–G59.3**, show each axis's work (and machine) position, **zero a single axis or all** in the active WCS (`G10 L20`), and **go to work XY zero** (`G0 X0 Y0`, Z left alone). | axes, show-machine, go-to button, precision, colour |
 | **Touch probe (CNC)** | Buttons for **Z / X / Y / corner / centre** probing; each runs a **configurable command/macro** (defaults call your `…/macros/Probe/*.g`) with `{dia}` / `{corner}` placeholders from the on-panel endmill-Ø and corner inputs, behind a confirm. Drives *your* vetted probe routines — geometry is machine-specific. | operations, endmill Ø, per-op command templates, confirm, colour |
-| **MDI (CNC)** | One-line manual G-code entry (Enter to send) with recall history (↑/↓ and clickable chips). | label, history length, colour |
 | **Tool selector** | A button per tool (`T<n>`); active tool highlighted. | label, colour |
 | **Fan slider** | Single-fan slider with live % + RPM (`M106 P<n> S…`). | fan #, colour |
 | **Job control** | Pause / resume / cancel (`M25`/`M24`/`M0`) with progress. | show progress, colour |
