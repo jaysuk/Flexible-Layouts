@@ -56,6 +56,7 @@ import { computed, onErrorCaptured, ref } from "vue";
 import { showConfirmDialog } from "@/composables/useConfirmDialog";
 import i18n from "@/i18n";
 import { useMachineStore } from "@/stores/machine";
+import { LogLevel, useUiStore } from "@/stores/ui";
 
 import ExplorerPanel from "./ExplorerPanel.vue";
 
@@ -63,6 +64,7 @@ interface FileItem { name: string; isDirectory?: boolean }
 
 const props = defineProps<{ component: string }>();
 const machineStore = useMachineStore();
+const uiStore = useUiStore();
 
 // The layer chart requires a `settings` prop (display options); a sensible static default is fine for
 // a dashboard panel - the user isn't expected to tweak it here.
@@ -76,11 +78,21 @@ const jobOptions = computed((): any => ({ initialDirectory: gcodesDir.value, ini
 
 async function startJob(item: FileItem, directory: string): Promise<void> {
 	const full = `${directory.replace(/\/+$/, "")}/${item.name}`;
-	if (await showConfirmDialog(
-		i18n.global.t("dialog.startJob.title", [item.name]),
-		i18n.global.t("dialog.startJob.prompt", [item.name]),
-		"mdi-play",
-	)) {
+	let confirmed: boolean;
+	try {
+		// A failed confirm prompt should never be worse than "assume not confirmed" - degrade to a
+		// notification instead of letting an unexpected error here take down the whole panel (via the
+		// onErrorCaptured below).
+		confirmed = await showConfirmDialog(
+			i18n.global.t("dialog.startJob.title", [item.name]),
+			i18n.global.t("dialog.startJob.prompt", [item.name]),
+			"mdi-play",
+		);
+	} catch (e) {
+		uiStore.makeNotification(LogLevel.error, props.component, (e as Error)?.message ?? String(e));
+		return;
+	}
+	if (confirmed) {
 		await machineStore.sendCode(`M32 "${full}"`);
 	}
 }

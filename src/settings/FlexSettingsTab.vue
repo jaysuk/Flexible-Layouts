@@ -412,7 +412,16 @@ async function restoreNow(): Promise<void> {
 		}
 		const count = Object.keys(backup.profiles).length;
 		const when = backup.savedAt ? new Date(backup.savedAt).toLocaleString() : "";
-		const ok = await showConfirmDialog(sdT("restoreTitle"), sdT("restoreNowConfirm", { date: when, count }), "mdi-sd");
+		let ok: boolean;
+		try {
+			// A failed confirm prompt should never be worse than "assume not confirmed" - degrade to a
+			// notification instead of an uncaught error here (this restores a whole layout, so silently
+			// proceeding without confirmation is not an acceptable fallback).
+			ok = await showConfirmDialog(sdT("restoreTitle"), sdT("restoreNowConfirm", { date: when, count }), "mdi-sd");
+		} catch (e) {
+			uiStore.makeNotification(LogLevel.error, sdT("title"), (e as Error)?.message ?? String(e));
+			return;
+		}
 		if (ok) {
 			applyBackup(backup);
 			sdNotify(LogLevel.success, "restored");

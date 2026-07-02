@@ -223,7 +223,9 @@ const taT = (k: string) => i18n.global.t(`plugins.flexibleLayouts.toolAlign.${k}
 
 function select(n: number): void {
   if (disabledNow.value) return;
-  void send(`T${n}`);
+  // Pressing the already-selected tool's button deselects it (T-1 = no tool) rather than re-sending
+  // the same T-code, so the button acts as a toggle.
+  void send(n === current.value ? "T-1" : `T${n}`);
 }
 function nudge(letter: "X" | "Y" | "Z", dir: number): void {
   if (disabledNow.value) return;
@@ -350,12 +352,21 @@ async function saveOffsets(): Promise<void> {
   if (!props.widget.saveCommand) return;
   if (await confirmApply([props.widget.saveCommand])) void send(props.widget.saveCommand);
 }
-function confirmApply(cmds: Array<string>): Promise<boolean> {
-  return showConfirmDialog(
-    taT("confirmTitle"),
-    `${taT("confirmBody")}\n\n${cmds.join("\n")}`,
-    "mdi-content-save-cog",
-  );
+async function confirmApply(cmds: Array<string>): Promise<boolean> {
+  // A user hit a DWC-internal crash here in the wild (an uncaught error deep in the confirm-dialog
+  // machinery) that took down the whole widget tile. Whatever the cause, a failed confirm prompt
+  // should never be worse than "assume not confirmed" - so degrade to a notification instead of
+  // letting it propagate and crash the widget.
+  try {
+    return await showConfirmDialog(
+      taT("confirmTitle"),
+      `${taT("confirmBody")}\n\n${cmds.join("\n")}`,
+      "mdi-content-save-cog",
+    );
+  } catch (e) {
+    notify((e as Error)?.message ?? String(e), LogLevel.error);
+    return false;
+  }
 }
 
 onMounted(() => {
