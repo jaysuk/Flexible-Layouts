@@ -52,7 +52,17 @@
 			</div>
 
 			<v-divider class="my-4" />
-			<LockSettings />
+			<!-- Reachable by ANY user via ordinary navigation (visiting Settings doesn't itself deactivate
+				 FL's layout, so the escape guard never sees it) — unlike its siblings above, whose actions
+				 are individually gated via openGated(), this section can rewrite the very credentials that
+				 gate everything else, so it needs its OWN gate rather than relying on the escape guard. -->
+			<AccessSettings v-if="canManageAccess" />
+			<v-alert v-else type="info" variant="tonal" density="comfortable" class="d-flex align-center ga-2">
+				<span class="flex-grow-1">{{ $t("plugins.flexibleLayouts.access.lockedHint") }}</span>
+				<v-btn size="small" variant="tonal" @click="unlockAccessSettings">
+					{{ $t("plugins.flexibleLayouts.access.unlock") }}
+				</v-btn>
+			</v-alert>
 
 			<v-divider class="my-4" />
 			<div class="d-flex align-center mb-1">
@@ -227,10 +237,10 @@ import ImportExportDialog from "../editor/ImportExportDialog.vue";
 import ThemeEditor from "../editor/ThemeEditor.vue";
 import ProfilesDialog from "../editor/ProfilesDialog.vue";
 import HelpDialog from "../editor/HelpDialog.vue";
-import LockSettings from "../editor/LockSettings.vue";
+import AccessSettings from "../editor/AccessSettings.vue";
 import PageManager from "../editor/PageManager.vue";
 import PasswordDialog from "../editor/PasswordDialog.vue";
-import { isLocked, requestUnlock } from "../model/lock";
+import { can, requestAdmin } from "../model/access";
 
 const machineStore = useMachineStore();
 
@@ -333,13 +343,21 @@ const dialogs = reactive({
 });
 
 // Page management, theming, import/export and profiles all mutate the layout, so they sit behind
-// the optional password lock just like entering edit mode. The PasswordDialog mounted below
-// surfaces the prompt from either shell.
+// Admin just like entering edit mode. The PasswordDialog mounted below surfaces the prompt from
+// either shell.
 async function openGated(key: "pageManager" | "theme" | "io" | "profiles"): Promise<void> {
-	if (isLocked() && !(await requestUnlock())) {
+	if (!can("editLayout") && !(await requestAdmin())) {
 		return;
 	}
 	dialogs[key] = true;
+}
+
+// The Access section itself needs the same gate as the buttons above — reachable via ordinary
+// navigation (visiting Settings never deactivates FL's layout, so the escape guard doesn't see it),
+// and it can rewrite the very credentials that gate everything else.
+const canManageAccess = computed(() => can("editLayout"));
+async function unlockAccessSettings(): Promise<void> {
+	await requestAdmin();
 }
 
 function onToggleLayout() {

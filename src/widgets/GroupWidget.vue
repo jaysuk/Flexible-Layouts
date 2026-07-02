@@ -4,7 +4,10 @@
 			{{ widget.title }}
 		</v-card-title>
 
-		<!-- FREE-POSITION mode: each child is absolutely positioned by % coords -->
+		<!-- FREE-POSITION mode: each child is absolutely positioned by % coords. This is the only place a
+			 widget escapes FlexGridItem's overlay entirely (edit-mode inertness is still handled at the
+			 parent FlexGridItem level via pointer-events, since a group is itself a grid item), so print-
+			 lock and access-lock are applied per child here directly. -->
 		<div v-if="isFree" class="flex-grow-1 free-group-canvas">
 			<div
 				v-for="child in sortedItems"
@@ -12,7 +15,11 @@
 				class="free-group-item"
 				:style="freeItemStyle(child)"
 			>
-				<WidgetView :widget="child.widget" />
+				<WidgetView :widget="child.widget" :disabled="childLocked(child)" />
+				<div v-if="childLocked(child)" class="flex-interaction-lock"
+					 :title="accessLocked ? $t('plugins.flexibleLayouts.access.interactionLocked') : $t('plugins.flexibleLayouts.printLock.locked')">
+					<v-icon size="x-small">mdi-lock</v-icon>
+				</div>
 			</div>
 		</div>
 
@@ -32,7 +39,11 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent } from "vue";
 
+import { useMachineStore } from "@/stores/machine";
+
+import { accessLockedFor, can } from "../model/access";
 import type { GridItemModel, Widget } from "../model/document";
+import { effectiveLockForItem, isPrintingStatus } from "../util/printLock";
 import WidgetView from "./WidgetView.vue";
 
 // Lazy import breaks the FlexGrid -> FlexGridItem -> WidgetView -> GroupWidget -> FlexGrid module
@@ -40,6 +51,13 @@ import WidgetView from "./WidgetView.vue";
 const FlexGrid = defineAsyncComponent(() => import("../page/FlexGrid.vue"));
 
 const props = defineProps<{ widget: Extract<Widget, { type: "group" }> }>();
+
+const machineStore = useMachineStore();
+const isPrinting = computed(() => isPrintingStatus((machineStore.model as { state?: { status?: string } }).state?.status));
+const accessLocked = computed(() => !can("interact"));
+function childLocked(child: GridItemModel): boolean {
+	return accessLockedFor(child.widget) || (isPrinting.value && effectiveLockForItem(child.widget, child.lockWhilePrinting));
+}
 
 /** True when this group uses the free-position layout mode. */
 const isFree = computed(() => props.widget.layoutMode === "free");
@@ -85,9 +103,27 @@ function freeItemStyle(item: GridItemModel): Record<string, string> {
 	overflow: hidden;
 }
 
-/* Each free child: absolutely positioned within the canvas. */
+/* Each free child: absolutely positioned within the canvas (position set inline by freeItemStyle,
+   which also makes it a valid containing block for the interaction-lock overlay below). */
 .free-group-item {
 	/* pointer-events handled per-child by the widget itself (shaped buttons manage click-through) */
 	pointer-events: auto;
+}
+
+/* Interaction-block overlay for a locked free-mode child - same look as FlexGridItem's, scoped to
+   just this child's box (its parent .free-group-item is already position:absolute). */
+.flex-interaction-lock {
+	position: absolute;
+	inset: 0;
+	z-index: 3;
+	cursor: not-allowed;
+	display: flex;
+	align-items: flex-start;
+	justify-content: flex-end;
+	padding: 3px;
+	background: rgba(var(--v-theme-surface), 0.04);
+}
+.flex-interaction-lock .v-icon {
+	opacity: 0.45;
 }
 </style>

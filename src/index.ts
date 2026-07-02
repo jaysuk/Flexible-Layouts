@@ -22,7 +22,7 @@ import en from "./i18n/en.json";
 import { BUILTIN_PAGES } from "./model/builtinPages";
 import { LAYOUT_ID, PLUGIN_MANIFEST_ID } from "./model/constants";
 import { activateFlLayout } from "./model/layoutState";
-import { installEscapeGuard, uninstallEscapeGuard } from "./model/lock";
+import { installEscapeGuard, uninstallEscapeGuard } from "./model/access";
 import { installErrorCapture } from "dwc-plugin-runtime";
 import { migrateGlobalHides, registerExistingCustomPages } from "./model/pageManager";
 import { registerDocument } from "./model/store";

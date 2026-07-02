@@ -15,7 +15,16 @@
 				<v-btn icon="mdi-delete" size="x-small" variant="text" density="comfortable" @click="remove(i)" />
 			</div>
 			<div class="header-item-body" :style="bodyStyle(item)">
-				<WidgetView :widget="item.widget" :disabled="!editMode && headerLocked(item)" />
+				<WidgetView :widget="item.widget" :disabled="!editMode && itemLocked(item)" />
+				<!-- Physical overlay, not just `disabled`: several widget types (ProfileSwitchWidget,
+					 MessageBoxWidget, ThemeToggleWidget, GroupWidget, PluginPageWidget, EmbeddableWidget,
+					 WebWidget) never receive `disabled` from WidgetView at all, and one of them ignores it
+					 even where it is passed - so this is the only mechanism guaranteed to actually block a
+					 pinned header widget. -->
+				<div v-if="!editMode && itemLocked(item)" class="flex-interaction-lock"
+					 :title="accessLocked ? $t('plugins.flexibleLayouts.access.interactionLocked') : $t('plugins.flexibleLayouts.printLock.locked')">
+					<v-icon size="x-small">mdi-lock</v-icon>
+				</div>
 			</div>
 			<!-- right-edge handle to set this widget's width within the bar -->
 			<div v-if="editMode" class="header-resizer" @mousedown.stop.prevent="startResize(i, $event)" />
@@ -43,6 +52,7 @@ import {
 import { useLayoutStore } from "../model/store";
 import { useMachineStore } from "@/stores/machine";
 import { editMode } from "../model/editorState";
+import { accessLockedFor, can } from "../model/access";
 import { effectiveLockForItem, isPrintingStatus } from "../util/printLock";
 import WidgetView from "../widgets/WidgetView.vue";
 import WidgetPalette from "../editor/WidgetPalette.vue";
@@ -51,10 +61,12 @@ import PropertiesDialog from "../editor/PropertiesDialog.vue";
 const store = useLayoutStore();
 const machineStore = useMachineStore();
 
-// Lock a header widget while printing (same policy as grid items: explicit choice, else type default).
+// Lock a header widget while printing (same policy as grid items: explicit choice, else type default)
+// or while access-restricted (Observer, or Operator without `interact`).
 const isPrinting = computed(() => isPrintingStatus((machineStore.model as { state?: { status?: string } }).state?.status));
-function headerLocked(item: GridItemModel): boolean {
-	return isPrinting.value && effectiveLockForItem(item.widget, item.lockWhilePrinting);
+const accessLocked = computed(() => !can("interact"));
+function itemLocked(item: GridItemModel): boolean {
+	return accessLockedFor(item.widget) || (isPrinting.value && effectiveLockForItem(item.widget, item.lockWhilePrinting));
 }
 
 const DEFAULT_WIDTH = 110;
@@ -222,9 +234,24 @@ function remove(i: number) {
 	opacity: 0.5;
 }
 .header-item-body {
+	position: relative;
 	width: 100%;
 	height: 100%;
 	overflow: hidden;
+}
+.flex-interaction-lock {
+	position: absolute;
+	inset: 0;
+	z-index: 3;
+	cursor: not-allowed;
+	display: flex;
+	align-items: flex-start;
+	justify-content: flex-end;
+	padding: 3px;
+	background: rgba(var(--v-theme-surface), 0.04);
+}
+.flex-interaction-lock .v-icon {
+	opacity: 0.45;
 }
 .header-item-tools {
 	position: absolute;

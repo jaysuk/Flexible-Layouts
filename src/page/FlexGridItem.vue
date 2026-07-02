@@ -52,17 +52,20 @@
 			<div v-else class="fill-height" :class="{ 'condition-dimmed': effects.hidden && editMode }">
 				<WidgetErrorBoundary :reset-key="widgetKey">
 					<ScaleToFit v-if="fitEnabled">
-						<WidgetView :widget="item.widget" :override-color="effects.color" :disabled="effects.disabled || printLocked" />
+						<WidgetView :widget="item.widget" :override-color="effects.color" :disabled="effects.disabled || interactionLocked" />
 					</ScaleToFit>
 					<!-- Auto-height (view mode only): render at natural content height in a measuring wrapper
 						 so the cell can be resized to fit and the panels below reflow. -->
 					<div v-else-if="autoMeasure" ref="measureRef" class="flex-auto-measure">
-						<WidgetView :widget="item.widget" :override-color="effects.color" :disabled="effects.disabled || printLocked" />
+						<WidgetView :widget="item.widget" :override-color="effects.color" :disabled="effects.disabled || interactionLocked" />
 					</div>
-					<WidgetView v-else :widget="item.widget" :override-color="effects.color" :disabled="effects.disabled || printLocked" />
+					<WidgetView v-else :widget="item.widget" :override-color="effects.color" :disabled="effects.disabled || interactionLocked" />
 
-					<!-- Guaranteed interaction block while print-locked (covers widgets that ignore `disabled`). -->
-					<div v-if="printLocked" class="flex-print-lock" :title="$t('plugins.flexibleLayouts.printLock.locked')">
+					<!-- Guaranteed interaction block while print-locked or access-restricted (covers widgets
+						 that ignore `disabled`). Access takes tooltip precedence when both apply, since it's
+						 the broader restriction. -->
+					<div v-if="interactionLocked" class="flex-print-lock"
+						 :title="accessLocked ? $t('plugins.flexibleLayouts.access.interactionLocked') : $t('plugins.flexibleLayouts.printLock.locked')">
 						<v-icon size="x-small">mdi-lock</v-icon>
 					</div>
 
@@ -95,6 +98,7 @@ import { buildReport, downloadReport } from "dwc-plugin-runtime";
 import type { GridItemModel } from "../model/document";
 import { PLUGIN_MANIFEST_ID } from "../model/constants";
 import { evaluateConditions } from "../util/conditions";
+import { accessLockedFor } from "../model/access";
 import { effectiveLockForItem, isPrintingStatus } from "../util/printLock";
 import { describeWidget } from "../widgets/registry";
 import ScaleToFit from "../widgets/ScaleToFit.vue";
@@ -145,6 +149,12 @@ const isPrinting = computed(() => isPrintingStatus((machineStore.model as { stat
 const printLocked = computed(() =>
 	!props.editMode && isPrinting.value
 	&& (props.pageLock || effectiveLockForItem(props.item.widget, props.item.lockWhilePrinting)));
+
+// Access-restriction: blocks interaction when the current level (Observer, or Operator without
+// `interact`) doesn't grant it. Admin (or no lock configured) always has `interact`, and edit mode
+// itself requires Admin, so this is inert whenever editing is actually possible.
+const accessLocked = computed(() => !props.editMode && accessLockedFor(props.item.widget));
+const interactionLocked = computed(() => printLocked.value || accessLocked.value);
 
 // Shaped button detection: when a codeButton has a non-rect shape, remove the rectangular
 // chrome (no border-radius, no background box) in view mode so the shape itself is the button.

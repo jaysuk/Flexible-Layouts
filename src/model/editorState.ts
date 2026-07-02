@@ -8,7 +8,7 @@
  */
 import { ref } from "vue";
 
-import { isLocked, requestUnlock } from "./lock";
+import { can, requestAdmin } from "./access";
 
 /** True while the user is actively editing page layouts */
 export const editMode = ref(false);
@@ -19,12 +19,12 @@ export function toggleEditMode(): void {
 }
 
 /**
- * Toggle edit mode, but require the password first when entering and the lock is enabled. All edit
- * entry points (shell Edit button, page toolbar) call this so the lock can't be sidestepped.
+ * Toggle edit mode, but require Admin first when entering and it isn't already granted. All edit
+ * entry points (shell Edit button, page toolbar) call this so restricted levels can't sidestep it.
  */
 export async function attemptToggleEdit(): Promise<void> {
-	if (!editMode.value && isLocked()) {
-		if (!(await requestUnlock())) {
+	if (!editMode.value && !can("editLayout")) {
+		if (!(await requestAdmin())) {
 			return;
 		}
 	}

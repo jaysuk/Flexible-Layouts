@@ -139,7 +139,17 @@
 
 		<!-- Empty page: render the built-in fallback when not editing, else prompt to add. -->
 		<template v-else>
-			<component v-if="!editMode && fallback" :is="fallback" />
+			<!-- The fallback is one opaque stock DWC panel set, not individual FL widgets, so it can only
+				 be gated all-or-nothing - exactly like a single print-locked/access-locked panel. This is
+				 what renders on every un-customized page (the default state until an admin edits it), so
+				 it needs the same interaction-block treatment as a real widget, not just `disabled`. -->
+			<div v-if="!editMode && fallback" class="flex-fallback-wrap">
+				<component :is="fallback" />
+				<div v-if="fallbackLocked" class="flex-interaction-lock"
+					 :title="accessLocked ? $t('plugins.flexibleLayouts.access.interactionLocked') : $t('plugins.flexibleLayouts.printLock.locked')">
+					<v-icon size="x-small">mdi-lock</v-icon>
+				</div>
+			</div>
 
 			<!-- First-edit choice on a page that has stock content: start blank or adopt it. -->
 			<v-container v-else-if="editMode && seed && !seedDismissed" class="text-center py-12">
@@ -286,6 +296,8 @@ import { useFlexDisplay } from "../composables/useFlexDisplay";
 import { recomputeDependencies } from "../model/dependencies";
 import { exportPanel } from "../model/io";
 import { attemptToggleEdit, editMode } from "../model/editorState";
+import { can } from "../model/access";
+import { isPrintingStatus } from "../util/printLock";
 import { describeWidget } from "../widgets/registry";
 import FlexGrid from "./FlexGrid.vue";
 import WidgetPalette from "../editor/WidgetPalette.vue";
@@ -350,6 +362,13 @@ const pageLockWhilePrinting = computed(() => store.getPage(props.pageId)?.lockWh
 function setPageLock(v: boolean | null) {
 	store.ensurePage(props.pageId, props.kind ?? "custom").lockWhilePrinting = v === true ? true : undefined;
 }
+
+// The stock fallback (un-customized page) is one opaque, motion-capable panel set - not individual
+// widgets with their own lock defaults - so it always locks while printing, regardless of the
+// per-page toggle above (which is for pages the admin has actually customized).
+const isPrintingNow = computed(() => isPrintingStatus((machineStore.model as { state?: { status?: string } }).state?.status));
+const accessLocked = computed(() => !can("interact"));
+const fallbackLocked = computed(() => isPrintingNow.value || accessLocked.value);
 
 function resetBreakpoint() {
 	if (activeBp.value === "lg") {
@@ -1008,6 +1027,23 @@ onBeforeUnmount(() => {
 <style scoped>
 .flex-page {
 	min-height: 200px;
+}
+.flex-fallback-wrap {
+	position: relative;
+}
+.flex-interaction-lock {
+	position: absolute;
+	inset: 0;
+	z-index: 3;
+	cursor: not-allowed;
+	display: flex;
+	align-items: flex-start;
+	justify-content: flex-end;
+	padding: 3px;
+	background: rgba(var(--v-theme-surface), 0.04);
+}
+.flex-interaction-lock .v-icon {
+	opacity: 0.45;
 }
 .flex-page-toolbar {
 	display: flex;
