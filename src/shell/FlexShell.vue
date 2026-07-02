@@ -10,15 +10,6 @@
 
 			<ConnectButton v-if="showConnectButton && mdAndUp" class="ms-2" />
 
-			<!-- Access-level indicator: shown only when Observer/Operator restriction is configured. Click
-				 to unlock (offers whichever login(s) are reachable from here) when at the baseline, or to
-				 relock when session-elevated above it. -->
-			<v-chip v-if="accessEnabledNow" size="small" variant="tonal" class="ms-2" style="cursor:pointer"
-					:prepend-icon="levelIcon" :title="isElevatedNow ? $t('plugins.flexibleLayouts.access.lockNowHint') : $t('plugins.flexibleLayouts.access.unlockHint')"
-					@click="onAccessChipClick">
-				{{ levelLabel }}
-			</v-chip>
-
 			<!-- Quick profile switcher (only when more than one profile exists). Switching layouts/managing
 				 profiles is an editorial action, so it needs Admin just like the Edit button — otherwise a
 				 restricted session could hop to a differently-configured profile from FL's own chrome. -->
@@ -41,37 +32,27 @@
 
 			<v-spacer />
 
-			<CodeInput v-if="mdAndUp && canInteractNow" class="flex-grow-0 flex-shrink-0 code-input mx-3" />
-
-			<v-spacer />
-
-			<!-- User-pinned mini widgets (temperatures, quick buttons, …) -->
+			<!-- Everything else in the top bar — the access-level chip, the code-input box, pinned
+				 read-outs/buttons, the edit-mode toggle, and the upload button — is now a fully editable,
+				 reorderable, resizable header item (see HeaderWidgets.vue), rather than fixed shell chrome.
+				 A layout upgraded from an older version had one of each seeded in (see DOC_MIGRATIONS v4)
+				 so nothing was lost in the transition. The e-stop and profile-switcher above stay hard-coded:
+				 the e-stop must always work regardless of what a user does to the header (see model/access.ts's
+				 accessLockedFor), and the profile-switcher's visibility depends on profile count, which the
+				 generic header-item system doesn't model. -->
 			<HeaderWidgets v-if="mdAndUp" class="me-2" />
 
-			<!-- On small screens the code box + pinned header widgets don't fit in the bar; surface them
-				 in an overflow menu so they're still reachable (the maintainer's "top section disappears"
-				 on mobile). -->
+			<!-- On small screens the header items don't fit in the bar; surface them in an overflow menu
+				 (the maintainer's "top section disappears" on mobile). -->
 			<v-menu v-if="!mdAndUp" :close-on-content-click="false" location="bottom end">
 				<template #activator="{ props: menuProps }">
 					<v-btn v-bind="menuProps" icon="mdi-dots-vertical" variant="text" class="me-1"
 						   :title="$t('plugins.flexibleLayouts.shell.more')" />
 				</template>
 				<v-card min-width="300" max-width="92vw" class="pa-3">
-					<CodeInput v-if="canInteractNow" class="mb-3" />
 					<HeaderWidgets />
 				</v-card>
 			</v-menu>
-
-			<!-- Edit-mode toggle: the heart of the custom shell. Present only here, so the built-in
-				 layout is never affected -->
-			<v-btn :prepend-icon="editMode ? 'mdi-check' : (editLocked ? 'mdi-lock' : 'mdi-pencil-ruler')"
-				   :color="editMode ? 'primary' : undefined"
-				   :variant="editMode ? 'flat' : 'tonal'" rounded="md" class="me-2"
-				   @click="attemptToggleEdit">
-				{{ editMode ? $t("plugins.flexibleLayouts.shell.done") : $t("plugins.flexibleLayouts.shell.edit") }}
-			</v-btn>
-
-			<UploadButton v-if="lgAndUp && canRunJobsNow" class="me-2" />
 
 			<EmergencyButton v-if="showEmergencyStopNow" class="me-2" />
 		</v-app-bar>
@@ -240,13 +221,13 @@ import { LogLevel, useUiStore } from "@/stores/ui";
 import { type AnnouncedUpdate, applyUpdate, claimUpdateHost, clearAnnouncedUpdate, getAnnouncedUpdates, subscribeToUpdates } from "dwc-plugin-runtime";
 
 import { useFlexDisplay } from "../composables/useFlexDisplay";
-import { attemptToggleEdit, editMode, exitEditMode } from "../model/editorState";
+import { editMode, exitEditMode } from "../model/editorState";
 import { applyUpdateNow, dismissCurrentUpdate, dismissedVersion, pendingReload, runUpdateCheck } from "../model/updateCheck";
 import { applyStartupRoute } from "../model/startup";
 import { startChartSampler, stopChartSampler } from "../model/chartSampler";
 import { applyBackup, checkForRestore, dismissRestore, type FlBackup, isAutoBackupEnabled, writeBackup } from "../model/sdBackup";
 import { isPrintingStatus } from "../util/printLock";
-import { can, currentLevel, defaultLevel, getAccess, isAccessEnabled, relock, requestElevation } from "../model/access";
+import { can, currentLevel, getAccess } from "../model/access";
 import { applyNavOrder, isHidden } from "../model/pageManager";
 import { getActiveProfileId, listProfiles, useLayoutStore } from "../model/store";
 import { switchProfile } from "../model/profiles";
@@ -285,36 +266,16 @@ const isEditablePage = computed(() => {
 	return route.matched.some((m) => builtinEditablePaths.has(m.path));
 });
 
-// Whether the Edit button should show a lock (Admin not currently granted).
-const editLocked = computed(() => !can("editLayout"));
-const canInteractNow = computed(() => can("interact"));
-const canRunJobsNow = computed(() => can("runJobs"));
+// Still needed here: the profile-switcher menu gate (editLayout) and the e-stop's own visibility
+// (independent of the header-items system - see the template comment above HeaderWidgets).
 const canEditLayoutNow = computed(() => can("editLayout"));
-
-// --- Access-level indicator (shell chip) ---
-const accessEnabledNow = computed(() => isAccessEnabled());
-const levelNow = computed(() => currentLevel());
-const isElevatedNow = computed(() => levelNow.value !== defaultLevel());
-const levelIcon = computed(() => (
-	levelNow.value === "admin" ? "mdi-shield-account"
-		: levelNow.value === "operator" ? "mdi-account-cog"
-			: "mdi-eye-outline"
-));
-const levelLabel = computed(() => i18n.global.t(`plugins.flexibleLayouts.access.level.${levelNow.value}`));
-function onAccessChipClick(): void {
-	if (isElevatedNow.value) {
-		relock();
-	} else {
-		void requestElevation();
-	}
-}
 const showEmergencyStopNow = computed(() =>
-	settingsStore.showEmergencyStop && !(levelNow.value === "observer" && getAccess().hideEmergencyStop));
+	settingsStore.showEmergencyStop && !(currentLevel() === "observer" && getAccess().hideEmergencyStop));
 
 // Route of DWC's plugin-management page, where the plugin could be stopped/uninstalled.
 const PLUGINS_PATH = "/Plugins";
 
-const { mdAndUp, lgAndUp } = useFlexDisplay();
+const { mdAndUp } = useFlexDisplay();
 
 // Mirror the built-in shell: the manual connect button only matters in the dev server (production
 // auto-connects), so gate it on DEV like static.vue does.
@@ -622,9 +583,5 @@ onUnmounted(() => {
 }
 @media (min-width: 840px) {
 	.machine-name { max-width: none; }
-}
-
-.code-input {
-	width: 330px;
 }
 </style>

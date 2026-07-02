@@ -29,6 +29,13 @@
 			<v-divider class="my-4" />
 
 			<div class="d-flex flex-wrap ga-2">
+				<!-- Permanent fallback into edit mode: the shell's own Edit button is now just an ordinary,
+					 removable header widget (see docs), so this is the guaranteed way back in if it's ever
+					 removed or hidden on a small screen. -->
+				<v-btn variant="tonal" prepend-icon="mdi-pencil-ruler"
+					   :title="$t('plugins.flexibleLayouts.settings.enterEditHelp')" @click="enterEditMode">
+					{{ $t("plugins.flexibleLayouts.settings.enterEdit") }}
+				</v-btn>
 				<v-btn variant="tonal" prepend-icon="mdi-file-tree"
 					   :title="$t('plugins.flexibleLayouts.pages.manageHelp')" @click="openGated('pageManager')">
 					{{ $t("plugins.flexibleLayouts.pages.title") }}
@@ -220,6 +227,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from "vue";
+import { useRouter } from "vue-router";
 
 import i18n from "@/i18n";
 import { showConfirmDialog } from "@/composables/useConfirmDialog";
@@ -230,6 +238,7 @@ import { buildReport, cleanReleaseNotes, copyReport, downloadReport, fetchReleas
 
 import { PLUGIN_MANIFEST_ID } from "../model/constants";
 import { activateFlLayout, deactivateFlLayout, isFlLayoutActive } from "../model/layoutState";
+import { editMode } from "../model/editorState";
 import { applying, checking, dismissCurrentUpdate, dismissedVersion, pendingReload, runUpdateCheck, setUpdateChecksEnabled, undismissUpdate, updateChecksEnabled, updateDiagnostics, updateState as update, applyUpdateNow } from "../model/updateCheck";
 import { useLayoutStore } from "../model/store";
 import { applyBackup, isAutoBackupEnabled, readBackup, setAutoBackupEnabled, writeBackup } from "../model/sdBackup";
@@ -358,6 +367,22 @@ async function openGated(key: "pageManager" | "theme" | "io" | "profiles"): Prom
 const canManageAccess = computed(() => can("editLayout"));
 async function unlockAccessSettings(): Promise<void> {
 	await requestAdmin();
+}
+
+const router = useRouter();
+
+// Guaranteed way into edit mode, independent of the header: the shell's own Edit button is now just
+// an ordinary, removable/reorderable header widget (see AccessChip/EditModeToggle widgets), so this
+// is the recovery path if it's ever removed, or just hidden behind the mobile overflow menu.
+async function enterEditMode(): Promise<void> {
+	if (!can("editLayout") && !(await requestAdmin())) {
+		return;
+	}
+	if (!isFlLayoutActive()) {
+		activateFlLayout();
+	}
+	editMode.value = true;
+	router.push("/").catch(() => { /* already there */ });
 }
 
 function onToggleLayout() {

@@ -132,6 +132,13 @@ const MANAGE_ONLY_PANELS = new Set(["FileList", "JobFileList"]);
  * reach a live file browser through FL).
  */
 export function accessLockedFor(widget: { type: string; component?: string }): boolean {
+	// These are the elevation mechanism itself (editModeToggle triggers the Admin prompt via
+	// attemptToggleEdit, accessChip offers the login/relock prompt directly) - blocking them would
+	// leave a restricted user with no way to log in from wherever they're placed. Both still enforce
+	// their own gate internally (attemptToggleEdit re-checks `editLayout` before doing anything).
+	if (widget.type === "editModeToggle" || widget.type === "accessChip") {
+		return false;
+	}
 	if (!can("interact")) {
 		return true;
 	}

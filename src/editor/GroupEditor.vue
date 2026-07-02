@@ -458,13 +458,13 @@ function openProperties(id: string) {
 	propertiesOpen.value = true;
 }
 
-function saveProperties(payload: { widget: Widget; conditions: Array<ConditionRule>; colors: PanelColors; typography: Typography; fit: boolean | undefined; autoHeight: boolean | undefined; tooltip?: string; lockWhilePrinting?: boolean; geometry: { x: number; y: number; w: number; h: number } }) {
+function saveProperties(payload: { widget: Widget; conditions: Array<ConditionRule>; colors: PanelColors; typography: Typography; fit: boolean | undefined; autoHeight: boolean | undefined; tooltip?: string; lockWhilePrinting?: boolean; panelChrome?: boolean; geometry: { x: number; y: number; w: number; h: number } }) {
 	if (!draft.value) {
 		return;
 	}
 	draft.value.items = draft.value.items.map((it) =>
 		it.i === editingId.value
-			? { ...it, widget: payload.widget, conditions: payload.conditions, colors: payload.colors, typography: payload.typography, fit: payload.fit, autoHeight: payload.autoHeight, ...payload.geometry }
+			? { ...it, widget: payload.widget, conditions: payload.conditions, colors: payload.colors, typography: payload.typography, fit: payload.fit, autoHeight: payload.autoHeight, panelChrome: payload.panelChrome, ...payload.geometry }
 			: it);
 }
 

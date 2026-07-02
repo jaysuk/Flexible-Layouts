@@ -91,6 +91,8 @@ export const FREEFORM_WIDGETS: ReadonlyArray<FreeformCatalogEntry> = [
 	{ type: "macros",     labelKey: "widgets.macros",     icon: "mdi-cog-play",           defaultSize: { w: 4, h: 5 }, category: "machine" },
 	{ type: "files",      labelKey: "widgets.files",      icon: "mdi-file-document-multiple", defaultSize: { w: 4, h: 6 }, category: "machine" },
 	{ type: "console",    labelKey: "widgets.console",    icon: "mdi-console-line",       defaultSize: { w: 6, h: 5 }, category: "machine" },
+	{ type: "consoleInput", labelKey: "widgets.consoleInput", icon: "mdi-console-line",  defaultSize: { w: 6, h: 2 }, category: "machine" },
+	{ type: "consoleOutput", labelKey: "widgets.consoleOutput", icon: "mdi-text-box-multiple-outline", defaultSize: { w: 6, h: 5 }, category: "machine" },
 
 	// Read-outs — display object-model values
 	{ type: "value",      labelKey: "widgets.value",      icon: "mdi-counter",            defaultSize: { w: 3, h: 3 }, category: "readouts" },
@@ -121,6 +123,10 @@ export const FREEFORM_WIDGETS: ReadonlyArray<FreeformCatalogEntry> = [
 	{ type: "globals",    labelKey: "widgets.globals",    icon: "mdi-variable",           defaultSize: { w: 5, h: 6 }, category: "layout" },
 	{ type: "profileSwitch", labelKey: "widgets.profileSwitch", icon: "mdi-layers-triple", defaultSize: { w: 3, h: 2 }, category: "layout" },
 	{ type: "themeToggle", labelKey: "widgets.themeToggle", icon: "mdi-theme-light-dark", defaultSize: { w: 3, h: 2 }, category: "layout" },
+	{ type: "codeInput", labelKey: "widgets.codeInput", icon: "mdi-console-line", defaultSize: { w: 5, h: 1 }, category: "layout" },
+	{ type: "editModeToggle", labelKey: "widgets.editModeToggle", icon: "mdi-pencil-ruler", defaultSize: { w: 2, h: 1 }, category: "layout" },
+	{ type: "uploadButton", labelKey: "widgets.uploadButton", icon: "mdi-upload", defaultSize: { w: 2, h: 1 }, category: "layout" },
+	{ type: "accessChip", labelKey: "widgets.accessChip", icon: "mdi-shield-account", defaultSize: { w: 2, h: 1 }, category: "layout" },
 ];
 
 /** Human title + icon for a widget, used by the edit-mode tile header and the palette. */
@@ -222,6 +228,10 @@ export function describeWidget(widget: Widget): { title: string; icon: string } 
 			return { title: i18n.global.t("plugins.flexibleLayouts.widgets.macros"), icon: "mdi-cog-play" };
 		case "console":
 			return { title: i18n.global.t("plugins.flexibleLayouts.widgets.console"), icon: "mdi-console-line" };
+		case "consoleInput":
+			return { title: i18n.global.t("plugins.flexibleLayouts.widgets.consoleInput"), icon: "mdi-console-line" };
+		case "consoleOutput":
+			return { title: i18n.global.t("plugins.flexibleLayouts.widgets.consoleOutput"), icon: "mdi-text-box-multiple-outline" };
 		case "heater":
 			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.heater"), icon: "mdi-radiator" };
 		case "clock":
@@ -270,6 +280,14 @@ export function describeWidget(widget: Widget): { title: string; icon: string } 
 			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.profileSwitch"), icon: "mdi-layers-triple" };
 		case "themeToggle":
 			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.themeToggle"), icon: "mdi-theme-light-dark" };
+		case "codeInput":
+			return { title: i18n.global.t("plugins.flexibleLayouts.widgets.codeInput"), icon: "mdi-console-line" };
+		case "editModeToggle":
+			return { title: i18n.global.t("plugins.flexibleLayouts.widgets.editModeToggle"), icon: "mdi-pencil-ruler" };
+		case "uploadButton":
+			return { title: i18n.global.t("plugins.flexibleLayouts.widgets.uploadButton"), icon: "mdi-upload" };
+		case "accessChip":
+			return { title: i18n.global.t("plugins.flexibleLayouts.widgets.accessChip"), icon: "mdi-shield-account" };
 	}
 	// Fallback for an unknown/removed widget type in an older saved layout (must never return
 	// undefined — the edit-mode tile header reads .title and would otherwise crash the whole page).

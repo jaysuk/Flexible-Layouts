@@ -9,7 +9,7 @@
  */
 
 /** Bump whenever the shape below changes incompatibly; add a migration in migrateDocument(). */
-export const DOCUMENT_SCHEMA_VERSION = 3;
+export const DOCUMENT_SCHEMA_VERSION = 4;
 
 /**
  * A widget is the thing that lives inside a grid cell.
@@ -420,6 +420,16 @@ export type Widget =
 		placeholder?: string;
 	}
 	| {
+		/** Console input half (split from `console`): bare G-code entry box. */
+		type: "consoleInput";
+		placeholder?: string;
+	}
+	| {
+		/** Console output half (split from `console`): read-only reply log. */
+		type: "consoleOutput";
+		rows?: number;
+	}
+	| {
 		/** Compact heater tile: live readout + target presets / off (template-driven). */
 		type: "heater";
 		label?: string;
@@ -628,6 +638,22 @@ export type Widget =
 		type: "themeToggle";
 		label?: string;
 		variant?: "switch" | "button";
+	}
+	| {
+		/** DWC's own G-code entry box (the shell's top-bar CodeInput), as a placeable/resizable widget. */
+		type: "codeInput";
+	}
+	| {
+		/** Enter/leave edit mode - the shell's Edit/Done button, as a placeable/resizable widget. */
+		type: "editModeToggle";
+	}
+	| {
+		/** DWC's own file/job upload button, as a placeable/resizable widget. */
+		type: "uploadButton";
+	}
+	| {
+		/** The current Access level (Observer/Operator/Admin) - click to log in or lock. */
+		type: "accessChip";
 	};
 
 /**
@@ -811,6 +837,10 @@ export function createDefaultWidget(type: WidgetType): Widget {
 			return { type: "macros", folder: "0:/macros", columns: 2, color: "primary" };
 		case "console":
 			return { type: "console", rows: 5, placeholder: "Send code…" };
+		case "consoleInput":
+			return { type: "consoleInput", placeholder: "Send code…" };
+		case "consoleOutput":
+			return { type: "consoleOutput", rows: 20 };
 		case "heater":
 			return {
 				type: "heater",
@@ -893,6 +923,14 @@ export function createDefaultWidget(type: WidgetType): Widget {
 			return { type: "profileSwitch", label: "Profile", variant: "select" };
 		case "themeToggle":
 			return { type: "themeToggle", label: "Dark", variant: "switch" };
+		case "codeInput":
+			return { type: "codeInput" };
+		case "editModeToggle":
+			return { type: "editModeToggle" };
+		case "uploadButton":
+			return { type: "uploadButton" };
+		case "accessChip":
+			return { type: "accessChip" };
 		case "group":
 			return { type: "group", title: "Custom panel", items: [], cols: 12, rowHeight: 30 };
 		case "builtinPanel":
@@ -996,6 +1034,12 @@ export interface GridItemModel {
 	 * tool-change / extrusion controls, off for safe ones like pause/resume.
 	 */
 	lockWhilePrinting?: boolean;
+	/**
+	 * Wrap this widget in DWC's own panel chrome (a v-card + icon/title header bar, identical to a
+	 * built-in panel). Undefined = use the per-widget-type default (see util/panelChrome): on for
+	 * panel-like widgets, off for compact controls and decorative/shape/embed widgets.
+	 */
+	panelChrome?: boolean;
 	/**
 	 * Size the cell to the panel's natural content height (and reflow the panels below it) instead of
 	 * a fixed height - so dynamic panels like Movement grow/shrink as their content changes, the way
@@ -1176,6 +1220,33 @@ const DOC_MIGRATIONS: Array<DocMigration> = [
 	// as "grid" mode — the field is absent/undefined which the runtime treats as "grid". No data
 	// change needed; the migration just bumps the version stamp so re-saved documents carry v3.
 	{ to: 3, up: (_doc) => { /* layoutMode is optional; existing groups unaffected */ } },
+	// v3 → v4: the shell's top-bar chrome (access chip, code input, edit button, upload button) moved
+	// from hard-coded FlexShell elements to ordinary, removable/reorderable header widgets - see
+	// docs on "top bar is fully editable". Seed one of each into `header.items` so an existing layout
+	// doesn't lose the controls it already had; a user who deliberately removes one later never gets
+	// it re-added (this only ever runs once, when the document is still below v4). The e-stop and
+	// profile-switcher stay hard-coded shell chrome (safety/visibility reasons - see FlexShell.vue).
+	{ to: 4, up: (doc) => {
+		if (!doc.header) {
+			doc.header = { items: [] };
+		}
+		const existingTypes = new Set(doc.header.items.map((it) => it.widget.type));
+		const seed: Array<{ widget: Widget; headerWidth: number; headerAlign?: "start" | "end" }> = [
+			{ widget: { type: "accessChip" }, headerWidth: 100 },
+			{ widget: { type: "codeInput" }, headerWidth: 260 },
+			{ widget: { type: "editModeToggle" }, headerWidth: 110, headerAlign: "end" },
+			{ widget: { type: "uploadButton" }, headerWidth: 48, headerAlign: "end" },
+		];
+		for (const s of seed) {
+			if (existingTypes.has(s.widget.type)) {
+				continue;
+			}
+			doc.header.items.push({
+				i: newItemId(), x: 0, y: 0, w: 2, h: 1,
+				widget: s.widget, headerWidth: s.headerWidth, headerAlign: s.headerAlign,
+			});
+		}
+	} },
 ];
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {

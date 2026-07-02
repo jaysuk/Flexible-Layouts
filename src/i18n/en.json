@@ -18,7 +18,9 @@
 		"switchToDefault": "Switch to built-in layout",
 		"pickerHint": "You can also pick the active layout under Settings → General → Display (use that when several layout plugins are installed).",
 		"escapeHint": "Stuck? You can always return to the built-in layout by visiting",
-		"switchHelp": "Switch between the standard DuetWebControl layout and your Flexible Layouts dashboard."
+		"switchHelp": "Switch between the standard DuetWebControl layout and your Flexible Layouts dashboard.",
+		"enterEdit": "Enter edit mode",
+		"enterEditHelp": "Guaranteed way into edit mode even if the top bar's own Edit button has been removed or reconfigured."
 	},
 	"editor": {
 		"editLayout": "Edit layout",
@@ -98,6 +100,8 @@
 		"webcam": "Webcam / snapshot",
 		"macros": "Macro grid",
 		"console": "Mini console",
+		"consoleInput": "Console input",
+		"consoleOutput": "Console output",
 		"heater": "Heater control",
 		"clock": "Clock / timer",
 		"thumbnail": "Job thumbnail",
@@ -122,6 +126,10 @@
 		"messageBox": "Message box (M291)",
 		"profileSwitch": "Profile switcher",
 		"themeToggle": "Theme toggle",
+		"codeInput": "G-code entry (top bar)",
+		"editModeToggle": "Edit-mode button (top bar)",
+		"uploadButton": "Upload button (top bar)",
+		"accessChip": "Access-level chip (top bar)",
 		"chart": "Live chart",
 		"chartUnset": "Add a value to chart",
 		"chartDownload": "Download data (CSV)",
@@ -300,6 +308,10 @@
 		"pageLabel": "Lock this page while printing",
 		"pageHint": "Blocks interaction with every widget on this page during a print, regardless of each widget's own setting.",
 		"locked": "Locked while printing"
+	},
+	"panelChrome": {
+		"label": "Show panel chrome",
+		"hint": "Wraps this widget in the same card + title bar every built-in DWC panel uses, so it looks consistent with the rest of the dashboard. On by default for panel-like widgets; off for compact controls and decorative content."
 	},
 	"sdBackup": {
 		"title": "SD-card backup",
@@ -645,6 +657,9 @@
 		"placeholder": "Send code…",
 		"placeholderLabel": "Input placeholder",
 		"send": "Send"
+	},
+	"consoleOutput": {
+		"empty": "No replies yet."
 	},
 	"heater": {
 		"omPath": "Heater path (e.g. heat.heaters[0])",

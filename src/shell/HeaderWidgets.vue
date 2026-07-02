@@ -186,7 +186,7 @@ function edit(i: number) {
 	propsOpen.value = true;
 }
 
-function onSave(payload: { widget: Widget; conditions: Array<ConditionRule>; colors: PanelColors; typography: Typography; fit: boolean | undefined; lockWhilePrinting: boolean | undefined; geometry: { x: number; y: number; w: number; h: number } }) {
+function onSave(payload: { widget: Widget; conditions: Array<ConditionRule>; colors: PanelColors; typography: Typography; fit: boolean | undefined; lockWhilePrinting: boolean | undefined; panelChrome: boolean | undefined; geometry: { x: number; y: number; w: number; h: number } }) {
 	const list = headerItems();
 	if (editingIndex.value >= 0 && list[editingIndex.value]) {
 		list[editingIndex.value] = {
@@ -197,6 +197,9 @@ function onSave(payload: { widget: Widget; conditions: Array<ConditionRule>; col
 			typography: payload.typography,
 			fit: payload.fit,
 			lockWhilePrinting: payload.lockWhilePrinting,
+			// Header-pinned widgets never render panel chrome (the top bar is too slim for a title
+			// bar), but the field is stored anyway in case an item is later promoted to the page grid.
+			panelChrome: payload.panelChrome,
 		};
 	}
 }

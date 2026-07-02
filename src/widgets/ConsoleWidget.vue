@@ -25,57 +25,22 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from "vue";
+import { computed, ref } from "vue";
 
-import { useMachineStore } from "@/stores/machine";
 import { useUiStore } from "@/stores/ui";
 
 import type { Widget } from "../model/document";
-
-interface LogEntry { type: string; title: string; message: string | null }
+import { useAutoScroll, useConsoleEntries, useConsoleSend } from "../util/consoleLog";
 
 const props = defineProps<{ widget: Extract<Widget, { type: "console" }>; disabled?: boolean }>();
-const machineStore = useMachineStore();
 const uiStore = useUiStore();
 
 const disabledNow = computed(() => props.disabled || uiStore.uiFrozen);
-const cmd = ref("");
 const log = ref<HTMLElement | null>(null);
 
-// Mirror DWC's shared console log (the same source its own console/EventList uses), so replies that
-// arrive asynchronously (e.g. an M122 diagnostic report, unsolicited messages) show up — they are NOT
-// returned by sendCode. Defensive access so the widget still mounts where the store is stubbed.
-const logMessages = computed<Array<LogEntry>>(() =>
-  (uiStore as unknown as { logMessages?: Array<LogEntry> }).logMessages ?? []);
-const entries = computed(() => logMessages.value.slice(-(props.widget.rows ?? 5)));
-
-watch(() => entries.value.length, async () => {
-  await nextTick();
-  if (log.value) log.value.scrollTop = log.value.scrollHeight;
-});
-
-// Sent commands for ↑/↓ recall. `recallIdx` is -1 when not browsing, else an offset from the newest.
-const recent = ref<Array<string>>([]);
-let recallIdx = -1;
-function recall(dir: number): void {
-  if (!recent.value.length) return;
-  recallIdx = Math.max(-1, Math.min(recent.value.length - 1, recallIdx + dir));
-  cmd.value = recallIdx < 0 ? "" : recent.value[recent.value.length - 1 - recallIdx];
-}
-
-async function send(): Promise<void> {
-  const code = cmd.value.trim();
-  if (!code || disabledNow.value) return;
-  cmd.value = "";
-  recallIdx = -1;
-  recent.value.push(code);
-  if (recent.value.length > 50) recent.value.shift();
-  // logReply=true routes the command + reply into the shared log (which `entries` mirrors); async
-  // output arrives there too. Errors are logged by sendCode, so just swallow the rejection here.
-  try {
-    await machineStore.sendCode(code, true, true);
-  } catch { /* already surfaced in the log */ }
-}
+const entries = useConsoleEntries(() => props.widget.rows ?? 5);
+useAutoScroll(entries, log);
+const { cmd, recall, send } = useConsoleSend(() => disabledNow.value);
 </script>
 
 <style scoped>

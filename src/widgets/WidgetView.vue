@@ -19,6 +19,8 @@
 	<WebcamWidget v-else-if="widget.type === 'webcam'" :widget="widget" />
 	<MacrosWidget v-else-if="widget.type === 'macros'" :widget="widget" :disabled="disabled" />
 	<ConsoleWidget v-else-if="widget.type === 'console'" :widget="widget" :disabled="disabled" />
+	<ConsoleInputWidget v-else-if="widget.type === 'consoleInput'" :widget="widget" :disabled="disabled" />
+	<ConsoleOutputWidget v-else-if="widget.type === 'consoleOutput'" :widget="widget" />
 	<HeaterWidget v-else-if="widget.type === 'heater'" :widget="widget" :disabled="disabled" />
 	<ClockWidget v-else-if="widget.type === 'clock'" :widget="widget" />
 	<ThumbnailWidget v-else-if="widget.type === 'thumbnail'" :widget="widget" />
@@ -43,6 +45,10 @@
 	<MessageBoxWidget v-else-if="widget.type === 'messageBox'" :widget="widget" />
 	<ProfileSwitchWidget v-else-if="widget.type === 'profileSwitch'" :widget="widget" />
 	<ThemeToggleWidget v-else-if="widget.type === 'themeToggle'" :widget="widget" />
+	<CodeInputWidget v-else-if="widget.type === 'codeInput'" :widget="widget" />
+	<EditModeToggleWidget v-else-if="widget.type === 'editModeToggle'" :widget="widget" />
+	<UploadButtonWidget v-else-if="widget.type === 'uploadButton'" :widget="widget" />
+	<AccessChipWidget v-else-if="widget.type === 'accessChip'" :widget="widget" />
 	<GroupWidget v-else-if="widget.type === 'group'" :widget="widget" />
 	<PluginPageWidget v-else-if="widget.type === 'pluginPage'" :widget="widget" />
 	<EmbeddableWidget v-else-if="widget.type === 'embeddable'" :widget="widget" />
@@ -61,6 +67,8 @@ import ChartWidget from "./ChartWidget.vue";
 import ClockWidget from "./ClockWidget.vue";
 import CommandButtonWidget from "./CommandButtonWidget.vue";
 import ConsoleWidget from "./ConsoleWidget.vue";
+import ConsoleInputWidget from "./ConsoleInputWidget.vue";
+import ConsoleOutputWidget from "./ConsoleOutputWidget.vue";
 import DroWidget from "./DroWidget.vue";
 import EmbeddableWidget from "./EmbeddableWidget.vue";
 import EventLogWidget from "./EventLogWidget.vue";
@@ -93,6 +101,10 @@ import StatusWidget from "./StatusWidget.vue";
 import StepperWidget from "./StepperWidget.vue";
 import TableWidget from "./TableWidget.vue";
 import ThemeToggleWidget from "./ThemeToggleWidget.vue";
+import CodeInputWidget from "./CodeInputWidget.vue";
+import EditModeToggleWidget from "./EditModeToggleWidget.vue";
+import UploadButtonWidget from "./UploadButtonWidget.vue";
+import AccessChipWidget from "./AccessChipWidget.vue";
 import ThumbnailWidget from "./ThumbnailWidget.vue";
 import ToggleWidget from "./ToggleWidget.vue";
 import ToolAlignWidget from "./ToolAlignWidget.vue";

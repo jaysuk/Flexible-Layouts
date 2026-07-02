@@ -44,22 +44,40 @@
 		<!-- In edit mode the body becomes pointer-inert (so dragging/clicking the tile never actuates
 			 the live widget underneath, e.g. firing G-code while arranging). Done with
 			 pointer-events:none rather than an overlay, so it doesn't swallow the resize grip. -->
-		<div class="flex-item-body" :class="{ 'with-header': editMode, 'is-inert': editMode, 'has-bg': !!item.colors?.background, 'has-text': !!item.colors?.text, 'no-scroll': fitEnabled, 'is-builtin-panel': item.widget.type === 'builtinPanel' && !fitEnabled, 'has-label-size': !!item.typography?.labelFontSize, 'has-label-family': !!item.typography?.labelFontFamily }"
+		<div class="flex-item-body" :class="{ 'with-header': editMode, 'is-inert': editMode, 'has-bg': !!item.colors?.background, 'has-text': !!item.colors?.text, 'has-header-color': !!item.colors?.header, 'no-scroll': fitEnabled, 'is-builtin-panel': item.widget.type === 'builtinPanel' && !fitEnabled, 'is-chrome-panel': chromeOn && !fitEnabled, 'has-label-size': !!item.typography?.labelFontSize, 'has-label-family': !!item.typography?.labelFontFamily }"
 			 :style="typographyStyle">
 			<!-- A condition can hide the widget at runtime. In edit mode it stays visible (dimmed) so
 				 it remains selectable; in view mode it renders nothing. -->
 			<div v-if="effects.hidden && !editMode" class="fill-height" />
 			<div v-else class="fill-height" :class="{ 'condition-dimmed': effects.hidden && editMode }">
 				<WidgetErrorBoundary :reset-key="widgetKey">
-					<ScaleToFit v-if="fitEnabled">
-						<WidgetView :widget="item.widget" :override-color="effects.color" :disabled="effects.disabled || interactionLocked" />
-					</ScaleToFit>
-					<!-- Auto-height (view mode only): render at natural content height in a measuring wrapper
-						 so the cell can be resized to fit and the panels below reflow. -->
-					<div v-else-if="autoMeasure" ref="measureRef" class="flex-auto-measure">
-						<WidgetView :widget="item.widget" :override-color="effects.color" :disabled="effects.disabled || interactionLocked" />
-					</div>
-					<WidgetView v-else :widget="item.widget" :override-color="effects.color" :disabled="effects.disabled || interactionLocked" />
+					<!-- DWC-consistent panel chrome: wrap the widget in DWC's own PanelCard (the same v-card +
+						 icon/title header bar every built-in panel uses) so custom widgets match built-in ones.
+						 Kept as a genuine v-if/v-else (not a shared template) so chrome-off widgets - shape/
+						 nestling-oriented controls in particular - get exactly the same bare DOM as before,
+						 with zero risk from an extra wrapper div. -->
+					<PanelCard v-if="chromeOn" class="fill-height d-flex flex-column" :icon="meta.icon" :title="meta.title">
+						<div class="flex-grow-1 flex-chrome-slot">
+							<ScaleToFit v-if="fitEnabled">
+								<WidgetView :widget="item.widget" :override-color="effects.color" :disabled="effects.disabled || interactionLocked" />
+							</ScaleToFit>
+							<div v-else-if="autoMeasure" ref="measureRef" class="flex-auto-measure">
+								<WidgetView :widget="item.widget" :override-color="effects.color" :disabled="effects.disabled || interactionLocked" />
+							</div>
+							<WidgetView v-else :widget="item.widget" :override-color="effects.color" :disabled="effects.disabled || interactionLocked" />
+						</div>
+					</PanelCard>
+					<template v-else>
+						<ScaleToFit v-if="fitEnabled">
+							<WidgetView :widget="item.widget" :override-color="effects.color" :disabled="effects.disabled || interactionLocked" />
+						</ScaleToFit>
+						<!-- Auto-height (view mode only): render at natural content height in a measuring wrapper
+							 so the cell can be resized to fit and the panels below reflow. -->
+						<div v-else-if="autoMeasure" ref="measureRef" class="flex-auto-measure">
+							<WidgetView :widget="item.widget" :override-color="effects.color" :disabled="effects.disabled || interactionLocked" />
+						</div>
+						<WidgetView v-else :widget="item.widget" :override-color="effects.color" :disabled="effects.disabled || interactionLocked" />
+					</template>
 
 					<!-- Guaranteed interaction block while print-locked or access-restricted (covers widgets
 						 that ignore `disabled`). Access takes tooltip precedence when both apply, since it's
@@ -99,6 +117,7 @@ import type { GridItemModel } from "../model/document";
 import { PLUGIN_MANIFEST_ID } from "../model/constants";
 import { evaluateConditions } from "../util/conditions";
 import { accessLockedFor } from "../model/access";
+import { effectiveChromeForItem } from "../util/panelChrome";
 import { effectiveLockForItem, isPrintingStatus } from "../util/printLock";
 import { describeWidget } from "../widgets/registry";
 import ScaleToFit from "../widgets/ScaleToFit.vue";
@@ -155,6 +174,10 @@ const printLocked = computed(() =>
 // itself requires Admin, so this is inert whenever editing is actually possible.
 const accessLocked = computed(() => !props.editMode && accessLockedFor(props.item.widget));
 const interactionLocked = computed(() => printLocked.value || accessLocked.value);
+
+// DWC-consistent panel chrome: wrap the widget in DWC's own PanelCard (see util/panelChrome for the
+// per-widget-type default and the reasoning behind it).
+const chromeOn = computed(() => effectiveChromeForItem(props.item.widget, props.item.panelChrome));
 
 // Shaped button detection: when a codeButton has a non-rect shape, remove the rectangular
 // chrome (no border-radius, no background box) in view mode so the shape itself is the button.
@@ -225,8 +248,11 @@ function measure(): void {
 	cancelAnimationFrame(raf);
 	raf = requestAnimationFrame(() => {
 		const headerPx = props.editMode ? 28 : 0; // edit header isn't shown in view mode
+		// The measured element sits inside PanelCard's slot (below its title bar), so its own height
+		// doesn't include the title bar - add a fixed estimate for it when chrome is on.
+		const chromePx = chromeOn.value ? 48 : 0;
 		const margin = 8; // grid item vertical margin
-		const rows = Math.max(1, Math.ceil((el.offsetHeight + headerPx + margin) / (rh + margin)));
+		const rows = Math.max(1, Math.ceil((el.offsetHeight + headerPx + chromePx + margin) / (rh + margin)));
 		if (rows !== props.item.h) {
 			emit("autoHeight", rows);
 		}
@@ -346,8 +372,15 @@ onBeforeUnmount(() => {
 /* Built-in DWC panels are v-cards whose elevation shadow gives them their "raised panel" look. The
    body normally clips that shadow (flat panels); let it show so they match the stock dashboard. The
    panel's own content is still clipped/scrolled by its inner container, so nothing bleeds out. */
-.flex-item-body.is-builtin-panel {
+.flex-item-body.is-builtin-panel,
+.flex-item-body.is-chrome-panel {
 	overflow: visible;
+}
+/* The chromed PanelCard's slot area is what actually scrolls/clips the widget's own content, now
+   that the card's shadow/elevation is allowed to show past `.flex-item-body`. */
+.flex-chrome-slot {
+	min-height: 0;
+	overflow: auto;
 }
 .flex-item-body.is-inert {
 	pointer-events: none;
@@ -390,6 +423,11 @@ onBeforeUnmount(() => {
 .flex-item-body.has-text :deep(.v-card-title),
 .flex-item-body.has-text :deep(.v-card-text) {
 	color: var(--flex-text);
+}
+/* The header colour now also tints the chromed PanelCard's title bar (previously only reached the
+   edit-mode drag-handle bar, since there was no view-mode title bar to apply it to). */
+.flex-item-body.has-header-color :deep(.v-card-title) {
+	background: var(--flex-header);
 }
 
 .flex-widget-error {

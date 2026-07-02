@@ -62,6 +62,39 @@ describe("document migration", () => {
 	});
 });
 
+describe("v3 -> v4 header chrome seeding", () => {
+	it("seeds one of each new top-bar chrome widget alongside existing header items", () => {
+		const out = migrateDocument(sampleDoc());
+		const types = out.header?.items.map((it) => it.widget.type) ?? [];
+		expect(types).toContain("clock"); // pre-existing pinned item preserved
+		expect(types).toContain("accessChip");
+		expect(types).toContain("codeInput");
+		expect(types).toContain("editModeToggle");
+		expect(types).toContain("uploadButton");
+		// The edit/upload pair replicate their old right-hand position in the bar.
+		const editItem = out.header?.items.find((it) => it.widget.type === "editModeToggle");
+		const uploadItem = out.header?.items.find((it) => it.widget.type === "uploadButton");
+		expect(editItem?.headerAlign).toBe("end");
+		expect(uploadItem?.headerAlign).toBe("end");
+	});
+
+	it("never duplicates a chrome item that's already present (e.g. a user re-migrating, or one seeded before)", () => {
+		const doc = sampleDoc();
+		doc.header!.items.push({ i: "pre", x: 0, y: 0, w: 2, h: 1, widget: { type: "accessChip" } as unknown as Widget });
+		const out = migrateDocument(doc);
+		const accessChipCount = out.header?.items.filter((it) => it.widget.type === "accessChip").length;
+		expect(accessChipCount).toBe(1);
+	});
+
+	it("creates a header block from scratch for a document that never had one", () => {
+		const doc = sampleDoc();
+		delete doc.header;
+		const out = migrateDocument(doc);
+		const types = out.header?.items.map((it) => it.widget.type) ?? [];
+		expect(types).toEqual(expect.arrayContaining(["accessChip", "codeInput", "editModeToggle", "uploadButton"]));
+	});
+});
+
 describe("backfillWidgetDefaults", () => {
 	it("fills parameters added to a widget's template without overwriting existing values", () => {
 		const w = { type: "extruder", feedrate: 999 } as unknown as Widget;

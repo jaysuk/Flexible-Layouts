@@ -694,6 +694,16 @@
 					</v-row>
 				</template>
 
+				<!-- Console input (split) -->
+				<template v-else-if="draft.type === 'consoleInput'">
+					<v-text-field v-model="draft.placeholder" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.console.placeholderLabel')" />
+				</template>
+
+				<!-- Console output (split) -->
+				<template v-else-if="draft.type === 'consoleOutput'">
+					<v-text-field v-model.number="draft.rows" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.console.rows')" />
+				</template>
+
 				<!-- Heater -->
 				<template v-else-if="draft.type === 'heater'">
 					<v-text-field v-model="draft.label" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" />
@@ -1169,6 +1179,12 @@
 				<v-switch v-model="lockWhilePrinting" color="primary" density="compact" hide-details class="mt-2"
 						  :label="$t('plugins.flexibleLayouts.printLock.widgetLabel')" />
 				<div class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.printLock.widgetHint") }}</div>
+
+				<template v-if="draft.type !== 'builtinPanel'">
+					<v-switch v-model="panelChrome" color="primary" density="compact" hide-details class="mt-2"
+							  :label="$t('plugins.flexibleLayouts.panelChrome.label')" />
+					<div class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.panelChrome.hint") }}</div>
+				</template>
 			</v-card-text>
 
 			<v-card-actions>
@@ -1193,6 +1209,7 @@ import { hasInputModifier } from "../util/inputModifier";
 import { DEFAULT_PROBE_COMMANDS as PROBE_DEFAULTS } from "../util/probe";
 import { OM_VALUE_PRESETS, type OmPreset, resolveOmPath } from "../util/omPath";
 import { defaultLockForWidget } from "../util/printLock";
+import { defaultChromeForWidget } from "../util/panelChrome";
 import { describeWidget } from "../widgets/registry";
 import ColorSelect from "./ColorSelect.vue";
 import IconPicker from "./IconPicker.vue";
@@ -1202,7 +1219,7 @@ import WidgetView from "../widgets/WidgetView.vue";
 const props = defineProps<{ modelValue: boolean; item: GridItemModel | null }>();
 const emit = defineEmits<{
 	"update:modelValue": [boolean];
-	save: [{ widget: Widget; conditions: Array<ConditionRule>; colors: PanelColors; typography: Typography; fit: boolean | undefined; autoHeight: boolean | undefined; tooltip: string | undefined; lockWhilePrinting: boolean | undefined; geometry: { x: number; y: number; w: number; h: number } }];
+	save: [{ widget: Widget; conditions: Array<ConditionRule>; colors: PanelColors; typography: Typography; fit: boolean | undefined; autoHeight: boolean | undefined; tooltip: string | undefined; lockWhilePrinting: boolean | undefined; panelChrome: boolean | undefined; geometry: { x: number; y: number; w: number; h: number } }];
 }>();
 
 const machineStore = useMachineStore();
@@ -1250,6 +1267,7 @@ const fit = ref<boolean | undefined>(undefined);
 const autoHeight = ref<boolean | undefined>(undefined);
 const tooltip = ref<string>("");
 const lockWhilePrinting = ref<boolean>(false);
+const panelChrome = ref<boolean>(true);
 const geom = ref({ x: 0, y: 0, w: 2, h: 2 });
 watch(
 	() => props.modelValue,
@@ -1272,6 +1290,7 @@ watch(
 			tooltip.value = props.item.tooltip ?? "";
 			// Default reflects the widget-type policy (motion/tool widgets default on) until set explicitly.
 			lockWhilePrinting.value = props.item.lockWhilePrinting ?? defaultLockForWidget(props.item.widget);
+			panelChrome.value = props.item.panelChrome ?? defaultChromeForWidget(props.item.widget);
 		}
 	},
 	{ immediate: true },
@@ -1649,6 +1668,7 @@ function save() {
 			autoHeight: autoHeight.value,
 			tooltip: tooltip.value.trim() || undefined,
 			lockWhilePrinting: lockWhilePrinting.value,
+			panelChrome: draft.value.type === "builtinPanel" ? undefined : panelChrome.value,
 			geometry: {
 				x: Math.max(0, Math.round(geom.value.x) || 0),
 				y: Math.max(0, Math.round(geom.value.y) || 0),
