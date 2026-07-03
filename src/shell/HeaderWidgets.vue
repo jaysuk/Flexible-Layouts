@@ -1,40 +1,29 @@
 <template>
-	<div class="d-flex align-center ga-1 flex-header-widgets">
-		<div v-for="(item, i) in items" :key="item.i" class="header-item"
-			 :class="{ editing: editMode, dragging: dragIndex === i, 'pushed-right': i === firstEndIndex }"
-			 :style="itemStyle(item)"
-			 :draggable="editMode"
-			 @dragstart="onDragStart(i, $event)" @dragover.prevent="onDragOver(i)" @dragend="onDragEnd" @drop="onDrop">
-			<div v-if="editMode" class="header-item-tools">
-				<v-icon class="drag-grip" size="x-small">mdi-drag-vertical</v-icon>
-				<v-btn :icon="item.headerAlign === 'end' ? 'mdi-format-horizontal-align-right' : 'mdi-format-horizontal-align-left'"
-					   size="x-small" variant="text" density="comfortable"
-					   :title="item.headerAlign === 'end' ? $t('plugins.flexibleLayouts.editor.headerAlignLeft') : $t('plugins.flexibleLayouts.editor.headerAlignRight')"
-					   @click="toggleAlign(i)" />
-				<v-btn icon="mdi-cog" size="x-small" variant="text" density="comfortable" @click="edit(i)" />
-				<v-btn icon="mdi-delete" size="x-small" variant="text" density="comfortable" @click="remove(i)" />
+	<div ref="canvasRef" class="fl-header-canvas">
+		<div v-for="item in items" :key="item.i" class="fl-header-item" :class="{ 'is-editing': editMode }"
+			 :style="itemStyle(item)" @pointerdown="onItemPointerDown($event, item)">
+			<WidgetView :widget="item.widget" :disabled="!editMode && itemLocked(item)" />
+			<!-- Physical overlay, not just `disabled`: several widget types (ProfileSwitchWidget,
+				 MessageBoxWidget, ThemeToggleWidget, GroupWidget, PluginPageWidget, EmbeddableWidget,
+				 WebWidget) never receive `disabled` from WidgetView at all, and one of them ignores it
+				 even where it is passed - so this is the only mechanism guaranteed to actually block a
+				 pinned header widget. -->
+			<div v-if="!editMode && itemLocked(item)" class="flex-interaction-lock"
+				 :title="accessLocked ? $t('plugins.flexibleLayouts.access.interactionLocked') : $t('plugins.flexibleLayouts.printLock.locked')">
+				<v-icon size="x-small">mdi-lock</v-icon>
 			</div>
-			<div class="header-item-body" :style="bodyStyle(item)">
-				<WidgetView :widget="item.widget" :disabled="!editMode && itemLocked(item)" />
-				<!-- Physical overlay, not just `disabled`: several widget types (ProfileSwitchWidget,
-					 MessageBoxWidget, ThemeToggleWidget, GroupWidget, PluginPageWidget, EmbeddableWidget,
-					 WebWidget) never receive `disabled` from WidgetView at all, and one of them ignores it
-					 even where it is passed - so this is the only mechanism guaranteed to actually block a
-					 pinned header widget. -->
-				<div v-if="!editMode && itemLocked(item)" class="flex-interaction-lock"
-					 :title="accessLocked ? $t('plugins.flexibleLayouts.access.interactionLocked') : $t('plugins.flexibleLayouts.printLock.locked')">
-					<v-icon size="x-small">mdi-lock</v-icon>
-				</div>
+
+			<div v-if="editMode" class="fl-header-item-tools" @pointerdown.stop>
+				<v-btn icon="mdi-cog" size="x-small" variant="text" density="comfortable"
+					   :title="$t('plugins.flexibleLayouts.editor.configureWidget')" @click="openProperties(item.i)" />
+				<v-btn v-if="!isProtected(item)" icon="mdi-delete" size="x-small" variant="text" density="comfortable"
+					   :title="$t('plugins.flexibleLayouts.editor.removeWidget')" @click="removeItem(item)" />
 			</div>
-			<!-- right-edge handle to set this widget's width within the bar -->
-			<div v-if="editMode" class="header-resizer" @mousedown.stop.prevent="startResize(i, $event)" />
+			<div v-if="editMode" class="fl-header-resizer" @pointerdown.stop="onResizePointerDown($event, item)" />
 		</div>
 
-		<v-btn v-if="editMode" icon="mdi-plus" size="x-small" variant="tonal" class="ms-1"
-			   :title="$t('plugins.flexibleLayouts.editor.addWidget')" @click="paletteOpen = true" />
-
-		<WidgetPalette v-model="paletteOpen" @add="onAdd" />
-		<PropertiesDialog v-model="propsOpen" :item="editingItem" @save="onSave" />
+		<WidgetPalette v-model="paletteOpen" @add="onAddWidget" @add-item="onAddItem" />
+		<PropertiesDialog v-model="propertiesOpen" :item="editingItem" @save="onSaveProperties" />
 	</div>
 </template>
 
@@ -61,18 +50,6 @@ import PropertiesDialog from "../editor/PropertiesDialog.vue";
 const store = useLayoutStore();
 const machineStore = useMachineStore();
 
-// Lock a header widget while printing (same policy as grid items: explicit choice, else type default)
-// or while access-restricted (Observer, or Operator without `interact`).
-const isPrinting = computed(() => isPrintingStatus((machineStore.model as { state?: { status?: string } }).state?.status));
-const accessLocked = computed(() => !can("interact"));
-function itemLocked(item: GridItemModel): boolean {
-	return accessLockedFor(item.widget) || (isPrinting.value && effectiveLockForItem(item.widget, item.lockWhilePrinting));
-}
-
-const DEFAULT_WIDTH = 110;
-const MIN_WIDTH = 48;
-const MAX_WIDTH = 400;
-
 function headerItems(): Array<GridItemModel> {
 	const doc = store.document.value;
 	if (!doc.header) {
@@ -83,164 +60,227 @@ function headerItems(): Array<GridItemModel> {
 
 const items = computed(() => headerItems());
 
-// The first right-aligned item (in array order) gets `margin-left:auto`, pushing it and everything
-// after it to the right edge — a left group and a right group from a single flat array.
-const firstEndIndex = computed(() => items.value.findIndex((it) => it.headerAlign === "end"));
-
-// Flip an item between the left (start) and right (end) groups, moving it within the array so the two
-// groups stay contiguous (start items first, then end items) and the push-right stays clean.
-function toggleAlign(i: number) {
-	const list = headerItems();
-	const [item] = list.splice(i, 1);
-	if (item.headerAlign === "end") {
-		item.headerAlign = undefined;
-		const firstEnd = list.findIndex((it) => it.headerAlign === "end");
-		list.splice(firstEnd === -1 ? list.length : firstEnd, 0, item);
-	} else {
-		item.headerAlign = "end";
-		list.push(item);
-	}
+// Lock a header widget while printing (same policy as grid items: explicit choice, else type default)
+// or while access-restricted (Observer, or Operator without `interact`).
+const isPrinting = computed(() => isPrintingStatus((machineStore.model as { state?: { status?: string } }).state?.status));
+const accessLocked = computed(() => !can("interact"));
+function itemLocked(item: GridItemModel): boolean {
+	return accessLockedFor(item.widget) || (isPrinting.value && effectiveLockForItem(item.widget, item.lockWhilePrinting));
 }
 
-const paletteOpen = ref(false);
-const propsOpen = ref(false);
-const editingIndex = ref(-1);
-const editingItem = ref<GridItemModel | null>(null);
-
-// Per-item width + typography (so font edits actually take effect in the bar, which the old fixed
-// strip ignored).
-function itemStyle(item: GridItemModel) {
-	return { width: `${Math.round(item.headerWidth ?? DEFAULT_WIDTH)}px` };
-}
-function bodyStyle(item: GridItemModel) {
-	const t = item.typography;
-	const s: Record<string, string> = {};
-	if (t?.fontSize) s.fontSize = `${t.fontSize}px`;
-	if (t?.fontFamily) s.fontFamily = t.fontFamily;
-	return s;
+// Widget types that can never be deleted from the header: removing the edit-mode button would be an
+// unrecoverable dead end for anyone who doesn't already know about the Settings-tab fallback, so it
+// isn't offered as an option at all here rather than relying on people finding that fallback.
+const PROTECTED_TYPES = new Set<Widget["type"]>(["editModeToggle"]);
+function isProtected(item: GridItemModel): boolean {
+	return PROTECTED_TYPES.has(item.widget.type);
 }
 
-// --- drag to reorder ---------------------------------------------------------------
-const dragIndex = ref(-1);
-function onDragStart(i: number, ev: DragEvent) {
+// Items are laid out by x/w percentages of the bar only - y/h are ignored so every item always fills
+// the bar's full height. That's a deliberate, narrower interaction than the free 2D canvas used
+// elsewhere (groups): the top bar is one row, so only horizontal position and width are editable.
+function itemStyle(item: GridItemModel): Record<string, string> {
+	return {
+		position: "absolute",
+		left: `${item.x}%`,
+		top: "0",
+		width: `${item.w}%`,
+		height: "100%",
+		boxSizing: "border-box",
+	};
+}
+
+const canvasRef = ref<HTMLElement | null>(null);
+function canvasWidth(): number {
+	return canvasRef.value?.clientWidth || 1;
+}
+
+// ── Drag to reposition (x only) ───────────────────────────────────────────────
+// Movement only turns into a drag past a small threshold, and pointer capture is deferred until
+// then - otherwise every plain click on a widget's own controls (e.g. the edit-mode Done button
+// pinned in the header) would be hijacked into a zero-distance "drag" and never reach the button.
+const DRAG_THRESHOLD_PX = 4;
+interface DragState { id: string; pointerId: number; target: HTMLElement; startX: number; origX: number; dragging: boolean }
+let dragState: DragState | null = null;
+
+function onItemPointerDown(e: PointerEvent, item: GridItemModel): void {
 	if (!editMode.value) {
 		return;
 	}
-	dragIndex.value = i;
-	ev.dataTransfer?.setData("text/plain", String(i));
-	if (ev.dataTransfer) {
-		ev.dataTransfer.effectAllowed = "move";
-	}
+	dragState = {
+		id: item.i,
+		pointerId: e.pointerId,
+		target: e.currentTarget as HTMLElement,
+		startX: e.clientX,
+		origX: item.x,
+		dragging: false,
+	};
+	window.addEventListener("pointermove", onDragMove);
+	window.addEventListener("pointerup", onDragUp, { once: true });
 }
-function onDragOver(i: number) {
-	const from = dragIndex.value;
-	if (from < 0 || from === i) {
+function onDragMove(e: PointerEvent): void {
+	if (!dragState) {
 		return;
 	}
-	const list = headerItems();
-	const [moved] = list.splice(from, 1);
-	list.splice(i, 0, moved);
-	dragIndex.value = i;
-}
-function onDrop() { dragIndex.value = -1; }
-function onDragEnd() { dragIndex.value = -1; }
-
-// --- drag the right edge to resize width -------------------------------------------
-let resizeIndex = -1;
-let resizeStartX = 0;
-let resizeStartW = DEFAULT_WIDTH;
-function startResize(i: number, ev: MouseEvent) {
-	resizeIndex = i;
-	resizeStartX = ev.clientX;
-	resizeStartW = headerItems()[i].headerWidth ?? DEFAULT_WIDTH;
-	window.addEventListener("mousemove", onResizeMove);
-	window.addEventListener("mouseup", onResizeUp);
-}
-function onResizeMove(ev: MouseEvent) {
-	if (resizeIndex < 0) {
+	if (!dragState.dragging) {
+		if (Math.abs(e.clientX - dragState.startX) < DRAG_THRESHOLD_PX) {
+			return;
+		}
+		dragState.dragging = true;
+		dragState.target.setPointerCapture(dragState.pointerId);
+	}
+	const it = headerItems().find((i) => i.i === dragState!.id);
+	if (!it) {
 		return;
 	}
-	const w = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, resizeStartW + ev.clientX - resizeStartX));
-	headerItems()[resizeIndex].headerWidth = Math.round(w);
+	const dx = ((e.clientX - dragState.startX) / canvasWidth()) * 100;
+	it.x = Math.max(0, Math.min(100 - it.w, dragState.origX + dx));
 }
-function onResizeUp() {
-	resizeIndex = -1;
-	window.removeEventListener("mousemove", onResizeMove);
-	window.removeEventListener("mouseup", onResizeUp);
+function onDragUp(): void {
+	dragState = null;
+	window.removeEventListener("pointermove", onDragMove);
 }
-onBeforeUnmount(onResizeUp);
 
-function onAdd(payload: { widget: Widget; size?: { w: number; h: number }; configure: boolean }) {
-	const item: GridItemModel = { i: newItemId(), x: 0, y: 0, w: 2, h: 1, widget: payload.widget, headerWidth: DEFAULT_WIDTH };
+// ── Resize the right edge only (width, never height) ─────────────────────────
+interface ResizeState { id: string; startX: number; origW: number }
+let resizeState: ResizeState | null = null;
+
+function onResizePointerDown(e: PointerEvent, item: GridItemModel): void {
+	if (!editMode.value) {
+		return;
+	}
+	(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+	resizeState = { id: item.i, startX: e.clientX, origW: item.w };
+	window.addEventListener("pointermove", onResizeMove);
+	window.addEventListener("pointerup", onResizeUp, { once: true });
+}
+function onResizeMove(e: PointerEvent): void {
+	if (!resizeState) {
+		return;
+	}
+	const it = headerItems().find((i) => i.i === resizeState!.id);
+	if (!it) {
+		return;
+	}
+	const dw = ((e.clientX - resizeState.startX) / canvasWidth()) * 100;
+	it.w = Math.max(4, Math.min(100 - it.x, resizeState.origW + dw));
+}
+function onResizeUp(): void {
+	resizeState = null;
+	window.removeEventListener("pointermove", onResizeMove);
+}
+onBeforeUnmount(() => {
+	onDragUp();
+	onResizeUp();
+});
+
+// ── Add / remove / configure ──────────────────────────────────────────────────
+const paletteOpen = ref(false);
+
+function placeNew(): { x: number; y: number; w: number; h: number } {
+	const w = 20;
+	const x = Math.min(100 - w, (headerItems().length * 12) % 80);
+	return { x, y: 0, w, h: 100 };
+}
+function onAddWidget(payload: { widget: Widget; size?: { w: number; h: number }; configure: boolean }): void {
+	const item: GridItemModel = { i: newItemId(), ...placeNew(), widget: payload.widget };
 	headerItems().push(item);
 	if (payload.configure) {
-		editingIndex.value = headerItems().length - 1;
-		editingItem.value = item;
-		propsOpen.value = true;
+		openProperties(item.i);
 	}
 }
-
-function edit(i: number) {
-	editingIndex.value = i;
-	editingItem.value = headerItems()[i];
-	propsOpen.value = true;
+function onAddItem(item: GridItemModel): void {
+	headerItems().push({ ...item, ...placeNew() });
 }
 
-function onSave(payload: { widget: Widget; conditions: Array<ConditionRule>; colors: PanelColors; typography: Typography; fit: boolean | undefined; lockWhilePrinting: boolean | undefined; panelChrome: boolean | undefined; geometry: { x: number; y: number; w: number; h: number } }) {
+function removeItem(item: GridItemModel): void {
+	if (isProtected(item)) {
+		return;
+	}
 	const list = headerItems();
-	if (editingIndex.value >= 0 && list[editingIndex.value]) {
-		list[editingIndex.value] = {
-			...list[editingIndex.value],
-			widget: payload.widget,
-			conditions: payload.conditions,
-			colors: payload.colors,
-			typography: payload.typography,
-			fit: payload.fit,
-			lockWhilePrinting: payload.lockWhilePrinting,
-			// Header-pinned widgets never render panel chrome (the top bar is too slim for a title
-			// bar), but the field is stored anyway in case an item is later promoted to the page grid.
-			panelChrome: payload.panelChrome,
-		};
+	const idx = list.findIndex((it) => it.i === item.i);
+	if (idx >= 0) {
+		list.splice(idx, 1);
 	}
 }
 
-function remove(i: number) {
-	headerItems().splice(i, 1);
+const propertiesOpen = ref(false);
+const editingId = ref<string | null>(null);
+const editingItem = ref<GridItemModel | null>(null);
+function openProperties(id: string): void {
+	const item = headerItems().find((it) => it.i === id);
+	if (!item) {
+		return;
+	}
+	editingId.value = id;
+	editingItem.value = item;
+	propertiesOpen.value = true;
 }
+function onSaveProperties(payload: { widget: Widget; conditions: Array<ConditionRule>; colors: PanelColors; typography: Typography; fit: boolean | undefined; lockWhilePrinting: boolean | undefined; panelChrome: boolean | undefined }): void {
+	const list = headerItems();
+	const idx = list.findIndex((it) => it.i === editingId.value);
+	if (idx < 0) {
+		return;
+	}
+	list[idx] = {
+		...list[idx],
+		widget: payload.widget,
+		conditions: payload.conditions,
+		colors: payload.colors,
+		typography: payload.typography,
+		fit: payload.fit,
+		lockWhilePrinting: payload.lockWhilePrinting,
+		// Header-pinned widgets never render panel chrome (the top bar is too slim for a title bar),
+		// but the field is stored anyway in case an item is later promoted to the page grid.
+		panelChrome: payload.panelChrome,
+	};
+}
+
+// The "+ add widget" trigger lives in FlexShell's app bar (a normal flex sibling with guaranteed
+// space) rather than floating over/outside this canvas, since items can occupy the full 0-100%
+// width and there's no space that's reliably free for it to sit in on its own.
+defineExpose({ openPalette: () => { paletteOpen.value = true; } });
 </script>
 
 <style scoped>
-.flex-header-widgets {
-	overflow-x: auto;
-	max-width: 46vw;
+/* Fills the remaining app-bar width/height (its parent sizes it via flex), and is the percentage
+   reference frame for every pinned item's x/w. No overflow/scroll: drag and resize both clamp to
+   0-100%, so nothing can ever spill outside this box or force a scrollbar. */
+.fl-header-canvas {
+	position: relative;
+	flex: 1 1 auto;
+	min-width: 0;
+	height: 52px;
 	font-size: 12px;
 }
-/* The first right-aligned header item starts the right-hand group: the auto left margin eats the
-   free space so it (and everything after it) sits against the right edge of the bar. */
-.header-item.pushed-right {
-	margin-left: auto;
+.fl-header-item {
+	overflow: hidden;
 }
-.header-item {
-	position: relative;
-	height: 52px;
-	min-width: 48px;
-	flex: 0 0 auto;
+.fl-header-item.is-editing {
+	outline: 1px dashed rgba(var(--v-theme-primary), 0.5);
+	cursor: move;
+}
+.fl-header-item-tools {
+	position: absolute;
+	top: -2px;
+	right: -2px;
+	z-index: 3;
 	display: flex;
 	align-items: center;
+	background: rgba(var(--v-theme-surface), 0.85);
 	border-radius: 4px;
 }
-.header-item.editing {
-	outline: 1px dashed rgba(var(--v-theme-primary), 0.5);
-	cursor: grab;
-}
-.header-item.dragging {
-	opacity: 0.5;
-}
-.header-item-body {
-	position: relative;
-	width: 100%;
+.fl-header-resizer {
+	position: absolute;
+	top: 0;
+	right: 0;
+	width: 6px;
 	height: 100%;
-	overflow: hidden;
+	cursor: ew-resize;
+	z-index: 2;
+}
+.fl-header-resizer:hover {
+	background: rgba(var(--v-theme-primary), 0.4);
 }
 .flex-interaction-lock {
 	position: absolute;
@@ -256,46 +296,20 @@ function remove(i: number) {
 .flex-interaction-lock .v-icon {
 	opacity: 0.45;
 }
-.header-item-tools {
-	position: absolute;
-	top: -2px;
-	right: -2px;
-	z-index: 3;
-	display: flex;
-	align-items: center;
-	background: rgba(var(--v-theme-surface), 0.85);
-	border-radius: 4px;
-}
-.drag-grip {
-	cursor: grab;
-	opacity: 0.6;
-}
-.header-resizer {
-	position: absolute;
-	top: 0;
-	right: 0;
-	width: 6px;
-	height: 100%;
-	cursor: ew-resize;
-	z-index: 2;
-}
-.header-resizer:hover {
-	background: rgba(var(--v-theme-primary), 0.4);
-}
 
 /* Same as the grid: let form controls grow with the font instead of clipping a large value. */
-.header-item-body :deep(.v-input) {
+.fl-header-item :deep(.v-input) {
 	--v-input-control-height: 2.6em;
 }
-.header-item-body :deep(.v-field__input) {
+.fl-header-item :deep(.v-field__input) {
 	min-height: 2.6em;
 	line-height: 1.5;
 	padding-top: 0.4em;
 	padding-bottom: 0.3em;
 }
-.header-item-body :deep(.v-field__input input),
-.header-item-body :deep(.v-field__input textarea),
-.header-item-body :deep(.v-field__input .v-select__selection) {
+.fl-header-item :deep(.v-field__input input),
+.fl-header-item :deep(.v-field__input textarea),
+.fl-header-item :deep(.v-field__input .v-select__selection) {
 	line-height: 1.5;
 }
 </style>

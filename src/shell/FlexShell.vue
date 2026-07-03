@@ -1,46 +1,57 @@
 <template>
 	<v-app>
 		<v-app-bar :elevation="2" :color="appBarColor">
-			<v-app-bar-nav-icon @click="drawer = !drawer" />
+			<!-- Grouped so the floating "+" below can anchor to this block's own right edge, wherever
+				 that ends up (it shifts with the logo/machine-name width and whether the connect button
+				 and profile switcher are showing) - without becoming a flex sibling itself, so it never
+				 takes layout space or pushes HeaderWidgets' canvas around when it appears/disappears. -->
+			<div class="fl-app-bar-left">
+				<v-app-bar-nav-icon @click="drawer = !drawer" />
 
-			<img v-if="headerLogo" :src="headerLogo" class="header-logo ms-2 me-2" alt="" />
-			<div v-else class="text-truncate machine-name ms-2 me-2" :title="headerTitle || machineName">
-				{{ headerTitle || machineName }}
+				<img v-if="headerLogo" :src="headerLogo" class="header-logo ms-2 me-2" alt="" />
+				<div v-else class="text-truncate machine-name ms-2 me-2" :title="headerTitle || machineName">
+					{{ headerTitle || machineName }}
+				</div>
+
+				<ConnectButton v-if="showConnectButton && mdAndUp" class="ms-2" />
+
+				<!-- Quick profile switcher (only when more than one profile exists). Switching layouts/managing
+					 profiles is an editorial action, so it needs Admin just like the Edit button — otherwise a
+					 restricted session could hop to a differently-configured profile from FL's own chrome. -->
+				<v-menu v-if="profiles.length > 1 && canEditLayoutNow">
+					<template #activator="{ props: menuProps }">
+						<v-btn v-bind="menuProps" variant="tonal" rounded="md" size="small" class="ms-2"
+							   prepend-icon="mdi-layers-triple" append-icon="mdi-menu-down">
+							{{ activeProfileName }}
+						</v-btn>
+					</template>
+					<v-list density="compact">
+						<v-list-item v-for="p in profiles" :key="p.id" :title="p.name"
+									 :prepend-icon="p.id === activeProfileId ? 'mdi-check' : ''"
+									 @click="switchToProfile(p.id)" />
+						<v-divider />
+						<v-list-item prepend-icon="mdi-cog" :title="$t('plugins.flexibleLayouts.profiles.manage')"
+									 @click="profilesOpen = true" />
+					</v-list>
+				</v-menu>
+
+				<!-- Floats in front of the header canvas's left edge rather than taking its own flex space,
+					 so entering/leaving edit mode never shifts or resizes any pinned header widget. -->
+				<v-btn v-if="mdAndUp && editMode" icon="mdi-plus" size="x-small" variant="tonal" class="fl-header-add-btn"
+					   :title="$t('plugins.flexibleLayouts.editor.addWidget')" @click="headerWidgetsRef?.openPalette()" />
 			</div>
 
-			<ConnectButton v-if="showConnectButton && mdAndUp" class="ms-2" />
-
-			<!-- Quick profile switcher (only when more than one profile exists). Switching layouts/managing
-				 profiles is an editorial action, so it needs Admin just like the Edit button — otherwise a
-				 restricted session could hop to a differently-configured profile from FL's own chrome. -->
-			<v-menu v-if="profiles.length > 1 && canEditLayoutNow">
-				<template #activator="{ props: menuProps }">
-					<v-btn v-bind="menuProps" variant="tonal" rounded="md" size="small" class="ms-2"
-						   prepend-icon="mdi-layers-triple" append-icon="mdi-menu-down">
-						{{ activeProfileName }}
-					</v-btn>
-				</template>
-				<v-list density="compact">
-					<v-list-item v-for="p in profiles" :key="p.id" :title="p.name"
-								 :prepend-icon="p.id === activeProfileId ? 'mdi-check' : ''"
-								 @click="switchToProfile(p.id)" />
-					<v-divider />
-					<v-list-item prepend-icon="mdi-cog" :title="$t('plugins.flexibleLayouts.profiles.manage')"
-								 @click="profilesOpen = true" />
-				</v-list>
-			</v-menu>
-
-			<v-spacer />
-
 			<!-- Everything else in the top bar — the access-level chip, the code-input box, pinned
-				 read-outs/buttons, the edit-mode toggle, and the upload button — is now a fully editable,
-				 reorderable, resizable header item (see HeaderWidgets.vue), rather than fixed shell chrome.
-				 A layout upgraded from an older version had one of each seeded in (see DOC_MIGRATIONS v4)
-				 so nothing was lost in the transition. The e-stop and profile-switcher above stay hard-coded:
-				 the e-stop must always work regardless of what a user does to the header (see model/access.ts's
-				 accessLockedFor), and the profile-switcher's visibility depends on profile count, which the
-				 generic header-item system doesn't model. -->
-			<HeaderWidgets v-if="mdAndUp" class="me-2" />
+				 read-outs/buttons, the edit-mode toggle, and the upload button — is now an editable header
+				 item (drag left/right to reposition, drag the right edge to resize its width; see
+				 HeaderWidgets.vue), rather than fixed shell chrome. It fills the rest of the bar itself
+				 (flex:1), so no spacer is needed here. A layout upgraded from an older version had
+				 one of each seeded in (see DOC_MIGRATIONS v4/v5) so nothing was lost in the transition. The
+				 e-stop and profile-switcher above stay hard-coded: the e-stop must always work regardless of
+				 what a user does to the header (see model/access.ts's accessLockedFor), and the
+				 profile-switcher's visibility depends on profile count, which the generic header-item system
+				 doesn't model. -->
+			<HeaderWidgets v-if="mdAndUp" ref="headerWidgetsRef" class="me-2" />
 
 			<!-- On small screens the header items don't fit in the bar; surface them in an overflow menu
 				 (the maintainer's "top section disappears" on mobile). -->
@@ -50,7 +61,11 @@
 						   :title="$t('plugins.flexibleLayouts.shell.more')" />
 				</template>
 				<v-card min-width="300" max-width="92vw" class="pa-3">
-					<HeaderWidgets />
+					<HeaderWidgets ref="headerWidgetsRef" />
+					<v-btn v-if="editMode" block variant="tonal" size="small" class="mt-2" prepend-icon="mdi-plus"
+						   @click="headerWidgetsRef?.openPalette()">
+						{{ $t("plugins.flexibleLayouts.editor.addWidget") }}
+					</v-btn>
 				</v-card>
 			</v-menu>
 
@@ -542,6 +557,8 @@ const navGroups = computed(() =>
 		.map((category) => ({ category, items: orderedItems(category.key) }))
 		.filter((group) => group.items.length > 0));
 
+const headerWidgetsRef = ref<InstanceType<typeof HeaderWidgets> | null>(null);
+
 const drawer = ref(true);
 // Keep the drawer pinned open whenever we cross into desktop width; on smaller widths it
 // collapses so the canvas gets the full viewport
@@ -567,6 +584,19 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.fl-app-bar-left {
+	position: relative;
+	display: flex;
+	align-items: center;
+	flex: 0 0 auto;
+}
+.fl-header-add-btn {
+	position: absolute;
+	top: 50%;
+	right: -32px;
+	transform: translateY(-50%);
+	z-index: 5;
+}
 .machine-name {
 	min-width: 0;
 	max-width: 12rem;

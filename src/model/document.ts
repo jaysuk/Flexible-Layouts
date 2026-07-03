@@ -9,7 +9,7 @@
  */
 
 /** Bump whenever the shape below changes incompatibly; add a migration in migrateDocument(). */
-export const DOCUMENT_SCHEMA_VERSION = 4;
+export const DOCUMENT_SCHEMA_VERSION = 5;
 
 /**
  * A widget is the thing that lives inside a grid cell.
@@ -1059,14 +1059,6 @@ export interface GridItemModel {
 	 * Separate from the codeButton widget's own `z` field which controls z in a normal grid.
 	 */
 	freeZ?: number;
-	/** Pixel width when placed in the header strip (which is a horizontal row, not a grid). */
-	headerWidth?: number;
-	/**
-	 * Which side of the top bar this header widget sits on. Items keep their array order within each
-	 * side; the first `end` item starts a right-aligned group (everything from it is pushed to the
-	 * right). Defaults to `start` (left, after the title/logo). Only meaningful for header items.
-	 */
-	headerAlign?: "start" | "end";
 }
 
 /** Layout of a single page. */
@@ -1221,8 +1213,8 @@ const DOC_MIGRATIONS: Array<DocMigration> = [
 	// change needed; the migration just bumps the version stamp so re-saved documents carry v3.
 	{ to: 3, up: (_doc) => { /* layoutMode is optional; existing groups unaffected */ } },
 	// v3 → v4: the shell's top-bar chrome (access chip, code input, edit button, upload button) moved
-	// from hard-coded FlexShell elements to ordinary, removable/reorderable header widgets - see
-	// docs on "top bar is fully editable". Seed one of each into `header.items` so an existing layout
+	// from hard-coded FlexShell elements to ordinary, removable header widgets. Seed one of each into
+	// `header.items` (as free x/y/w/h positions - see v4→v5 below for why) so an existing layout
 	// doesn't lose the controls it already had; a user who deliberately removes one later never gets
 	// it re-added (this only ever runs once, when the document is still below v4). The e-stop and
 	// profile-switcher stay hard-coded shell chrome (safety/visibility reasons - see FlexShell.vue).
@@ -1231,21 +1223,52 @@ const DOC_MIGRATIONS: Array<DocMigration> = [
 			doc.header = { items: [] };
 		}
 		const existingTypes = new Set(doc.header.items.map((it) => it.widget.type));
-		const seed: Array<{ widget: Widget; headerWidth: number; headerAlign?: "start" | "end" }> = [
-			{ widget: { type: "accessChip" }, headerWidth: 100 },
-			{ widget: { type: "codeInput" }, headerWidth: 260 },
-			{ widget: { type: "editModeToggle" }, headerWidth: 110, headerAlign: "end" },
-			{ widget: { type: "uploadButton" }, headerWidth: 48, headerAlign: "end" },
+		const seed: Array<{ widget: Widget; x: number; y: number; w: number; h: number }> = [
+			{ widget: { type: "accessChip" }, x: 0, y: 15, w: 12, h: 70 },
+			{ widget: { type: "codeInput" }, x: 14, y: 15, w: 30, h: 70 },
+			{ widget: { type: "editModeToggle" }, x: 80, y: 15, w: 12, h: 70 },
+			{ widget: { type: "uploadButton" }, x: 93, y: 15, w: 6, h: 70 },
 		];
 		for (const s of seed) {
 			if (existingTypes.has(s.widget.type)) {
 				continue;
 			}
-			doc.header.items.push({
-				i: newItemId(), x: 0, y: 0, w: 2, h: 1,
-				widget: s.widget, headerWidth: s.headerWidth, headerAlign: s.headerAlign,
-			});
+			doc.header.items.push({ i: newItemId(), x: s.x, y: s.y, w: s.w, h: s.h, widget: s.widget });
 		}
+	} },
+	// v4 → v5: header items moved from a linear reorder-only strip (headerWidth px + headerAlign
+	// start/end) to a free x/y/w/h canvas matching how custom-panel groups already work - free
+	// placement anywhere, resize from a corner grip, no dead space forced by a fixed-side layout, and
+	// no scrollbar (items are clamped to the canvas). v1.4.0 already shipped documents with
+	// headerWidth/headerAlign (from the original v3→v4 step above); this converts THOSE into a
+	// starting free layout, proportional to each item's old width, in its old left-to-right order
+	// (start-aligned items first, then end-aligned ones) - the admin can freely rearrange from there.
+	// A v4 item seeded fresh by the step above already has sensible x/y/w/h and no legacy fields, so
+	// it passes through this step unchanged.
+	{ to: 5, up: (doc) => {
+		if (!doc.header || doc.header.items.length === 0) {
+			return;
+		}
+		type LegacyHeaderFields = { headerWidth?: number; headerAlign?: "start" | "end" };
+		const items = doc.header.items as Array<GridItemModel & LegacyHeaderFields>;
+		if (!items.some((it) => it.headerWidth !== undefined || it.headerAlign !== undefined)) {
+			return;
+		}
+		const ordered = [...items].sort((a, b) => {
+			const aEnd = a.headerAlign === "end" ? 1 : 0;
+			const bEnd = b.headerAlign === "end" ? 1 : 0;
+			return aEnd - bEnd;
+		});
+		const totalWidth = ordered.reduce((sum, it) => sum + (it.headerWidth ?? 110), 0) || 1;
+		let x = 0;
+		const converted = new Map<string, GridItemModel>();
+		for (const it of ordered) {
+			const wPct = Math.max(4, ((it.headerWidth ?? 110) / totalWidth) * 100);
+			const { headerWidth: _hw, headerAlign: _ha, ...rest } = it;
+			converted.set(it.i, { ...rest, x: Math.min(100 - wPct, x), y: 15, w: wPct, h: 70 });
+			x += wPct;
+		}
+		doc.header.items = items.map((it) => converted.get(it.i) ?? it);
 	} },
 ];
 

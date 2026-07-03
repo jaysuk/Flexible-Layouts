@@ -5,6 +5,7 @@ import {
 	createEmptyDocument,
 	DOCUMENT_SCHEMA_VERSION,
 	forEachWidget,
+	type GridItemModel,
 	type LayoutDocument,
 	migrateDocument,
 	type Widget,
@@ -62,8 +63,8 @@ describe("document migration", () => {
 	});
 });
 
-describe("v3 -> v4 header chrome seeding", () => {
-	it("seeds one of each new top-bar chrome widget alongside existing header items", () => {
+describe("v3 -> v5 header chrome seeding (free x/y/w/h positions)", () => {
+	it("seeds one of each new top-bar chrome widget alongside existing header items, clamped on-canvas", () => {
 		const out = migrateDocument(sampleDoc());
 		const types = out.header?.items.map((it) => it.widget.type) ?? [];
 		expect(types).toContain("clock"); // pre-existing pinned item preserved
@@ -74,8 +75,13 @@ describe("v3 -> v4 header chrome seeding", () => {
 		// The edit/upload pair replicate their old right-hand position in the bar.
 		const editItem = out.header?.items.find((it) => it.widget.type === "editModeToggle");
 		const uploadItem = out.header?.items.find((it) => it.widget.type === "uploadButton");
-		expect(editItem?.headerAlign).toBe("end");
-		expect(uploadItem?.headerAlign).toBe("end");
+		expect(editItem!.x).toBeGreaterThan(50);
+		expect(uploadItem!.x).toBeGreaterThan(50);
+		// Nothing seeded outside the 0-100% canvas.
+		for (const it of out.header?.items ?? []) {
+			expect(it.x).toBeGreaterThanOrEqual(0);
+			expect(it.x + it.w).toBeLessThanOrEqual(100.001);
+		}
 	});
 
 	it("never duplicates a chrome item that's already present (e.g. a user re-migrating, or one seeded before)", () => {
@@ -92,6 +98,36 @@ describe("v3 -> v4 header chrome seeding", () => {
 		const out = migrateDocument(doc);
 		const types = out.header?.items.map((it) => it.widget.type) ?? [];
 		expect(types).toEqual(expect.arrayContaining(["accessChip", "codeInput", "editModeToggle", "uploadButton"]));
+	});
+
+	it("converts a real v1.4.0-shaped document (headerWidth/headerAlign) into free x/y/w/h, start-aligned items first", () => {
+		// v1.4.0's original v3->v4 step (and the header editor's own "+" button, which existed since
+		// before either the chrome widgets or free positioning) always set headerWidth on every item -
+		// this is what a document that already went through that release actually looks like on disk.
+		const doc = sampleDoc();
+		doc.schemaVersion = 4;
+		doc.header = {
+			items: [
+				{ i: "clock", x: 0, y: 0, w: 2, h: 1, widget: { type: "clock" }, headerWidth: 90 } as unknown as GridItemModel,
+				{ i: "chip", x: 0, y: 0, w: 2, h: 1, widget: { type: "accessChip" }, headerWidth: 100 } as unknown as GridItemModel,
+				{ i: "edit", x: 0, y: 0, w: 2, h: 1, widget: { type: "editModeToggle" }, headerWidth: 110, headerAlign: "end" } as unknown as GridItemModel,
+			],
+		};
+		const out = migrateDocument(doc);
+		const items = out.header!.items;
+		expect(items).toHaveLength(3);
+		// headerWidth/headerAlign are gone; every item got real free x/y/w/h instead.
+		for (const it of items) {
+			expect((it as unknown as { headerWidth?: number }).headerWidth).toBeUndefined();
+			expect(it.w).toBeGreaterThan(0);
+			expect(it.x).toBeGreaterThanOrEqual(0);
+			expect(it.x + it.w).toBeLessThanOrEqual(100.001);
+		}
+		// Start-aligned items (clock, chip) come before the end-aligned one (edit) left-to-right,
+		// replicating their old left/right grouping as a starting point.
+		const byId = Object.fromEntries(items.map((it) => [it.i, it]));
+		expect(byId.clock.x).toBeLessThan(byId.edit.x);
+		expect(byId.chip.x).toBeLessThan(byId.edit.x);
 	});
 });
 

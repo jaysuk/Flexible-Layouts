@@ -154,6 +154,7 @@ import {
 	reidItem,
 } from "../model/document";
 import { exportPanel } from "../model/io";
+import { useFreeCanvas } from "../composables/useFreeCanvas";
 import { hexLayout, ringLayout } from "../util/shapes";
 import { describeWidget } from "../widgets/registry";
 import FlexGrid from "../page/FlexGrid.vue";
@@ -168,8 +169,19 @@ const emit = defineEmits<{ "update:modelValue": [boolean]; save: [GroupWidget] }
 
 const draft = ref<GroupWidget | null>(null);
 const paletteOpen = ref(false);
-const selectedId = ref<string | null>(null);
 const freeCanvasRef = ref<HTMLElement | null>(null);
+
+// Free-mode drag/resize/rotate/z-order is shared with the top-bar header editor - see
+// composables/useFreeCanvas.ts.
+const {
+	selectedId, sortedItems, freeItemStyle,
+	onItemPointerDown, onResizePointerDown, onRotatePointerDown,
+	bringToFront, sendToBack, freePlace,
+} = useFreeCanvas(
+	() => draft.value?.items ?? [],
+	(next) => { if (draft.value) draft.value.items = next; },
+	freeCanvasRef,
+);
 
 watch(
 	() => props.modelValue,
@@ -183,170 +195,6 @@ watch(
 );
 
 const isFree = computed(() => draft.value?.layoutMode === "free");
-
-/** Items sorted by freeZ ascending for rendering (higher z on top). */
-const sortedItems = computed<Array<GridItemModel>>(() => {
-	if (!draft.value) return [];
-	return [...draft.value.items].sort((a, b) => (a.freeZ ?? 0) - (b.freeZ ?? 0));
-});
-
-function freeItemStyle(item: GridItemModel): Record<string, string> {
-	const rot = item.freeRotation ?? 0;
-	const z = item.freeZ ?? 0;
-	const style: Record<string, string> = {
-		position: "absolute",
-		left: `${item.x}%`,
-		top: `${item.y}%`,
-		width: `${item.w}%`,
-		height: `${item.h}%`,
-		zIndex: String(z + 10), // +10 so even z=0 is above the canvas background
-		cursor: "move",
-		boxSizing: "border-box",
-	};
-	if (rot !== 0) {
-		style.transform = `rotate(${rot}deg)`;
-		style.transformOrigin = "center center";
-	}
-	return style;
-}
-
-// ── Free-mode drag / resize ──────────────────────────────────────────────────
-
-interface DragState {
-	itemId: string;
-	startX: number;
-	startY: number;
-	origX: number;
-	origY: number;
-}
-interface ResizeState {
-	itemId: string;
-	startX: number;
-	startY: number;
-	origW: number;
-	origH: number;
-}
-
-let dragState: DragState | null = null;
-let resizeState: ResizeState | null = null;
-
-function canvasPct(): { w: number; h: number } {
-	const el = freeCanvasRef.value;
-	if (!el) return { w: 1, h: 1 };
-	return { w: el.clientWidth || 1, h: el.clientHeight || 1 };
-}
-
-function updateItem(id: string, patch: Partial<GridItemModel>): void {
-	if (!draft.value) return;
-	draft.value.items = draft.value.items.map(it =>
-		it.i === id ? { ...it, ...patch } : it,
-	);
-}
-
-function onItemPointerDown(e: PointerEvent, item: GridItemModel): void {
-	selectedId.value = item.i;
-	(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-	dragState = {
-		itemId: item.i,
-		startX: e.clientX,
-		startY: e.clientY,
-		origX: item.x,
-		origY: item.y,
-	};
-	window.addEventListener("pointermove", onDragMove);
-	window.addEventListener("pointerup", onDragUp, { once: true });
-}
-
-function onDragMove(e: PointerEvent): void {
-	if (!dragState) return;
-	const { w, h } = canvasPct();
-	const dx = ((e.clientX - dragState.startX) / w) * 100;
-	const dy = ((e.clientY - dragState.startY) / h) * 100;
-	const it = draft.value?.items.find(i => i.i === dragState!.itemId);
-	if (!it) return;
-	updateItem(dragState.itemId, {
-		x: Math.max(0, Math.min(100 - it.w, dragState.origX + dx)),
-		y: Math.max(0, Math.min(100 - it.h, dragState.origY + dy)),
-	});
-}
-
-function onDragUp(): void {
-	dragState = null;
-	window.removeEventListener("pointermove", onDragMove);
-}
-
-function onResizePointerDown(e: PointerEvent, item: GridItemModel): void {
-	e.stopPropagation();
-	(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-	resizeState = {
-		itemId: item.i,
-		startX: e.clientX,
-		startY: e.clientY,
-		origW: item.w,
-		origH: item.h,
-	};
-	window.addEventListener("pointermove", onResizeMove);
-	window.addEventListener("pointerup", onResizeUp, { once: true });
-}
-
-function onResizeMove(e: PointerEvent): void {
-	if (!resizeState) return;
-	const { w, h } = canvasPct();
-	const dw = ((e.clientX - resizeState.startX) / w) * 100;
-	const dh = ((e.clientY - resizeState.startY) / h) * 100;
-	updateItem(resizeState.itemId, {
-		w: Math.max(2, resizeState.origW + dw),
-		h: Math.max(2, resizeState.origH + dh),
-	});
-}
-
-function onResizeUp(): void {
-	resizeState = null;
-	window.removeEventListener("pointermove", onResizeMove);
-}
-
-// ── Z-order controls ─────────────────────────────────────────────────────────
-
-function bringToFront(): void {
-	if (!selectedId.value || !draft.value) return;
-	const maxZ = draft.value.items.reduce((m, it) => Math.max(m, it.freeZ ?? 0), 0);
-	updateItem(selectedId.value, { freeZ: maxZ + 1 });
-}
-
-function sendToBack(): void {
-	if (!selectedId.value || !draft.value) return;
-	const minZ = draft.value.items.reduce((m, it) => Math.min(m, it.freeZ ?? 0), 0);
-	updateItem(selectedId.value, { freeZ: minZ - 1 });
-}
-
-// ── Free-mode rotate handle ───────────────────────────────────────────────────
-// A grip above the selected item; dragging it spins the item about its centre. Shift snaps to 15°.
-let rotateState: { itemId: string; cx: number; cy: number } | null = null;
-function onRotatePointerDown(e: PointerEvent, item: GridItemModel): void {
-	e.stopPropagation();
-	const el = freeCanvasRef.value;
-	if (!el) return;
-	const rect = el.getBoundingClientRect();
-	rotateState = {
-		itemId: item.i,
-		cx: rect.left + ((item.x + item.w / 2) / 100) * rect.width,
-		cy: rect.top + ((item.y + item.h / 2) / 100) * rect.height,
-	};
-	(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-	window.addEventListener("pointermove", onRotateMove);
-	window.addEventListener("pointerup", onRotateUp, { once: true });
-}
-function onRotateMove(e: PointerEvent): void {
-	if (!rotateState) return;
-	const ang = (Math.atan2(e.clientY - rotateState.cy, e.clientX - rotateState.cx) * 180) / Math.PI;
-	let deg = Math.round(ang + 90); // grip sits at the top (north) → "up" reads as 0°
-	if (e.shiftKey) { deg = Math.round(deg / 15) * 15; }
-	updateItem(rotateState.itemId, { freeRotation: ((deg % 360) + 360) % 360 });
-}
-function onRotateUp(): void {
-	rotateState = null;
-	window.removeEventListener("pointermove", onRotateMove);
-}
 
 // ── Free-mode auto-arrange (ring / hex) ───────────────────────────────────────
 const arrangeOpen = ref(false);
@@ -380,17 +228,6 @@ function applyGroupArrange(): void {
 
 function nextY(): number {
 	return (draft.value?.items ?? []).reduce((max, it) => Math.max(max, it.y + it.h), 0);
-}
-
-/**
- * Placement + default size for a NEW item added to a FREE-mode group. In free mode x/y/w/h are
- * PERCENTAGES of the group box (not grid cells), so a grid `nextY()` would push it off-canvas — drop
- * it near the centre with a small cascade so repeated adds don't stack exactly on top of each other.
- */
-function freePlace(): { x: number; y: number; w: number; h: number } {
-	const n = draft.value?.items.length ?? 0;
-	const off = (n % 6) * 4;
-	return { x: 30 + off, y: 30 + off, w: 20, h: 15 };
 }
 
 function addWidget(payload: { widget: Widget; size: { w: number; h: number }; configure: boolean }) {

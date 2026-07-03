@@ -33,8 +33,6 @@
 		"lock": "Lock (prevent moving)",
 		"unlock": "Unlock",
 		"selectItem": "Select (for align / distribute)",
-		"headerAlignRight": "Move to the right side of the bar",
-		"headerAlignLeft": "Move to the left side of the bar",
 		"align": {
 			"selected": "{count} selected",
 			"selectAll": "Select all panels",
