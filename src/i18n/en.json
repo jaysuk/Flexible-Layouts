@@ -1042,7 +1042,7 @@
 		"speedFactor": "Speed Factor",
 		"extrusionFactors": "Extrusion Factors",
 		"spindleSpeed": "Spindle Speed",
-		"cncAxes": "CNC Axis Position",
+		"toolPosition": "Tool Position",
 		"jobControl": "Job Control",
 		"jobInfo": "Job Information",
 		"jobTimes": "Job Times",

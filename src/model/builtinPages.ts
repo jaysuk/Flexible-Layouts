@@ -63,10 +63,11 @@ export function statusBarSeed(): Array<GridItemModel> {
 	const mode = useMachineStore().model.state.machineMode;
 	const isCnc = mode === MachineMode.cnc || mode === MachineMode.laser;
 	if (isCnc) {
+		// DWC's stock CNC/Laser status bar (CNCContainerPanel) is just these two side by side - no
+		// MovementPanel/SpindleSpeedPanel here, those belong to the Dashboard page, not the status bar.
 		return [
-			panel("StatusPanel", 0, 0, 3, 6),
-			panel("MovementPanel", 3, 0, 5, 9),
-			panel("SpindleSpeedPanel", 8, 0, 4, 6),
+			panel("StatusPanel", 0, 0, 4, 6),
+			panel("CNCAxesPosition", 4, 0, 8, 6),
 		];
 	}
 	return [

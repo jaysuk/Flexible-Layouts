@@ -20,6 +20,9 @@
 			<SpeedFactorPanel v-else-if="component === 'SpeedFactorPanel'" />
 			<ExtrusionFactorsPanel v-else-if="component === 'ExtrusionFactorsPanel'" />
 			<SpindleSpeedPanel v-else-if="component === 'SpindleSpeedPanel'" />
+			<!-- Stock CNC/Laser status bar's sibling to StatusPanel - always "Tool Position" (DWC's own
+				 status bar never sets machine-position true either). -->
+			<CNCAxesPosition v-else-if="component === 'CNCAxesPosition'" :machine-position="false" />
 			<JobControlPanel v-else-if="component === 'JobControlPanel'" />
 			<JobInfoPanel v-else-if="component === 'JobInfoPanel'" />
 			<JobTimesPanel v-else-if="component === 'JobTimesPanel'" />
