@@ -1165,6 +1165,23 @@ export interface LayoutDocument {
 /** Default grid geometry for a fresh page. */
 export const DEFAULT_GRID = { cols: 12, rowHeight: 30 } as const;
 
+/**
+ * The top-bar chrome a new, editable profile should start with: access chip, code input, edit-mode
+ * toggle, upload button. Shared by createProfile() (a brand-new profile made from the UI) and the
+ * v3->v4 migration step (an old document catching up) so both end up with the same starting header.
+ * Deliberately NOT part of createEmptyDocument() itself - that function's "nothing in it" meaning is
+ * relied on elsewhere (e.g. sdBackup's layoutHasContent(), which treats a populated header as content).
+ */
+export function defaultHeaderSeed(): Array<GridItemModel> {
+	const seed: Array<{ widget: Widget; x: number; y: number; w: number; h: number }> = [
+		{ widget: { type: "accessChip" }, x: 0, y: 15, w: 12, h: 70 },
+		{ widget: { type: "codeInput" }, x: 14, y: 15, w: 30, h: 70 },
+		{ widget: { type: "editModeToggle" }, x: 80, y: 15, w: 12, h: 70 },
+		{ widget: { type: "uploadButton" }, x: 93, y: 15, w: 6, h: 70 },
+	];
+	return seed.map((s) => ({ i: newItemId(), x: s.x, y: s.y, w: s.w, h: s.h, widget: s.widget }));
+}
+
 export function createEmptyDocument(): LayoutDocument {
 	return {
 		schemaVersion: DOCUMENT_SCHEMA_VERSION,
@@ -1223,17 +1240,11 @@ const DOC_MIGRATIONS: Array<DocMigration> = [
 			doc.header = { items: [] };
 		}
 		const existingTypes = new Set(doc.header.items.map((it) => it.widget.type));
-		const seed: Array<{ widget: Widget; x: number; y: number; w: number; h: number }> = [
-			{ widget: { type: "accessChip" }, x: 0, y: 15, w: 12, h: 70 },
-			{ widget: { type: "codeInput" }, x: 14, y: 15, w: 30, h: 70 },
-			{ widget: { type: "editModeToggle" }, x: 80, y: 15, w: 12, h: 70 },
-			{ widget: { type: "uploadButton" }, x: 93, y: 15, w: 6, h: 70 },
-		];
-		for (const s of seed) {
-			if (existingTypes.has(s.widget.type)) {
+		for (const item of defaultHeaderSeed()) {
+			if (existingTypes.has(item.widget.type)) {
 				continue;
 			}
-			doc.header.items.push({ i: newItemId(), x: s.x, y: s.y, w: s.w, h: s.h, widget: s.widget });
+			doc.header.items.push(item);
 		}
 	} },
 	// v4 → v5: header items moved from a linear reorder-only strip (headerWidth px + headerAlign

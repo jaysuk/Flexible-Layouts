@@ -14,6 +14,7 @@ import {
 	type Breakpoint,
 	createEmptyDocument,
 	createEmptyPage,
+	defaultHeaderSeed,
 	type GridItemModel,
 	type LayoutDocument,
 	migrateDocument,
@@ -65,6 +66,9 @@ export function ensureProfiles(): { profiles: Record<string, LayoutDocument>; ac
 		if (!profiles[active]) {
 			const doc = createEmptyDocument();
 			doc.meta.name = "Default";
+			// Same reasoning as createProfile(): a fresh document is already at the current schema
+			// version, so the migration step that normally seeds this never runs on it.
+			doc.header = { items: defaultHeaderSeed() };
 			profiles[active] = doc;
 		}
 		c[ACTIVE_KEY] = active;
@@ -150,6 +154,10 @@ export function createProfile(name: string): string {
 	const id = newProfileId();
 	const doc = createEmptyDocument();
 	doc.meta.name = name;
+	// Without this, a brand-new profile has no way back into edit mode from the top bar at all - the
+	// v3->v4 migration step that normally seeds this only runs on documents BELOW the current schema
+	// version, and a freshly created one is already stamped at the current version.
+	doc.header = { items: defaultHeaderSeed() };
 	profiles[id] = doc;
 	return id;
 }
