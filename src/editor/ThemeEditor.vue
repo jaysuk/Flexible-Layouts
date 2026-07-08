@@ -75,7 +75,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, onBeforeUnmount } from "vue";
 
 import { useLayoutStore } from "../model/store";
 import { applyTheme, THEME_TOKENS } from "../model/theme";
@@ -138,9 +138,28 @@ function apply() {
 	applyTheme();
 }
 
+// Debounced: applyTheme() re-registers the whole Vuetify theme, and a native colour-picker drag
+// fires dozens of raw input events per second - calling it on every one of them (as a direct `apply()`
+// would) is the same "pegs the main thread until the tab gets killed" failure as PropertiesDialog's
+// undebounced preview remount. Settling briefly after the last drag tick is imperceptible here and
+// avoids it; the switches/clear/reset actions below stay on the instant `apply()` since they're
+// discrete clicks, not a rapid stream.
+let applyTimer: ReturnType<typeof setTimeout> | undefined;
+function applyDebounced() {
+	if (applyTimer !== undefined) {
+		clearTimeout(applyTimer);
+	}
+	applyTimer = setTimeout(applyTheme, 200);
+}
+onBeforeUnmount(() => {
+	if (applyTimer !== undefined) {
+		clearTimeout(applyTimer);
+	}
+});
+
 function setColor(token: string, value: string) {
 	theme.value.colors[token] = value;
-	apply();
+	applyDebounced();
 }
 
 function clearColor(token: string) {

@@ -1197,7 +1197,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, onBeforeUnmount, ref, watch } from "vue";
 
 import { getWidgetConfig, HelpTip, PluginWidgetConfigForm } from "dwc-plugin-runtime";
 
@@ -1297,8 +1297,31 @@ watch(
 );
 
 // Remount the preview whenever the widget config changes, so widgets that read their props once (into
-// local refs) still reflect edits live — not only the ones using reactive computeds.
-const previewKey = computed(() => (draft.value ? JSON.stringify(draft.value) : ""));
+// local refs) still reflect edits live — not only the ones using reactive computeds. Debounced: a
+// native colour-picker drag (or a slider) fires dozens of raw input events per second, and computing
+// this from a JSON.stringify of the whole draft on every one of them - forcing a full preview
+// unmount/remount each time - was pegging the main thread badly enough to get the tab killed as
+// unresponsive. Settling briefly after the last change keeps the "always reflects edits" behaviour
+// without remounting on every intermediate tick.
+const previewKey = ref("");
+let previewKeyTimer: ReturnType<typeof setTimeout> | undefined;
+watch(
+	draft,
+	(value) => {
+		if (previewKeyTimer !== undefined) {
+			clearTimeout(previewKeyTimer);
+		}
+		previewKeyTimer = setTimeout(() => {
+			previewKey.value = value ? JSON.stringify(value) : "";
+		}, 200);
+	},
+	{ deep: true, immediate: true },
+);
+onBeforeUnmount(() => {
+	if (previewKeyTimer !== undefined) {
+		clearTimeout(previewKeyTimer);
+	}
+});
 
 // Reflect the edited panel colours + typography in the preview container (these are applied by the
 // grid wrapper at runtime, not by WidgetView itself), so colour/font changes show without saving.
