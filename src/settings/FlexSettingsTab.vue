@@ -136,10 +136,6 @@
 			<div class="text-title-small mb-1">{{ $t("plugins.flexibleLayouts.sdBackup.title") }}</div>
 			<p class="text-body-small text-medium-emphasis mt-0 mb-2">{{ $t("plugins.flexibleLayouts.sdBackup.hint") }}</p>
 			<div class="d-flex flex-wrap ga-2">
-				<v-btn variant="tonal" prepend-icon="mdi-content-save" :loading="backingUp" :disabled="!isConnected"
-					   :title="$t('plugins.flexibleLayouts.sdBackup.backupNowHelp')" @click="backupNow">
-					{{ $t("plugins.flexibleLayouts.sdBackup.backupNow") }}
-				</v-btn>
 				<v-btn variant="tonal" prepend-icon="mdi-history" :loading="restoring" :disabled="!isConnected"
 					   :title="$t('plugins.flexibleLayouts.sdBackup.restoreNowHelp')" @click="restoreNow">
 					{{ $t("plugins.flexibleLayouts.sdBackup.restoreNow") }}
@@ -241,7 +237,7 @@ import { activateFlLayout, deactivateFlLayout, isFlLayoutActive } from "../model
 import { editMode } from "../model/editorState";
 import { applying, checking, dismissCurrentUpdate, dismissedVersion, pendingReload, runUpdateCheck, setUpdateChecksEnabled, undismissUpdate, updateChecksEnabled, updateDiagnostics, updateState as update, applyUpdateNow } from "../model/updateCheck";
 import { useLayoutStore } from "../model/store";
-import { applyBackup, isAutoBackupEnabled, readBackup, setAutoBackupEnabled, writeBackup } from "../model/sdBackup";
+import { applyBackup, isAutoBackupEnabled, readBackup, setAutoBackupEnabled } from "../model/sdBackup";
 import ImportExportDialog from "../editor/ImportExportDialog.vue";
 import ThemeEditor from "../editor/ThemeEditor.vue";
 import ProfilesDialog from "../editor/ProfilesDialog.vue";
@@ -395,7 +391,6 @@ function onToggleLayout() {
 
 // --- SD-card backup ----------------------------------------------------------------------------
 const sdEnabled = ref(isAutoBackupEnabled());
-const backingUp = ref(false);
 const restoring = ref(false);
 
 function sdT(key: string, params?: Record<string, unknown>): string {
@@ -409,22 +404,6 @@ function onToggleSd(value: boolean | null): void {
 	const on = value === true;
 	sdEnabled.value = on;
 	setAutoBackupEnabled(on);
-}
-
-async function backupNow(): Promise<void> {
-	backingUp.value = true;
-	try {
-		const result = await writeBackup();
-		if (result === "written" || result === "unchanged") {
-			sdNotify(LogLevel.success, "backupOk");
-		} else if (result === "skipped-empty") {
-			sdNotify(LogLevel.info, "backupEmpty");
-		} else {
-			sdNotify(LogLevel.warning, "backupFailed");
-		}
-	} finally {
-		backingUp.value = false;
-	}
 }
 
 async function restoreNow(): Promise<void> {
