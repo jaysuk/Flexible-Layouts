@@ -50,11 +50,22 @@ function resolveCaption(caption: string | (() => string), translated: boolean): 
 	return translated ? raw : i18n.global.t(raw);
 }
 
+// DWC's own GCodeViewer plugin (@sindarius/gcodeviewer under the hood) only works with a job that's
+// actually running/loaded, or with explicit volume+path route params it wasn't given here - opened
+// any other way (which is the normal case for a general dashboard page) it hits an unguarded array
+// access deep in that library's async render loop and crashes the whole page. That failure happens
+// asynchronously, so PluginPageWidget's onErrorCaptured (which only catches synchronous render
+// errors) can't contain it - there's no way to embed this safely, so it's excluded from the palette
+// rather than offered as something that looks like it should work.
+export const GCODE_VIEWER_JOB_TAB_KEY = "gcodeViewer";
+export const GCODE_VIEWER_PAGE_PATH = "/Plugins/GCodeViewer";
+
 /** Plugin-registered nav pages + Settings/Job tabs, excluding this plugin's own contributions. */
 export function listEmbeddablePages(): Array<EmbeddablePage> {
 	const menu = useMenuStore();
 	const pages: Array<EmbeddablePage> = menu.pluginItems
-		.filter((it) => !it.path.startsWith(CUSTOM_PAGE_PREFIX) && !it.path.startsWith("/Plugins/FlexibleLayouts"))
+		.filter((it) => !it.path.startsWith(CUSTOM_PAGE_PREFIX) && !it.path.startsWith("/Plugins/FlexibleLayouts")
+			&& !it.path.startsWith(GCODE_VIEWER_PAGE_PATH))
 		.map((it) => ({ source: "page" as const, path: it.path, label: label(it), icon: it.icon, pluginId: inferPluginId(it.path) }));
 
 	const settingTabs: Array<EmbeddablePage> = getPluginSettingTabs()
@@ -62,6 +73,7 @@ export function listEmbeddablePages(): Array<EmbeddablePage> {
 		.map((t) => ({ source: "settingTab" as const, tabKey: t.key, label: resolveCaption(t.caption, t.translated ?? false), icon: t.icon }));
 
 	const jobTabs: Array<EmbeddablePage> = getJobViewTabs()
+		.filter((t) => t.key !== GCODE_VIEWER_JOB_TAB_KEY)
 		.map((t) => ({ source: "jobTab" as const, tabKey: t.key, label: resolveCaption(t.caption, t.translated ?? false), icon: t.icon }));
 
 	return [...pages, ...settingTabs, ...jobTabs];
