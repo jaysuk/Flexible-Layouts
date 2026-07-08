@@ -193,7 +193,11 @@ export async function readBackup(): Promise<FlBackup | null> {
 		return null;
 	}
 	try {
-		const res = await machineStore.download(BACKUP_PATH, false, false, false);
+		// DWC's download() defaults to auto-parsing the response as JSON when a bare filename string is
+		// passed (no `type`) - which silently breaks parseBackup() below (it gets "[object Object]"
+		// instead of the file's text and fails to parse, indistinguishable from "no backup exists").
+		// Requesting `type: "text"` explicitly gets the raw file content back instead.
+		const res = await machineStore.download({ filename: BACKUP_PATH, type: "text" }, false, false, false);
 		const text = await blobToText(res);
 		const parsed = parseBackup(text);
 		if (parsed) {
