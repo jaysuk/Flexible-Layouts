@@ -117,6 +117,10 @@ function onItemPointerDown(e: PointerEvent, item: GridItemModel): void {
 	};
 	window.addEventListener("pointermove", onDragMove);
 	window.addEventListener("pointerup", onDragUp, { once: true });
+	// A cancelled gesture (the item unmounts mid-drag, a browser/OS gesture interrupts pointer
+	// tracking, etc.) never fires "pointerup" - without this, onDragMove's window listener leaks
+	// permanently and keeps mutating stale state on every future mouse movement on the page.
+	window.addEventListener("pointercancel", onDragUp, { once: true });
 }
 function onDragMove(e: PointerEvent): void {
 	if (!dragState) {
@@ -153,6 +157,7 @@ function onResizePointerDown(e: PointerEvent, item: GridItemModel): void {
 	resizeState = { id: item.i, startX: e.clientX, origW: item.w };
 	window.addEventListener("pointermove", onResizeMove);
 	window.addEventListener("pointerup", onResizeUp, { once: true });
+	window.addEventListener("pointercancel", onResizeUp, { once: true });
 }
 function onResizeMove(e: PointerEvent): void {
 	if (!resizeState) {

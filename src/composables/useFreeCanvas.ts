@@ -87,6 +87,9 @@ export function useFreeCanvas(
 		dragState = { itemId: item.i, startX: e.clientX, startY: e.clientY, origX: item.x, origY: item.y };
 		window.addEventListener("pointermove", onDragMove);
 		window.addEventListener("pointerup", onDragUp, { once: true });
+		// A cancelled gesture never fires "pointerup" - without this, onDragMove's window listener
+		// leaks permanently and keeps mutating stale state on every future mouse movement on the page.
+		window.addEventListener("pointercancel", onDragUp, { once: true });
 	}
 	function onDragMove(e: PointerEvent): void {
 		if (!dragState) return;
@@ -115,6 +118,7 @@ export function useFreeCanvas(
 		resizeState = { itemId: item.i, startX: e.clientX, startY: e.clientY, origW: item.w, origH: item.h };
 		window.addEventListener("pointermove", onResizeMove);
 		window.addEventListener("pointerup", onResizeUp, { once: true });
+		window.addEventListener("pointercancel", onResizeUp, { once: true });
 	}
 	function onResizeMove(e: PointerEvent): void {
 		if (!resizeState) return;
@@ -147,6 +151,7 @@ export function useFreeCanvas(
 		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
 		window.addEventListener("pointermove", onRotateMove);
 		window.addEventListener("pointerup", onRotateUp, { once: true });
+		window.addEventListener("pointercancel", onRotateUp, { once: true });
 	}
 	function onRotateMove(e: PointerEvent): void {
 		if (!rotateState) return;
