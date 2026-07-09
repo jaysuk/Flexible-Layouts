@@ -161,6 +161,14 @@
 			</div>
 
 			<v-divider class="my-4" />
+			<div class="text-title-small mb-1 text-error">{{ $t("plugins.flexibleLayouts.reset.sectionTitle") }}</div>
+			<p class="text-body-small text-medium-emphasis mt-0 mb-2">{{ $t("plugins.flexibleLayouts.reset.hint") }}</p>
+			<v-btn variant="tonal" color="error" prepend-icon="mdi-restore-alert" :loading="resetting"
+				   :title="$t('plugins.flexibleLayouts.reset.buttonHelp')" @click="openReset">
+				{{ $t("plugins.flexibleLayouts.reset.button") }}
+			</v-btn>
+
+			<v-divider class="my-4" />
 			<div class="text-title-small mb-1">More plugins by jaysuk</div>
 			<div v-for="p in familyPlugins" :key="p.id" class="d-flex align-center py-1" style="border-bottom:1px solid rgba(127,127,127,0.15)">
 				<div>
@@ -218,6 +226,7 @@
 		<ProfilesDialog v-model="dialogs.profiles" />
 		<HelpDialog v-model="dialogs.help" />
 		<PasswordDialog />
+		<ResetConfirmDialog v-model="resetOpen" @confirmed="onResetConfirmed" />
 	</v-card>
 </template>
 
@@ -245,7 +254,9 @@ import HelpDialog from "../editor/HelpDialog.vue";
 import AccessSettings from "../editor/AccessSettings.vue";
 import PageManager from "../editor/PageManager.vue";
 import PasswordDialog from "../editor/PasswordDialog.vue";
+import ResetConfirmDialog from "../editor/ResetConfirmDialog.vue";
 import { can, requestAdmin } from "../model/access";
+import { resetToDefaults } from "../model/reset";
 
 const machineStore = useMachineStore();
 
@@ -363,6 +374,33 @@ async function openGated(key: "pageManager" | "theme" | "io" | "profiles"): Prom
 const canManageAccess = computed(() => can("editLayout"));
 async function unlockAccessSettings(): Promise<void> {
 	await requestAdmin();
+}
+
+// Full reset wipes the access-lock configuration along with everything else, so it needs its own
+// Admin gate up front too - editConfig rather than editLayout since this isn't really "editing the
+// layout", but both are Admin-only today so the practical effect is the same.
+const resetOpen = ref(false);
+const resetting = ref(false);
+async function openReset(): Promise<void> {
+	if (!can("editConfig") && !(await requestAdmin())) {
+		return;
+	}
+	resetOpen.value = true;
+}
+async function onResetConfirmed(): Promise<void> {
+	resetting.value = true;
+	try {
+		// Awaited: resetToDefaults() explicitly flushes the wipe to the board (DWC's settings/cache
+		// autosave is debounced, so reloading immediately after the in-memory mutations would race it
+		// and reload the board's still-old file - the reset would silently do nothing). A save failure
+		// (board offline, network drop) must not reload into what looks like an untouched layout with
+		// no explanation, so it's reported instead.
+		await resetToDefaults();
+		window.location.reload();
+	} catch (e) {
+		resetting.value = false;
+		uiStore.makeNotification(LogLevel.error, i18n.global.t("plugins.flexibleLayouts.reset.title"), (e as Error)?.message ?? String(e));
+	}
 }
 
 const router = useRouter();

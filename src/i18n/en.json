@@ -873,6 +873,17 @@
 		"downloadHelp": "Download a diagnostics report (versions, recent errors and the current layout) to attach to a bug report.",
 		"copyHelp": "Copy the diagnostics report to the clipboard."
 	},
+	"reset": {
+		"sectionTitle": "Danger zone",
+		"hint": "Wipes every profile, page, widget, theme and preference — including the access-lock configuration — back to how Flexible Layouts looked the day it was installed. Admin only.",
+		"button": "Reset to defaults",
+		"buttonHelp": "Permanently erase all Flexible Layouts data and start over from a blank install.",
+		"title": "Reset Flexible Layouts to defaults?",
+		"warning": "This cannot be undone. Consider exporting a backup first (Backup & share above).",
+		"body": "Every profile, page and widget, the theme, the access-lock configuration and every saved preference will be permanently deleted. The page will reload once it's done.",
+		"confirm": "Confirm reset",
+		"confirmCountdown": "Confirm ({seconds})"
+	},
 	"updates": {
 		"title": "Updates",
 		"checkNow": "Check now",
