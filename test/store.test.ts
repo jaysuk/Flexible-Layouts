@@ -15,7 +15,6 @@ describe("new documents get an editable header", () => {
 		const { profiles } = ensureProfiles();
 		const types = profiles[id].header?.items.map((it) => it.widget.type) ?? [];
 		expect(types).toContain("editModeToggle");
-		expect(types).toContain("accessChip");
 		expect(types).toContain("codeInput");
 		expect(types).toContain("uploadButton");
 	});

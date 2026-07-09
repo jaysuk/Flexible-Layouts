@@ -1205,11 +1205,15 @@ export const DEFAULT_GRID = { cols: 12, rowHeight: 30 } as const;
  * relied on elsewhere (e.g. sdBackup's layoutHasContent(), which treats a populated header as content).
  */
 export function defaultHeaderSeed(): Array<GridItemModel> {
+	// accessChip is deliberately NOT seeded: it renders completely empty until access-lock is enabled
+	// (see AccessChipWidget.vue's accessEnabledNow guard), so by default it was just a mystery blank
+	// box with edit-mode controls and nothing in it. A user who enables access-lock can add it from
+	// the palette themselves. Widths below are sized to their actual content ("Done"/"Edit" is a much
+	// shorter label than DWC's own "Upload & Start" button) rather than split evenly.
 	const seed: Array<{ widget: Widget; x: number; y: number; w: number; h: number }> = [
-		{ widget: { type: "accessChip" }, x: 0, y: 15, w: 12, h: 70 },
-		{ widget: { type: "codeInput" }, x: 14, y: 15, w: 30, h: 70 },
-		{ widget: { type: "editModeToggle" }, x: 80, y: 15, w: 12, h: 70 },
-		{ widget: { type: "uploadButton" }, x: 93, y: 15, w: 6, h: 70 },
+		{ widget: { type: "codeInput" }, x: 2, y: 15, w: 36, h: 70 },
+		{ widget: { type: "editModeToggle" }, x: 82, y: 15, w: 7, h: 70 },
+		{ widget: { type: "uploadButton" }, x: 90, y: 15, w: 10, h: 70 },
 	];
 	return seed.map((s) => ({ i: newItemId(), x: s.x, y: s.y, w: s.w, h: s.h, widget: s.widget }));
 }

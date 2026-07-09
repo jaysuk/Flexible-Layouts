@@ -68,7 +68,6 @@ describe("v3 -> v5 header chrome seeding (free x/y/w/h positions)", () => {
 		const out = migrateDocument(sampleDoc());
 		const types = out.header?.items.map((it) => it.widget.type) ?? [];
 		expect(types).toContain("clock"); // pre-existing pinned item preserved
-		expect(types).toContain("accessChip");
 		expect(types).toContain("codeInput");
 		expect(types).toContain("editModeToggle");
 		expect(types).toContain("uploadButton");
@@ -97,7 +96,7 @@ describe("v3 -> v5 header chrome seeding (free x/y/w/h positions)", () => {
 		delete doc.header;
 		const out = migrateDocument(doc);
 		const types = out.header?.items.map((it) => it.widget.type) ?? [];
-		expect(types).toEqual(expect.arrayContaining(["accessChip", "codeInput", "editModeToggle", "uploadButton"]));
+		expect(types).toEqual(expect.arrayContaining(["codeInput", "editModeToggle", "uploadButton"]));
 	});
 
 	it("converts a real v1.4.0-shaped document (headerWidth/headerAlign) into free x/y/w/h, start-aligned items first", () => {
