@@ -519,6 +519,31 @@ export type Widget =
 		centreCmd?: string;
 	}
 	| {
+		/**
+		 * Facing/surfacing wizard (CNC): generates a raster toolpath that skims a flat area down to a
+		 * target depth (spoilboard/stock flattening), uploads it to the SD card and starts it as a job.
+		 * The area is relative to the current work origin - the operator jogs to a corner and zeroes XY
+		 * there first. Fields below are the starting defaults shown in the widget; they're edited inline
+		 * per run (like Probe's diameter/corner), not re-opened via Properties each time.
+		 */
+		type: "surfacing";
+		label?: string;
+		color?: string;
+		width?: number;
+		height?: number;
+		toolDiameter?: number;
+		stepoverPercent?: number;
+		depthPerPass?: number;
+		totalDepth?: number;
+		clearance?: number;
+		feed?: number;
+		direction?: "x" | "y";
+		/** Spindle RPM to start/stop around the job. 0 = leave spindle control to the operator. */
+		spindleRpm?: number;
+		/** Confirm before uploading + starting the job (default true). */
+		confirm?: boolean;
+	}
+	| {
 		/** Tool selector: a button per configured tool. */
 		type: "toolSelect";
 		label?: string;
@@ -871,6 +896,13 @@ export function createDefaultWidget(type: WidgetType): Widget {
 		case "probe":
 			// Command templates left unset → ProbeWidget falls back to DEFAULT_PROBE_COMMANDS (editable in properties).
 			return { type: "probe", label: "Touch probe", color: "primary", diameter: 6, confirm: true, ops: ["z", "x", "y", "corner"] };
+		case "surfacing":
+			return {
+				type: "surfacing", label: "Surfacing", color: "primary",
+				width: 100, height: 100, toolDiameter: 6, stepoverPercent: 40,
+				depthPerPass: 0.5, totalDepth: 0.5, clearance: 5, feed: 1000,
+				direction: "x", spindleRpm: 0, confirm: true,
+			};
 		case "toolSelect":
 			return { type: "toolSelect", label: "Tools", color: "primary" };
 		case "fan":

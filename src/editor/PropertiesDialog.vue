@@ -808,6 +808,36 @@
 					<v-text-field v-model="draft.centreCmd" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.probe.opCentre')" :placeholder="PROBE_DEFAULTS.centre" />
 				</template>
 
+				<!-- Surfacing wizard: label/color/confirm here; the dimension fields are edited inline on
+					 the widget itself per run (see SurfacingWidget.vue), these are just its starting defaults. -->
+				<template v-else-if="draft.type === 'surfacing'">
+					<v-row dense>
+						<v-col cols="8"><v-text-field v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
+						<v-col cols="4"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
+					</v-row>
+					<v-row dense class="mt-1">
+						<v-col cols="6"><v-text-field v-model.number="draft.width" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.surfacing.width')" /></v-col>
+						<v-col cols="6"><v-text-field v-model.number="draft.height" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.surfacing.height')" /></v-col>
+					</v-row>
+					<v-row dense class="mt-1">
+						<v-col cols="6"><v-text-field v-model.number="draft.toolDiameter" type="number" :min="0.1" :step="0.1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.surfacing.toolDiameter')" /></v-col>
+						<v-col cols="6"><v-text-field v-model.number="draft.stepoverPercent" type="number" :min="1" :max="100" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.surfacing.stepover')" /></v-col>
+					</v-row>
+					<v-row dense class="mt-1">
+						<v-col cols="6"><v-text-field v-model.number="draft.depthPerPass" type="number" :min="0.01" :step="0.01" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.surfacing.depthPerPass')" /></v-col>
+						<v-col cols="6"><v-text-field v-model.number="draft.totalDepth" type="number" :min="0.01" :step="0.01" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.surfacing.totalDepth')" /></v-col>
+					</v-row>
+					<v-row dense class="mt-1">
+						<v-col cols="6"><v-text-field v-model.number="draft.clearance" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.surfacing.clearance')" /></v-col>
+						<v-col cols="6"><v-text-field v-model.number="draft.feed" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.surfacing.feed')" /></v-col>
+					</v-row>
+					<v-row dense class="mt-1">
+						<v-col cols="6"><v-select v-model="draft.direction" :items="surfacingDirectionItems" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.surfacing.direction')" /></v-col>
+						<v-col cols="6"><v-text-field v-model.number="draft.spindleRpm" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.surfacing.spindleRpm')" /></v-col>
+					</v-row>
+					<v-switch v-model="draft.confirm" color="primary" density="compact" hide-details class="mt-1" :label="$t('plugins.flexibleLayouts.probe.confirmOpt')" />
+				</template>
+
 				<!-- Tool selector -->
 				<template v-else-if="draft.type === 'toolSelect'">
 					<v-row dense>
@@ -1600,6 +1630,10 @@ const probeOpsItems = [
 	{ title: i18n.global.t("plugins.flexibleLayouts.probe.opY"), value: "y" },
 	{ title: i18n.global.t("plugins.flexibleLayouts.probe.opCorner"), value: "corner" },
 	{ title: i18n.global.t("plugins.flexibleLayouts.probe.opCentre"), value: "centre" },
+];
+const surfacingDirectionItems = [
+	{ title: i18n.global.t("plugins.flexibleLayouts.surfacing.directionX"), value: "x" },
+	{ title: i18n.global.t("plugins.flexibleLayouts.surfacing.directionY"), value: "y" },
 ];
 function addGauge(): void {
 	if (draft.value?.type === "gaugeCluster") { (draft.value.gauges ??= []).push({ label: "", omPath: "", min: 0, max: 100, unit: "", color: "primary" }); }

@@ -1,0 +1,106 @@
+/**
+ * Facing/surfacing G-code generation (pure, unit-tested).
+ *
+ * Generates a raster toolpath that skims a flat area down to a target depth - the standard operation
+ * for flattening a spoilboard or a piece of rough stock before real cutting starts. The area is
+ * relative to the current work coordinate origin (X0 Y0): jog to a corner and zero XY there first.
+ *
+ * Plain G0/G1 moves only - nothing controller-specific, so this reads the same on RRF as anywhere else.
+ */
+export interface SurfacingParams {
+	/** Area to surface, in the X direction (mm). */
+	width: number;
+	/** Area to surface, in the Y direction (mm). */
+	height: number;
+	/** Cutting tool diameter (mm) - used to inset the raster half a tool-width past each edge, so the
+	 *  cutter's edge (not its centre) reaches the true boundary, and to derive the stepover. */
+	toolDiameter: number;
+	/** Row spacing as a percentage of tool diameter (typically 30-50%). */
+	stepoverPercent: number;
+	/** Maximum depth removed per pass (mm). */
+	depthPerPass: number;
+	/** Total depth to remove (mm) - split into passes of at most depthPerPass each. */
+	totalDepth: number;
+	/** Safe Z height for rapid moves between passes (mm). */
+	clearance: number;
+	/** Cutting feed rate (mm/min). Plunge moves use half this. */
+	feed: number;
+	/** Raster direction: rows run along X (sweeping in Y) or along Y (sweeping in X). */
+	direction: "x" | "y";
+	/** Spindle speed (RPM) to start before cutting and stop after. 0/undefined = leave spindle control
+	 *  to the operator (e.g. a separate spindle widget already running before this starts). */
+	spindleRpm?: number;
+}
+
+export interface SurfacingResult {
+	gcode: string;
+	/** Depth passes the job will make. */
+	passes: number;
+	/** Raster rows per pass. */
+	rows: number;
+}
+
+function fmt(n: number): string {
+	// Trim to 3 decimal places without trailing zeros/dot - keeps the file readable and small.
+	return n.toFixed(3).replace(/\.?0+$/, "") || "0";
+}
+
+export function passCount(p: Pick<SurfacingParams, "totalDepth" | "depthPerPass">): number {
+	return Math.max(1, Math.ceil(p.totalDepth / Math.max(0.001, p.depthPerPass)));
+}
+
+export function rowCount(p: Pick<SurfacingParams, "width" | "height" | "toolDiameter" | "stepoverPercent" | "direction">): number {
+	const stepover = Math.max(0.01, p.toolDiameter * (p.stepoverPercent / 100));
+	const crossLen = (p.direction === "x" ? p.height : p.width) + p.toolDiameter;
+	return Math.max(1, Math.ceil(crossLen / stepover) + 1);
+}
+
+export function generateSurfacingGCode(p: SurfacingParams): SurfacingResult {
+	const stepover = Math.max(0.01, p.toolDiameter * (p.stepoverPercent / 100));
+	const passes = passCount(p);
+	const rows = rowCount(p);
+	const isX = p.direction === "x";
+	const inset = p.toolDiameter / 2;
+	const mainLen = isX ? p.width : p.height;
+	const crossMin = -inset;
+	const crossMax = (isX ? p.height : p.width) + inset;
+
+	const lines: Array<string> = [
+		`; Flexible Layouts surfacing: ${fmt(p.width)}x${fmt(p.height)}mm area, ${fmt(p.toolDiameter)}mm tool, ${passes} pass(es)`,
+		"G21 ; mm",
+		"G90 ; absolute",
+	];
+	if (p.spindleRpm) {
+		lines.push(`M3 S${Math.round(p.spindleRpm)}`);
+	}
+	lines.push(`G0 Z${fmt(p.clearance)}`);
+
+	for (let pass = 1; pass <= passes; pass++) {
+		const z = -Math.min(p.totalDepth, pass * p.depthPerPass);
+		lines.push(`; pass ${pass}/${passes} Z${fmt(z)}`);
+		let crossPos = crossMin;
+		let forward = true;
+		for (let row = 0; row < rows; row++) {
+			const mainStart = forward ? -inset : mainLen + inset;
+			const mainEnd = forward ? mainLen + inset : -inset;
+			if (row === 0) {
+				lines.push(isX ? `G0 X${fmt(mainStart)} Y${fmt(crossPos)}` : `G0 X${fmt(crossPos)} Y${fmt(mainStart)}`);
+				lines.push(`G1 Z${fmt(z)} F${Math.round(p.feed / 2)}`);
+			}
+			lines.push(isX ? `G1 X${fmt(mainEnd)} F${Math.round(p.feed)}` : `G1 Y${fmt(mainEnd)} F${Math.round(p.feed)}`);
+			if (row < rows - 1) {
+				crossPos = Math.min(crossMax, crossPos + stepover);
+				lines.push(isX ? `G1 Y${fmt(crossPos)}` : `G1 X${fmt(crossPos)}`);
+			}
+			forward = !forward;
+		}
+		lines.push(`G0 Z${fmt(p.clearance)}`);
+	}
+
+	if (p.spindleRpm) {
+		lines.push("M5");
+	}
+	lines.push("G0 X0 Y0");
+
+	return { gcode: lines.join("\n") + "\n", passes, rows };
+}

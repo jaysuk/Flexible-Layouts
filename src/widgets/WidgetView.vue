@@ -28,6 +28,7 @@
 	<ExtruderWidget v-else-if="widget.type === 'extruder'" :widget="widget" :disabled="disabled" />
 	<WcsWidget v-else-if="widget.type === 'wcs'" :widget="widget" :disabled="disabled" />
 	<ProbeWidget v-else-if="widget.type === 'probe'" :widget="widget" :disabled="disabled" />
+	<SurfacingWidget v-else-if="widget.type === 'surfacing'" :widget="widget" :disabled="disabled" />
 	<ToolSelectWidget v-else-if="widget.type === 'toolSelect'" :widget="widget" :disabled="disabled" />
 	<ToolAlignWidget v-else-if="widget.type === 'toolAlign'" :widget="widget" :disabled="disabled" />
 	<FanWidget v-else-if="widget.type === 'fan'" :widget="widget" :disabled="disabled" />
@@ -112,6 +113,7 @@ import ToolSelectWidget from "./ToolSelectWidget.vue";
 import ValueWidget from "./ValueWidget.vue";
 import WcsWidget from "./WcsWidget.vue";
 import ProbeWidget from "./ProbeWidget.vue";
+import SurfacingWidget from "./SurfacingWidget.vue";
 import WebcamWidget from "./WebcamWidget.vue";
 import WebWidget from "./WebWidget.vue";
 
