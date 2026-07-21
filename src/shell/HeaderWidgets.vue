@@ -47,6 +47,8 @@ import WidgetView from "../widgets/WidgetView.vue";
 import WidgetPalette from "../editor/WidgetPalette.vue";
 import PropertiesDialog from "../editor/PropertiesDialog.vue";
 
+const props = defineProps<{ hideTypes?: Array<Widget["type"]> }>();
+
 const store = useLayoutStore();
 const machineStore = useMachineStore();
 
@@ -58,7 +60,10 @@ function headerItems(): Array<GridItemModel> {
 	return doc.header.items;
 }
 
-const items = computed(() => headerItems());
+// hideTypes only filters what's rendered here - drag/resize/remove all look items up by id from the
+// full headerItems() list, so a hidden type (e.g. the mobile-only editModeToggle exclusion in
+// FlexShell) stays fully intact in the document, just not drawn or interactable from this instance.
+const items = computed(() => headerItems().filter((item) => !(props.hideTypes ?? []).includes(item.widget.type)));
 
 // Lock a header widget while printing (same policy as grid items: explicit choice, else type default)
 // or while access-restricted (Observer, or Operator without `interact`).

@@ -53,6 +53,17 @@
 				 doesn't model. -->
 			<HeaderWidgets v-if="mdAndUp" ref="headerWidgetsRef" class="me-2" />
 
+			<!-- Edit mode has exactly one entry point (see FlexPage.vue's comment), and on mobile the
+				 pinned editModeToggle header widget is otherwise buried inside the "⋮" overflow below,
+				 sized/shrunk along with whatever else is pinned there. That's an unrecoverable-feeling
+				 dead end for anyone who doesn't dig for it, so mobile gets its own always-visible,
+				 fixed-position Edit control here instead - the header item itself is hidden out of the
+				 overflow menu (below) on mobile to avoid showing the same toggle twice. -->
+			<v-btn v-if="!mdAndUp" :icon="editMode ? 'mdi-check' : (!canEditLayoutNow ? 'mdi-lock' : 'mdi-pencil-ruler')"
+				   :color="editMode ? 'primary' : undefined" :variant="editMode ? 'flat' : 'text'" class="me-1"
+				   :title="editMode ? $t('plugins.flexibleLayouts.shell.done') : $t('plugins.flexibleLayouts.shell.edit')"
+				   @click="attemptToggleEdit" />
+
 			<!-- On small screens the header items don't fit in the bar; surface them in an overflow menu
 				 (the maintainer's "top section disappears" on mobile). -->
 			<v-menu v-if="!mdAndUp" :close-on-content-click="false" location="bottom end">
@@ -61,7 +72,7 @@
 						   :title="$t('plugins.flexibleLayouts.shell.more')" />
 				</template>
 				<v-card min-width="300" max-width="92vw" class="pa-3">
-					<HeaderWidgets ref="headerWidgetsRef" />
+					<HeaderWidgets ref="headerWidgetsRef" :hide-types="['editModeToggle']" />
 					<v-btn v-if="editMode" block variant="tonal" size="small" class="mt-2" prepend-icon="mdi-plus"
 						   @click="headerWidgetsRef?.openPalette()">
 						{{ $t("plugins.flexibleLayouts.editor.addWidget") }}
@@ -236,7 +247,7 @@ import { LogLevel, useUiStore } from "@/stores/ui";
 import { type AnnouncedUpdate, applyUpdate, claimUpdateHost, clearAnnouncedUpdate, getAnnouncedUpdates, subscribeToUpdates } from "dwc-plugin-runtime";
 
 import { useFlexDisplay } from "../composables/useFlexDisplay";
-import { editMode, exitEditMode } from "../model/editorState";
+import { attemptToggleEdit, editMode, exitEditMode } from "../model/editorState";
 import { applyUpdateNow, dismissCurrentUpdate, dismissedVersion, pendingReload, runUpdateCheck } from "../model/updateCheck";
 import { applyStartupRoute } from "../model/startup";
 import { startChartSampler, stopChartSampler } from "../model/chartSampler";
