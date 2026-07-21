@@ -10,7 +10,10 @@
 					   @click="emit('update:modelValue', false)" />
 			</v-card-title>
 
-			<v-card-text style="max-height: 70vh;">
+			<!-- overflow-x hidden as a backstop: nothing in here should ever be wider than the dialog, but
+				 if something is, this keeps it clipped/scrollable inside the card instead of forcing the
+				 whole dialog (and the page body under it) wider than the viewport on a narrow phone. -->
+			<v-card-text style="max-height: 70vh; overflow-x: hidden;">
 				<!-- Startup page: which route opens when this profile/layout loads -->
 				<div class="d-flex align-center mb-4 ga-2">
 					<v-icon size="small">mdi-home-import-outline</v-icon>
@@ -70,6 +73,12 @@
 						<v-list-item v-for="(item, index) in group.items" :key="item.path"
 									 :prepend-icon="item.icon" :title="caption(item)"
 									 :class="{ 'text-medium-emphasis': hidden(item.path) }">
+							<!-- Compact: only reorder + visibility + an overflow menu stay inline (condition/
+								 export/rename/delete moved into the menu) - matching FlexGridItem's own
+								 edit-mode header, and required here: unlike that header, this row can't grow
+								 to fit its content (it's inside a fixed-width dialog), so on a narrow phone
+								 screen enough always-visible icons forces the whole dialog wider than the
+								 viewport instead of just squeezing the title. -->
 							<template #append>
 								<div class="d-flex align-center">
 									<v-btn icon="mdi-arrow-up" size="x-small" variant="text" density="comfortable"
@@ -83,20 +92,22 @@
 											   ? $t('plugins.flexibleLayouts.pages.show')
 											   : $t('plugins.flexibleLayouts.pages.hide')"
 										   @click="toggleHidden(item.path)" />
-									<v-btn icon="mdi-eye-check" size="x-small" variant="text" density="comfortable"
-										   :color="hasCondition(item.path) ? 'primary' : undefined"
-										   :title="$t('plugins.flexibleLayouts.pages.condition')"
-										   @click="openCond(item)" />
-									<v-btn v-if="hasLayout(item.path)" icon="mdi-content-save" size="x-small"
-										   variant="text" density="comfortable"
-										   :title="$t('plugins.flexibleLayouts.io.exportPage')"
-										   @click="onExportPage(item)" />
-									<v-btn v-if="isCustom(item.path)" icon="mdi-pencil" size="x-small" variant="text"
-										   density="comfortable" :title="$t('plugins.flexibleLayouts.pages.rename')"
-										   @click="startEdit(item)" />
-									<v-btn v-if="isCustom(item.path)" icon="mdi-delete" size="x-small" variant="text"
-										   density="comfortable" color="error"
-										   :title="$t('plugins.flexibleLayouts.pages.delete')" @click="onDelete(item)" />
+									<v-menu location="bottom end">
+										<template #activator="{ props: menuProps }">
+											<v-btn v-bind="menuProps" icon="mdi-dots-vertical" size="x-small" variant="text"
+												   density="comfortable" :title="$t('plugins.flexibleLayouts.shell.more')" />
+										</template>
+										<v-list density="compact">
+											<v-list-item :prepend-icon="hasCondition(item.path) ? 'mdi-eye-check' : 'mdi-eye-check-outline'"
+														 :title="$t('plugins.flexibleLayouts.pages.condition')" @click="openCond(item)" />
+											<v-list-item v-if="hasLayout(item.path)" prepend-icon="mdi-content-save"
+														 :title="$t('plugins.flexibleLayouts.io.exportPage')" @click="onExportPage(item)" />
+											<v-list-item v-if="isCustom(item.path)" prepend-icon="mdi-pencil"
+														 :title="$t('plugins.flexibleLayouts.pages.rename')" @click="startEdit(item)" />
+											<v-list-item v-if="isCustom(item.path)" prepend-icon="mdi-delete" class="text-error"
+														 :title="$t('plugins.flexibleLayouts.pages.delete')" @click="onDelete(item)" />
+										</v-list>
+									</v-menu>
 								</div>
 							</template>
 						</v-list-item>
