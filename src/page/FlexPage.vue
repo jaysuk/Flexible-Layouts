@@ -1048,6 +1048,7 @@ onBeforeUnmount(() => {
 .flex-page-toolbar {
 	display: flex;
 	align-items: center;
+	flex-wrap: wrap;
 	gap: 8px;
 	padding: 6px 8px;
 	position: sticky;

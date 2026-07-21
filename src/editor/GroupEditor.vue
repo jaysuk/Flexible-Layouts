@@ -10,8 +10,8 @@
 					   @click="emit('update:modelValue', false)" />
 			</v-card-title>
 
-			<v-card-text style="height: 70vh;">
-				<div class="d-flex align-center ga-2 mb-2">
+			<v-card-text style="height: 70vh; overflow-x: hidden;">
+				<div class="d-flex align-center flex-wrap ga-2 mb-2">
 					<v-text-field v-model="draft.title" density="compact" variant="outlined" hide-details
 								  style="max-width: 260px" :label="$t('plugins.flexibleLayouts.group.name')" />
 					<v-btn color="primary" variant="flat" size="small" prepend-icon="mdi-plus"

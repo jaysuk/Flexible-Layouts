@@ -10,7 +10,7 @@
 					   @click="emit('update:modelValue', false)" />
 			</v-card-title>
 
-			<v-card-text style="max-height: 70vh;">
+			<v-card-text style="max-height: 70vh; overflow-x: hidden;">
 				<div class="text-caption text-medium-emphasis mb-3">
 					{{ $t("plugins.flexibleLayouts.profiles.help") }}
 				</div>
