@@ -289,6 +289,8 @@ export function describeWidget(widget: Widget): { title: string; icon: string } 
 			return { title: i18n.global.t("plugins.flexibleLayouts.widgets.uploadButton"), icon: "mdi-upload" };
 		case "accessChip":
 			return { title: i18n.global.t("plugins.flexibleLayouts.widgets.accessChip"), icon: "mdi-shield-account" };
+		case "surfacing":
+			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.surfacing"), icon: "mdi-grid" };
 	}
 	// Fallback for an unknown/removed widget type in an older saved layout (must never return
 	// undefined — the edit-mode tile header reads .title and would otherwise crash the whole page).

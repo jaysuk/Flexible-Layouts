@@ -138,6 +138,10 @@ async function run(): Promise<void> {
 	grid-template-columns: 1fr 1fr;
 	gap: 6px;
 	align-content: start;
+	/* Outlined fields float their label up onto the border on the top row; without headroom above
+	   the grid, the scrollable area's own top edge clips that floated label instead of the notch
+	   cutting cleanly into the border. */
+	padding-top: 10px;
 }
 .srf-summary { padding-left: 1.1em; }
 .srf-summary li { margin-bottom: 2px; }
