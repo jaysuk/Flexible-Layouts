@@ -250,7 +250,7 @@ import type { TlsReplyReason } from "../model/tlsSetup/commandReplies";
 import { patchM552ForTls, patchM586ForTls } from "../model/tlsSetup/configGPatch";
 import { CONFIG_G_PATH, TLS_CERT_SD_PATH, TLS_KEY_SD_PATH, TLS_PROTOCOLS } from "../model/tlsSetup/constants";
 import { getCertReminderSettings, setCertExpiryDate, setCertReminderSettings } from "../model/tlsSetup/storage";
-import { defaultMachineIO } from "../model/configBackup/collect";
+import { defaultMachineIO } from "../model/configBackup/machineIO";
 
 defineProps<{ modelValue: boolean }>();
 const emit = defineEmits<{ "update:modelValue": [boolean] }>();

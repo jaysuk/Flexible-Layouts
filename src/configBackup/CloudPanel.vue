@@ -262,22 +262,22 @@ import { useMachineStore } from "@/stores/machine";
 import i18n from "@/i18n";
 import { showConfirmDialog } from "@/composables/useConfirmDialog";
 
-import { login as duetLoginCall, logout as duetLogoutCall } from "../model/configBackup/destinations/duetCloud";
-import { isRepoPrivate } from "../model/configBackup/destinations/github";
-import { isOriginSupported } from "../model/configBackup/destinations/googleDrive";
-import { verifyToken as dropboxVerify } from "../model/configBackup/destinations/dropbox";
-import { verifyConnection as webdavVerify } from "../model/configBackup/destinations/webdav";
+import { login as duetLoginCall, logout as duetLogoutCall } from "dwc-config-backup-core/destinations/duetCloud";
+import { isRepoPrivate } from "dwc-config-backup-core/destinations/github";
+import { isOriginSupported } from "dwc-config-backup-core/destinations/googleDrive";
+import { verifyToken as dropboxVerify } from "dwc-config-backup-core/destinations/dropbox";
+import { verifyConnection as webdavVerify } from "dwc-config-backup-core/destinations/webdav";
 import {
 	disableEncryption, enableEncryption, exportEncryptedBundle, getAutoBackupNudgeSettings, getDropboxSettings,
 	getDuetCloudApiUrl, getDuetCloudFifoLimit, getDuetCloudSession, getGithubSettings, getGoogleDriveClientId,
 	getWebDavSettings, importEncryptedBundle, isEncryptionAvailable, isEncryptionEnabled, isSessionUnlocked,
 	lockSession, setAutoBackupNudgeSettings, setDropboxSettings, setDuetCloudFifoLimit,
 	setGithubSettings, setGoogleDriveClientId, setWebDavSettings, unlockSession,
-} from "../model/configBackup/credentials";
-import type { DuetCloudSession } from "../model/configBackup/credentials";
-import { loadCredentialsFromSd, parseCredentialBundle, writeCredentialsToSd } from "../model/configBackup/credentialsSdSync";
-import { defaultMachineIO } from "../model/configBackup/collect";
-import { buildMachineIdentity } from "../model/configBackup/machineIdentity";
+} from "dwc-config-backup-core";
+import type { DuetCloudSession } from "dwc-config-backup-core";
+import { loadCredentialsFromSd, parseCredentialBundle, writeCredentialsToSd } from "dwc-config-backup-core";
+import { defaultMachineIO } from "../model/configBackup/machineIO";
+import { buildMachineIdentity } from "dwc-config-backup-core";
 import PassphraseDialog from "./PassphraseDialog.vue";
 
 const machineStore = useMachineStore();

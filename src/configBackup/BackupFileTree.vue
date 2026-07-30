@@ -43,9 +43,9 @@ import { computed, ref } from "vue";
 
 import i18n from "@/i18n";
 
-import { DIR_FOLDER } from "../model/configBackup/constants";
-import type { BackupDirKind } from "../model/configBackup/constants";
-import type { ManifestFile } from "../model/configBackup/types";
+import { DIR_FOLDER } from "dwc-config-backup-core";
+import type { BackupDirKind } from "dwc-config-backup-core";
+import type { ManifestFile } from "dwc-config-backup-core";
 
 const props = defineProps<{
 	files: Array<ManifestFile>;

@@ -1,46 +1,32 @@
 /**
- * Automatic backup nudges: reminders (never silent uploads/downloads - see credentials.ts's
- * AutoBackupNudgeSettings doc comment) shown when one of three real, verified DWC signals fires:
- * config.g being saved (DWC's own `fileUploaded` event), the last backup being overdue, or the
- * connected machine never having been backed up before. There is no true background/scheduled
- * trigger available to a browser-only plugin - every one of these only fires while DWC is open in a
- * tab, same constraint as the rest of this feature.
+ * Host wiring for the automatic backup nudges: turns the core package's pure predicates into actual
+ * DWC toasts. Installed once at plugin load, torn down on `dwcPluginUnloaded`.
+ *
+ * The decision logic (`isBackupOverdue`, `isUnseenMachine`, the cooldown constant) lives in
+ * dwc-config-backup-core; only the DWC-specific plumbing is here - subscribing to DWC's own
+ * `fileUploaded` event, watching connection state, and calling the UI store's log API with a route so
+ * the toast is click-through.
+ *
+ * These are reminders, never silent uploads or downloads. Clicking one just opens the backup page,
+ * same as clicking the button in Settings.
  *
  * Firmware-update-starting was investigated (machineStore.boardBeingUpdated flips the instant M997 is
  * issued) but deliberately left out - a plugin can only observe that reactively, not gate/block DWC's
- * update flow, so it would be a same-instant race rather than a real "back up before" guarantee. Not
- * chosen by the user for this round.
+ * update flow, so it would be a same-instant race rather than a real "back up before" guarantee.
  */
 import { watch } from "vue";
+
+import {
+	CONFIG_SAVE_COOLDOWN_MS, buildMachineIdentity, computeMachineKey, getAutoBackupNudgeSettings,
+	getBackedUpMachineKeys, getLastBackupAt, isBackupOverdue, isUnseenMachine,
+} from "dwc-config-backup-core";
 
 import Events from "@/utils/events";
 import { LogLevel, useUiStore } from "@/stores/ui";
 import { useMachineStore } from "@/stores/machine";
 import i18n from "@/i18n";
 
-import { computeMachineKey } from "./archive";
 import { CONFIG_BACKUP_ROUTE_PATH } from "./constants";
-import { getAutoBackupNudgeSettings, getBackedUpMachineKeys, getLastBackupAt } from "./credentials";
-import { buildMachineIdentity } from "./machineIdentity";
-
-const CONFIG_SAVE_COOLDOWN_MS = 5 * 60 * 1000; // avoid re-nudging on every keystroke-save while actively editing
-
-// --- Pure trigger logic (unit-testable) ---------------------------------------------------------------
-
-export function isBackupOverdue(lastBackupAt: string | null, thresholdDays: number, now: number = Date.now()): boolean {
-	if (!lastBackupAt) { return true; }
-	const ageMs = now - new Date(lastBackupAt).getTime();
-	return ageMs >= thresholdDays * 24 * 60 * 60 * 1000;
-}
-
-/** Only "unseen" once at least one backup has been taken for *some* machine - a completely fresh
- * install (no backup history at all) is covered by the overdue nudge instead, so the two don't both
- * fire on first connect. */
-export function isUnseenMachine(machineKey: string, knownMachineKeys: ReadonlySet<string>): boolean {
-	return knownMachineKeys.size > 0 && !knownMachineKeys.has(machineKey);
-}
-
-// --- Wiring (impure) - install once at plugin load, uninstall on dwcPluginUnloaded --------------------
 
 type FileUploadedHandler = (e: { filename: string }) => void;
 

@@ -126,24 +126,25 @@ import { HelpTip } from "dwc-plugin-runtime";
 import { useMachineStore } from "@/stores/machine";
 import i18n from "@/i18n";
 
-import { buildArchive, readArchive } from "../model/configBackup/archive";
-import { collectAll, defaultMachineIO } from "../model/configBackup/collect";
-import { DEFAULT_MAX_FILE_BYTES } from "../model/configBackup/constants";
+import { buildArchive, readArchive } from "dwc-config-backup-core";
+import { collectAll } from "dwc-config-backup-core";
+import { defaultMachineIO } from "../model/configBackup/machineIO";
+import { DEFAULT_MAX_FILE_BYTES } from "dwc-config-backup-core";
 import { PLUGIN_MANIFEST_ID } from "../model/constants";
-import type { BackupProgressStage, RedactionEntry } from "../model/configBackup/types";
-import type { BackupDestinationId } from "../model/configBackup/credentials";
+import type { BackupProgressStage, RedactionEntry } from "dwc-config-backup-core";
+import type { BackupDestinationId } from "dwc-config-backup-core";
 import {
 	addBackedUpMachineKey, getDropboxSettings, getDuetCloudApiUrl, getDuetCloudFifoLimit, getDuetCloudSession,
 	getGithubSettings, getGoogleDriveClientId, getLastBackupAt, getRedactPreference, getWebDavSettings,
 	hasAcknowledgedUnredacted, setAcknowledgedUnredacted, setLastBackupAt, setRedactPreference,
-} from "../model/configBackup/credentials";
-import { buildLiveDirectories, buildMachineIdentity } from "../model/configBackup/machineIdentity";
-import { downloadArchive, backupFilename } from "../model/configBackup/destinations/localZip";
-import { isRepoPrivate, pushBackup } from "../model/configBackup/destinations/github";
-import { isOriginSupported, signIn, uploadBackup as driveUploadBackup } from "../model/configBackup/destinations/googleDrive";
-import { preflightSize, pruneToLimit, uploadBackup as duetUploadBackup } from "../model/configBackup/destinations/duetCloud";
-import { uploadBackup as dropboxUploadBackup } from "../model/configBackup/destinations/dropbox";
-import { uploadBackup as webdavUploadBackup } from "../model/configBackup/destinations/webdav";
+} from "dwc-config-backup-core";
+import { buildLiveDirectories, buildMachineIdentity } from "dwc-config-backup-core";
+import { downloadArchive, backupFilename } from "dwc-config-backup-core/destinations/localZip";
+import { isRepoPrivate, pushBackup } from "dwc-config-backup-core/destinations/github";
+import { isOriginSupported, signIn, uploadBackup as driveUploadBackup } from "dwc-config-backup-core/destinations/googleDrive";
+import { preflightSize, pruneToLimit, uploadBackup as duetUploadBackup } from "dwc-config-backup-core/destinations/duetCloud";
+import { uploadBackup as dropboxUploadBackup } from "dwc-config-backup-core/destinations/dropbox";
+import { uploadBackup as webdavUploadBackup } from "dwc-config-backup-core/destinations/webdav";
 import RedactionSummary from "./RedactionSummary.vue";
 
 const machineStore = useMachineStore();

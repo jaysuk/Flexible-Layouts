@@ -77,9 +77,9 @@
 <script setup lang="ts">
 import { computed, reactive } from "vue";
 
-import { suggestFromLive, validateEnteredValue } from "../model/configBackup/repair";
-import type { SuggestResult } from "../model/configBackup/repair";
-import type { RedactionEntry, RedactionSite, RepairAction } from "../model/configBackup/types";
+import { suggestFromLive, validateEnteredValue } from "dwc-config-backup-core";
+import type { SuggestResult } from "dwc-config-backup-core";
+import type { RedactionEntry, RedactionSite, RepairAction } from "dwc-config-backup-core";
 
 const props = defineProps<{
 	sites: Array<RedactionSite>;

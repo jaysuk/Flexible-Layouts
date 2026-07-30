@@ -55,7 +55,7 @@
 </template>
 
 <script setup lang="ts">
-import type { DiffSeverity, MachineDiff } from "../model/configBackup/types";
+import type { DiffSeverity, MachineDiff } from "dwc-config-backup-core";
 
 defineProps<{
 	modelValue: boolean;

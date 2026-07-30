@@ -18,10 +18,12 @@ import i18n from "@/i18n";
 import { useCacheStore } from "@/stores/cache";
 import { useSettingsStore } from "@/stores/settings";
 
+import { configureHost } from "dwc-config-backup-core";
+
 import en from "./i18n/en.json";
 import { BUILTIN_PAGES } from "./model/builtinPages";
 import { LAYOUT_ID, PLUGIN_MANIFEST_ID } from "./model/constants";
-import { CONFIG_BACKUP_ROUTE_PATH } from "./model/configBackup/constants";
+import { CONFIG_BACKUP_ROUTE_PATH, FL_PROTECTED_SD_FILES } from "./model/configBackup/constants";
 import { activateFlLayout } from "./model/layoutState";
 import { installEscapeGuard, uninstallEscapeGuard } from "./model/access";
 import { installAutoBackupNudges, uninstallAutoBackupNudges } from "./model/configBackup/autoBackupNudges";
@@ -38,6 +40,15 @@ import ConfigBackupPage from "./configBackup/ConfigBackupPage.vue";
 const PLUGIN_ID = "flexibleLayouts";
 
 registerPluginMessages(PLUGIN_ID, { en });
+
+// Configure the shared backup core before anything can touch stored credentials. The namespace is
+// this plugin's historical one and must not change - existing installs have credentials saved under
+// it. `protectedFiles` adds our own SD state files to the core's cumulative ALWAYS_PROTECTED set, so
+// a Mirror-mode restore can never delete them.
+configureHost({
+	storageNamespace: "flexibleLayouts.configBackup",
+	protectedFiles: FL_PROTECTED_SD_FILES,
+});
 
 // Seed the persisted layout document (no-op if one was already loaded from the board).
 registerDocument();

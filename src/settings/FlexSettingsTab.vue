@@ -267,7 +267,7 @@ import ResetConfirmDialog from "../editor/ResetConfirmDialog.vue";
 import { can, requestAdmin } from "../model/access";
 import { resetToDefaults } from "../model/reset";
 import { CONFIG_BACKUP_ROUTE_PATH } from "../model/configBackup/constants";
-import { getLastBackupAt } from "../model/configBackup/credentials";
+import { getLastBackupAt } from "dwc-config-backup-core";
 import TlsSetupDialog from "../tlsSetup/TlsSetupDialog.vue";
 
 const machineStore = useMachineStore();

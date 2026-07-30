@@ -34,7 +34,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 
-import type { RedactionEntry } from "../model/configBackup/types";
+import type { RedactionEntry } from "dwc-config-backup-core";
 
 const props = defineProps<{
 	entries: Array<RedactionEntry>;

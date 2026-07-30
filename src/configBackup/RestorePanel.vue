@@ -246,38 +246,39 @@ import { showConfirmDialog } from "@/composables/useConfirmDialog";
 import { useMachineStore } from "@/stores/machine";
 import i18n from "@/i18n";
 
-import { buildArchive, computeMachineKey, readArchive } from "../model/configBackup/archive";
-import { collectAll, defaultMachineIO, walkDirectory } from "../model/configBackup/collect";
-import { BACKUP_DIR_KINDS, DEFAULT_MAX_FILE_BYTES, DIR_FOLDER } from "../model/configBackup/constants";
-import type { BackupDirKind } from "../model/configBackup/constants";
-import { downloadArchive } from "../model/configBackup/destinations/localZip";
+import { buildArchive, computeMachineKey, readArchive } from "dwc-config-backup-core";
+import { collectAll, walkDirectory } from "dwc-config-backup-core";
+import { defaultMachineIO } from "../model/configBackup/machineIO";
+import { BACKUP_DIR_KINDS, DEFAULT_MAX_FILE_BYTES, DIR_FOLDER } from "dwc-config-backup-core";
+import type { BackupDirKind } from "dwc-config-backup-core";
+import { downloadArchive } from "dwc-config-backup-core/destinations/localZip";
 import { PLUGIN_MANIFEST_ID } from "../model/constants";
-import { findRedactions, applyRepairsToFile } from "../model/configBackup/repair";
-import type { RedactionSite } from "../model/configBackup/types";
-import type { RepairAction } from "../model/configBackup/types";
+import { findRedactions, applyRepairsToFile } from "dwc-config-backup-core";
+import type { RedactionSite } from "dwc-config-backup-core";
+import type { RepairAction } from "dwc-config-backup-core";
 import {
 	applyRestorePlan, buildRestorePlan, compareMachines, computeMirrorDeletions,
-} from "../model/configBackup/restore";
-import type { ApplyRestoreResult, MachineDiff, ParsedArchive, RestoreMode, RestorePlan } from "../model/configBackup/types";
-import { buildLiveDirectories, buildMachineIdentity } from "../model/configBackup/machineIdentity";
+} from "dwc-config-backup-core";
+import type { ApplyRestoreResult, MachineDiff, ParsedArchive, RestoreMode, RestorePlan } from "dwc-config-backup-core";
+import { buildLiveDirectories, buildMachineIdentity } from "dwc-config-backup-core";
 import {
 	deleteBackup as duetDelete, downloadBackup as duetDownload, listBackups as duetListBackups, listMachines as duetListMachines,
-} from "../model/configBackup/destinations/duetCloud";
-import type { BackupSummary, MachineSummary } from "../model/configBackup/destinations/duetCloud";
+} from "dwc-config-backup-core/destinations/duetCloud";
+import type { BackupSummary, MachineSummary } from "dwc-config-backup-core/destinations/duetCloud";
 import {
 	downloadBackupAtCommit, listBackupHistory as githubListHistory, listMachineFolders as githubListMachines,
-} from "../model/configBackup/destinations/github";
-import type { GithubBackupRevision } from "../model/configBackup/destinations/github";
+} from "dwc-config-backup-core/destinations/github";
+import type { GithubBackupRevision } from "dwc-config-backup-core/destinations/github";
 import {
 	deleteBackup as dropboxDelete, downloadBackup as dropboxDownload, listBackups as dropboxListBackups, listMachineFolders as dropboxListMachines,
-} from "../model/configBackup/destinations/dropbox";
+} from "dwc-config-backup-core/destinations/dropbox";
 import {
 	deleteBackup as webdavDelete, downloadBackup as webdavDownload, listBackups as webdavListBackups, listMachineFolders as webdavListMachines,
-} from "../model/configBackup/destinations/webdav";
+} from "dwc-config-backup-core/destinations/webdav";
 import {
 	addBackedUpMachineKey, getDropboxSettings, getDuetCloudApiUrl, getDuetCloudSession, getGithubSettings,
 	getRedactPreference, getWebDavSettings, setLastBackupAt,
-} from "../model/configBackup/credentials";
+} from "dwc-config-backup-core";
 import BackupFileTree from "./BackupFileTree.vue";
 import RedactionRepairStep from "./RedactionRepairStep.vue";
 import MachineDiffDialog from "./MachineDiffDialog.vue";
