@@ -11,7 +11,7 @@
  */
 import { type Component, defineComponent, h } from "vue";
 
-import { registerLayout, registerPluginMessages, registerSettingTab } from "@/plugins";
+import { registerLayout, registerPluginMessages, registerRoute, registerSettingTab } from "@/plugins";
 import { showConfirmDialog } from "@/composables/useConfirmDialog";
 import Events from "@/utils/events";
 import i18n from "@/i18n";
@@ -21,8 +21,11 @@ import { useSettingsStore } from "@/stores/settings";
 import en from "./i18n/en.json";
 import { BUILTIN_PAGES } from "./model/builtinPages";
 import { LAYOUT_ID, PLUGIN_MANIFEST_ID } from "./model/constants";
+import { CONFIG_BACKUP_ROUTE_PATH } from "./model/configBackup/constants";
 import { activateFlLayout } from "./model/layoutState";
 import { installEscapeGuard, uninstallEscapeGuard } from "./model/access";
+import { installAutoBackupNudges, uninstallAutoBackupNudges } from "./model/configBackup/autoBackupNudges";
+import { installCertExpiryNudge, uninstallCertExpiryNudge } from "./model/tlsSetup/certExpiryNudge";
 import { installErrorCapture } from "dwc-plugin-runtime";
 import { migrateGlobalHides, registerExistingCustomPages } from "./model/pageManager";
 import { registerDocument } from "./model/store";
@@ -30,6 +33,7 @@ import { applyTheme } from "./model/theme";
 import FlexPage from "./page/FlexPage.vue";
 import FlexShell from "./shell/FlexShell.vue";
 import FlexSettingsTab from "./settings/FlexSettingsTab.vue";
+import ConfigBackupPage from "./configBackup/ConfigBackupPage.vue";
 
 const PLUGIN_ID = "flexibleLayouts";
 
@@ -88,6 +92,13 @@ installEscapeGuard();
 // them. Returns an uninstaller cleaned up on unload below.
 const uninstallErrorCapture = installErrorCapture();
 
+// Config-backup reminders: config.g saved, last backup overdue, or an unbacked-up machine connected -
+// always a one-click toast, never a silent upload/download. See autoBackupNudges.ts.
+installAutoBackupNudges();
+
+// TLS certificate expiry reminder - see certExpiryNudge.ts.
+installCertExpiryNudge();
+
 // Clean up app-lifetime resources when this plugin is stopped. The escape-guard watcher and the
 // error-capture listeners aren't tied to any component, so without this they would leak (and stack a
 // duplicate on the next load). Uses DWC's shared event bus (window.DWC.Events) added in 3.7.0-alpha.4.
@@ -95,6 +106,8 @@ function onPluginUnloaded(id: string): void {
 	if (id === PLUGIN_MANIFEST_ID) {
 		uninstallEscapeGuard();
 		uninstallErrorCapture();
+		uninstallAutoBackupNudges();
+		uninstallCertExpiryNudge();
 		Events.off("dwcPluginUnloaded", onPluginUnloaded);
 	}
 }
@@ -137,4 +150,21 @@ registerSettingTab({
 	caption: "plugins.flexibleLayouts.settings.caption",
 	component: FlexSettingsTab,
 	order: 60,
+});
+
+// Config backup/restore is a full page (file tree, cloud lists, machine diff - too big for a
+// dialog), reachable from the settings tab's "Backup & restore config" button (gated there) or
+// direct navigation to this path. See CONFIG-BACKUP-PLAN.md.
+registerRoute(ConfigBackupPage, {
+	Plugins: {
+		FlexibleLayoutsConfigBackup: {
+			icon: "mdi-archive-arrow-down",
+			// caption is an i18n KEY here (not literal text), so `translated` must be false/omitted -
+			// DWC's menu only runs it through $t() when translated is falsy. Setting this to true (as
+			// it was) tells the shell "this is already display text, use it verbatim" - which is
+			// exactly why the raw key showed up in the nav drawer instead of "Backup & restore config".
+			path: CONFIG_BACKUP_ROUTE_PATH,
+			caption: "plugins.flexibleLayouts.configBackup.title",
+		},
+	},
 });

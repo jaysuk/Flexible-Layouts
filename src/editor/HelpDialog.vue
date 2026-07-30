@@ -80,6 +80,22 @@
 						</v-expansion-panel-text>
 					</v-expansion-panel>
 
+					<v-expansion-panel title="Config backup &amp; restore">
+						<v-expansion-panel-text>
+							<strong>Settings → Flexible Layouts → Backup &amp; restore config</strong> backs up the whole
+							machine (<code>sys</code>/<code>macros</code>/<code>filaments</code>, an object-model snapshot,
+							and M122 diagnostics) to your PC, GitHub, Google Drive, Dropbox, WebDAV (Nextcloud/ownCloud/
+							Synology), or the Duet backup service. Each destination is configured once, with its
+							credentials saved, in the <strong>Cloud backup configuration</strong> tab; the
+							<strong>Create backup</strong> tab just picks which one to use. WiFi/machine passwords can
+							optionally be redacted (off by default); a restore repairs any redacted values automatically
+							where possible. Restore lets you pick individual files, and supports restoring a backup from a
+							different machine (e.g. after a mainboard swap). For full step-by-step setup instructions for
+							each destination, use the <strong>? Help</strong> button on that page itself, or see
+							<a href="https://github.com/jaysuk/Flexible-Layouts/blob/main/docs/config-backup.md" target="_blank" rel="noopener">docs/config-backup.md</a>.
+						</v-expansion-panel-text>
+					</v-expansion-panel>
+
 					<v-expansion-panel title="Widget &amp; panel reference">
 						<v-expansion-panel-text>
 							<div v-for="g in categoryGroups" :key="g.cat" class="mb-3">

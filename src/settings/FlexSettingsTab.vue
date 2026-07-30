@@ -52,6 +52,14 @@
 					   :title="$t('plugins.flexibleLayouts.profiles.manageHelp')" @click="openGated('profiles')">
 					{{ $t("plugins.flexibleLayouts.profiles.title") }}
 				</v-btn>
+				<v-btn variant="tonal" prepend-icon="mdi-archive-arrow-down"
+					   :title="configBackupTooltip" @click="openConfigBackup">
+					{{ $t("plugins.flexibleLayouts.configBackup.title") }}
+				</v-btn>
+				<v-btn variant="tonal" prepend-icon="mdi-lock-check-outline"
+					   :title="$t('plugins.flexibleLayouts.tlsSetup.openHelp')" @click="openTlsSetup">
+					{{ $t("plugins.flexibleLayouts.tlsSetup.title") }}
+				</v-btn>
 				<v-btn variant="tonal" prepend-icon="mdi-help-circle"
 					   :title="$t('plugins.flexibleLayouts.help.openHelp')" @click="dialogs.help = true">
 					{{ $t("plugins.flexibleLayouts.help.title") }}
@@ -225,6 +233,7 @@
 		<ImportExportDialog v-model="dialogs.io" />
 		<ProfilesDialog v-model="dialogs.profiles" />
 		<HelpDialog v-model="dialogs.help" />
+		<TlsSetupDialog v-model="dialogs.tlsSetup" />
 		<PasswordDialog />
 		<ResetConfirmDialog v-model="resetOpen" @confirmed="onResetConfirmed" />
 	</v-card>
@@ -257,6 +266,9 @@ import PasswordDialog from "../editor/PasswordDialog.vue";
 import ResetConfirmDialog from "../editor/ResetConfirmDialog.vue";
 import { can, requestAdmin } from "../model/access";
 import { resetToDefaults } from "../model/reset";
+import { CONFIG_BACKUP_ROUTE_PATH } from "../model/configBackup/constants";
+import { getLastBackupAt } from "../model/configBackup/credentials";
+import TlsSetupDialog from "../tlsSetup/TlsSetupDialog.vue";
 
 const machineStore = useMachineStore();
 
@@ -265,6 +277,17 @@ const familyPlugins = computed(() => otherFamilyPlugins(PLUGIN_MANIFEST_ID).map(
 const uiStore = useUiStore();
 
 const active = computed(() => isFlLayoutActive());
+
+const configBackupTooltip = computed(() => {
+	const base = i18n.global.t("plugins.flexibleLayouts.configBackup.openHelp");
+	const iso = getLastBackupAt();
+	if (!iso) { return `${base} ${i18n.global.t("plugins.flexibleLayouts.configBackup.create.lastBackupNever")}`; }
+	const days = Math.floor((Date.now() - new Date(iso).getTime()) / (24 * 60 * 60 * 1000));
+	const last = days <= 0
+		? i18n.global.t("plugins.flexibleLayouts.configBackup.create.lastBackupToday")
+		: i18n.global.t("plugins.flexibleLayouts.configBackup.create.lastBackupDaysAgo", { count: days });
+	return `${base} ${last}`;
+});
 
 // --- Updates -----------------------------------------------------------------------------------
 const isConnected = computed(() => machineStore.isConnected);
@@ -356,6 +379,7 @@ const dialogs = reactive({
 	io: false,
 	profiles: false,
 	help: false,
+	tlsSetup: false,
 });
 
 // Page management, theming, import/export and profiles all mutate the layout, so they sit behind
@@ -366,6 +390,24 @@ async function openGated(key: "pageManager" | "theme" | "io" | "profiles"): Prom
 		return;
 	}
 	dialogs[key] = true;
+}
+
+// Config backup is a full page (too big for a dialog - file tree, cloud lists, machine diff), gated
+// like the buttons above since it can back up and restore the whole machine configuration.
+async function openConfigBackup(): Promise<void> {
+	if (!can("editLayout") && !(await requestAdmin())) {
+		return;
+	}
+	router.push(CONFIG_BACKUP_ROUTE_PATH);
+}
+
+// TLS setup edits config.g and re-configures the network interface's security, so it needs the same
+// gate as the full-reset flow (editConfig) rather than the layout-editing gate used above.
+async function openTlsSetup(): Promise<void> {
+	if (!can("editConfig") && !(await requestAdmin())) {
+		return;
+	}
+	dialogs.tlsSetup = true;
 }
 
 // The Access section itself needs the same gate as the buttons above — reachable via ordinary

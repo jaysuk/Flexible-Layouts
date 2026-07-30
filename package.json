@@ -1,6 +1,6 @@
 {
   "name": "flexible-layouts",
-  "version": "1.6.2",
+  "version": "1.7.0",
   "description": "Flexible Layouts — drag-and-drop UI customisation plugin for DuetWebControl (Vue 3).",
   "private": true,
   "license": "GPL-3.0-or-later",
@@ -17,8 +17,12 @@
     "release": "node scripts/release.mjs"
   },
   "dependencies": {
+    "@peculiar/asn1-ecc": "^2.8.0",
+    "@peculiar/asn1-schema": "^2.8.0",
+    "@peculiar/asn1-x509": "^2.8.0",
     "dwc-plugin-runtime": "github:jaysuk/dwc-plugin-runtime#v0.8.2",
-    "grid-layout-plus": "^1.1.1"
+    "grid-layout-plus": "^1.1.1",
+    "jszip": "^3.10.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.0",

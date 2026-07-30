@@ -51,6 +51,14 @@ was made with a newer Flexible Layouts than you have installed).
 - **Header** — pin mini widgets into the top bar and restyle it (colour / title / logo).
 - **Optional password lock** — a soft kiosk lock that gates editing and the escape-to-built-in
   switch behind a password (see [docs/usage.md](docs/usage.md#password-lock) for its limits).
+- **Config backup & restore** — back up the whole machine (`sys`/`macros`/`filaments`, object model,
+  M122 diagnostics) to your PC, GitHub, Google Drive or the Duet backup service, with optional
+  redaction of WiFi/passwords and cross-machine restore. See
+  [docs/config-backup.md](docs/config-backup.md).
+- **TLS / HTTPS setup** — a step-by-step helper for RepRapFirmware 3.7's TLS support (serving DWC/FTP/
+  Telnet encrypted from the printer itself): checks your board/firmware can do it, walks you through
+  generating a certificate, uploads it, enables TLS, and patches `config.g` so it survives a reboot.
+  See [docs/tls-setup.md](docs/tls-setup.md).
 
 See **[docs/usage.md](docs/usage.md)** for a full tour and **[docs/widgets.md](docs/widgets.md)** for
 the widget reference.
