@@ -43,13 +43,41 @@ function buildSanExtension(hostname: string, ip: string | null): Extension {
 	return new Extension({ extnID: id_ce_subjectAltName, critical: false, extnValue: new OctetString(sanDer) });
 }
 
+/**
+ * DER-encode an unsigned big-endian integer per X.690: minimal length, with exactly one leading
+ * 0x00 pad byte added if that would otherwise be needed to keep the value positive (i.e. the first
+ * remaining byte's top bit is set).
+ *
+ * `@peculiar/asn1-ecc`'s ECDSASigValue (via AsnIntegerArrayBufferConverter) passes its r/s buffers
+ * straight through as DER INTEGER content with NO sign correction of its own - confirmed by
+ * `openssl asn1parse` on this function's own (unfixed) output: a raw r starting with 0xF0... came
+ * back as a NEGATIVE integer, not the intended positive value. Since a raw ECDSA signature half's
+ * top bit is set roughly half the time, this affected roughly three-quarters of generated
+ * certificates (either r or s), and additionally threw "illegal padding" whenever a component's
+ * unsigned representation happened to carry a natural leading 0x00 that a minimal encoding would
+ * strip (the flaky CI/local test failure this was tracked down from).
+ */
+export function unsignedIntegerToDer(bytes: Uint8Array): ArrayBuffer {
+	let start = 0;
+	while (start < bytes.length - 1 && bytes[start] === 0) {
+		start++;
+	}
+	const trimmed = bytes.subarray(start);
+	if (trimmed[0] & 0x80) {
+		const padded = new Uint8Array(trimmed.length + 1);
+		padded.set(trimmed, 1);
+		return padded.buffer;
+	}
+	return trimmed.slice().buffer;
+}
+
 /** Web Crypto's ECDSA signatures are raw r||s (IEEE P1363), each half-length equal to the curve's
  * order size in bytes - X.509 needs them DER-encoded as an ECDSA-Sig-Value SEQUENCE instead. */
 function rawSignatureToDer(raw: ArrayBuffer): ArrayBuffer {
 	const bytes = new Uint8Array(raw);
 	const half = bytes.length / 2;
-	const r = bytes.slice(0, half).buffer;
-	const s = bytes.slice(half).buffer;
+	const r = unsignedIntegerToDer(bytes.slice(0, half));
+	const s = unsignedIntegerToDer(bytes.slice(half));
 	return AsnSerializer.serialize(new ECDSASigValue({ r, s }));
 }
 
@@ -60,10 +88,13 @@ function derToPem(der: ArrayBuffer, label: string): string {
 }
 
 function randomSerialNumber(): ArrayBuffer {
-	// A DER INTEGER must be non-negative, so force the leading byte's top bit to 0.
+	// TBSCertificate.serialNumber uses the same unguarded converter as ECDSASigValue's r/s (see
+	// unsignedIntegerToDer's doc comment) - a random byte array needs the same minimal-encode-plus-
+	// sign-guard treatment, not just a top-bit mask: a mask alone leaves a natural leading 0x00 (when
+	// the top byte happens to randomise to 0x00 or 0x80) un-stripped, which is the exact "illegal
+	// padding" DER violation this was tracked down from, just in a second, independent field.
 	const bytes = crypto.getRandomValues(new Uint8Array(16));
-	bytes[0] &= 0x7f;
-	return bytes.buffer;
+	return unsignedIntegerToDer(bytes);
 }
 
 export interface GenerateCertOptions {
