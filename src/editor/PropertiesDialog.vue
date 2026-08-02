@@ -808,6 +808,33 @@
 					<v-text-field v-model="draft.centreCmd" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.probe.opCentre')" :placeholder="PROBE_DEFAULTS.centre" />
 				</template>
 
+				<!-- Bed mesh -->
+				<template v-else-if="draft.type === 'bedMesh'">
+					<v-row dense>
+						<v-col cols="8"><v-text-field v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
+						<v-col cols="4"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
+					</v-row>
+					<v-row dense class="mt-1">
+						<v-col cols="6"><v-text-field v-model="draft.fileName" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.bedMesh.file')" :placeholder="DEFAULT_HEIGHTMAP_FILE" /></v-col>
+						<v-col cols="3"><v-text-field v-model.number="draft.probeIndex" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.bedMesh.probeIndex')" /></v-col>
+						<v-col cols="3" class="d-flex align-center"><v-switch v-model="draft.confirm" color="primary" density="compact" hide-details :label="$t('plugins.flexibleLayouts.probe.confirmOpt')" /></v-col>
+					</v-row>
+					<div class="text-caption text-medium-emphasis mt-2 mb-1">{{ $t('plugins.flexibleLayouts.bedMesh.cmdHelp') }}</div>
+					<v-text-field v-model="draft.probeCmd" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.bedMesh.probeCmd')" :placeholder="DEFAULT_BED_MESH_PROBE_COMMAND" />
+				</template>
+
+				<!-- Bed tram -->
+				<template v-else-if="draft.type === 'bedTram'">
+					<v-row dense>
+						<v-col cols="8"><v-text-field v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
+						<v-col cols="4"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
+					</v-row>
+					<v-row dense class="mt-1">
+						<v-col cols="8"><v-text-field v-model="draft.command" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.bedTram.command')" placeholder="G32" /></v-col>
+						<v-col cols="4" class="d-flex align-center"><v-switch v-model="draft.confirm" color="primary" density="compact" hide-details :label="$t('plugins.flexibleLayouts.probe.confirmOpt')" /></v-col>
+					</v-row>
+				</template>
+
 				<!-- Surfacing wizard: label/color/confirm here; the dimension fields are edited inline on
 					 the widget itself per run (see SurfacingWidget.vue), these are just its starting defaults. -->
 				<template v-else-if="draft.type === 'surfacing'">
@@ -1236,7 +1263,8 @@ import { useMachineStore } from "@/stores/machine";
 
 import type { ButtonShape, ConditionOperator, ConditionRule, GridItemModel, PanelColors, Typography, Widget } from "../model/document";
 import { hasInputModifier } from "../util/inputModifier";
-import { DEFAULT_PROBE_COMMANDS as PROBE_DEFAULTS } from "../util/probe";
+import { DEFAULT_BED_MESH_PROBE_COMMAND, DEFAULT_PROBE_COMMANDS as PROBE_DEFAULTS } from "../util/probe";
+import { DEFAULT_HEIGHTMAP_FILE } from "../model/bedMesh/store";
 import { OM_VALUE_PRESETS, type OmPreset, resolveOmPath } from "../util/omPath";
 import { defaultLockForWidget } from "../util/printLock";
 import { defaultChromeForWidget } from "../util/panelChrome";

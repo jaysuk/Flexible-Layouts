@@ -7,17 +7,34 @@
  * time from the widget's inputs:
  *   {dia}    — the endmill / probe diameter (mm)
  *   {corner} — the selected corner code (FL / FR / BL / BR), for corner/centre probing
+ *   {x}/{y}  — a target coordinate (mm), for bed-mesh single-point re-probing (BedMeshWidget)
+ *
+ * {x}/{y} are deliberately the only motion-related placeholders. Clearance height, probe deploy, and
+ * tool state are machine-specific and stay the operator's macro's responsibility - not motion this UI
+ * composes itself.
  */
 export interface ProbeVars {
-	dia: number;
-	corner: string;
+	dia?: number;
+	corner?: string;
+	x?: number;
+	y?: number;
 }
 
-/** Substitute {dia} / {corner} placeholders in a probe command template. */
+/** Trim a coordinate to 3dp and drop trailing zeros, so a derived value like 19.333333... doesn't
+ *  appear in the command as a twelve-significant-figure float. */
+function coord(v: number): string {
+	return String(Number(v.toFixed(3)));
+}
+
+/** Substitute {dia}/{corner}/{x}/{y} placeholders in a probe command template. Only placeholders
+ *  present in `vars` are substituted, so ProbeWidget's dia/corner-only calls are unaffected. */
 export function buildProbeCommand(template: string, vars: ProbeVars): string {
-	return template
-		.split("{dia}").join(String(vars.dia))
-		.split("{corner}").join(vars.corner);
+	let result = template;
+	if (vars.dia !== undefined) { result = result.split("{dia}").join(String(vars.dia)); }
+	if (vars.corner !== undefined) { result = result.split("{corner}").join(vars.corner); }
+	if (vars.x !== undefined) { result = result.split("{x}").join(coord(vars.x)); }
+	if (vars.y !== undefined) { result = result.split("{y}").join(coord(vars.y)); }
+	return result;
 }
 
 export type ProbeOp = "z" | "x" | "y" | "corner" | "centre";
@@ -30,3 +47,8 @@ export const DEFAULT_PROBE_COMMANDS: Record<ProbeOp, string> = {
 	corner: 'M98 P"0:/macros/Probe/probe_corner.g"',
 	centre: 'M98 P"0:/macros/Probe/probe_centre.g"',
 };
+
+/** Default template for a single bed-mesh cell (BedMeshWidget) - a separate macro from the ops above,
+ *  since it needs the target X/Y and is expected to end with a report-only G30 (S-1) so the reply can
+ *  be read back, not a mesh/tool-affecting probe. */
+export const DEFAULT_BED_MESH_PROBE_COMMAND = 'M98 P"0:/macros/Probe/probe_point.g" X{x} Y{y}';

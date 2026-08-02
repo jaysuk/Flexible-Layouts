@@ -45,6 +45,12 @@ function defaultConfig(): AccessConfig {
 	return { observerEnabled: false, operatorEnabled: false, adminHash: "", operatorHash: "", hideEmergencyStop: false };
 }
 
+/** The pristine access configuration. Exported so the scoped reset in model/reset.ts can restore it
+ *  without duplicating the shape - a duplicate would drift the moment a field is added here. */
+export function defaultAccessConfig(): AccessConfig {
+	return defaultConfig();
+}
+
 interface LegacyLockConfig { enabled: boolean; hash: string }
 
 /**

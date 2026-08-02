@@ -244,3 +244,185 @@ export async function checkForRestore(): Promise<FlBackup | null> {
 export function dismissRestore(backup: FlBackup): void {
 	setIgnoredSavedAt(backup.savedAt || Date.now());
 }
+
+// --- Version history (rotating snapshots) ----------------------------------------------------------
+//
+// The auto-backup above keeps exactly two generations (current + .bak) and exists to survive DWC
+// wiping its settings. This is the deliberate, user-facing layer on top: an N-deep ring of dated
+// snapshots you can revert to. Same `FlBackup` payload, so a history file and a backup file are the
+// same format and `parseBackup`/`applyBackup` serve both.
+//
+// It lives on the SD card rather than in DWC's settings because the settings blob is rewritten on
+// every change and syncs to the card anyway - putting N full layout documents in there would bloat
+// every write. On the card it also survives a browser change, which browser-local storage would not.
+//
+// NOT a per-edit undo: FlexPage.vue keeps a 60-deep in-memory undo for that. These are checkpoints
+// (before an import, before a reset, on leaving edit mode, or an explicit "save version").
+
+export const HISTORY_DIR = `${BACKUP_DIR}/flexible-layouts.history`;
+export const DEFAULT_HISTORY_LIMIT = 10;
+
+export interface HistoryEntry {
+	/** Filename within HISTORY_DIR - the id used to restore this snapshot. */
+	name: string;
+	savedAt: number;
+	/** Free-text label, "" when the snapshot was automatic. */
+	label: string;
+}
+
+/** Filesystem-safe label: the filename is the source of truth, so this is deliberately lossy. */
+function sanitiseLabel(label: string): string {
+	return label
+		.replace(/[^A-Za-z0-9._-]+/g, "-")
+		.replace(/-{2,}/g, "-")
+		.replace(/^-+|-+$/g, "")
+		.slice(0, 40);
+}
+
+/** `<epochMs>.json`, or `<epochMs>-<label>.json` when labelled. */
+export function historyFilename(savedAt: number, label = ""): string {
+	const safe = sanitiseLabel(label);
+	return safe ? `${savedAt}-${safe}.json` : `${savedAt}.json`;
+}
+
+/** Inverse of {@link historyFilename}. Null for anything that isn't one of ours. */
+export function parseHistoryFilename(name: string): { savedAt: number; label: string } | null {
+	const m = /^(\d+)(?:-(.*))?\.json$/.exec(name);
+	if (!m) {
+		return null;
+	}
+	const savedAt = Number(m[1]);
+	if (!Number.isFinite(savedAt) || savedAt <= 0) {
+		return null;
+	}
+	return { savedAt, label: m[2] ?? "" };
+}
+
+/**
+ * Which entries to delete to bring the ring down to `limit`, oldest first. Pure so the retention
+ * rule is testable without touching a card.
+ */
+export function selectPrunable(entries: ReadonlyArray<HistoryEntry>, limit = DEFAULT_HISTORY_LIMIT): Array<HistoryEntry> {
+	if (limit <= 0) {
+		return [...entries];
+	}
+	const newestFirst = [...entries].sort((a, b) => b.savedAt - a.savedAt);
+	return newestFirst.slice(limit);
+}
+
+/**
+ * The file operations the history ring needs. Injected so the ring can be tested against a fake;
+ * `defaultHistoryIO()` is the real, machine-store-backed implementation.
+ */
+export interface HistoryIO {
+	list(dir: string): Promise<Array<{ name: string; isDirectory: boolean }>>;
+	read(path: string): Promise<string>;
+	write(path: string, text: string): Promise<void>;
+	remove(path: string): Promise<void>;
+}
+
+export function defaultHistoryIO(): HistoryIO {
+	const machineStore = useMachineStore();
+	return {
+		async list(dir) {
+			return machineStore.getFileList(dir) as unknown as Promise<Array<{ name: string; isDirectory: boolean }>>;
+		},
+		async read(path) {
+			// `type: "text"` for the same reason as readBackup() above - without it DWC auto-parses
+			// JSON and the caller gets "[object Object]" instead of the file's text.
+			return blobToText(await machineStore.download({ filename: path, type: "text" }, false, false, false));
+		},
+		async write(path, text) {
+			await machineStore.upload({ filename: path, content: new Blob([text], { type: "application/json" }) }, false, false, false);
+		},
+		async remove(path) {
+			await machineStore.delete(path);
+		},
+	};
+}
+
+/** Snapshots on the card, newest first. Missing directory / unreadable card yields an empty list. */
+export async function listHistory(io: HistoryIO = defaultHistoryIO()): Promise<Array<HistoryEntry>> {
+	let files: Array<{ name: string; isDirectory: boolean }>;
+	try {
+		files = await io.list(HISTORY_DIR);
+	} catch {
+		return []; // directory doesn't exist yet, or we're offline - both mean "no history"
+	}
+	const entries: Array<HistoryEntry> = [];
+	for (const f of files ?? []) {
+		if (f.isDirectory) {
+			continue;
+		}
+		const parsed = parseHistoryFilename(f.name);
+		if (parsed) {
+			entries.push({ name: f.name, savedAt: parsed.savedAt, label: parsed.label });
+		}
+	}
+	return entries.sort((a, b) => b.savedAt - a.savedAt);
+}
+
+export type HistoryWriteResult = "written" | "skipped-empty" | "failed";
+
+/**
+ * Snapshot the live layout into the ring, then prune to `limit`. Skips a pristine/empty layout for
+ * the same reason writeBackup() does - there's nothing to come back to. A failed prune does NOT
+ * fail the write: the snapshot is the valuable half.
+ */
+export async function writeHistorySnapshot(
+	label = "", io: HistoryIO = defaultHistoryIO(), limit = DEFAULT_HISTORY_LIMIT,
+): Promise<HistoryWriteResult> {
+	const { profiles, active } = snapshotAllProfiles();
+	if (!layoutHasContent(profiles)) {
+		return "skipped-empty";
+	}
+	const savedAt = Date.now();
+	const backup = makeBackup(profiles, active, savedAt);
+	try {
+		await io.write(`${HISTORY_DIR}/${historyFilename(savedAt, label)}`, JSON.stringify(backup));
+	} catch {
+		return "failed";
+	}
+	await pruneHistory(limit, io).catch(() => 0);
+	return "written";
+}
+
+/** Delete the oldest snapshots beyond `limit`. Returns how many were removed. */
+export async function pruneHistory(limit = DEFAULT_HISTORY_LIMIT, io: HistoryIO = defaultHistoryIO()): Promise<number> {
+	const doomed = selectPrunable(await listHistory(io), limit);
+	let removed = 0;
+	for (const entry of doomed) {
+		try {
+			await io.remove(`${HISTORY_DIR}/${entry.name}`);
+			removed++;
+		} catch { /* a file we couldn't delete stays in the ring; not worth failing the caller over */ }
+	}
+	return removed;
+}
+
+export type HistoryRestoreResult = "restored" | "not-found" | "invalid";
+
+/**
+ * Revert to a snapshot. The CURRENT layout is snapshotted first, so reverting is itself revertible -
+ * without that, one mis-click would be unrecoverable. A failed pre-snapshot aborts the restore
+ * rather than proceeding: silently discarding the user's live layout is exactly the outcome the
+ * pre-snapshot exists to prevent.
+ */
+export async function restoreHistorySnapshot(name: string, io: HistoryIO = defaultHistoryIO()): Promise<HistoryRestoreResult> {
+	let text: string;
+	try {
+		text = await io.read(`${HISTORY_DIR}/${name}`);
+	} catch {
+		return "not-found";
+	}
+	const backup = parseBackup(text);
+	if (!backup) {
+		return "invalid";
+	}
+	const pre = await writeHistorySnapshot("before-restore", io);
+	if (pre === "failed") {
+		return "not-found"; // couldn't secure the current state - don't overwrite it
+	}
+	applyBackup(backup);
+	return "restored";
+}

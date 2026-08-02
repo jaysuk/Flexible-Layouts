@@ -251,7 +251,7 @@ import { attemptToggleEdit, editMode, exitEditMode } from "../model/editorState"
 import { applyUpdateNow, dismissCurrentUpdate, dismissedVersion, pendingReload, runUpdateCheck } from "../model/updateCheck";
 import { applyStartupRoute } from "../model/startup";
 import { startChartSampler, stopChartSampler } from "../model/chartSampler";
-import { applyBackup, checkForRestore, dismissRestore, type FlBackup, isAutoBackupEnabled, writeBackup } from "../model/sdBackup";
+import { applyBackup, checkForRestore, dismissRestore, type FlBackup, isAutoBackupEnabled, writeBackup, writeHistorySnapshot } from "../model/sdBackup";
 import { isPrintingStatus } from "../util/printLock";
 import { can, currentLevel, getAccess } from "../model/access";
 import { applyNavOrder, isHidden } from "../model/pageManager";
@@ -492,9 +492,15 @@ watch(() => machineState.state?.status, (now) => {
 
 // Persist the whole layout to the SD card whenever the user finishes editing (Done), so there's
 // always an off-settings copy to recover from. Skipped for empty layouts / no-op changes inside.
+//
+// The same moment is the natural checkpoint for version history: an editing session is the unit a
+// user would want to step back over, and snapshotting per-drag would both thrash the card and bury
+// the useful snapshots under noise. writeHistorySnapshot() no-ops on an empty layout and prunes the
+// ring itself, so this stays fire-and-forget.
 watch(editMode, (now, was) => {
 	if (was && !now && isAutoBackupEnabled()) {
 		void writeBackup();
+		void writeHistorySnapshot("edit-session");
 	}
 });
 

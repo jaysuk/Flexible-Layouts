@@ -520,6 +520,35 @@ export type Widget =
 	}
 	| {
 		/**
+		 * Bed height-map: view a probed mesh as a grid, re-probe or manually nudge a single cell, and
+		 * write the patched map back without re-running the whole mesh. No motion is hardcoded here -
+		 * `probeCmd` is a user-owned macro/command template, same philosophy as the touch-probe widget.
+		 */
+		type: "bedMesh";
+		label?: string;
+		color?: string;
+		/** Confirm before re-probing a cell (default true). */
+		confirm?: boolean;
+		/** Command/macro template for probing one cell. Placeholders: {x}/{y}. */
+		probeCmd?: string;
+		/** Which object-model probe (sensors.probes[n]) to read triggerHeight from. */
+		probeIndex?: number;
+		/** Height-map filename under 0:/sys (default heightmap.csv). */
+		fileName?: string;
+	}
+	| {
+		/** Bed tramming: runs a user-owned command/macro (default G32) and reports the resulting
+		 *  calibration/mesh-compensation deviation from the object model - not fire-and-forget. */
+		type: "bedTram";
+		label?: string;
+		color?: string;
+		/** Confirm before running (default true). */
+		confirm?: boolean;
+		/** Command/macro template, e.g. G32 or a corner-probing macro. */
+		command?: string;
+	}
+	| {
+		/**
 		 * Facing/surfacing wizard (CNC): generates a raster toolpath that skims a flat area down to a
 		 * target depth (spoilboard/stock flattening), uploads it to the SD card and starts it as a job.
 		 * The area is relative to the current work origin - the operator jogs to a corner and zeroes XY
@@ -896,6 +925,11 @@ export function createDefaultWidget(type: WidgetType): Widget {
 		case "probe":
 			// Command templates left unset → ProbeWidget falls back to DEFAULT_PROBE_COMMANDS (editable in properties).
 			return { type: "probe", label: "Touch probe", color: "primary", diameter: 6, confirm: true, ops: ["z", "x", "y", "corner"] };
+		case "bedMesh":
+			// probeCmd left unset → BedMeshWidget falls back to DEFAULT_BED_MESH_PROBE_COMMAND (editable in properties).
+			return { type: "bedMesh", label: "Bed mesh", color: "primary", confirm: true, probeIndex: 0 };
+		case "bedTram":
+			return { type: "bedTram", label: "Bed tram", color: "primary", confirm: true, command: "G32" };
 		case "surfacing":
 			return {
 				type: "surfacing", label: "Surfacing", color: "primary",

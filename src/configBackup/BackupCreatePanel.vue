@@ -138,7 +138,7 @@ import {
 	getGithubSettings, getGoogleDriveClientId, getLastBackupAt, getRedactPreference, getWebDavSettings,
 	hasAcknowledgedUnredacted, setAcknowledgedUnredacted, setLastBackupAt, setRedactPreference,
 } from "dwc-config-backup-core";
-import { buildLiveDirectories, buildMachineIdentity } from "dwc-config-backup-core";
+import { buildLiveDirectories, buildMachineIdentity, defaultMachineFolder } from "dwc-config-backup-core";
 import { downloadArchive, backupFilename } from "dwc-config-backup-core/destinations/localZip";
 import { isRepoPrivate, pushBackup } from "dwc-config-backup-core/destinations/github";
 import { isOriginSupported, signIn, uploadBackup as driveUploadBackup } from "dwc-config-backup-core/destinations/googleDrive";
@@ -356,9 +356,14 @@ async function sendToGithub(built: Awaited<ReturnType<typeof buildArchive>>, ide
 		const full = `files/${f.path}`;
 		f.content = parsed.textFiles.get(full) ?? "";
 	}
+	// GitHub keys backups by a human-readable folder path, not the hardware GUID Duet Cloud uses - so
+	// two machines that happen to share a hostname would collide in the same folder without a
+	// disambiguator. An explicit "Machine name" override is used verbatim (the user picked it on
+	// purpose); otherwise default to hostname + a short hash of the real machine key.
+	const machineFolder = settings.machineName || defaultMachineFolder(identity.hostname, built.manifest.machine.machineKey);
 	await pushBackup({
 		token: settings.token, repo: settings.repo, branch: settings.branch || "main",
-		machineFolder: settings.machineName || identity.hostname || "machine", files,
+		machineFolder, files,
 		// Stable filename (not timestamped): each push OVERWRITES this one blob rather than
 		// accumulating a new zip per backup. Git still keeps every past version reachable via commit
 		// history - the Configuration tab's GitHub "backup history" browser lists exactly this, via
@@ -375,18 +380,25 @@ async function sendToDrive(built: Awaited<ReturnType<typeof buildArchive>>, iden
 		throw new Error(i18n.global.t("plugins.flexibleLayouts.configBackup.create.notConfigured", { destination: destinationLabel.value }));
 	}
 	const token = await signIn(clientId);
-	await driveUploadBackup(token, identity.hostname, backupFilename(identity.hostname), built.blob);
+	// Drive folders are found-or-created by this exact name, same hostname-only collision risk as
+	// Dropbox/WebDAV - see the comment on GitHub's machineFolder above.
+	const machineFolder = defaultMachineFolder(identity.hostname, built.manifest.machine.machineKey);
+	await driveUploadBackup(token, machineFolder, backupFilename(identity.hostname), built.blob);
 }
 
 async function sendToDropbox(built: Awaited<ReturnType<typeof buildArchive>>, identity: ReturnType<typeof buildMachineIdentity>): Promise<void> {
 	const settings = getDropboxSettings();
 	if (!settings) { throw new Error(i18n.global.t("plugins.flexibleLayouts.configBackup.create.notConfigured", { destination: destinationLabel.value })); }
-	await dropboxUploadBackup(settings.token, identity.hostname, backupFilename(identity.hostname), built.blob);
+	// Dropbox has no manual-override field (unlike GitHub), so it always gets the disambiguated
+	// default - see the comment on GitHub's machineFolder above.
+	const machineFolder = defaultMachineFolder(identity.hostname, built.manifest.machine.machineKey);
+	await dropboxUploadBackup(settings.token, machineFolder, backupFilename(identity.hostname), built.blob);
 }
 
 async function sendToWebdav(built: Awaited<ReturnType<typeof buildArchive>>, identity: ReturnType<typeof buildMachineIdentity>): Promise<void> {
 	const settings = getWebDavSettings();
 	if (!settings) { throw new Error(i18n.global.t("plugins.flexibleLayouts.configBackup.create.notConfigured", { destination: destinationLabel.value })); }
-	await webdavUploadBackup(settings.url, settings.username, settings.password, identity.hostname, backupFilename(identity.hostname), built.blob);
+	const machineFolder = defaultMachineFolder(identity.hostname, built.manifest.machine.machineKey);
+	await webdavUploadBackup(settings.url, settings.username, settings.password, machineFolder, backupFilename(identity.hostname), built.blob);
 }
 </script>

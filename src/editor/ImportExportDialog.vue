@@ -188,6 +188,7 @@ import { LogLevel, useUiStore } from "@/stores/ui";
 import { convertBtnCmd, isBtnCmdFile } from "../model/btncmd";
 import type { LayoutDocument } from "../model/document";
 import { applyImportedDocument, exportLayout, exportPage, getPreImportBackup, listDocumentPages, pageToImportDocument, panelToImportDocument, type ParsedImport, parseLayoutFile, parsePageFile, parsePanelFile, restorePreImportBackup } from "../model/io";
+import { writeHistorySnapshot } from "../model/sdBackup";
 import { loadCncPreset } from "../model/presets";
 import { useLayoutStore } from "../model/store";
 import { describeWidget } from "../widgets/registry";
@@ -415,6 +416,11 @@ function confirmImport() {
 	if (!pending.value) {
 		return;
 	}
+	// Checkpoint the current layout into version history before an import rewrites it. This is
+	// belt-and-braces alongside applyImportedDocument's own single-slot pre-import backup: that one is
+	// overwritten by the next import, whereas this survives in the ring. Fire-and-forget - an offline
+	// machine must not block an import the user explicitly asked for.
+	void writeHistorySnapshot("before-import");
 	applyImportedDocument(pending.value.document, {
 		theme: present.value.theme && restore.theme,
 		header: present.value.header && restore.header,
