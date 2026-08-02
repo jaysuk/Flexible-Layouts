@@ -20,7 +20,7 @@
     "@peculiar/asn1-ecc": "^2.8.0",
     "@peculiar/asn1-schema": "^2.8.0",
     "@peculiar/asn1-x509": "^2.8.0",
-    "dwc-config-backup-core": "file:../dwc-config-backup-core/dwc-config-backup-core-0.1.0.tgz",
+    "dwc-config-backup-core": "github:jaysuk/dwc-config-backup-core#main",
     "dwc-plugin-runtime": "github:jaysuk/dwc-plugin-runtime#v0.8.2",
     "grid-layout-plus": "^1.1.1",
     "jszip": "^3.10.1"
