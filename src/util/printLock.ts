@@ -45,6 +45,7 @@ export function defaultLockForWidget(widget: Widget): boolean {
 		case "toolAlign":
 		case "bedMesh":
 		case "bedTram":
+		case "xyzProbe":
 			return true;
 		case "builtinPanel":
 			return MOVE_PANELS.has(widget.component);

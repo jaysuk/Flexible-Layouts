@@ -146,7 +146,8 @@
 		"httpFail": "HTTP request failed ({status})",
 		"actionError": "Action failed: {error}",
 		"bedMesh": "Bed mesh",
-		"bedTram": "Bed tram"
+		"bedTram": "Bed tram",
+		"xyzProbe": "XYZ probe"
 	},
 	"properties": {
 		"title": "Widget settings",
@@ -1515,5 +1516,39 @@
 		"noData": "No calibration or mesh-compensation data yet - run tramming first.",
 		"lastRun": "Last run: {when}",
 		"command": "Command"
+	},
+	"xyzProbe": {
+		"title": "XYZ probe",
+		"status": "Probe status",
+		"triggered": "Triggered",
+		"notTriggered": "Not triggered",
+		"endmillDiameter": "Endmill diameter (mm)",
+		"corner": "Probe location",
+		"cornerFL": "Front left corner",
+		"cornerFR": "Front right corner",
+		"cornerBL": "Back left corner",
+		"cornerBR": "Back right corner",
+		"probeCorner": "Probe corner",
+		"probeX": "X",
+		"probeY": "Y",
+		"probeZ": "Z",
+		"run": "Probe",
+		"settingsTitle": "Touch probe settings",
+		"feedrate": "Feedrate (mm/min)",
+		"searchMargin": "Search margin (mm)",
+		"plateWidth": "Plate width (mm)",
+		"plateHeight": "Plate height (mm)",
+		"plateThickness": "Plate thickness (mm)",
+		"xOffset": "X-axis offset (mm)",
+		"yOffset": "Y-axis offset (mm)",
+		"macroFolder": "Macro folder",
+		"restoreMacrosHelp": "Re-deploy the default macros, overwriting any edits made directly on the machine",
+		"macrosRestored": "Macros restored to default.",
+		"deployFailed": "Could not deploy the probe macros to the SD card.",
+		"confirmTitle": "Run this probe?",
+		"safetyNote": "This is blind relative motion computed from wherever you jogged to - a badly-off starting position can miss the plate or drive the endmill into it, a clamp, or the table. Watch the first probe of a session closely, with a hand near emergency stop.",
+		"cornerProbed": "{corner} probed - WCS origin set.",
+		"axisProbed": "{axis} axis probed - WCS updated.",
+		"requirementsNote": "Requires RepRapFirmware 3.6.0 or later (G38.2 with a feedrate parameter) and a touch probe configured as probe index 0 (M558 ... P0) unless changed above."
 	}
 }

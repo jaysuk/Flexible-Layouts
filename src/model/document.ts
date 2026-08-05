@@ -549,6 +549,34 @@ export type Widget =
 	}
 	| {
 		/**
+		 * XYZ corner touch-probe (CNC): probes a rectangular touch plate at a chosen corner and sets
+		 * the WCS origin, compensating for endmill radius and plate thickness. Adapted from
+		 * FelixHauser/Duet-XYZ-Probe's algorithm; deploys 4 macros to `macroFolder` on first use.
+		 */
+		type: "xyzProbe";
+		label?: string;
+		color?: string;
+		/** Confirm before probing (default true). */
+		confirm?: boolean;
+		/** Default endmill diameter (mm). */
+		endmillDiameter?: number;
+		/** Plate footprint along its own labelled X/Y sides (mm). */
+		plateWidth?: number;
+		plateHeight?: number;
+		plateThickness?: number;
+		/** Distance from the jogged start position to the plate's near edge (mm). */
+		xOffset?: number;
+		yOffset?: number;
+		feedrate?: number;
+		/** How far past the plate's assumed edge each probe searches before giving up (mm). */
+		searchMargin?: number;
+		/** Which object-model probe (sensors.probes[n]) to read the live trigger reading from. */
+		probeIndex?: number;
+		/** SD folder the 4 macros deploy to (default 0:/macros/XyzProbe). */
+		macroFolder?: string;
+	}
+	| {
+		/**
 		 * Facing/surfacing wizard (CNC): generates a raster toolpath that skims a flat area down to a
 		 * target depth (spoilboard/stock flattening), uploads it to the SD card and starts it as a job.
 		 * The area is relative to the current work origin - the operator jogs to a corner and zeroes XY
@@ -930,6 +958,12 @@ export function createDefaultWidget(type: WidgetType): Widget {
 			return { type: "bedMesh", label: "Bed mesh", color: "primary", confirm: true, probeIndex: 0 };
 		case "bedTram":
 			return { type: "bedTram", label: "Bed tram", color: "primary", confirm: true, command: "G32" };
+		case "xyzProbe":
+			return {
+				type: "xyzProbe", label: "XYZ probe", color: "primary", confirm: true,
+				endmillDiameter: 6.35, plateWidth: 60, plateHeight: 60, plateThickness: 5,
+				xOffset: 10, yOffset: 10, feedrate: 500, searchMargin: 10, probeIndex: 0,
+			};
 		case "surfacing":
 			return {
 				type: "surfacing", label: "Surfacing", color: "primary",

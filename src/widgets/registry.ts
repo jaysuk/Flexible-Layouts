@@ -87,6 +87,7 @@ export const FREEFORM_WIDGETS: ReadonlyArray<FreeformCatalogEntry> = [
 	{ type: "probe",      labelKey: "widgets.probe",      icon: "mdi-target-variant",     defaultSize: { w: 4, h: 5 }, category: "machine" },
 	{ type: "bedMesh",    labelKey: "widgets.bedMesh",    icon: "mdi-grid",               defaultSize: { w: 6, h: 10 }, category: "machine" },
 	{ type: "bedTram",    labelKey: "widgets.bedTram",    icon: "mdi-square-outline",     defaultSize: { w: 4, h: 5 }, category: "machine" },
+	{ type: "xyzProbe",   labelKey: "widgets.xyzProbe",   icon: "mdi-crosshairs-gps",     defaultSize: { w: 5, h: 11 }, category: "machine" },
 	{ type: "surfacing",  labelKey: "widgets.surfacing",  icon: "mdi-grid",               defaultSize: { w: 5, h: 11 }, category: "machine" },
 	{ type: "toolSelect", labelKey: "widgets.toolSelect", icon: "mdi-tools",              defaultSize: { w: 4, h: 2 }, category: "machine" },
 	{ type: "toolAlign",  labelKey: "widgets.toolAlign",  icon: "mdi-image-filter-center-focus", defaultSize: { w: 6, h: 12 }, category: "machine" },
@@ -253,6 +254,8 @@ export function describeWidget(widget: Widget): { title: string; icon: string } 
 			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.bedMesh"), icon: "mdi-grid" };
 		case "bedTram":
 			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.bedTram"), icon: "mdi-square-outline" };
+		case "xyzProbe":
+			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.xyzProbe"), icon: "mdi-crosshairs-gps" };
 		case "toolSelect":
 			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.toolSelect"), icon: "mdi-tools" };
 		case "toolAlign":

@@ -835,6 +835,34 @@
 					</v-row>
 				</template>
 
+				<!-- XYZ probe -->
+				<template v-else-if="draft.type === 'xyzProbe'">
+					<v-row dense>
+						<v-col cols="8"><v-text-field v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
+						<v-col cols="4"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
+					</v-row>
+					<v-row dense class="mt-1">
+						<v-col cols="6"><v-text-field v-model.number="draft.endmillDiameter" type="number" :min="0.01" :step="0.01" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.xyzProbe.endmillDiameter')" /></v-col>
+						<v-col cols="3"><v-text-field v-model.number="draft.probeIndex" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.bedMesh.probeIndex')" /></v-col>
+						<v-col cols="3" class="d-flex align-center"><v-switch v-model="draft.confirm" color="primary" density="compact" hide-details :label="$t('plugins.flexibleLayouts.probe.confirmOpt')" /></v-col>
+					</v-row>
+					<v-row dense class="mt-1">
+						<v-col cols="4"><v-text-field v-model.number="draft.plateWidth" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.xyzProbe.plateWidth')" /></v-col>
+						<v-col cols="4"><v-text-field v-model.number="draft.plateHeight" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.xyzProbe.plateHeight')" /></v-col>
+						<v-col cols="4"><v-text-field v-model.number="draft.plateThickness" type="number" :min="0.01" :step="0.01" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.xyzProbe.plateThickness')" /></v-col>
+					</v-row>
+					<v-row dense class="mt-1">
+						<v-col cols="4"><v-text-field v-model.number="draft.xOffset" type="number" :step="0.01" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.xyzProbe.xOffset')" /></v-col>
+						<v-col cols="4"><v-text-field v-model.number="draft.yOffset" type="number" :step="0.01" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.xyzProbe.yOffset')" /></v-col>
+						<v-col cols="4"><v-text-field v-model.number="draft.feedrate" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.xyzProbe.feedrate')" /></v-col>
+					</v-row>
+					<v-row dense class="mt-1">
+						<v-col cols="6"><v-text-field v-model.number="draft.searchMargin" type="number" :min="0.1" :step="0.5" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.xyzProbe.searchMargin')" /></v-col>
+						<v-col cols="6"><v-text-field v-model="draft.macroFolder" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.xyzProbe.macroFolder')" :placeholder="XYZ_PROBE_MACRO_FOLDER" /></v-col>
+					</v-row>
+					<div class="text-caption text-medium-emphasis mt-2">{{ $t('plugins.flexibleLayouts.xyzProbe.requirementsNote') }}</div>
+				</template>
+
 				<!-- Surfacing wizard: label/color/confirm here; the dimension fields are edited inline on
 					 the widget itself per run (see SurfacingWidget.vue), these are just its starting defaults. -->
 				<template v-else-if="draft.type === 'surfacing'">
@@ -1265,6 +1293,7 @@ import type { ButtonShape, ConditionOperator, ConditionRule, GridItemModel, Pane
 import { hasInputModifier } from "../util/inputModifier";
 import { DEFAULT_BED_MESH_PROBE_COMMAND, DEFAULT_PROBE_COMMANDS as PROBE_DEFAULTS } from "../util/probe";
 import { DEFAULT_HEIGHTMAP_FILE } from "../model/bedMesh/store";
+import { XYZ_PROBE_MACRO_FOLDER } from "../util/xyzProbe";
 import { OM_VALUE_PRESETS, type OmPreset, resolveOmPath } from "../util/omPath";
 import { defaultLockForWidget } from "../util/printLock";
 import { defaultChromeForWidget } from "../util/panelChrome";

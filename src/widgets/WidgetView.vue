@@ -30,6 +30,7 @@
 	<ProbeWidget v-else-if="widget.type === 'probe'" :widget="widget" :disabled="disabled" />
 	<BedMeshWidget v-else-if="widget.type === 'bedMesh'" :widget="widget" :disabled="disabled" />
 	<BedTramWidget v-else-if="widget.type === 'bedTram'" :widget="widget" :disabled="disabled" />
+	<XyzProbeWidget v-else-if="widget.type === 'xyzProbe'" :widget="widget" :disabled="disabled" />
 	<SurfacingWidget v-else-if="widget.type === 'surfacing'" :widget="widget" :disabled="disabled" />
 	<ToolSelectWidget v-else-if="widget.type === 'toolSelect'" :widget="widget" :disabled="disabled" />
 	<ToolAlignWidget v-else-if="widget.type === 'toolAlign'" :widget="widget" :disabled="disabled" />
@@ -117,6 +118,7 @@ import WcsWidget from "./WcsWidget.vue";
 import ProbeWidget from "./ProbeWidget.vue";
 import BedMeshWidget from "./BedMeshWidget.vue";
 import BedTramWidget from "./BedTramWidget.vue";
+import XyzProbeWidget from "./XyzProbeWidget.vue";
 import SurfacingWidget from "./SurfacingWidget.vue";
 import WebcamWidget from "./WebcamWidget.vue";
 import WebWidget from "./WebWidget.vue";
