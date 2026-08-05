@@ -134,6 +134,9 @@
 							<v-text-field v-model.number="duetFifoLimit" type="number" min="1" max="20" density="compact" variant="outlined" hide-details
 										  :label="$t('plugins.flexibleLayouts.configBackup.cloud.fifoLimitLabel')" style="max-width: 260px;" class="mb-3"
 										  @update:model-value="setDuetCloudFifoLimit(duetFifoLimit)" />
+							<v-btn size="small" variant="tonal" prepend-icon="mdi-open-in-new" :href="DUET_BACKUP_WEB_URL" target="_blank" rel="noopener" class="mb-2">
+								{{ $t("plugins.flexibleLayouts.configBackup.cloud.viewOnlineButton") }}
+							</v-btn>
 							<div class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.configBackup.cloud.browseInRestoreTab") }}</div>
 						</template>
 						<v-alert v-if="duetError" type="error" variant="tonal" density="compact" class="mt-3">{{ duetError }}</v-alert>
@@ -268,7 +271,7 @@ import { isOriginSupported } from "dwc-config-backup-core/destinations/googleDri
 import { verifyToken as dropboxVerify } from "dwc-config-backup-core/destinations/dropbox";
 import { verifyConnection as webdavVerify } from "dwc-config-backup-core/destinations/webdav";
 import {
-	disableEncryption, enableEncryption, exportEncryptedBundle, getAutoBackupNudgeSettings, getDropboxSettings,
+	disableEncryption, DUET_BACKUP_WEB_URL, enableEncryption, exportEncryptedBundle, getAutoBackupNudgeSettings, getDropboxSettings,
 	getDuetCloudApiUrl, getDuetCloudFifoLimit, getDuetCloudSession, getGithubSettings, getGoogleDriveClientId,
 	getWebDavSettings, importEncryptedBundle, isEncryptionAvailable, isEncryptionEnabled, isSessionUnlocked,
 	lockSession, setAutoBackupNudgeSettings, setDropboxSettings, setDuetCloudFifoLimit,

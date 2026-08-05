@@ -1276,7 +1276,8 @@
 			"notConfiguredYet": "Not configured yet.",
 			"configuredNote": "Configured.",
 			"selectMachinePrompt": "Select a machine to see its backups.",
-			"viewButton": "View"
+			"viewButton": "View",
+			"viewOnlineButton": "View backups online"
 		},
 		"github": {
 			"heading": "GitHub",
