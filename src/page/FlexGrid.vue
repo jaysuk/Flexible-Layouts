@@ -1,10 +1,10 @@
 <template>
-	<GridLayout v-model:layout="layoutModel" class="flex-grid"
+	<GridLayout v-model:layout="layoutModel" class="flex-grid" :style="{ height: liveHeight + 'px' }"
 				:col-num="cols" :row-height="rowHeight" :margin="margin"
 				:is-draggable="editMode" :is-resizable="editMode"
 				:vertical-compact="false" :prevent-collision="false" :use-css-transforms="true"
-				:restore-on-drag="restoreOnDrag"
-				@layout-updated="emit('changed')">
+				:restore-on-drag="restoreOnDrag" :auto-size="false"
+				@layout-updated="commitHeight(); emit('changed')">
 		<GridItem v-for="item in layout" :key="item.i"
 				  :x="item.x" :y="item.y" :w="item.w" :h="item.h" :i="item.i"
 				  :min-w="1" :min-h="1" drag-allow-from=".flex-drag-handle"
@@ -24,7 +24,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref, watch } from "vue";
 import { GridItem, GridLayout } from "grid-layout-plus";
 
 import type { GridItemModel } from "../model/document";
@@ -78,6 +78,29 @@ const layoutModel = computed({
 	get: () => props.layout,
 	set: (v: Array<GridItemModel>) => emit("update:layout", v),
 });
+
+// grid-layout-plus's own `autoSize` (on by default) recomputes the grid's CSS height on every single
+// drag/resize tick, not just at the end - which makes the whole page visibly reflow live while
+// resizing the last (bottom-most) item, both growing AND shrinking, making the drag hard to control.
+// We take height over ourselves instead (`:auto-size="false"` above): grow live (a growing
+// resize/drag always needs the room, and any non-interactive height increase - e.g. adding a widget
+// - should take effect immediately too), but only shrink once the change is actually committed, so
+// a shrinking drag never moves the ground under the operator's cursor mid-gesture.
+const naturalHeight = computed(() => {
+	const bottom = props.layout.reduce((max, it) => Math.max(max, it.y + it.h), 0);
+	return bottom * (props.rowHeight + margin.value[1]) + margin.value[1];
+});
+const liveHeight = ref(naturalHeight.value);
+watch(naturalHeight, (nh) => {
+	if (nh > liveHeight.value) { liveHeight.value = nh; }
+});
+/** Settle to the current natural height - allows a shrink to finally take effect. Called on
+ *  `layout-updated`, which grid-layout-plus already fires at drag/resize end AND on any
+ *  non-interactive reassignment of the `layout` prop (add/remove/undo/redo/page switch all replace
+ *  the array by reference), so this alone covers every case without a separate watch. */
+function commitHeight(): void {
+	liveHeight.value = naturalHeight.value;
+}
 </script>
 
 <!-- Non-scoped: grid-layout-plus renders the resize grip + placeholder outside our component

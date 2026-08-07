@@ -62,6 +62,9 @@ export const WIDGET_CATEGORIES: ReadonlyArray<WidgetCategory> = ["controls", "ma
 export interface FreeformCatalogEntry {
 	type: Exclude<WidgetType, "builtinPanel">;
 	labelKey: string;
+	/** Optional i18n key for a short palette subtitle - only populated where two widgets could
+	 *  otherwise be mistaken for duplicates (e.g. "probe" vs "xyzProbe"), not a blanket rollout. */
+	subKey?: string;
 	icon: string;
 	defaultSize: { w: number; h: number };
 	category: WidgetCategory;
@@ -85,10 +88,10 @@ export const FREEFORM_WIDGETS: ReadonlyArray<FreeformCatalogEntry> = [
 	{ type: "spindle",    labelKey: "widgets.spindle",    icon: "mdi-saw-blade",          defaultSize: { w: 4, h: 4 }, category: "machine" },
 	{ type: "wcs",        labelKey: "widgets.wcs",        icon: "mdi-axis-arrow",         defaultSize: { w: 4, h: 7 }, category: "machine" },
 	{ type: "wcsTable",   labelKey: "widgets.wcsTable",   icon: "mdi-table-large",        defaultSize: { w: 8, h: 12 }, category: "machine" },
-	{ type: "probe",      labelKey: "widgets.probe",      icon: "mdi-target-variant",     defaultSize: { w: 4, h: 7 }, category: "machine" },
+	{ type: "probe",      labelKey: "widgets.probe",      subKey: "widgets.probeSub",      icon: "mdi-target-variant",     defaultSize: { w: 4, h: 7 }, category: "machine" },
 	{ type: "bedMesh",    labelKey: "widgets.bedMesh",    icon: "mdi-grid",               defaultSize: { w: 6, h: 10 }, category: "machine" },
 	{ type: "bedTram",    labelKey: "widgets.bedTram",    icon: "mdi-square-outline",     defaultSize: { w: 4, h: 5 }, category: "machine" },
-	{ type: "xyzProbe",   labelKey: "widgets.xyzProbe",   icon: "mdi-crosshairs-gps",     defaultSize: { w: 5, h: 11 }, category: "machine" },
+	{ type: "xyzProbe",   labelKey: "widgets.xyzProbe",   subKey: "widgets.xyzProbeSub",   icon: "mdi-crosshairs-gps",     defaultSize: { w: 5, h: 11 }, category: "machine" },
 	{ type: "probeRoutines", labelKey: "widgets.probeRoutines", icon: "mdi-target", defaultSize: { w: 6, h: 13 }, category: "machine" },
 	{ type: "surfacing",  labelKey: "widgets.surfacing",  icon: "mdi-grid",               defaultSize: { w: 5, h: 11 }, category: "machine" },
 	{ type: "machineHealth", labelKey: "widgets.machineHealth", icon: "mdi-heart-pulse", defaultSize: { w: 4, h: 14 }, category: "machine" },

@@ -142,6 +142,9 @@ function panelLabel(entry: PanelCatalogEntry): string {
 function freeformLabel(entry: FreeformCatalogEntry): string {
 	return i18n.global.t(`plugins.flexibleLayouts.${entry.labelKey}`);
 }
+function freeformSub(entry: FreeformCatalogEntry): string | undefined {
+	return entry.subKey ? i18n.global.t(`plugins.flexibleLayouts.${entry.subKey}`) : undefined;
+}
 
 function chooseFreeform(entry: FreeformCatalogEntry) {
 	// Freeform widgets open their properties editor immediately so the user can configure them.
@@ -200,7 +203,7 @@ const allItems = computed<Array<PaletteItem>>(() => {
 	});
 
 	for (const e of FREEFORM_WIDGETS) {
-		items.push({ id: `f:${e.type}`, icon: e.icon, label: freeformLabel(e), category: e.category, choose: () => chooseFreeform(e), size: e.defaultSize, previewWidget: createDefaultWidget(e.type) });
+		items.push({ id: `f:${e.type}`, icon: e.icon, label: freeformLabel(e), sub: freeformSub(e), category: e.category, choose: () => chooseFreeform(e), size: e.defaultSize, previewWidget: createDefaultWidget(e.type) });
 	}
 	for (const e of BUILTIN_PANELS) {
 		items.push({ id: `p:${e.component}`, icon: e.icon, label: panelLabel(e), sub: e.component, mode: e.mode, category: "panels", choose: () => choosePanel(e), size: e.defaultSize, previewWidget: { type: "builtinPanel", component: e.component } });
