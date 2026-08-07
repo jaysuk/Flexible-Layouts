@@ -60,6 +60,10 @@
 					   :title="$t('plugins.flexibleLayouts.maintenance.openHelp')" @click="openMaintenance">
 					{{ $t("plugins.flexibleLayouts.maintenance.title") }}
 				</v-btn>
+				<v-btn variant="tonal" prepend-icon="mdi-content-cut"
+					   :title="$t('plugins.flexibleLayouts.vectorImport.openHelp')" @click="router.push(VECTOR_IMPORT_ROUTE_PATH)">
+					{{ $t("plugins.flexibleLayouts.vectorImport.title") }}
+				</v-btn>
 				<v-btn variant="tonal" prepend-icon="mdi-lock-check-outline"
 					   :title="$t('plugins.flexibleLayouts.tlsSetup.openHelp')" @click="openTlsSetup">
 					{{ $t("plugins.flexibleLayouts.tlsSetup.title") }}
@@ -318,6 +322,7 @@ import { can, requestAdmin } from "../model/access";
 import { resetToDefaults } from "../model/reset";
 import { CONFIG_BACKUP_ROUTE_PATH } from "../model/configBackup/constants";
 import { MAINTENANCE_ROUTE_PATH } from "../model/maintenance/constants";
+import { VECTOR_IMPORT_ROUTE_PATH } from "../model/vectorImport/constants";
 import { getLastBackupAt } from "dwc-config-backup-core";
 import TlsSetupDialog from "../tlsSetup/TlsSetupDialog.vue";
 

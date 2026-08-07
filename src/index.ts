@@ -25,6 +25,7 @@ import { BUILTIN_PAGES } from "./model/builtinPages";
 import { LAYOUT_ID, PLUGIN_MANIFEST_ID } from "./model/constants";
 import { CONFIG_BACKUP_ROUTE_PATH, FL_PROTECTED_SD_FILES } from "./model/configBackup/constants";
 import { MAINTENANCE_ROUTE_PATH } from "./model/maintenance/constants";
+import { VECTOR_IMPORT_ROUTE_PATH } from "./model/vectorImport/constants";
 import { activateFlLayout } from "./model/layoutState";
 import { installEscapeGuard, uninstallEscapeGuard } from "./model/access";
 import { installAutoBackupNudges, uninstallAutoBackupNudges } from "./model/configBackup/autoBackupNudges";
@@ -38,6 +39,7 @@ import FlexShell from "./shell/FlexShell.vue";
 import FlexSettingsTab from "./settings/FlexSettingsTab.vue";
 import ConfigBackupPage from "./configBackup/ConfigBackupPage.vue";
 import MaintenancePage from "./maintenance/MaintenancePage.vue";
+import VectorImportPage from "./vectorImport/VectorImportPage.vue";
 
 const PLUGIN_ID = "flexibleLayouts";
 
@@ -190,6 +192,21 @@ registerRoute(MaintenancePage, {
 			icon: "mdi-wrench-cog-outline",
 			path: MAINTENANCE_ROUTE_PATH,
 			caption: "plugins.flexibleLayouts.maintenance.navCaption",
+		},
+	},
+});
+
+// Vector import (SVG/DXF -> CAM) is its own full page (drop zone, live preview, a long parameter
+// list) - same "too big for a dialog" reasoning as config-backup/maintenance above. Registered
+// ungated: viewing the page (loading a drawing, previewing it, downloading the G-code) needs no
+// capability at all, so an Operator (who has runJobs but not editLayout/editConfig) can actually
+// reach it - only the "Cut it" button, deep inside, gates on can("runJobs").
+registerRoute(VectorImportPage, {
+	Plugins: {
+		FlexibleLayoutsVectorImport: {
+			icon: "mdi-content-cut",
+			path: VECTOR_IMPORT_ROUTE_PATH,
+			caption: "plugins.flexibleLayouts.vectorImport.navCaption",
 		},
 	},
 });
