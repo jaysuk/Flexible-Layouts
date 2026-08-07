@@ -5,6 +5,7 @@
  * controls like pause/resume.
  */
 import type { Widget } from "./../model/document";
+import { movesAxes } from "./motionAxes";
 
 /** Machine statuses that count as an active print session (mirrors DWC's isPrinting, incl. paused). */
 export const PRINTING_STATUSES = new Set([
@@ -36,16 +37,14 @@ function codeMoves(code?: string): boolean {
  * change → locked; pause/resume/etc. → not).
  */
 export function defaultLockForWidget(widget: Widget): boolean {
+	// motionAxes.ts is the single source of truth for "does this widget type send axis motion" -
+	// covers jog/octopusJog/probe/surfacing/toolpath too, closing gaps this switch used to have.
+	if (movesAxes(widget)) {
+		return true;
+	}
 	switch (widget.type) {
-		case "jog":
-		case "extruder":
-		case "wcs":
-		case "toolSelect":
+		// Turns the spindle on/off unexpectedly mid-print - not an axis move, but unsafe anyway.
 		case "spindle":
-		case "toolAlign":
-		case "bedMesh":
-		case "bedTram":
-		case "xyzProbe":
 			return true;
 		case "builtinPanel":
 			return MOVE_PANELS.has(widget.component);

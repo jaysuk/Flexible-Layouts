@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
-	buildXyzProbeCommand, computeCornerParams, deployXyzProbeMacros, XYZ_PROBE_CORNER_FILE,
-	XYZ_PROBE_MACROS, XYZ_PROBE_X_FILE, XYZ_PROBE_Y_FILE, XYZ_PROBE_Z_FILE, xyzProbeMacrosMissing,
-	type XyzProbeSettings,
+	buildXyzProbeCommand, computeCornerParams, deployXyzProbeMacros, extractMacroVersion,
+	MACRO_SET_VERSION, XYZ_PROBE_CORNER_FILE, XYZ_PROBE_CORNER_MACRO, XYZ_PROBE_MACROS, XYZ_PROBE_X_FILE,
+	XYZ_PROBE_X_MACRO, XYZ_PROBE_Y_FILE, XYZ_PROBE_Y_MACRO, XYZ_PROBE_Z_FILE, XYZ_PROBE_Z_MACRO,
+	xyzProbeMacrosMissing, xyzProbeMacrosOutdated, type XyzProbeSettings,
 } from "../util/xyzProbe";
 
 // Deliberately asymmetric (plateWidth != plateHeight, xOffset != yOffset) so the FR/BL corner swap
@@ -106,6 +107,43 @@ describe("macro bodies", () => {
 			}
 		}
 	});
+
+	it("every macro carries the current version stamp", () => {
+		for (const [name, body] of Object.entries(XYZ_PROBE_MACROS)) {
+			expect(extractMacroVersion(body), name).toBe(MACRO_SET_VERSION);
+		}
+	});
+});
+
+describe("corner macro mid-stage confirmations", () => {
+	// The multi-stage corner macro gets a blocking M291 after each stage's retract, so an operator can
+	// catch a bad probe before the next stage runs. Cancel must abort the rest of the macro on its own
+	// (RRF does this automatically for a plain S3 with no J) - never add a J param here, it would
+	// change that behaviour.
+	it("has exactly 3 M291 confirmations, each S3 with no J parameter", () => {
+		const m291Lines = XYZ_PROBE_CORNER_MACRO.split("\n").filter((l) => l.trim().startsWith("M291"));
+		expect(m291Lines).toHaveLength(3);
+		for (const line of m291Lines) {
+			expect(line, line).toMatch(/\bS3\b/);
+			expect(line, line).not.toMatch(/\bJ\d/);
+		}
+	});
+
+	it("the single-axis macros have no M291 confirmations (only the multi-stage corner macro needs them)", () => {
+		for (const [name, body] of [["x", XYZ_PROBE_X_MACRO], ["y", XYZ_PROBE_Y_MACRO], ["z", XYZ_PROBE_Z_MACRO]] as const) {
+			expect(body, name).not.toMatch(/\bM291\b/);
+		}
+	});
+});
+
+describe("extractMacroVersion", () => {
+	it("reads the stamp out of a shipped macro", () => {
+		expect(extractMacroVersion(XYZ_PROBE_CORNER_MACRO)).toBe(MACRO_SET_VERSION);
+	});
+
+	it("is 0 for text with no stamp (pre-versioning macro, or a stripped header)", () => {
+		expect(extractMacroVersion("; just a comment\nG91\n")).toBe(0);
+	});
 });
 
 // A fake card: in-memory path->text map, plus per-op failure switches.
@@ -144,6 +182,34 @@ describe("xyzProbeMacrosMissing", () => {
 		const io = fakeIO();
 		io.fail.download = true;
 		await expect(xyzProbeMacrosMissing(io, "0:/macros/XyzProbe")).resolves.toBe(true);
+	});
+});
+
+describe("xyzProbeMacrosOutdated", () => {
+	it("is false when the on-card macro carries the current version stamp", async () => {
+		const io = fakeIO({ "0:/macros/XyzProbe/xyz_corner.g": XYZ_PROBE_CORNER_MACRO });
+		await expect(xyzProbeMacrosOutdated(io, "0:/macros/XyzProbe")).resolves.toBe(false);
+	});
+
+	it("is true when the on-card macro carries an older version stamp", async () => {
+		const stale = XYZ_PROBE_CORNER_MACRO.replace(
+			`FL-XYZ-PROBE-MACRO-VERSION: ${MACRO_SET_VERSION}`, "FL-XYZ-PROBE-MACRO-VERSION: 1",
+		);
+		const io = fakeIO({ "0:/macros/XyzProbe/xyz_corner.g": stale });
+		await expect(xyzProbeMacrosOutdated(io, "0:/macros/XyzProbe")).resolves.toBe(true);
+	});
+
+	it("is true when the on-card macro has no version stamp at all (pre-versioning deploy)", async () => {
+		const io = fakeIO({ "0:/macros/XyzProbe/xyz_corner.g": "; xyz_corner.g - old macro\nG91\nG38.2 Z-5 F500 P0\n" });
+		await expect(xyzProbeMacrosOutdated(io, "0:/macros/XyzProbe")).resolves.toBe(true);
+	});
+
+	// Ambiguous between "genuinely outdated" and "transient/offline" - resolves to false so a blip
+	// never flags a healthy macro as needing an overwrite.
+	it("is false (not thrown) when the check itself fails", async () => {
+		const io = fakeIO({ "0:/macros/XyzProbe/xyz_corner.g": XYZ_PROBE_CORNER_MACRO });
+		io.fail.download = true;
+		await expect(xyzProbeMacrosOutdated(io, "0:/macros/XyzProbe")).resolves.toBe(false);
 	});
 });
 

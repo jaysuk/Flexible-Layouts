@@ -8,8 +8,8 @@ vi.mock("../model/theme", () => ({ THEME_TOKENS: [], applyTheme: () => { /* no-o
 import { getAccess, setAccess, type AccessConfig } from "../model/access";
 import { createEmptyDocument, type LayoutDocument } from "../model/document";
 import {
-	resetAccess, resetHeader, resetNav, resetSection, resetStartupRoutes, resetSdBackupPrefs,
-	resetTheme, resetUpdatePrefs,
+	resetAccess, resetFirmwareUpdatePrefs, resetHeader, resetNav, resetSection, resetStartupRoutes,
+	resetSdBackupPrefs, resetTheme, resetUpdatePrefs,
 } from "../model/reset";
 import { replaceAllProfiles, useLayoutStore } from "../model/store";
 
@@ -62,6 +62,7 @@ beforeEach(() => {
 	window.localStorage.setItem("flexibleLayouts.updateCheck.enabled", "0");
 	window.localStorage.setItem("flexibleLayouts.updateCheck.dismissed", "1.2.3");
 	window.localStorage.setItem("flexibleLayouts.sdBackup.enabled", "0");
+	window.localStorage.setItem("flexibleLayouts.firmwareUpdateCheck.lastCheck.duet3d", "123");
 });
 
 describe("resetTheme", () => {
@@ -157,6 +158,13 @@ describe("preference resets", () => {
 	it("resetSdBackupPrefs clears only the sdBackup keys", () => {
 		resetSdBackupPrefs();
 		expect(window.localStorage.getItem("flexibleLayouts.sdBackup.enabled")).toBeNull();
+		expect(window.localStorage.getItem("flexibleLayouts.updateCheck.enabled")).toBe("0");
+	});
+
+	it("resetFirmwareUpdatePrefs clears only the firmwareUpdateCheck keys", () => {
+		resetFirmwareUpdatePrefs();
+		expect(window.localStorage.getItem("flexibleLayouts.firmwareUpdateCheck.lastCheck.duet3d")).toBeNull();
+		expect(window.localStorage.getItem("flexibleLayouts.sdBackup.enabled")).toBe("0");
 		expect(window.localStorage.getItem("flexibleLayouts.updateCheck.enabled")).toBe("0");
 	});
 });

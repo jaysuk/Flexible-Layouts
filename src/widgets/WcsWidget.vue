@@ -1,5 +1,6 @@
 <template>
   <div class="wcs-root fill-height d-flex flex-column px-2 py-1" :class="{ 'wcs-frozen': disabledNow }">
+    <UnhomedWarning :axes="unhomedNow" class="flex-shrink-0 mb-1" />
     <div class="d-flex align-center mb-1 flex-shrink-0">
       <span v-if="widget.label" class="wcs-label text-truncate">{{ widget.label }}</span>
       <v-spacer />
@@ -38,6 +39,8 @@ import { LogLevel, useUiStore } from "@/stores/ui";
 
 import type { Widget } from "../model/document";
 import { resolveOmPath } from "../util/omPath";
+import { unhomedAxes } from "../util/homedCheck";
+import UnhomedWarning from "./UnhomedWarning.vue";
 
 const props = defineProps<{ widget: Extract<Widget, { type: "wcs" }>; disabled?: boolean }>();
 const machineStore = useMachineStore();
@@ -50,6 +53,7 @@ const disabledNow = computed(() => props.disabled || uiStore.uiFrozen);
 const showMachine = computed(() => props.widget.showMachine !== false);
 const precision = computed(() => props.widget.precision ?? 2);
 const wantAxes = computed(() => (props.widget.axes?.length ? props.widget.axes : ["X", "Y", "Z"]).map((a) => a.toUpperCase()));
+const unhomedNow = computed(() => unhomedAxes(machineStore.model, wantAxes.value));
 
 const activeWcs = computed(() => {
   const n = resolveOmPath(machineStore.model, "move.workplaceNumber");

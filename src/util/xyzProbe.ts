@@ -121,8 +121,17 @@ const PARAM_DOC = `; param.A  X direction sign (+1 or -1) - which way "into the 
 ; param.J  Search overtravel margin (mm) - how far past the assumed edge each probe searches
 ;          before giving up`;
 
+/**
+ * Bumped whenever a change to the shipped macro templates matters enough that an already-deployed
+ * copy should be flagged as outdated (e.g. the P0->K0 G38.2 fix, or adding the M291 confirmations
+ * below) - see {@link xyzProbeMacrosOutdated}. The header comment explicitly invites hand-editing,
+ * so a stale file is only ever flagged, never silently overwritten.
+ */
+export const MACRO_SET_VERSION = 2;
+
 function macroHeader(title: string, extraDoc = PARAM_DOC): string {
 	return `; ${title}
+; FL-XYZ-PROBE-MACRO-VERSION: ${MACRO_SET_VERSION}
 ; Part of Flexible Layouts' XYZ Probe widget - adapted from the probing concept in
 ; FelixHauser/Duet-XYZ-Probe, using G38.2 (Straight Probe) instead of M585 so it doesn't touch
 ; tool offsets. Requires RRF 3.6.0 or later (G38.2's F parameter).
@@ -142,25 +151,35 @@ export const XYZ_PROBE_CORNER_MACRO = macroHeader("xyz_corner.g - XYZ corner pro
 ; Move from the jogged start position to the plate's center and probe Z
 G1 Z5 F{param.I}
 G1 X{(param.G / 2 - param.E) * param.A} Y{(param.H / 2 - param.F) * param.B} F{param.I}
-G38.2 Z{-(5 + param.J)} F{param.I} P0
+G38.2 Z{-(5 + param.J)} F{param.I} K0
 G10 L20 Z{param.D}
 G1 Z5 F{param.I}
+
+; Pause here (retracted, so Cancel leaves the endmill clear rather than at the touch point). RRF
+; doesn't roll back the G10 L20 above on a cancelled macro, so the message says so plainly.
+M291 R"Z Probed" P{"Z zeroed. Cancelling now KEEPS this Z offset. Continue to the X edge?"} S3
 
 ; Move past the X edge, drop to plate-side height, probe inward
 G1 X{(param.G / 2 + 5 + param.C / 2) * param.A * -1} F{param.I}
 G1 Z{-5 - param.D / 2} F{param.I}
-G38.2 X{(param.G / 2 + 5 + param.C / 2 + param.J) * param.A} F{param.I} P0
+G38.2 X{(param.G / 2 + 5 + param.C / 2 + param.J) * param.A} F{param.I} K0
 G10 L20 X{(param.E + param.C / 2) * -1 * param.A}
 G1 X{-5 * param.A} F{param.I}
 G1 Z{5 + param.D / 2} F{param.I}
 
+; Pause here (retracted). Cancelling keeps both the Z and X offsets already set above.
+M291 R"X Probed" P{"X zeroed. Cancelling now KEEPS Z+X offsets. Continue to the Y edge?"} S3
+
 ; Move past the Y edge, drop to plate-side height, probe inward
 G1 X{(5 + param.G / 2) * param.A} Y{(param.H / 2 + 5 + param.C / 2) * param.B * -1} F{param.I}
 G1 Z{-5 - param.D / 2} F{param.I}
-G38.2 Y{(param.H / 2 + 5 + param.C / 2 + param.J) * param.B} F{param.I} P0
+G38.2 Y{(param.H / 2 + 5 + param.C / 2 + param.J) * param.B} F{param.I} K0
 G10 L20 Y{(param.F + param.C / 2) * -1 * param.B}
 G1 Y{-5 * param.B} F{param.I}
 G1 Z{5 + param.D / 2} F{param.I}
+
+; Pause here (retracted). Cancelling keeps all three offsets already set above.
+M291 R"Y Probed" P{"Y zeroed. Cancelling now KEEPS all three offsets."} S3
 
 ; Return to the newly-set zero
 G1 X{(param.G / 2 - param.E) * param.A * -1} F{param.I}
@@ -175,7 +194,7 @@ G1 Z5 F{param.I}
 G1 X{(param.G / 2 - param.E) * param.A} Y{(param.H / 2 - param.F) * param.B} F{param.I}
 G1 X{(param.G / 2 + 5 + param.C / 2) * param.A * -1} F{param.I}
 G1 Z{-5 - param.D / 2} F{param.I}
-G38.2 X{(param.G / 2 + 5 + param.C / 2 + param.J) * param.A} F{param.I} P0
+G38.2 X{(param.G / 2 + 5 + param.C / 2 + param.J) * param.A} F{param.I} K0
 G10 L20 X{(param.E + param.C / 2) * -1 * param.A}
 G1 X{-5 * param.A} F{param.I}
 G1 Z{5 + param.D / 2} F{param.I}
@@ -192,7 +211,7 @@ G1 Z5 F{param.I}
 G1 X{(param.G / 2 - param.E) * param.A} Y{(param.H / 2 - param.F) * param.B} F{param.I}
 G1 Y{(param.H / 2 + 5 + param.C / 2) * param.B * -1} F{param.I}
 G1 Z{-5 - param.D / 2} F{param.I}
-G38.2 Y{(param.H / 2 + 5 + param.C / 2 + param.J) * param.B} F{param.I} P0
+G38.2 Y{(param.H / 2 + 5 + param.C / 2 + param.J) * param.B} F{param.I} K0
 G10 L20 Y{(param.F + param.C / 2) * -1 * param.B}
 G1 Y{-5 * param.B} F{param.I}
 G1 Z{5 + param.D / 2} F{param.I}
@@ -214,7 +233,7 @@ export const XYZ_PROBE_Z_MACRO = macroHeader(
 ; repeating a full corner probe.`,
 ) + `G91
 
-G38.2 Z{-(5 + param.J)} F{param.I} P0
+G38.2 Z{-(5 + param.J)} F{param.I} K0
 G10 L20 Z{param.D}
 G1 Z5 F{param.I}
 
@@ -250,5 +269,32 @@ export async function xyzProbeMacrosMissing(io: Pick<MachineIO, "downloadText">,
 		return false;
 	} catch {
 		return true;
+	}
+}
+
+const VERSION_MARKER_RE = /;\s*FL-XYZ-PROBE-MACRO-VERSION:\s*(\d+)/;
+
+/** Pure, testable: extracts the FL-XYZ-PROBE-MACRO-VERSION stamp from a macro's text; 0 if absent
+ *  (a pre-versioning macro, or a user who stripped the header comment while customizing). */
+export function extractMacroVersion(text: string): number {
+	const m = text.match(VERSION_MARKER_RE);
+	return m ? parseInt(m[1], 10) : 0;
+}
+
+/**
+ * Whether the on-card corner macro is present but stamped with a version lower than (or missing)
+ * {@link MACRO_SET_VERSION} - distinct from {@link xyzProbeMacrosMissing}, only meaningful once the
+ * file is known to exist. Never auto-fixed: the header comment explicitly invites hand-editing, so
+ * an outdated file may be a customized derivative and must only ever be flagged, with "Restore
+ * macros" left as an explicit, user-initiated action. A download failure here is ambiguous between
+ * "genuinely outdated" and "transient/offline", so it resolves to false - never flag a healthy
+ * macro as needing an overwrite just because a request blipped.
+ */
+export async function xyzProbeMacrosOutdated(io: Pick<MachineIO, "downloadText">, macroFolder: string): Promise<boolean> {
+	try {
+		const text = await io.downloadText(`${macroFolder}/${XYZ_PROBE_CORNER_FILE}`);
+		return extractMacroVersion(text) < MACRO_SET_VERSION;
+	} catch {
+		return false;
 	}
 }

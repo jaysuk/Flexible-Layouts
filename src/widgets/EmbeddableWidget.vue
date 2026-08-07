@@ -1,5 +1,5 @@
 <template>
-	<div class="fill-height flex-embeddable">
+	<div ref="rootRef" class="fill-height flex-embeddable">
 		<!-- Plugins that publish a config schema get per-instance config + a setter + host context. -->
 		<component :is="comp" v-if="comp && schema" :config="widget.config" :set-config="setConfig" :host="host" />
 		<component :is="comp" v-else-if="comp" />
@@ -10,7 +10,7 @@
 </template>
 
 <script setup lang="ts">
-import { onErrorCaptured, onMounted, onUnmounted, shallowRef, watchEffect } from "vue";
+import { onBeforeUnmount, onErrorCaptured, onMounted, onUnmounted, ref, shallowRef, watchEffect } from "vue";
 
 import { applyDefaults, getWidgetConfig, subscribeToWidgetConfigs, type WidgetConfigSchema } from "dwc-plugin-runtime";
 
@@ -61,6 +61,35 @@ onErrorCaptured((err) => {
 	console.warn(`[FlexibleLayouts] embeddable "${props.widget.id}" failed:`, err);
 	comp.value = null;
 	return false;
+});
+
+// FL's grid-layout resizes a cell without firing a real window resize event, but many canvas/WebGL
+// based embedded components (three.js viewers, chart libraries, etc.) only re-measure themselves on
+// window resize. A synthetic dispatch is a generic, best-effort nudge for any such component - we
+// can't know an arbitrary third-party embeddable's internals, so this can't be a targeted fix.
+const rootRef = ref<HTMLElement | null>(null);
+let ro: ResizeObserver | null = null;
+let raf = 0;
+function nudgeResize(): void {
+	cancelAnimationFrame(raf);
+	raf = requestAnimationFrame(() => {
+		try {
+			window.dispatchEvent(new Event("resize"));
+		} catch {
+			// A throwing third-party listener must not reach FL's own code.
+		}
+	});
+}
+onMounted(() => {
+	if (rootRef.value) {
+		ro = new ResizeObserver(() => { if (comp.value) { nudgeResize(); } });
+		ro.observe(rootRef.value);
+	}
+});
+onBeforeUnmount(() => {
+	ro?.disconnect();
+	ro = null;
+	cancelAnimationFrame(raf);
 });
 </script>
 

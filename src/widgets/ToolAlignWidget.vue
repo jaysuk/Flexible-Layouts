@@ -79,8 +79,8 @@
         {{ $t("plugins.flexibleLayouts.toolAlign.clear") }}
       </v-btn>
     </div>
-    <div v-if="!allHomed" class="text-caption text-warning px-2 pt-1 flex-shrink-0">
-      <v-icon size="14">mdi-alert</v-icon> {{ $t("plugins.flexibleLayouts.toolAlign.notHomed") }}
+    <div v-if="unhomedNow.length" class="text-caption text-warning px-2 pt-1 flex-shrink-0">
+      <v-icon size="14">mdi-alert</v-icon> {{ $t("plugins.flexibleLayouts.homedCheck.notHomed", { axes: unhomedNow.join(", ") }) }}
     </div>
 
     <!-- Offsets table -->
@@ -136,6 +136,7 @@ import { LogLevel, useUiStore } from "@/stores/ui";
 import type { Widget } from "../model/document";
 import { type AxisCapture, computeToolOffset, formatG10, type ToolOffset } from "../util/toolAlign";
 import { resolveOmPath } from "../util/omPath";
+import { unhomedAxes } from "../util/homedCheck";
 
 const props = defineProps<{ widget: Extract<Widget, { type: "toolAlign" }>; disabled?: boolean }>();
 const machineStore = useMachineStore();
@@ -188,7 +189,7 @@ function machinePos(letter: string): number | null {
   const a = axisRow(letter);
   return a && typeof a.machinePosition === "number" ? a.machinePosition : null;
 }
-const allHomed = computed(() => ["X", "Y"].every((l) => axisRow(l)?.homed));
+const unhomedNow = computed(() => unhomedAxes(machineStore.model, ["X", "Y"]));
 
 function refOffset(): ToolOffset {
   const arr = resolveOmPath(machineStore.model, "tools");

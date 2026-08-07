@@ -27,11 +27,17 @@
 	<TableWidget v-else-if="widget.type === 'table'" :widget="widget" />
 	<ExtruderWidget v-else-if="widget.type === 'extruder'" :widget="widget" :disabled="disabled" />
 	<WcsWidget v-else-if="widget.type === 'wcs'" :widget="widget" :disabled="disabled" />
+	<WcsTableWidget v-else-if="widget.type === 'wcsTable'" :widget="widget" :disabled="disabled" />
 	<ProbeWidget v-else-if="widget.type === 'probe'" :widget="widget" :disabled="disabled" />
 	<BedMeshWidget v-else-if="widget.type === 'bedMesh'" :widget="widget" :disabled="disabled" />
 	<BedTramWidget v-else-if="widget.type === 'bedTram'" :widget="widget" :disabled="disabled" />
 	<XyzProbeWidget v-else-if="widget.type === 'xyzProbe'" :widget="widget" :disabled="disabled" />
+	<ProbeRoutinesWidget v-else-if="widget.type === 'probeRoutines'" :widget="widget" :disabled="disabled" />
 	<SurfacingWidget v-else-if="widget.type === 'surfacing'" :widget="widget" :disabled="disabled" />
+	<MachineHealthWidget v-else-if="widget.type === 'machineHealth'" :widget="widget" />
+	<PreflightWidget v-else-if="widget.type === 'preflight'" :widget="widget" />
+	<ToolpathWidget v-else-if="widget.type === 'toolpath'" :widget="widget" />
+	<FirmwareUpdateWidget v-else-if="widget.type === 'firmwareUpdate'" :widget="widget" />
 	<ToolSelectWidget v-else-if="widget.type === 'toolSelect'" :widget="widget" :disabled="disabled" />
 	<ToolAlignWidget v-else-if="widget.type === 'toolAlign'" :widget="widget" :disabled="disabled" />
 	<FanWidget v-else-if="widget.type === 'fan'" :widget="widget" :disabled="disabled" />
@@ -64,7 +70,10 @@
 </template>
 
 <script setup lang="ts">
+import { provide } from "vue";
+
 import type { Widget } from "../model/document";
+import { WIDGET_PATCH_KEY } from "../util/widgetPatch";
 import AlertWidget from "./AlertWidget.vue";
 import BuiltInPanelWidget from "./BuiltInPanelWidget.vue";
 import ChartWidget from "./ChartWidget.vue";
@@ -115,13 +124,31 @@ import ToolAlignWidget from "./ToolAlignWidget.vue";
 import ToolSelectWidget from "./ToolSelectWidget.vue";
 import ValueWidget from "./ValueWidget.vue";
 import WcsWidget from "./WcsWidget.vue";
+import WcsTableWidget from "./WcsTableWidget.vue";
 import ProbeWidget from "./ProbeWidget.vue";
 import BedMeshWidget from "./BedMeshWidget.vue";
 import BedTramWidget from "./BedTramWidget.vue";
 import XyzProbeWidget from "./XyzProbeWidget.vue";
+import ProbeRoutinesWidget from "./ProbeRoutinesWidget.vue";
 import SurfacingWidget from "./SurfacingWidget.vue";
+import MachineHealthWidget from "./MachineHealthWidget.vue";
+import PreflightWidget from "./PreflightWidget.vue";
+import ToolpathWidget from "./ToolpathWidget.vue";
+import FirmwareUpdateWidget from "./FirmwareUpdateWidget.vue";
 import WebcamWidget from "./WebcamWidget.vue";
 import WebWidget from "./WebWidget.vue";
 
-defineProps<{ widget: Widget; overrideColor?: string; disabled?: boolean }>();
+// itemId is set only when this WidgetView renders ONE child of a group's free-position layout
+// (GroupWidget.vue), which has no per-child provide() scope of its own (Vue's provide() can't
+// differentiate v-for iterations - see util/widgetPatch.ts's doc comment). When set, this
+// WidgetView instance becomes that child's own provide() boundary: it re-provides the patcher as
+// an emit up to its parent (GroupWidget), which resolves it into "child <id>'s patch" and forwards
+// that to the group's own ambient patcher. The normal top-level case (itemId unset) does nothing
+// extra here - FlexGridItem.vue already provided a correctly-scoped patcher above this component.
+const props = defineProps<{ widget: Widget; overrideColor?: string; disabled?: boolean; itemId?: string }>();
+const emit = defineEmits<{ patchWidget: [id: string, patch: Record<string, unknown>] }>();
+if (props.itemId !== undefined) {
+	const itemId = props.itemId;
+	provide(WIDGET_PATCH_KEY, (patch) => emit("patchWidget", itemId, patch));
+}
 </script>

@@ -26,6 +26,17 @@ describe("defaultLockForWidget", () => {
 		expect(defaultLockForWidget({ type: "toolAlign" } as Widget)).toBe(true);
 	});
 
+	it("locks widgets that send motion but were previously missing from the default set", () => {
+		expect(defaultLockForWidget({ type: "probe" } as Widget)).toBe(true);
+		expect(defaultLockForWidget({ type: "surfacing" } as Widget)).toBe(true);
+		expect(defaultLockForWidget({ type: "toolpath" } as Widget)).toBe(true);
+		expect(defaultLockForWidget({ type: "octopusJog" } as Widget)).toBe(true);
+	});
+
+	it("leaves preflight unlocked - it only downloads/analyses a file, it never sends motion", () => {
+		expect(defaultLockForWidget({ type: "preflight" } as Widget)).toBe(false);
+	});
+
 	it("locks the built-in Movement panel but not other panels", () => {
 		expect(defaultLockForWidget({ type: "builtinPanel", component: "MovementPanel" } as Widget)).toBe(true);
 		expect(defaultLockForWidget({ type: "builtinPanel", component: "ToolsPanel" } as Widget)).toBe(false);

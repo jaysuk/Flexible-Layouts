@@ -1,12 +1,15 @@
 <template>
   <div class="prb-root fill-height d-flex flex-column px-2 py-1" :class="{ 'prb-frozen': disabledNow }">
     <span v-if="widget.label" class="prb-label text-truncate flex-shrink-0">{{ widget.label }}</span>
+    <UnhomedWarning :axes="unhomedNow" class="flex-shrink-0 mb-1" />
 
     <div class="d-flex align-center ga-2 mb-1 flex-shrink-0">
       <v-text-field v-model.number="dia" type="number" :min="0.01" :step="0.01" density="compact" variant="outlined"
-                    hide-details class="prb-dia" :label="$t('plugins.flexibleLayouts.probe.diameter')" :disabled="disabledNow" />
+                    hide-details class="prb-dia" :label="$t('plugins.flexibleLayouts.probe.diameter')" :disabled="disabledNow"
+                    @change="patch?.({ diameter: dia })" />
       <v-select v-if="needsCorner" v-model="corner" :items="cornerItems" density="compact" variant="outlined"
-                hide-details class="prb-corner" :label="$t('plugins.flexibleLayouts.probe.corner')" :disabled="disabledNow" />
+                hide-details class="prb-corner" :label="$t('plugins.flexibleLayouts.probe.corner')" :disabled="disabledNow"
+                @update:model-value="patch?.({ corner })" />
     </div>
 
     <div class="prb-ops flex-grow-1">
@@ -21,6 +24,7 @@
         <v-card-title>{{ $t("plugins.flexibleLayouts.probe.confirmTitle") }}</v-card-title>
         <v-card-text>
           <div class="mb-2">{{ $t("plugins.flexibleLayouts.probe.confirmText") }}</div>
+          <UnhomedWarning :axes="unhomedNow" class="mb-2" />
           <pre class="prb-pre">{{ pendingCmd }}</pre>
         </v-card-text>
         <v-card-actions>
@@ -34,7 +38,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, inject, ref } from "vue";
 
 import i18n from "@/i18n";
 import { useMachineStore } from "@/stores/machine";
@@ -42,14 +46,19 @@ import { LogLevel, useUiStore } from "@/stores/ui";
 
 import type { Widget } from "../model/document";
 import { buildProbeCommand, DEFAULT_PROBE_COMMANDS, type ProbeOp } from "../util/probe";
+import { unhomedAxes } from "../util/homedCheck";
+import { WIDGET_PATCH_KEY } from "../util/widgetPatch";
+import UnhomedWarning from "./UnhomedWarning.vue";
 
 const props = defineProps<{ widget: Extract<Widget, { type: "probe" }>; disabled?: boolean }>();
 const machineStore = useMachineStore();
 const uiStore = useUiStore();
+const patch = inject(WIDGET_PATCH_KEY, null);
 
 const disabledNow = computed(() => props.disabled || uiStore.uiFrozen);
+const unhomedNow = computed(() => unhomedAxes(machineStore.model, ["X", "Y", "Z"]));
 const dia = ref<number>(props.widget.diameter ?? 6);
-const corner = ref<string>("FL");
+const corner = ref<string>(props.widget.corner ?? "FL");
 const cornerItems = [
   { title: i18n.global.t("plugins.flexibleLayouts.probe.fl"), value: "FL" },
   { title: i18n.global.t("plugins.flexibleLayouts.probe.fr"), value: "FR" },

@@ -789,6 +789,28 @@
 					<v-switch v-model="draft.goto" color="primary" density="compact" hide-details :label="$t('plugins.flexibleLayouts.wcs.showGoto')" />
 				</template>
 
+				<!-- WCS table -->
+				<template v-else-if="draft.type === 'wcsTable'">
+					<v-row dense>
+						<v-col cols="8"><v-text-field v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
+						<v-col cols="4"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
+					</v-row>
+					<v-row dense class="mt-1">
+						<v-col cols="8"><v-text-field v-model="wcsAxesText" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.wcs.axes')" /></v-col>
+						<v-col cols="4"><v-text-field v-model.number="draft.precision" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.precision')" /></v-col>
+					</v-row>
+					<v-row dense class="mt-1">
+						<v-col cols="6" class="d-flex align-center"><v-switch v-model="draft.showCopy" color="primary" density="compact" hide-details :label="$t('plugins.flexibleLayouts.wcsTable.showCopy')" /></v-col>
+						<v-col cols="6" class="d-flex align-center"><v-switch v-model="draft.showRotation" color="primary" density="compact" hide-details :label="$t('plugins.flexibleLayouts.wcsTable.showRotation')" /></v-col>
+					</v-row>
+					<div class="text-caption text-medium-emphasis mt-2 mb-1">{{ $t('plugins.flexibleLayouts.wcsTable.namesHelp') }}</div>
+					<v-row dense>
+						<v-col v-for="(code, i) in WCS_CODES" :key="code" cols="4">
+							<v-text-field v-model="wcsNames[i].value" density="compact" variant="outlined" hide-details :label="code" />
+						</v-col>
+					</v-row>
+				</template>
+
 				<!-- Touch probe -->
 				<template v-else-if="draft.type === 'probe'">
 					<v-row dense>
@@ -891,6 +913,66 @@
 						<v-col cols="6"><v-text-field v-model.number="draft.spindleRpm" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.surfacing.spindleRpm')" /></v-col>
 					</v-row>
 					<v-switch v-model="draft.confirm" color="primary" density="compact" hide-details class="mt-1" :label="$t('plugins.flexibleLayouts.probe.confirmOpt')" />
+				</template>
+
+				<!-- Firmware update -->
+				<template v-else-if="draft.type === 'firmwareUpdate'">
+					<v-row dense>
+						<v-col cols="8"><v-text-field v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
+						<v-col cols="4"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
+					</v-row>
+				</template>
+
+				<!-- Toolpath -->
+				<template v-else-if="draft.type === 'toolpath'">
+					<v-row dense>
+						<v-col cols="8"><v-text-field v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
+						<v-col cols="4"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
+					</v-row>
+					<v-row dense class="mt-1">
+						<v-col cols="8"><v-text-field v-model="draft.defaultFile" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.toolpath.file')" placeholder="0:/gcodes/part.gcode" /></v-col>
+						<v-col cols="4"><v-text-field v-model.number="draft.safeZ" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.toolpath.safeZ')" /></v-col>
+					</v-row>
+				</template>
+
+				<!-- Preflight -->
+				<template v-else-if="draft.type === 'preflight'">
+					<v-row dense>
+						<v-col cols="8"><v-text-field v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
+						<v-col cols="4"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
+					</v-row>
+					<v-row dense class="mt-1">
+						<v-col cols="8"><v-text-field v-model="draft.defaultFile" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.preflight.file')" placeholder="0:/gcodes/part.gcode" /></v-col>
+						<v-col cols="4"><v-text-field v-model.number="draft.rapidRate" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.preflight.rapidRate')" /></v-col>
+					</v-row>
+				</template>
+
+				<!-- Probe routines -->
+				<template v-else-if="draft.type === 'probeRoutines'">
+					<v-row dense>
+						<v-col cols="8"><v-text-field v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
+						<v-col cols="4"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
+					</v-row>
+					<v-row dense class="mt-1">
+						<v-col cols="6"><v-text-field v-model.number="draft.feedFast" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.probeRoutines.feedFast')" /></v-col>
+						<v-col cols="6"><v-text-field v-model.number="draft.feedSlow" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.probeRoutines.feedSlow')" /></v-col>
+					</v-row>
+					<v-row dense class="mt-1">
+						<v-col cols="6"><v-text-field v-model.number="draft.searchDistance" type="number" :min="0.1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.probeRoutines.searchDistance')" /></v-col>
+						<v-col cols="6"><v-text-field v-model.number="draft.backoff" type="number" :min="0.01" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.probeRoutines.backoff')" /></v-col>
+					</v-row>
+				</template>
+
+				<!-- Machine health -->
+				<template v-else-if="draft.type === 'machineHealth'">
+					<v-text-field v-model="draft.title" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.jog.titleField')" />
+					<v-row dense>
+						<v-col cols="6"><v-switch v-model="draft.showPower" color="primary" density="compact" hide-details :label="$t('plugins.flexibleLayouts.machineHealth.showPower')" /></v-col>
+						<v-col cols="6"><v-switch v-model="draft.showRam" color="primary" density="compact" hide-details :label="$t('plugins.flexibleLayouts.machineHealth.showRam')" /></v-col>
+						<v-col cols="6"><v-switch v-model="draft.showUptime" color="primary" density="compact" hide-details :label="$t('plugins.flexibleLayouts.machineHealth.showUptime')" /></v-col>
+						<v-col cols="6"><v-switch v-model="draft.showNetwork" color="primary" density="compact" hide-details :label="$t('plugins.flexibleLayouts.machineHealth.showNetwork')" /></v-col>
+						<v-col cols="6"><v-switch v-model="draft.showProbes" color="primary" density="compact" hide-details :label="$t('plugins.flexibleLayouts.machineHealth.showProbes')" /></v-col>
+					</v-row>
 				</template>
 
 				<!-- Tool selector -->
@@ -1681,6 +1763,19 @@ const wcsAxesText = computed({
 	get: () => (draft.value?.axes ?? []).join(", "),
 	set: (text: string) => { if (draft.value) { draft.value.axes = text.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean); } },
 });
+// Per-system nickname fields (index 0 = G54 … 8 = G59.3) for the WCS table widget - a computed
+// per index rather than one joined text field, since a nickname itself may contain commas/spaces.
+const WCS_CODES = ["G54", "G55", "G56", "G57", "G58", "G59", "G59.1", "G59.2", "G59.3"];
+const wcsNames = WCS_CODES.map((_, i) => computed({
+	get: () => draft.value?.names?.[i] ?? "",
+	set: (v: string) => {
+		if (!draft.value) { return; }
+		const arr: Array<string> = draft.value.names ? [...draft.value.names] : [];
+		while (arr.length <= i) { arr.push(""); }
+		arr[i] = v;
+		draft.value.names = arr;
+	},
+}));
 const probeOpsItems = [
 	{ title: i18n.global.t("plugins.flexibleLayouts.probe.opZ"), value: "z" },
 	{ title: i18n.global.t("plugins.flexibleLayouts.probe.opX"), value: "x" },

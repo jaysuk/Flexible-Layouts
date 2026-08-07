@@ -470,6 +470,73 @@ export type Widget =
 		rows?: Array<{ label?: string; omPath: string; unit?: string; precision?: number }>;
 	}
 	| {
+		/**
+		 * Firmware update: browse Duet3D/RepRapFirmware releases or gloomyandy's STM32/RP2040 fork,
+		 * find the file this connected board actually asked for (boards[].firmwareFileName), and hand
+		 * it to DWC's own upload/M997 pipeline (composables/useFirmwareInstall.ts) - never
+		 * reimplemented here. Duet3D's release ASSET BYTES can't be fetched directly by browser JS
+		 * (GitHub's release-asset CDN sends no CORS headers, confirmed live) so that source opens a
+		 * normal download and asks the operator to hand the file back in; gloomyandy's fork serves
+		 * from raw.githubusercontent.com, which is fully CORS-permissive, so that one is one-click.
+		 */
+		type: "firmwareUpdate";
+		label?: string;
+		color?: string;
+		/** Last source the operator picked in the browse dropdown (auto-detected default if unset). */
+		sourceId?: "duet3d" | "gloomyandy36" | "gloomyandy37";
+		/** Whether to offer prereleases/betas alongside stable releases (persisted "channel" choice). */
+		includePrereleases?: boolean;
+	}
+	| {
+		/**
+		 * Lightweight top-down 2D toolpath view of a parsed G-code file (see model/gcode/parse.ts) and
+		 * run-from-line - not a DWC-viewer replacement, an interaction aid (click to pick a resume
+		 * point) plus a real feature gap: DWC has no run-from-line anywhere (a `grep M26` across its
+		 * own src turns up nothing). Shows the live cut/uncut boundary from job.filePosition.
+		 */
+		type: "toolpath";
+		label?: string;
+		color?: string;
+		defaultFile?: string;
+		/** Work-coordinate Z height moved to (at the resume XY) before M26/M24 - always a safe retract
+		 *  height the operator sets, never the file's own cutting Z. */
+		safeZ?: number;
+	}
+	| {
+		/**
+		 * Advisory pre-job checks (axes homed, envelope fit, work origin, tools/spindle/feed known,
+		 * rapids below Z0, estimated run time) run against a G-code file - see
+		 * model/gcode/preflight.ts. Never blocks a job; only reports. Also hosts the shared tool
+		 * table (model/toolTable.ts) editor, since this is where "unknown tool" gets fixed.
+		 */
+		type: "preflight";
+		label?: string;
+		color?: string;
+		/** Default file path shown in the path field, e.g. "0:/gcodes/part.gcode". */
+		defaultFile?: string;
+		/** Rapid traverse rate (mm/min), used only for the run-time estimate. */
+		rapidRate?: number;
+	}
+	| {
+		/**
+		 * Full 9-system work-coordinate table (G54-G59.3 side by side) - unlike the compact `wcs`
+		 * widget, which only ever shows the active system. Per-system nicknames are FL's own
+		 * bookkeeping (edited via Properties, index 0 = G54 ... 8 = G59.3): nothing on the controller
+		 * stores a name for a WCS, and nothing else may depend on them existing.
+		 */
+		type: "wcsTable";
+		label?: string;
+		color?: string;
+		/** Axis letters shown/offered (default X, Y, Z). */
+		axes?: Array<string>;
+		precision?: number;
+		names?: Array<string>;
+		/** Show the copy-offsets-between-systems row (default true). */
+		showCopy?: boolean;
+		/** Show the G68/G69 coordinate-rotation section (default true). */
+		showRotation?: boolean;
+	}
+	| {
 		/** Extrude / retract control. */
 		type: "extruder";
 		label?: string;
@@ -507,6 +574,8 @@ export type Widget =
 		color?: string;
 		/** Default endmill / probe diameter (mm). */
 		diameter?: number;
+		/** Last-used corner selection (for the corner/centre ops), remembered between sessions. */
+		corner?: "FL" | "FR" | "BL" | "BR";
 		/** Confirm before probing (default true). */
 		confirm?: boolean;
 		/** Which operations to offer. */
@@ -570,6 +639,8 @@ export type Widget =
 		feedrate?: number;
 		/** How far past the plate's assumed edge each probe searches before giving up (mm). */
 		searchMargin?: number;
+		/** Which corner of the plate the operator last selected. */
+		corner?: "FL" | "FR" | "BL" | "BR";
 		/** Which object-model probe (sensors.probes[n]) to read the live trigger reading from. */
 		probeIndex?: number;
 		/** SD folder the 4 macros deploy to (default 0:/macros/XyzProbe). */
@@ -599,6 +670,42 @@ export type Widget =
 		spindleRpm?: number;
 		/** Confirm before uploading + starting the job (default true). */
 		confirm?: boolean;
+	}
+	| {
+		/**
+		 * Probe routines (CNC): tool-length probing against a fixed setter, edge-skew measurement
+		 * (two touches on one edge, tip-radius-cancelling), bore/boss centre-find, and single-axis
+		 * edge probing. All use G38.2 + G10, consistent with xyzProbe - see model/probing/routines.ts.
+		 * Each routine needs a probe assigned to its role (model/probing/roles.ts) or it stays
+		 * disabled - a role with no probe assigned never silently borrows another one.
+		 */
+		type: "probeRoutines";
+		label?: string;
+		color?: string;
+		/** Fast search feed (mm/min) for the first touch of each probe. */
+		feedFast?: number;
+		/** Slow, more repeatable feed (mm/min) for the confirm touch after backing off. */
+		feedSlow?: number;
+		/** How far the fast search travels before giving up (mm). */
+		searchDistance?: number;
+		/** How far to back off after the fast touch before the slow confirm touch (mm). */
+		backoff?: number;
+	}
+	| {
+		/**
+		 * Read-only machine health panel: VIN/12V/MCU-temp per board (each shown with the
+		 * min-max the board itself has observed, as context - not coloured against it), free RAM,
+		 * uptime, network interface state and live probe readings, plus a button that runs M122 for
+		 * full diagnostics. No thresholds are invented here; the only asserted state shown in colour
+		 * is one the firmware itself reports (state.status === "halted").
+		 */
+		type: "machineHealth";
+		title?: string;
+		showPower?: boolean;
+		showRam?: boolean;
+		showUptime?: boolean;
+		showNetwork?: boolean;
+		showProbes?: boolean;
 	}
 	| {
 		/** Tool selector: a button per configured tool. */
@@ -950,9 +1057,22 @@ export function createDefaultWidget(type: WidgetType): Widget {
 			return { type: "extruder", label: "Extruder", amounts: [1, 5, 10, 50], mode: "length", feedrate: 300, flowRate: 5, filamentDiameter: 1.75, tool: null, color: "primary" };
 		case "wcs":
 			return { type: "wcs", label: "Work offsets", axes: ["X", "Y", "Z"], color: "primary", showMachine: true, goto: true, precision: 2 };
+		case "wcsTable":
+			return {
+				type: "wcsTable", label: "WCS table", color: "primary", axes: ["X", "Y", "Z"], precision: 2,
+				names: [], showCopy: true, showRotation: true,
+			};
+		case "toolpath":
+			return { type: "toolpath", label: "Toolpath", color: "primary", defaultFile: "", safeZ: 10 };
+		case "firmwareUpdate":
+			return { type: "firmwareUpdate", label: "Firmware update", color: "primary" };
+		case "preflight":
+			return { type: "preflight", label: "Preflight", color: "primary", defaultFile: "", rapidRate: 3000 };
+		case "probeRoutines":
+			return { type: "probeRoutines", label: "Probe routines", color: "primary", feedFast: 300, feedSlow: 60, searchDistance: 10, backoff: 1 };
 		case "probe":
 			// Command templates left unset → ProbeWidget falls back to DEFAULT_PROBE_COMMANDS (editable in properties).
-			return { type: "probe", label: "Touch probe", color: "primary", diameter: 6, confirm: true, ops: ["z", "x", "y", "corner"] };
+			return { type: "probe", label: "Touch probe", color: "primary", diameter: 6, corner: "FL", confirm: true, ops: ["z", "x", "y", "corner"] };
 		case "bedMesh":
 			// probeCmd left unset → BedMeshWidget falls back to DEFAULT_BED_MESH_PROBE_COMMAND (editable in properties).
 			return { type: "bedMesh", label: "Bed mesh", color: "primary", confirm: true, probeIndex: 0 };
@@ -970,6 +1090,11 @@ export function createDefaultWidget(type: WidgetType): Widget {
 				width: 100, height: 100, toolDiameter: 6, stepoverPercent: 40,
 				depthPerPass: 0.5, totalDepth: 0.5, clearance: 5, feed: 1000,
 				direction: "x", spindleRpm: 0, confirm: true,
+			};
+		case "machineHealth":
+			return {
+				type: "machineHealth", title: "Machine health",
+				showPower: true, showRam: true, showUptime: true, showNetwork: true, showProbes: true,
 			};
 		case "toolSelect":
 			return { type: "toolSelect", label: "Tools", color: "primary" };

@@ -15,7 +15,7 @@
 				class="free-group-item"
 				:style="freeItemStyle(child)"
 			>
-				<WidgetView :widget="child.widget" :disabled="childLocked(child)" />
+				<WidgetView :widget="child.widget" :disabled="childLocked(child)" :item-id="child.i" @patch-widget="patchChild" />
 				<div v-if="childLocked(child)" class="flex-interaction-lock"
 					 :title="accessLocked ? $t('plugins.flexibleLayouts.access.interactionLocked') : $t('plugins.flexibleLayouts.printLock.locked')">
 					<v-icon size="x-small">mdi-lock</v-icon>
@@ -26,7 +26,7 @@
 		<!-- GRID mode (default): existing nested FlexGrid, completely unchanged -->
 		<div v-else-if="widget.items.length > 0" class="flex-grow-1" style="min-height: 0; overflow: auto;">
 			<FlexGrid :layout="widget.items" :cols="widget.cols ?? 12"
-					  :row-height="widget.rowHeight ?? 30" :edit-mode="false" />
+					  :row-height="widget.rowHeight ?? 30" :edit-mode="false" @patch-widget="patchChild" />
 		</div>
 
 		<div v-else class="flex-grow-1 d-flex align-center justify-center text-medium-emphasis pa-4" style="height: 100%">
@@ -37,13 +37,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineAsyncComponent } from "vue";
+import { computed, defineAsyncComponent, inject } from "vue";
 
 import { useMachineStore } from "@/stores/machine";
 
 import { accessLockedFor, can } from "../model/access";
 import type { GridItemModel, Widget } from "../model/document";
 import { effectiveLockForItem, isPrintingStatus } from "../util/printLock";
+import { WIDGET_PATCH_KEY } from "../util/widgetPatch";
 import WidgetView from "./WidgetView.vue";
 
 // Lazy import breaks the FlexGrid -> FlexGridItem -> WidgetView -> GroupWidget -> FlexGrid module
@@ -51,6 +52,19 @@ import WidgetView from "./WidgetView.vue";
 const FlexGrid = defineAsyncComponent(() => import("../page/FlexGrid.vue"));
 
 const props = defineProps<{ widget: Extract<Widget, { type: "group" }> }>();
+
+// The ambient patcher for THIS group widget's own fields (provided above by whatever rendered this
+// GroupWidget - FlexGridItem.vue at the top level, or another WidgetView if this group is itself
+// nested). A child (free-mode WidgetView, or grid-mode's nested FlexGrid) reports "child <id>
+// changed <patch>" here; resolving that into a new `items` array and forwarding it as *this*
+// group's own patch is this component's job, not the child's - the child doesn't know it's inside
+// a group at all.
+const ambientPatch = inject(WIDGET_PATCH_KEY, null);
+function patchChild(id: string, patch: Record<string, unknown>): void {
+	const items = props.widget.items.map((it) =>
+		it.i === id ? { ...it, widget: { ...it.widget, ...patch } as Widget } : it);
+	ambientPatch?.({ items });
+}
 
 const machineStore = useMachineStore();
 const isPrinting = computed(() => isPrintingStatus((machineStore.model as { state?: { status?: string } }).state?.status));

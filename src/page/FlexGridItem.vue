@@ -119,13 +119,18 @@ import { evaluateConditions } from "../util/conditions";
 import { accessLockedFor } from "../model/access";
 import { effectiveChromeForItem } from "../util/panelChrome";
 import { effectiveLockForItem, isPrintingStatus } from "../util/printLock";
+import { WIDGET_PATCH_KEY } from "../util/widgetPatch";
 import { describeWidget } from "../widgets/registry";
 import ScaleToFit from "../widgets/ScaleToFit.vue";
 import WidgetErrorBoundary from "../widgets/WidgetErrorBoundary.vue";
 import WidgetView from "../widgets/WidgetView.vue";
 
 const props = defineProps<{ item: GridItemModel; editMode: boolean; rowHeight?: number; selected?: boolean; pageLock?: boolean }>();
-const emit = defineEmits<{ remove: []; edit: []; editContents: []; export: []; duplicate: []; toggleLock: []; toggleSelect: []; autoHeight: [number] }>();
+const emit = defineEmits<{ remove: []; edit: []; editContents: []; export: []; duplicate: []; toggleLock: []; toggleSelect: []; autoHeight: [number]; patchWidget: [Record<string, unknown>] }>();
+
+// A widget instance can update its own persisted config (e.g. a probe diameter it remembers next
+// time) without going through the Properties dialog - see util/widgetPatch.ts's doc comment.
+provide(WIDGET_PATCH_KEY, (patch) => emit("patchWidget", patch));
 
 // Give every placed widget its own component-settings scope keyed by the grid item's GUID, so a
 // built-in DWC panel rendered inside (which calls useComponentSettings with no explicit id) derives

@@ -84,11 +84,17 @@ export const FREEFORM_WIDGETS: ReadonlyArray<FreeformCatalogEntry> = [
 	{ type: "heater",     labelKey: "widgets.heater",     icon: "mdi-radiator",           defaultSize: { w: 4, h: 3 }, category: "machine" },
 	{ type: "spindle",    labelKey: "widgets.spindle",    icon: "mdi-saw-blade",          defaultSize: { w: 4, h: 3 }, category: "machine" },
 	{ type: "wcs",        labelKey: "widgets.wcs",        icon: "mdi-axis-arrow",         defaultSize: { w: 4, h: 5 }, category: "machine" },
+	{ type: "wcsTable",   labelKey: "widgets.wcsTable",   icon: "mdi-table-large",        defaultSize: { w: 8, h: 12 }, category: "machine" },
 	{ type: "probe",      labelKey: "widgets.probe",      icon: "mdi-target-variant",     defaultSize: { w: 4, h: 5 }, category: "machine" },
 	{ type: "bedMesh",    labelKey: "widgets.bedMesh",    icon: "mdi-grid",               defaultSize: { w: 6, h: 10 }, category: "machine" },
 	{ type: "bedTram",    labelKey: "widgets.bedTram",    icon: "mdi-square-outline",     defaultSize: { w: 4, h: 5 }, category: "machine" },
 	{ type: "xyzProbe",   labelKey: "widgets.xyzProbe",   icon: "mdi-crosshairs-gps",     defaultSize: { w: 5, h: 11 }, category: "machine" },
+	{ type: "probeRoutines", labelKey: "widgets.probeRoutines", icon: "mdi-target", defaultSize: { w: 6, h: 13 }, category: "machine" },
 	{ type: "surfacing",  labelKey: "widgets.surfacing",  icon: "mdi-grid",               defaultSize: { w: 5, h: 11 }, category: "machine" },
+	{ type: "machineHealth", labelKey: "widgets.machineHealth", icon: "mdi-heart-pulse", defaultSize: { w: 4, h: 8 }, category: "machine" },
+	{ type: "preflight",  labelKey: "widgets.preflight",  icon: "mdi-clipboard-check-outline", defaultSize: { w: 6, h: 12 }, category: "machine" },
+	{ type: "toolpath",   labelKey: "widgets.toolpath",   icon: "mdi-map-marker-path",    defaultSize: { w: 7, h: 12 }, category: "machine" },
+	{ type: "firmwareUpdate", labelKey: "widgets.firmwareUpdate", icon: "mdi-chip", defaultSize: { w: 6, h: 12 }, category: "machine" },
 	{ type: "toolSelect", labelKey: "widgets.toolSelect", icon: "mdi-tools",              defaultSize: { w: 4, h: 2 }, category: "machine" },
 	{ type: "toolAlign",  labelKey: "widgets.toolAlign",  icon: "mdi-image-filter-center-focus", defaultSize: { w: 6, h: 12 }, category: "machine" },
 	{ type: "jobControl", labelKey: "widgets.jobControl", icon: "mdi-play-pause",         defaultSize: { w: 4, h: 3 }, category: "machine" },
@@ -248,6 +254,8 @@ export function describeWidget(widget: Widget): { title: string; icon: string } 
 			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.extruder"), icon: "mdi-printer-3d-nozzle" };
 		case "wcs":
 			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.wcs"), icon: "mdi-axis-arrow" };
+		case "wcsTable":
+			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.wcsTable"), icon: "mdi-table-large" };
 		case "probe":
 			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.probe"), icon: "mdi-target-variant" };
 		case "bedMesh":
@@ -300,6 +308,16 @@ export function describeWidget(widget: Widget): { title: string; icon: string } 
 			return { title: i18n.global.t("plugins.flexibleLayouts.widgets.accessChip"), icon: "mdi-shield-account" };
 		case "surfacing":
 			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.surfacing"), icon: "mdi-grid" };
+		case "machineHealth":
+			return { title: widget.title || i18n.global.t("plugins.flexibleLayouts.widgets.machineHealth"), icon: "mdi-heart-pulse" };
+		case "preflight":
+			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.preflight"), icon: "mdi-clipboard-check-outline" };
+		case "probeRoutines":
+			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.probeRoutines"), icon: "mdi-target" };
+		case "toolpath":
+			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.toolpath"), icon: "mdi-map-marker-path" };
+		case "firmwareUpdate":
+			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.firmwareUpdate"), icon: "mdi-chip" };
 	}
 	// Fallback for an unknown/removed widget type in an older saved layout (must never return
 	// undefined — the edit-mode tile header reads .title and would otherwise crash the whole page).

@@ -134,7 +134,7 @@
 				  @changed="onLayoutUpdated" @remove="removeItem" @edit="openProperties"
 				  @edit-contents="openGroupEditor" @export-item="exportPanelById"
 				  @duplicate="duplicateItem" @toggle-lock="toggleLock" @toggle-select="toggleSelect"
-				  @auto-height="onAutoHeight"
+				  @auto-height="onAutoHeight" @patch-widget="patchWidget"
 				  @item-move="onGroupDragMove" @item-moved="onGroupDragEnd" />
 
 		<!-- Empty page: render the built-in fallback when not editing, else prompt to add. -->
@@ -971,6 +971,23 @@ function saveProperties(payload: { widget: Widget; conditions: Array<ConditionRu
 		it.i === editingId.value
 			? { ...it, widget: payload.widget, conditions: payload.conditions, colors: payload.colors, typography: payload.typography, fit: payload.fit, autoHeight: payload.autoHeight, tooltip: payload.tooltip, lockWhilePrinting: payload.lockWhilePrinting, panelChrome: payload.panelChrome, ...payload.geometry }
 			: it);
+	persist();
+	commit();
+}
+
+/**
+ * A widget updating its own config (see util/widgetPatch.ts) - e.g. a probe diameter typed into
+ * the widget itself, remembered next time without opening Properties. Merged into the existing
+ * widget object rather than replacing it, since a patch only ever carries the field(s) that
+ * changed. No extra debounce here beyond persist()'s own: the widget side only calls this on
+ * change/blur, never per keystroke (see the widgets themselves), so calls already arrive at most
+ * once per completed edit - commit() runs synchronously in the same call as persist(), so there's
+ * no window where a value is persisted but not yet an undo step (a real gap an earlier design of
+ * this had, caught in review).
+ */
+function patchWidget(id: string, patch: Record<string, unknown>) {
+	layout.value = layout.value.map((it) =>
+		it.i === id ? { ...it, widget: { ...it.widget, ...patch } as Widget } : it);
 	persist();
 	commit();
 }

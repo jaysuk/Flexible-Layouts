@@ -1,6 +1,7 @@
 <template>
 	<div class="bmw-root fill-height d-flex flex-column px-2 py-1" :class="{ 'bmw-frozen': disabledNow }">
 		<span v-if="widget.label" class="bmw-label text-truncate flex-shrink-0">{{ widget.label }}</span>
+		<UnhomedWarning :axes="unhomedNow" class="flex-shrink-0 mb-1" />
 
 		<div class="d-flex align-center ga-2 mb-1 flex-shrink-0 flex-wrap">
 			<v-select v-model="selectedFile" :items="fileItems" density="compact" variant="outlined" hide-details
@@ -76,6 +77,7 @@
 					<!-- Confirming: show the resolved command before it's sent -->
 					<template v-else-if="cellStage === 'confirming'">
 						<div class="mb-2">{{ $t("plugins.flexibleLayouts.bedMesh.confirmText") }}</div>
+						<UnhomedWarning :axes="unhomedNow" class="mb-2" />
 						<pre class="bmw-pre">{{ pendingCmd }}</pre>
 						<div class="d-flex ga-2 mt-2">
 							<v-btn size="small" variant="text" @click="cellStage = 'idle'">{{ $t("generic.cancel") }}</v-btn>
@@ -114,7 +116,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, inject, onMounted, ref } from "vue";
 
 import i18n from "@/i18n";
 import { useMachineStore } from "@/stores/machine";
@@ -126,13 +128,18 @@ import { cellPosition } from "../model/bedMesh/heightmap";
 import { createBedMeshStore, DEFAULT_HEIGHTMAP_FILE } from "../model/bedMesh/store";
 import { heightmapValue, parseProbeReply } from "../model/bedMesh/probeReply";
 import { buildProbeCommand, DEFAULT_BED_MESH_PROBE_COMMAND } from "../util/probe";
+import { unhomedAxes } from "../util/homedCheck";
+import { WIDGET_PATCH_KEY } from "../util/widgetPatch";
+import UnhomedWarning from "./UnhomedWarning.vue";
 
 const props = defineProps<{ widget: Extract<Widget, { type: "bedMesh" }>; disabled?: boolean }>();
 const machineStore = useMachineStore();
 const uiStore = useUiStore();
 const io = defaultMachineIO();
 
+const patch = inject(WIDGET_PATCH_KEY, null);
 const disabledNow = computed(() => props.disabled || uiStore.uiFrozen);
+const unhomedNow = computed(() => unhomedAxes(machineStore.model, ["X", "Y", "Z"]));
 
 const store = createBedMeshStore(io);
 const { loaded, loading, saving, dirty, liveStats } = store;
@@ -169,6 +176,8 @@ async function onSelectFile(): Promise<void> {
 		uiStore.makeNotification(LogLevel.warning, t("title"), t("fileNotFound", { name: selectedFile.value }));
 	} else if (result === "invalid") {
 		uiStore.makeNotification(LogLevel.error, t("title"), t("fileInvalid", { name: selectedFile.value }));
+	} else {
+		patch?.({ fileName: selectedFile.value });
 	}
 }
 

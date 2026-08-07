@@ -1,29 +1,30 @@
 <template>
 	<div class="srf-root fill-height d-flex flex-column px-2 py-1" :class="{ 'srf-frozen': disabledNow }">
 		<span v-if="widget.label" class="srf-label text-truncate flex-shrink-0">{{ widget.label }}</span>
+		<UnhomedWarning :axes="unhomedNow" class="flex-shrink-0 mb-1" />
 
 		<div class="srf-fields flex-grow-1">
 			<v-text-field v-model.number="width" type="number" :min="1" :step="1" density="compact" variant="outlined"
-						  hide-details :label="$t('plugins.flexibleLayouts.surfacing.width')" :disabled="disabledNow" />
+						  hide-details :label="$t('plugins.flexibleLayouts.surfacing.width')" :disabled="disabledNow" @change="patch?.({ width })" />
 			<v-text-field v-model.number="height" type="number" :min="1" :step="1" density="compact" variant="outlined"
-						  hide-details :label="$t('plugins.flexibleLayouts.surfacing.height')" :disabled="disabledNow" />
+						  hide-details :label="$t('plugins.flexibleLayouts.surfacing.height')" :disabled="disabledNow" @change="patch?.({ height })" />
 			<v-text-field v-model.number="toolDiameter" type="number" :min="0.1" :step="0.1" density="compact" variant="outlined"
-						  hide-details :label="$t('plugins.flexibleLayouts.surfacing.toolDiameter')" :disabled="disabledNow" />
+						  hide-details :label="$t('plugins.flexibleLayouts.surfacing.toolDiameter')" :disabled="disabledNow" @change="patch?.({ toolDiameter })" />
 			<v-text-field v-model.number="stepoverPercent" type="number" :min="1" :max="100" :step="1" density="compact" variant="outlined"
-						  hide-details :label="$t('plugins.flexibleLayouts.surfacing.stepover')" suffix="%" :disabled="disabledNow" />
+						  hide-details :label="$t('plugins.flexibleLayouts.surfacing.stepover')" suffix="%" :disabled="disabledNow" @change="patch?.({ stepoverPercent })" />
 			<v-text-field v-model.number="depthPerPass" type="number" :min="0.01" :step="0.01" density="compact" variant="outlined"
-						  hide-details :label="$t('plugins.flexibleLayouts.surfacing.depthPerPass')" :disabled="disabledNow" />
+						  hide-details :label="$t('plugins.flexibleLayouts.surfacing.depthPerPass')" :disabled="disabledNow" @change="patch?.({ depthPerPass })" />
 			<v-text-field v-model.number="totalDepth" type="number" :min="0.01" :step="0.01" density="compact" variant="outlined"
-						  hide-details :label="$t('plugins.flexibleLayouts.surfacing.totalDepth')" :disabled="disabledNow" />
+						  hide-details :label="$t('plugins.flexibleLayouts.surfacing.totalDepth')" :disabled="disabledNow" @change="patch?.({ totalDepth })" />
 			<v-text-field v-model.number="clearance" type="number" :min="0" :step="0.5" density="compact" variant="outlined"
-						  hide-details :label="$t('plugins.flexibleLayouts.surfacing.clearance')" :disabled="disabledNow" />
+						  hide-details :label="$t('plugins.flexibleLayouts.surfacing.clearance')" :disabled="disabledNow" @change="patch?.({ clearance })" />
 			<v-text-field v-model.number="feed" type="number" :min="1" :step="10" density="compact" variant="outlined"
-						  hide-details :label="$t('plugins.flexibleLayouts.surfacing.feed')" :disabled="disabledNow" />
+						  hide-details :label="$t('plugins.flexibleLayouts.surfacing.feed')" :disabled="disabledNow" @change="patch?.({ feed })" />
 			<v-select v-model="direction" :items="directionItems" density="compact" variant="outlined" hide-details
-					  :label="$t('plugins.flexibleLayouts.surfacing.direction')" :disabled="disabledNow" />
+					  :label="$t('plugins.flexibleLayouts.surfacing.direction')" :disabled="disabledNow" @update:model-value="patch?.({ direction })" />
 			<v-text-field v-model.number="spindleRpm" type="number" :min="0" :step="100" density="compact" variant="outlined"
 						  hide-details :label="$t('plugins.flexibleLayouts.surfacing.spindleRpm')"
-						  :hint="$t('plugins.flexibleLayouts.surfacing.spindleRpmHint')" persistent-hint :disabled="disabledNow" />
+						  :hint="$t('plugins.flexibleLayouts.surfacing.spindleRpmHint')" persistent-hint :disabled="disabledNow" @change="patch?.({ spindleRpm })" />
 		</div>
 
 		<v-btn block class="flex-shrink-0 mt-2" :color="widget.color || 'primary'" prepend-icon="mdi-layers-triple-outline"
@@ -36,6 +37,7 @@
 				<v-card-title>{{ $t("plugins.flexibleLayouts.surfacing.confirmTitle") }}</v-card-title>
 				<v-card-text>
 					<div class="mb-2">{{ $t("plugins.flexibleLayouts.surfacing.confirmText") }}</div>
+					<UnhomedWarning :axes="unhomedNow" class="mb-2" />
 					<ul class="srf-summary">
 						<li>{{ $t("plugins.flexibleLayouts.surfacing.summaryArea", { width: width, height: height }) }}</li>
 						<li>{{ $t("plugins.flexibleLayouts.surfacing.summaryPasses", { passes: preview.passes, rows: preview.rows }) }}</li>
@@ -53,7 +55,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, inject, ref } from "vue";
 
 import i18n from "@/i18n";
 import { useMachineStore } from "@/stores/machine";
@@ -61,16 +63,21 @@ import { LogLevel, useUiStore } from "@/stores/ui";
 
 import type { Widget } from "../model/document";
 import { generateSurfacingGCode, type SurfacingParams } from "../util/surfacing";
+import { unhomedAxes } from "../util/homedCheck";
+import { WIDGET_PATCH_KEY } from "../util/widgetPatch";
+import UnhomedWarning from "./UnhomedWarning.vue";
 
 const props = defineProps<{ widget: Extract<Widget, { type: "surfacing" }>; disabled?: boolean }>();
 const machineStore = useMachineStore();
 const uiStore = useUiStore();
+const patch = inject(WIDGET_PATCH_KEY, null);
 
 const disabledNow = computed(() => props.disabled || uiStore.uiFrozen);
+const unhomedNow = computed(() => unhomedAxes(machineStore.model, ["X", "Y", "Z"]));
 
-// Local, session-editable copies seeded from the widget's persisted defaults - like ProbeWidget's
-// diameter/corner, this is a "configure this run" tool, not a fixed display, so edits here aren't
-// written back to the saved widget config.
+// Local, session-editable copies seeded from the widget's persisted defaults, same "configure this
+// run" pattern as ProbeWidget's diameter/corner - but now also patched back on change/blur (see
+// util/widgetPatch.ts) so next session starts from what was last used, not the original default.
 const width = ref(props.widget.width ?? 100);
 const height = ref(props.widget.height ?? 100);
 const toolDiameter = ref(props.widget.toolDiameter ?? 6);

@@ -1,6 +1,7 @@
 <template>
 	<div class="btr-root fill-height d-flex flex-column px-2 py-1" :class="{ 'btr-frozen': disabledNow }">
 		<span v-if="widget.label" class="btr-label text-truncate flex-shrink-0">{{ widget.label }}</span>
+		<UnhomedWarning :axes="unhomedNow" class="flex-shrink-0 mb-1" />
 
 		<div class="btr-results flex-grow-1">
 			<div v-if="calibration" class="btr-row">
@@ -31,6 +32,7 @@
 				<v-card-title>{{ $t("plugins.flexibleLayouts.bedTram.confirmTitle") }}</v-card-title>
 				<v-card-text>
 					<div class="mb-2">{{ $t("plugins.flexibleLayouts.bedTram.confirmText") }}</div>
+					<UnhomedWarning :axes="unhomedNow" class="mb-2" />
 					<pre class="btr-pre">{{ command }}</pre>
 				</v-card-text>
 				<v-card-actions>
@@ -51,12 +53,15 @@ import { useMachineStore } from "@/stores/machine";
 import { LogLevel, useUiStore } from "@/stores/ui";
 
 import type { Widget } from "../model/document";
+import { unhomedAxes } from "../util/homedCheck";
+import UnhomedWarning from "./UnhomedWarning.vue";
 
 const props = defineProps<{ widget: Extract<Widget, { type: "bedTram" }>; disabled?: boolean }>();
 const machineStore = useMachineStore();
 const uiStore = useUiStore();
 
 const disabledNow = computed(() => props.disabled || uiStore.uiFrozen);
+const unhomedNow = computed(() => unhomedAxes(machineStore.model, ["X", "Y", "Z"]));
 const command = computed(() => props.widget.command || "G32");
 
 // Live-reactive to whatever the object model currently holds. Delta machines populate

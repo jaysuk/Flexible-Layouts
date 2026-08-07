@@ -69,7 +69,8 @@ export async function resetToDefaults(): Promise<void> {
 
 /** Sections that can be reset individually. */
 export type ResetSection =
-	| "theme" | "nav" | "header" | "access" | "startupRoutes" | "updatePrefs" | "sdBackupPrefs";
+	| "theme" | "nav" | "header" | "access" | "startupRoutes" | "updatePrefs" | "sdBackupPrefs"
+	| "firmwareUpdatePrefs";
 
 /** Remove every localStorage key under a prefix. Collect-then-remove: mutating a live, shrinking key
  *  list while iterating it skips entries. */
@@ -129,6 +130,11 @@ export function resetSdBackupPrefs(): void {
 	removeLocalStorageKeys(`${LOCAL_STORAGE_PREFIX}sdBackup.`);
 }
 
+/** Firmware-update-notification preferences (per-source last-check throttle, dismissed releases). */
+export function resetFirmwareUpdatePrefs(): void {
+	removeLocalStorageKeys(`${LOCAL_STORAGE_PREFIX}firmwareUpdateCheck.`);
+}
+
 const SECTION_RESETS: Record<ResetSection, () => void> = {
 	theme: resetTheme,
 	nav: resetNav,
@@ -137,6 +143,7 @@ const SECTION_RESETS: Record<ResetSection, () => void> = {
 	startupRoutes: resetStartupRoutes,
 	updatePrefs: resetUpdatePrefs,
 	sdBackupPrefs: resetSdBackupPrefs,
+	firmwareUpdatePrefs: resetFirmwareUpdatePrefs,
 };
 
 /** Reset one section, without taking a history snapshot. Prefer {@link resetSectionWithHistory}. */

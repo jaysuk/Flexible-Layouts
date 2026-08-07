@@ -1,6 +1,7 @@
 <template>
   <div class="ts-root fill-height d-flex flex-column justify-center px-2 py-1" :class="{ 'ts-frozen': disabledNow }">
     <span v-if="widget.label" class="ts-label text-truncate">{{ widget.label }}</span>
+    <UnhomedWarning :axes="unhomedNow" class="mt-1" />
     <div class="d-flex flex-wrap ga-1 mt-1">
       <v-btn v-for="t in tools" :key="t.number" size="small" :variant="t.number === current ? 'flat' : 'tonal'"
              :color="t.number === current ? (widget.color || 'primary') : undefined" :disabled="disabledNow"
@@ -20,12 +21,15 @@ import { LogLevel, useUiStore } from "@/stores/ui";
 
 import type { Widget } from "../model/document";
 import { resolveOmPath } from "../util/omPath";
+import { unhomedAxes } from "../util/homedCheck";
+import UnhomedWarning from "./UnhomedWarning.vue";
 
 const props = defineProps<{ widget: Extract<Widget, { type: "toolSelect" }>; disabled?: boolean }>();
 const machineStore = useMachineStore();
 const uiStore = useUiStore();
 
 const disabledNow = computed(() => props.disabled || uiStore.uiFrozen);
+const unhomedNow = computed(() => unhomedAxes(machineStore.model, ["X", "Y", "Z"]));
 
 const tools = computed<Array<{ number: number; name: string }>>(() => {
   const arr = resolveOmPath(machineStore.model, "tools");

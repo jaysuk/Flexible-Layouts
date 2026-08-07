@@ -505,6 +505,7 @@ const resetSections = computed<Array<{ id: ResetSection; label: string }>>(() =>
 	{ id: "startupRoutes", label: i18n.global.t("plugins.flexibleLayouts.reset.sectionStartupRoutes") },
 	{ id: "updatePrefs", label: i18n.global.t("plugins.flexibleLayouts.reset.sectionUpdatePrefs") },
 	{ id: "sdBackupPrefs", label: i18n.global.t("plugins.flexibleLayouts.reset.sectionSdBackupPrefs") },
+	{ id: "firmwareUpdatePrefs", label: i18n.global.t("plugins.flexibleLayouts.reset.sectionFirmwareUpdatePrefs") },
 ]));
 
 async function onResetSection(section: { id: ResetSection; label: string }): Promise<void> {

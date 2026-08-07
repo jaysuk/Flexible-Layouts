@@ -17,7 +17,8 @@
 						  @edit-contents="emit('editContents', item.i)" @export="emit('exportItem', item.i)"
 						  @duplicate="emit('duplicate', item.i)" @toggle-lock="emit('toggleLock', item.i)"
 						  @toggle-select="emit('toggleSelect', item.i)"
-						  @auto-height="(h: number) => emit('autoHeight', item.i, h)" />
+						  @auto-height="(h: number) => emit('autoHeight', item.i, h)"
+						  @patch-widget="(patch: Record<string, unknown>) => emit('patchWidget', item.i, patch)" />
 		</GridItem>
 	</GridLayout>
 </template>
@@ -51,6 +52,7 @@ const emit = defineEmits<{
 	toggleLock: [string];
 	toggleSelect: [string];
 	autoHeight: [string, number];
+	patchWidget: [string, Record<string, unknown>];
 	/** Fired continuously while an item is being dragged (group-drag live follow). */
 	itemMove: [i: string, x: number, y: number];
 	/** Fired once when the drag ends (group-drag commit). */

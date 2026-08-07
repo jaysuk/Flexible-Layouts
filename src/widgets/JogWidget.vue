@@ -1,6 +1,7 @@
 <template>
 	<div class="jog-root fill-height d-flex flex-column pa-1" :class="{ 'jog-frozen': disabledNow }">
 		<div v-if="widget.title" class="jog-title text-center text-truncate flex-shrink-0">{{ widget.title }}</div>
+		<UnhomedWarning :axes="unhomedNow" class="flex-shrink-0 mb-1" />
 
 		<!-- Inline, editable feedrates (Pronterface shows XY / Z mm/min). Native inputs, self-styled, so
 			 the value scales with the panel font and is never clipped by a fixed-height form control. -->
@@ -21,11 +22,12 @@
 			<div class="jog-xy">
 				<svg :viewBox="`0 0 ${VB} ${VB}`" preserveAspectRatio="xMidYMid meet" class="jog-svg">
 					<g :style="{ color: sectorFill }">
-						<path v-for="s in xySectors" :key="s.id" :d="s.d" class="jog-sector"
+						<path v-for="s in xySectors" :key="s.id" :d="s.d"
+							  class="jog-sector" :class="{ 'jog-sector-blocked': blockedAxes.has(s.axis.toUpperCase()) }"
 							  :style="{ fill: 'currentColor', opacity: s.opacity }"
 							  @click="jog(s.axis, s.signed, xyFeed)"
 							  @contextmenu.prevent="editStep('xy', s.ringIndex)">
-							<title>{{ s.axis }}{{ s.signed > 0 ? "+" : "" }}{{ fmt(s.signed) }} mm</title>
+							<title>{{ s.axis }}{{ s.signed > 0 ? "+" : "" }}{{ fmt(s.signed) }} mm{{ blockedAxes.has(s.axis.toUpperCase()) ? ` — ${$t('plugins.flexibleLayouts.jog.blockedUnhomed')}` : "" }}</title>
 						</path>
 					</g>
 					<!-- ring step values, laid along the upper-right gap like Pronterface -->
@@ -60,6 +62,7 @@
 			<!-- Z bar -->
 			<div v-if="widget.showZ !== false" class="jog-z d-flex flex-column ga-1">
 				<button v-for="(s, k) in zStepList" :key="'zp' + k" type="button" class="jog-zbtn"
+						:class="{ 'jog-zbtn-blocked': zBlocked }"
 						:style="zBtnStyle" :disabled="disabledNow"
 						:title="`${zAxisLetter} +${fmt(s)} mm`"
 						@click="jog(zAxisLetter, zSign * s, zFeed)" @contextmenu.prevent="editStep('z', k)">
@@ -72,6 +75,7 @@
 					<v-icon size="x-small">mdi-home</v-icon>
 				</button>
 				<button v-for="(z, i) in zStepsDown" :key="'zn' + z.k" type="button" class="jog-zbtn"
+						:class="{ 'jog-zbtn-blocked': zBlocked }"
 						:style="zBtnStyle" :disabled="disabledNow"
 						:title="`${zAxisLetter} -${fmt(z.s)} mm`"
 						@click="jog(zAxisLetter, -zSign * z.s, zFeed)" @contextmenu.prevent="editStep('z', z.k)">
@@ -94,11 +98,14 @@ import { computed, onMounted } from "vue";
 import { getNumericInput } from "@/composables/useInputDialog";
 import i18n from "@/i18n";
 import { useMachineStore } from "@/stores/machine";
-import { useUiStore } from "@/stores/ui";
+import { LogLevel, useUiStore } from "@/stores/ui";
 
 import type { Widget } from "../model/document";
 import { resolveColor } from "../util/color";
 import { polar, sectorPath as _sectorPath } from "../util/shapes";
+import { unhomedAxes } from "../util/homedCheck";
+import { resolveOmPath } from "../util/omPath";
+import UnhomedWarning from "./UnhomedWarning.vue";
 
 const props = defineProps<{
 	widget: Extract<Widget, { type: "jog" }>;
@@ -109,6 +116,21 @@ const machineStore = useMachineStore();
 const uiStore = useUiStore();
 
 const disabledNow = computed(() => props.disabled || uiStore.uiFrozen);
+
+// Advisory only, same as DWC's own MovementPanel: an unhomed axis is a normal, common state to jog
+// FROM (it's often how you reach a safe position before homing), so this never blocks a press on
+// its own - it only warns. The one case it DOES block is when the firmware itself refuses the move
+// (move.noMovesBeforeHoming, set via M564 H1) - DWC's own jog buttons already respect that flag,
+// and these should too rather than sending a move RRF is just going to reject anyway.
+const unhomedNow = computed(() => unhomedAxes(machineStore.model, [xAxisLetter.value, yAxisLetter.value, zAxisLetter.value]));
+const noMovesBeforeHoming = computed(() => resolveOmPath(machineStore.model, "move.noMovesBeforeHoming") === true);
+const blockedAxes = computed(() => {
+	if (!noMovesBeforeHoming.value) {
+		return new Set<string>();
+	}
+	return new Set(unhomedNow.value);
+});
+const zBlocked = computed(() => blockedAxes.value.has(zAxisLetter.value.toUpperCase()));
 
 // --- configuration with fallbacks -------------------------------------------------
 const xySteps = computed(() => (props.widget.xySteps?.length ? props.widget.xySteps : [100, 10, 1, 0.1]));
@@ -228,6 +250,11 @@ function quote(letter: string): string {
 }
 function jog(letter: string, signed: number, feed: number): void {
 	if (disabledNow.value || !letter) {
+		return;
+	}
+	if (blockedAxes.value.has(letter.toUpperCase())) {
+		uiStore.makeNotification(LogLevel.warning, i18n.global.t("plugins.flexibleLayouts.jog.blockedUnhomed"),
+			i18n.global.t("plugins.flexibleLayouts.jog.blockedUnhomedDetail", { axis: letter.toUpperCase() }));
 		return;
 	}
 	const amount = Number(signed.toFixed(4));
@@ -352,6 +379,10 @@ async function editStep(arr: "xy" | "z", index: number): Promise<void> {
 .jog-sector:hover {
 	opacity: 1 !important;
 }
+.jog-sector-blocked {
+	cursor: not-allowed;
+	fill: rgb(var(--v-theme-warning)) !important;
+}
 .jog-step-label {
 	font-size: 6px;
 	fill: rgb(var(--v-theme-on-surface));
@@ -442,5 +473,10 @@ async function editStep(arr: "xy" | "z", index: number): Promise<void> {
 .jog-zhome {
 	flex: 0 0 auto;
 	padding: 4px 0;
+}
+.jog-zbtn-blocked {
+	cursor: not-allowed;
+	border-color: rgb(var(--v-theme-warning)) !important;
+	color: rgb(var(--v-theme-warning)) !important;
 }
 </style>

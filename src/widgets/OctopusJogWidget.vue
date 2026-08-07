@@ -1,6 +1,7 @@
 <template>
 	<div class="oct-root fill-height d-flex flex-column pa-1" :class="{ 'oct-frozen': disabledNow }">
 		<div v-if="widget.title" class="oct-title text-center text-truncate flex-shrink-0">{{ widget.title }}</div>
+		<UnhomedWarning :axes="unhomedNow" class="flex-shrink-0 mb-1" />
 
 		<!-- Optional DRO header -->
 		<div v-if="widget.showDro" class="oct-dro d-flex ga-2 mb-1 flex-shrink-0 justify-center">
@@ -28,22 +29,22 @@
 				<svg :viewBox="`0 0 ${VB} ${VB}`" preserveAspectRatio="xMidYMid meet" class="oct-svg">
 					<g :style="{ color: sectorFill }">
 						<!-- Cardinal sectors -->
-						<path v-for="s in cardinalSectors" :key="s.id" :d="s.d" class="oct-sector"
+						<path v-for="s in cardinalSectors" :key="s.id" :d="s.d"
+							  class="oct-sector" :class="{ 'oct-ring-highlight': hoveredRing === s.ringIndex, 'oct-sector-blocked': blockedAxes.has(s.axis.toUpperCase()) }"
 							  :style="{ fill: ringColor(s.ringIndex), opacity: s.opacity }"
-							  :class="{ 'oct-ring-highlight': hoveredRing === s.ringIndex }"
 							  @click="jogSingle(s.axis, s.signed)"
 							  @contextmenu.prevent="editStep('xy', s.ringIndex)">
-							<title>{{ s.axis }}{{ s.signed > 0 ? '+' : '' }}{{ fmt(s.signed) }} mm</title>
+							<title>{{ s.axis }}{{ s.signed > 0 ? '+' : '' }}{{ fmt(s.signed) }} mm{{ blockedAxes.has(s.axis.toUpperCase()) ? ` — ${$t('plugins.flexibleLayouts.jog.blockedUnhomed')}` : "" }}</title>
 						</path>
 
 						<!-- Diagonal sectors (optional) -->
 						<template v-if="widget.showDiagonals !== false">
-							<path v-for="s in diagonalSectors" :key="s.id" :d="s.d" class="oct-sector oct-sector-diag"
+							<path v-for="s in diagonalSectors" :key="s.id" :d="s.d"
+								  class="oct-sector oct-sector-diag" :class="{ 'oct-ring-highlight': hoveredRing === s.ringIndex, 'oct-sector-blocked': diagonalBlocked }"
 								  :style="{ fill: ringColor(s.ringIndex), opacity: s.opacity }"
-								  :class="{ 'oct-ring-highlight': hoveredRing === s.ringIndex }"
 								  @click="jogXY(s.xSign, s.ySign, s.step)"
 								  @contextmenu.prevent="editStep('xy', s.ringIndex)">
-								<title>{{ xAxisLetter }}{{ s.xSign > 0 ? '+' : '' }}{{ fmt(s.step) }} {{ yAxisLetter }}{{ s.ySign > 0 ? '+' : '' }}{{ fmt(s.step) }} mm</title>
+								<title>{{ xAxisLetter }}{{ s.xSign > 0 ? '+' : '' }}{{ fmt(s.step) }} {{ yAxisLetter }}{{ s.ySign > 0 ? '+' : '' }}{{ fmt(s.step) }} mm{{ diagonalBlocked ? ` — ${$t('plugins.flexibleLayouts.jog.blockedUnhomed')}` : "" }}</title>
 							</path>
 						</template>
 
@@ -82,6 +83,7 @@
 			<!-- Z bar -->
 			<div v-if="widget.showZ !== false" class="oct-z d-flex flex-column ga-1">
 				<button v-for="(s, k) in zStepList" :key="'zp' + k" type="button" class="oct-zbtn"
+						:class="{ 'oct-zbtn-blocked': zBlocked }"
 						:style="axisBtnStyle" :disabled="disabledNow"
 						:title="`${zAxisLetter} +${fmt(s)} mm`"
 						@click="jog(zAxisLetter, zSign * s, zFeed)" @contextmenu.prevent="editStep('z', k)">
@@ -94,6 +96,7 @@
 					<v-icon size="x-small">mdi-home</v-icon>
 				</button>
 				<button v-for="(z, i) in zStepsDown" :key="'zn' + z.k" type="button" class="oct-zbtn"
+						:class="{ 'oct-zbtn-blocked': zBlocked }"
 						:style="axisBtnStyle" :disabled="disabledNow"
 						:title="`${zAxisLetter} -${fmt(z.s)} mm`"
 						@click="jog(zAxisLetter, -zSign * z.s, zFeed)" @contextmenu.prevent="editStep('z', z.k)">
@@ -127,11 +130,14 @@ import { computed, onMounted, ref } from "vue";
 import { getNumericInput } from "@/composables/useInputDialog";
 import i18n from "@/i18n";
 import { useMachineStore } from "@/stores/machine";
-import { useUiStore } from "@/stores/ui";
+import { LogLevel, useUiStore } from "@/stores/ui";
 
 import type { Widget } from "../model/document";
 import { resolveColor } from "../util/color";
 import { polar, sectorPath } from "../util/shapes";
+import { unhomedAxes } from "../util/homedCheck";
+import { resolveOmPath } from "../util/omPath";
+import UnhomedWarning from "./UnhomedWarning.vue";
 
 const props = defineProps<{
 	widget: Extract<Widget, { type: "octopusJog" }>;
@@ -142,6 +148,19 @@ const machineStore = useMachineStore();
 const uiStore = useUiStore();
 
 const disabledNow = computed(() => props.disabled || uiStore.uiFrozen);
+
+// Advisory only (same reasoning as JogWidget.vue) - only actually blocks a move when the firmware
+// itself refuses it (move.noMovesBeforeHoming, M564 H1), mirroring DWC's own jog-button behaviour.
+const unhomedNow = computed(() => unhomedAxes(machineStore.model, [xAxisLetter.value, yAxisLetter.value, zAxisLetter.value]));
+const noMovesBeforeHoming = computed(() => resolveOmPath(machineStore.model, "move.noMovesBeforeHoming") === true);
+const blockedAxes = computed(() => {
+	if (!noMovesBeforeHoming.value) {
+		return new Set<string>();
+	}
+	return new Set(unhomedNow.value);
+});
+const zBlocked = computed(() => blockedAxes.value.has(zAxisLetter.value.toUpperCase()));
+const diagonalBlocked = computed(() => blockedAxes.value.has(xAxisLetter.value.toUpperCase()) || blockedAxes.value.has(yAxisLetter.value.toUpperCase()));
 
 // --- configuration with fallbacks -----------------------------------------------
 const xySteps    = computed(() => props.widget.xySteps?.length ? props.widget.xySteps : [100, 10, 1, 0.1]);
@@ -323,8 +342,14 @@ function quote(letter: string): string {
 	return /[a-z]/.test(letter) ? `'${letter}` : letter;
 }
 
+function warnBlocked(axis: string): void {
+	uiStore.makeNotification(LogLevel.warning, i18n.global.t("plugins.flexibleLayouts.jog.blockedUnhomed"),
+		i18n.global.t("plugins.flexibleLayouts.jog.blockedUnhomedDetail", { axis: axis.toUpperCase() }));
+}
+
 function jog(letter: string, signed: number, feed: number): void {
 	if (disabledNow.value || !letter) { return; }
+	if (blockedAxes.value.has(letter.toUpperCase())) { warnBlocked(letter); return; }
 	const amount = Number(signed.toFixed(4));
 	void machineStore.sendCode(`M120\nG91\nG1 ${quote(letter)}${amount} F${feed}\nM121`);
 }
@@ -335,6 +360,10 @@ function jogSingle(axis: string, signed: number): void {
 
 function jogXY(xSign: number, ySign: number, step: number): void {
 	if (disabledNow.value) { return; }
+	if (diagonalBlocked.value) {
+		warnBlocked(blockedAxes.value.has(xAxisLetter.value.toUpperCase()) ? xAxisLetter.value : yAxisLetter.value);
+		return;
+	}
 	const xAmt = Number((xSign * step).toFixed(4));
 	const yAmt = Number((ySign * step).toFixed(4));
 	const x = quote(xAxisLetter.value);
@@ -439,6 +468,7 @@ async function editStep(arr: "xy" | "z", index: number): Promise<void> {
 .oct-sector:hover    { opacity: 1 !important; }
 .oct-sector-diag     { stroke-dasharray: 2 1; }
 .oct-ring-highlight  { opacity: 1 !important; }
+.oct-sector-blocked  { cursor: not-allowed; fill: rgb(var(--v-theme-warning)) !important; }
 .oct-step-label {
 	font-size: 5.5px;
 	fill: rgb(var(--v-theme-on-surface));
@@ -511,6 +541,7 @@ async function editStep(arr: "xy" | "z", index: number): Promise<void> {
 .oct-zbtn:hover span,
 .oct-zbtn:hover :deep(.v-icon) { color: rgb(var(--v-theme-surface)); }
 .oct-zhome { flex: 0 0 auto; padding: 4px 0; }
+.oct-zbtn-blocked { cursor: not-allowed; border-color: rgb(var(--v-theme-warning)) !important; color: rgb(var(--v-theme-warning)) !important; }
 .oct-bullets {
 	font-size: 0.65em;
 	line-height: 1.2;
