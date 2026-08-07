@@ -35,6 +35,7 @@
 	<ProbeRoutinesWidget v-else-if="widget.type === 'probeRoutines'" :widget="widget" :disabled="disabled" />
 	<SurfacingWidget v-else-if="widget.type === 'surfacing'" :widget="widget" :disabled="disabled" />
 	<MachineHealthWidget v-else-if="widget.type === 'machineHealth'" :widget="widget" />
+	<MaintenanceWidget v-else-if="widget.type === 'maintenanceWidget'" :widget="widget" />
 	<PreflightWidget v-else-if="widget.type === 'preflight'" :widget="widget" />
 	<ToolpathWidget v-else-if="widget.type === 'toolpath'" :widget="widget" />
 	<FirmwareUpdateWidget v-else-if="widget.type === 'firmwareUpdate'" :widget="widget" />
@@ -132,6 +133,7 @@ import XyzProbeWidget from "./XyzProbeWidget.vue";
 import ProbeRoutinesWidget from "./ProbeRoutinesWidget.vue";
 import SurfacingWidget from "./SurfacingWidget.vue";
 import MachineHealthWidget from "./MachineHealthWidget.vue";
+import MaintenanceWidget from "./MaintenanceWidget.vue";
 import PreflightWidget from "./PreflightWidget.vue";
 import ToolpathWidget from "./ToolpathWidget.vue";
 import FirmwareUpdateWidget from "./FirmwareUpdateWidget.vue";

@@ -25,18 +25,18 @@ export interface PanelCatalogEntry {
 }
 
 export const BUILTIN_PANELS: ReadonlyArray<PanelCatalogEntry> = [
-	{ component: "StatusPanel",          labelKey: "panels.status",          icon: "mdi-information-outline",  defaultSize: { w: 6, h: 6 },  mode: "any" },
-	{ component: "ToolsPanel",           labelKey: "panels.tools",           icon: "mdi-wrench",              defaultSize: { w: 6, h: 6 },  mode: "any" },
+	{ component: "StatusPanel",          labelKey: "panels.status",          icon: "mdi-information-outline",  defaultSize: { w: 6, h: 9 },  mode: "any" },
+	{ component: "ToolsPanel",           labelKey: "panels.tools",           icon: "mdi-wrench",              defaultSize: { w: 6, h: 8 },  mode: "any" },
 	{ component: "MovementPanel",        labelKey: "panels.movement",        icon: "mdi-axis-arrow",          defaultSize: { w: 8, h: 9 },  mode: "any" },
 	{ component: "ExtrudePanel",         labelKey: "panels.extrude",         icon: "mdi-printer-3d-nozzle",   defaultSize: { w: 6, h: 7 },  mode: "fff" },
 	{ component: "FanPanel",             labelKey: "panels.fan",             icon: "mdi-fan",                 defaultSize: { w: 6, h: 5 },  mode: "any" },
-	{ component: "FansPanel",            labelKey: "panels.fans",            icon: "mdi-fan",                 defaultSize: { w: 6, h: 5 },  mode: "any" },
+	{ component: "FansPanel",            labelKey: "panels.fans",            icon: "mdi-fan",                 defaultSize: { w: 6, h: 7 },  mode: "any" },
 	{ component: "ATXPanel",             labelKey: "panels.atx",             icon: "mdi-power",               defaultSize: { w: 3, h: 4 },  mode: "any" },
 	{ component: "BabystepPanel",        labelKey: "panels.babystep",        icon: "mdi-arrow-up-down",       defaultSize: { w: 4, h: 4 },  mode: "fff" },
 	{ component: "SpeedFactorPanel",     labelKey: "panels.speedFactor",     icon: "mdi-speedometer",         defaultSize: { w: 4, h: 4 },  mode: "any" },
 	{ component: "ExtrusionFactorsPanel", labelKey: "panels.extrusionFactors", icon: "mdi-percent",          defaultSize: { w: 4, h: 5 },  mode: "fff" },
 	{ component: "SpindleSpeedPanel",    labelKey: "panels.spindleSpeed",    icon: "mdi-saw-blade",           defaultSize: { w: 4, h: 4 },  mode: "cnc" },
-	{ component: "CNCAxesPosition",      labelKey: "panels.toolPosition",    icon: "mdi-axis-arrow-info",     defaultSize: { w: 6, h: 4 },  mode: "cnc" },
+	{ component: "CNCAxesPosition",      labelKey: "panels.toolPosition",    icon: "mdi-axis-arrow-info",     defaultSize: { w: 6, h: 6 },  mode: "cnc" },
 	{ component: "JobControlPanel",      labelKey: "panels.jobControl",      icon: "mdi-play-pause",          defaultSize: { w: 6, h: 6 },  mode: "any" },
 	{ component: "JobInfoPanel",         labelKey: "panels.jobInfo",         icon: "mdi-information-outline",  defaultSize: { w: 6, h: 7 },  mode: "any" },
 	{ component: "JobTimesPanel",        labelKey: "panels.jobTimes",        icon: "mdi-clock-outline",       defaultSize: { w: 6, h: 5 },  mode: "any" },
@@ -80,24 +80,25 @@ export const FREEFORM_WIDGETS: ReadonlyArray<FreeformCatalogEntry> = [
 
 	// Machine — printer/CNC specific
 	{ type: "extruder",   labelKey: "widgets.extruder",   icon: "mdi-printer-3d-nozzle",  defaultSize: { w: 4, h: 5 }, category: "machine" },
-	{ type: "fan",        labelKey: "widgets.fan",        icon: "mdi-fan",                defaultSize: { w: 4, h: 2 }, category: "machine" },
-	{ type: "heater",     labelKey: "widgets.heater",     icon: "mdi-radiator",           defaultSize: { w: 4, h: 3 }, category: "machine" },
-	{ type: "spindle",    labelKey: "widgets.spindle",    icon: "mdi-saw-blade",          defaultSize: { w: 4, h: 3 }, category: "machine" },
-	{ type: "wcs",        labelKey: "widgets.wcs",        icon: "mdi-axis-arrow",         defaultSize: { w: 4, h: 5 }, category: "machine" },
+	{ type: "fan",        labelKey: "widgets.fan",        icon: "mdi-fan",                defaultSize: { w: 4, h: 4 }, category: "machine" },
+	{ type: "heater",     labelKey: "widgets.heater",     icon: "mdi-radiator",           defaultSize: { w: 4, h: 4 }, category: "machine" },
+	{ type: "spindle",    labelKey: "widgets.spindle",    icon: "mdi-saw-blade",          defaultSize: { w: 4, h: 4 }, category: "machine" },
+	{ type: "wcs",        labelKey: "widgets.wcs",        icon: "mdi-axis-arrow",         defaultSize: { w: 4, h: 7 }, category: "machine" },
 	{ type: "wcsTable",   labelKey: "widgets.wcsTable",   icon: "mdi-table-large",        defaultSize: { w: 8, h: 12 }, category: "machine" },
-	{ type: "probe",      labelKey: "widgets.probe",      icon: "mdi-target-variant",     defaultSize: { w: 4, h: 5 }, category: "machine" },
+	{ type: "probe",      labelKey: "widgets.probe",      icon: "mdi-target-variant",     defaultSize: { w: 4, h: 7 }, category: "machine" },
 	{ type: "bedMesh",    labelKey: "widgets.bedMesh",    icon: "mdi-grid",               defaultSize: { w: 6, h: 10 }, category: "machine" },
 	{ type: "bedTram",    labelKey: "widgets.bedTram",    icon: "mdi-square-outline",     defaultSize: { w: 4, h: 5 }, category: "machine" },
 	{ type: "xyzProbe",   labelKey: "widgets.xyzProbe",   icon: "mdi-crosshairs-gps",     defaultSize: { w: 5, h: 11 }, category: "machine" },
 	{ type: "probeRoutines", labelKey: "widgets.probeRoutines", icon: "mdi-target", defaultSize: { w: 6, h: 13 }, category: "machine" },
 	{ type: "surfacing",  labelKey: "widgets.surfacing",  icon: "mdi-grid",               defaultSize: { w: 5, h: 11 }, category: "machine" },
-	{ type: "machineHealth", labelKey: "widgets.machineHealth", icon: "mdi-heart-pulse", defaultSize: { w: 4, h: 8 }, category: "machine" },
+	{ type: "machineHealth", labelKey: "widgets.machineHealth", icon: "mdi-heart-pulse", defaultSize: { w: 4, h: 14 }, category: "machine" },
+	{ type: "maintenanceWidget", labelKey: "widgets.maintenanceWidget", icon: "mdi-wrench-cog-outline", defaultSize: { w: 4, h: 6 }, category: "machine" },
 	{ type: "preflight",  labelKey: "widgets.preflight",  icon: "mdi-clipboard-check-outline", defaultSize: { w: 6, h: 12 }, category: "machine" },
 	{ type: "toolpath",   labelKey: "widgets.toolpath",   icon: "mdi-map-marker-path",    defaultSize: { w: 7, h: 12 }, category: "machine" },
 	{ type: "firmwareUpdate", labelKey: "widgets.firmwareUpdate", icon: "mdi-chip", defaultSize: { w: 6, h: 12 }, category: "machine" },
-	{ type: "toolSelect", labelKey: "widgets.toolSelect", icon: "mdi-tools",              defaultSize: { w: 4, h: 2 }, category: "machine" },
+	{ type: "toolSelect", labelKey: "widgets.toolSelect", icon: "mdi-tools",              defaultSize: { w: 4, h: 3 }, category: "machine" },
 	{ type: "toolAlign",  labelKey: "widgets.toolAlign",  icon: "mdi-image-filter-center-focus", defaultSize: { w: 6, h: 12 }, category: "machine" },
-	{ type: "jobControl", labelKey: "widgets.jobControl", icon: "mdi-play-pause",         defaultSize: { w: 4, h: 3 }, category: "machine" },
+	{ type: "jobControl", labelKey: "widgets.jobControl", icon: "mdi-play-pause",         defaultSize: { w: 4, h: 4 }, category: "machine" },
 	{ type: "macros",     labelKey: "widgets.macros",     icon: "mdi-cog-play",           defaultSize: { w: 4, h: 5 }, category: "machine" },
 	{ type: "files",      labelKey: "widgets.files",      icon: "mdi-file-document-multiple", defaultSize: { w: 4, h: 6 }, category: "machine" },
 	{ type: "console",    labelKey: "widgets.console",    icon: "mdi-console-line",       defaultSize: { w: 6, h: 5 }, category: "machine" },
@@ -105,8 +106,8 @@ export const FREEFORM_WIDGETS: ReadonlyArray<FreeformCatalogEntry> = [
 	{ type: "consoleOutput", labelKey: "widgets.consoleOutput", icon: "mdi-text-box-multiple-outline", defaultSize: { w: 6, h: 5 }, category: "machine" },
 
 	// Read-outs — display object-model values
-	{ type: "value",      labelKey: "widgets.value",      icon: "mdi-counter",            defaultSize: { w: 3, h: 3 }, category: "readouts" },
-	{ type: "dro",        labelKey: "widgets.dro",        icon: "mdi-axis-arrow-info",    defaultSize: { w: 3, h: 4 }, category: "readouts" },
+	{ type: "value",      labelKey: "widgets.value",      icon: "mdi-counter",            defaultSize: { w: 3, h: 4 }, category: "readouts" },
+	{ type: "dro",        labelKey: "widgets.dro",        icon: "mdi-axis-arrow-info",    defaultSize: { w: 3, h: 6 }, category: "readouts" },
 	{ type: "table",      labelKey: "widgets.table",      icon: "mdi-table",              defaultSize: { w: 4, h: 4 }, category: "readouts" },
 	{ type: "gaugeCluster", labelKey: "widgets.gaugeCluster", icon: "mdi-gauge",          defaultSize: { w: 5, h: 4 }, category: "readouts" },
 	{ type: "progress",   labelKey: "widgets.progress",   icon: "mdi-progress-helper",    defaultSize: { w: 4, h: 2 }, category: "readouts" },
@@ -310,6 +311,8 @@ export function describeWidget(widget: Widget): { title: string; icon: string } 
 			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.surfacing"), icon: "mdi-grid" };
 		case "machineHealth":
 			return { title: widget.title || i18n.global.t("plugins.flexibleLayouts.widgets.machineHealth"), icon: "mdi-heart-pulse" };
+		case "maintenanceWidget":
+			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.maintenanceWidget"), icon: "mdi-wrench-cog-outline" };
 		case "preflight":
 			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.preflight"), icon: "mdi-clipboard-check-outline" };
 		case "probeRoutines":

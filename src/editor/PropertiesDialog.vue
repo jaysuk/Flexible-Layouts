@@ -923,6 +923,14 @@
 					</v-row>
 				</template>
 
+				<!-- Maintenance widget -->
+				<template v-else-if="draft.type === 'maintenanceWidget'">
+					<v-row dense>
+						<v-col cols="8"><v-text-field v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
+						<v-col cols="4"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
+					</v-row>
+				</template>
+
 				<!-- Toolpath -->
 				<template v-else-if="draft.type === 'toolpath'">
 					<v-row dense>

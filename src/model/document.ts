@@ -708,6 +708,17 @@ export type Widget =
 		showProbes?: boolean;
 	}
 	| {
+		/**
+		 * At-a-glance summary of Flexible Layouts' machine maintenance tracking (spindle-on hours,
+		 * accumulated entirely on the controller via a daemon.g macro - see model/maintenance/) plus a
+		 * shortcut into the full Maintenance page (the log, setup wizard). Read-only - logging an
+		 * entry or running setup only happens on that page.
+		 */
+		type: "maintenanceWidget";
+		label?: string;
+		color?: string;
+	}
+	| {
 		/** Tool selector: a button per configured tool. */
 		type: "toolSelect";
 		label?: string;
@@ -1096,6 +1107,8 @@ export function createDefaultWidget(type: WidgetType): Widget {
 				type: "machineHealth", title: "Machine health",
 				showPower: true, showRam: true, showUptime: true, showNetwork: true, showProbes: true,
 			};
+		case "maintenanceWidget":
+			return { type: "maintenanceWidget", label: "Maintenance", color: "primary" };
 		case "toolSelect":
 			return { type: "toolSelect", label: "Tools", color: "primary" };
 		case "fan":

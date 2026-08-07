@@ -167,6 +167,7 @@
 		<ImportExportDialog v-model="ioOpen" />
 		<ProfilesDialog v-model="profilesOpen" />
 		<HelpDialog v-model="helpOpen" :first-run="helpFirstRun" />
+		<WhatsNewDialog v-model="whatsNewOpen" :entries="whatsNewEntries" />
 		<PasswordDialog />
 
 		<!-- SD-card restore offer: shown when the live layout is empty but a backup exists on the card. -->
@@ -248,7 +249,8 @@ import { type AnnouncedUpdate, applyUpdate, claimUpdateHost, clearAnnouncedUpdat
 
 import { useFlexDisplay } from "../composables/useFlexDisplay";
 import { attemptToggleEdit, editMode, exitEditMode } from "../model/editorState";
-import { applyUpdateNow, dismissCurrentUpdate, dismissedVersion, pendingReload, runUpdateCheck } from "../model/updateCheck";
+import { applyUpdateNow, currentVersion, dismissCurrentUpdate, dismissedVersion, pendingReload, runUpdateCheck, updateChecksEnabled } from "../model/updateCheck";
+import { fetchWhatsNewHistory, getLastSeenVersion, markWhatsNewSeen, shouldShowWhatsNew } from "../model/whatsNew";
 import { applyStartupRoute } from "../model/startup";
 import { startChartSampler, stopChartSampler } from "../model/chartSampler";
 import { applyBackup, checkForRestore, dismissRestore, type FlBackup, isAutoBackupEnabled, writeBackup, writeHistorySnapshot } from "../model/sdBackup";
@@ -270,6 +272,7 @@ import ThemeEditor from "../editor/ThemeEditor.vue";
 import ImportExportDialog from "../editor/ImportExportDialog.vue";
 import ProfilesDialog from "../editor/ProfilesDialog.vue";
 import HelpDialog from "../editor/HelpDialog.vue";
+import WhatsNewDialog from "../editor/WhatsNewDialog.vue";
 import PasswordDialog from "../editor/PasswordDialog.vue";
 
 const machineStore = useMachineStore();
@@ -313,6 +316,8 @@ const ioOpen = ref(false);
 const profilesOpen = ref(false);
 const helpOpen = ref(false);
 const helpFirstRun = ref(false);
+const whatsNewOpen = ref(false);
+const whatsNewEntries = ref<Awaited<ReturnType<typeof fetchWhatsNewHistory>>>([]);
 const cacheStore = useCacheStore();
 
 function openHelp() {
@@ -389,6 +394,29 @@ async function onConnected(): Promise<void> {
 			restoreBackup.value = backup;
 			restoreOpen.value = true;
 			return;
+		}
+	} catch { /* best-effort */ }
+
+	// "What's new since you last looked": needs a live connection to know the real installed version
+	// (currentVersion() reads it from the object model), so it's seeded/checked here, not in the
+	// synchronous onMounted welcome block above. On the very first connection this browser has ever
+	// made (lastSeenVersion never set - true first run, or an upgrade from a pre-feature FL build),
+	// just seed the baseline silently: showing "everything since v0.0.0" would be a wall of noise, not
+	// a useful summary. Every later connection compares against that baseline instead.
+	try {
+		const lastSeen = getLastSeenVersion();
+		if (lastSeen === null) {
+			markWhatsNewSeen(currentVersion());
+		} else if (updateChecksEnabled() && shouldShowWhatsNew(currentVersion(), lastSeen)) {
+			const entries = await fetchWhatsNewHistory(lastSeen);
+			if (entries.length) {
+				whatsNewEntries.value = entries;
+				whatsNewOpen.value = true;
+				markWhatsNewSeen(currentVersion());
+				return;
+			}
+			// Empty result (offline/rate-limited/parse failure) - leave lastSeenVersion unadvanced so
+			// this retries on the next connection instead of silently giving up on the notice.
 		}
 	} catch { /* best-effort */ }
 

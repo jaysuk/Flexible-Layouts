@@ -18,4 +18,6 @@ export const FL_PROTECTED_SD_FILES: ReadonlySet<string> = new Set([
 	"flexible-layouts.backup.json",
 	"flexible-layouts.backup.bak.json",
 	"flexible-layouts.credentials.json",
+	"flexible-layouts.maintenance-log.json",
+	"flexible-layouts.maintenance-state.g",
 ]);

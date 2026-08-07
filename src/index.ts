@@ -24,6 +24,7 @@ import en from "./i18n/en.json";
 import { BUILTIN_PAGES } from "./model/builtinPages";
 import { LAYOUT_ID, PLUGIN_MANIFEST_ID } from "./model/constants";
 import { CONFIG_BACKUP_ROUTE_PATH, FL_PROTECTED_SD_FILES } from "./model/configBackup/constants";
+import { MAINTENANCE_ROUTE_PATH } from "./model/maintenance/constants";
 import { activateFlLayout } from "./model/layoutState";
 import { installEscapeGuard, uninstallEscapeGuard } from "./model/access";
 import { installAutoBackupNudges, uninstallAutoBackupNudges } from "./model/configBackup/autoBackupNudges";
@@ -36,6 +37,7 @@ import FlexPage from "./page/FlexPage.vue";
 import FlexShell from "./shell/FlexShell.vue";
 import FlexSettingsTab from "./settings/FlexSettingsTab.vue";
 import ConfigBackupPage from "./configBackup/ConfigBackupPage.vue";
+import MaintenancePage from "./maintenance/MaintenancePage.vue";
 
 const PLUGIN_ID = "flexibleLayouts";
 
@@ -176,6 +178,18 @@ registerRoute(ConfigBackupPage, {
 			// exactly why the raw key showed up in the nav drawer instead of "Backup & restore config".
 			path: CONFIG_BACKUP_ROUTE_PATH,
 			caption: "plugins.flexibleLayouts.configBackup.title",
+		},
+	},
+});
+
+// Maintenance tracking is its own full page (headline stats, an append-only log, the setup wizard) -
+// same "too big for a dialog" reasoning as config-backup above.
+registerRoute(MaintenancePage, {
+	Plugins: {
+		FlexibleLayoutsMaintenance: {
+			icon: "mdi-wrench-cog-outline",
+			path: MAINTENANCE_ROUTE_PATH,
+			caption: "plugins.flexibleLayouts.maintenance.navCaption",
 		},
 	},
 });

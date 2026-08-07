@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { matchesBoardFile } from "../model/firmware/sources";
+import { matchAllBoardFiles, matchesBoardFile, type FirmwareCandidateFile } from "../model/firmware/sources";
 
 describe("matchesBoardFile", () => {
 	it("matches the exact filename a board asked for", () => {
@@ -19,6 +19,44 @@ describe("matchesBoardFile", () => {
 	});
 	it("is case-insensitive", () => {
 		expect(matchesBoardFile("Duet3Firmware_MB6HC.bin", "duet3firmware_mb6hc.bin")).toBe(true);
+	});
+});
+
+describe("matchAllBoardFiles", () => {
+	const cand = (name: string): FirmwareCandidateFile => ({ name, url: `https://x/${name}`, size: 1, directDownload: true });
+
+	it("matches every board's file, not just the first one", () => {
+		const boards = [
+			{ firmwareFileName: "firmware_kraken_h723.bin" },
+			{ firmwareFileName: "Duet3Firmware_SB2040MAX3.uf2" },
+		];
+		const files = [cand("firmware_kraken_h723.bin"), cand("Duet3Firmware_SB2040MAX3.uf2"), cand("unrelated.bin")];
+		const matched = matchAllBoardFiles(boards, files);
+		expect(matched.map((f) => f.name).sort()).toEqual(["Duet3Firmware_SB2040MAX3.uf2", "firmware_kraken_h723.bin"]);
+	});
+
+	it("skips a board with no match in this release, without erroring", () => {
+		const boards = [{ firmwareFileName: "main.bin" }, { firmwareFileName: "no-match-here.bin" }];
+		const files = [cand("main.bin")];
+		expect(matchAllBoardFiles(boards, files).map((f) => f.name)).toEqual(["main.bin"]);
+	});
+
+	it("skips a board with no firmwareFileName reported at all", () => {
+		const boards = [{ firmwareFileName: "main.bin" }, {}];
+		const files = [cand("main.bin")];
+		expect(matchAllBoardFiles(boards, files)).toHaveLength(1);
+	});
+
+	it("also matches a board's iapFileNameSD, if it has one", () => {
+		const boards = [{ firmwareFileName: "main.bin", iapFileNameSD: "Duet3_SDiap_MB6HC.bin" }];
+		const files = [cand("main.bin"), cand("Duet3_SDiap_MB6HC.bin")];
+		expect(matchAllBoardFiles(boards, files).map((f) => f.name).sort()).toEqual(["Duet3_SDiap_MB6HC.bin", "main.bin"]);
+	});
+
+	it("deduplicates when two boards happen to want the same file", () => {
+		const boards = [{ firmwareFileName: "same.bin" }, { firmwareFileName: "same.bin" }];
+		const files = [cand("same.bin")];
+		expect(matchAllBoardFiles(boards, files)).toHaveLength(1);
 	});
 });
 

@@ -91,19 +91,16 @@
 			</template>
 		</template>
 
-		<!-- DWC's own firmware dialogs, loaded lazily (see the script section's doc comment on
-			 ensureController) - only actually mounted once the controller exists, i.e. once the
-			 operator has taken a real action, never just from this widget being placed on a page. -->
-		<component :is="firmwareUpdateDialogComp" v-if="controller && firmwareUpdateDialogComp"
-				   v-model:shown="controller.firmwareDialog.shown" :plan="controller.firmwareDialog.plan"
-				   @confirmed="controller.onFirmwareUpdateConfirmed" @cancelled="controller.onFirmwareUpdateCancelled" />
-		<component :is="configUpdatedDialogComp" v-if="controller && configUpdatedDialogComp"
-				   v-model:shown="controller.configUpdatedDialog.shown" />
+		<!-- DWC's own firmware dialogs (from DuetWebControl/components, DWC's externalised public
+			 component palette - see the script section's doc comment). -->
+		<FirmwareUpdateDialog v-model:shown="controller.firmwareDialog.shown" :plan="controller.firmwareDialog.plan"
+							   @confirmed="controller.onFirmwareUpdateConfirmed" @cancelled="controller.onFirmwareUpdateCancelled" />
+		<ConfigUpdatedDialog v-model:shown="controller.configUpdatedDialog.shown" />
 	</div>
 </template>
 
 <script setup lang="ts">
-import { type Component, computed, inject, onMounted, ref } from "vue";
+import { computed, inject, onMounted, ref } from "vue";
 
 import i18n from "@/i18n";
 import { useMachineStore } from "@/stores/machine";
@@ -112,14 +109,21 @@ import { LogLevel, useUiStore } from "@/stores/ui";
 import type { Widget } from "../model/document";
 import { duet3dSource } from "../model/firmware/duet3dSource";
 import { gloomyandySource } from "../model/firmware/gloomyandySource";
-import { matchesBoardFile, type FirmwareCandidateFile, type FirmwareRelease, type FirmwareSource } from "../model/firmware/sources";
+import { matchAllBoardFiles, matchesBoardFile, type FirmwareCandidateFile, type FirmwareRelease, type FirmwareSource } from "../model/firmware/sources";
 import { evaluateFirmwareUpdate } from "../model/firmware/updateNotify";
 import { resolveOmPath } from "../util/omPath";
 import { WIDGET_PATCH_KEY } from "../util/widgetPatch";
 
-// Only `import type` here - fully erased at compile time, so referencing the controller's shape
-// never triggers Vite to actually resolve @/composables/useFirmwareInstallController.
-import type { FirmwareInstallController } from "@/composables/useFirmwareInstallController";
+// Static imports, deliberately NOT dynamic import(): Rollup's `external` marking (build-plugin.js's
+// PLUGIN_GLOBALS/the @/composables regex) only rewrites STATIC import bindings to `window.DWC.*`
+// references - a dynamic `import("@/composables/...")` call is left in the output bundle verbatim as
+// a real, unrewritten specifier string, which the browser then tries to resolve natively and fails
+// ("Failed to resolve module specifier") - confirmed by inspecting the actual built bundle, not just
+// theorised. Static imports of both these paths ARE correctly externalised at build time, and
+// dwc-plugin-test-kit's stub map covers both for `npm test` (as of v0.2.5/v0.2.6), so there's no
+// remaining reason to defer either import.
+import { ConfigUpdatedDialog, FirmwareUpdateDialog } from "DuetWebControl/components";
+import { useFirmwareInstallController } from "@/composables/useFirmwareInstallController";
 
 type SourceId = "duet3d" | "gloomyandy36" | "gloomyandy37";
 
@@ -128,36 +132,9 @@ const machineStore = useMachineStore();
 const uiStore = useUiStore();
 const patch = inject(WIDGET_PATCH_KEY, null);
 
-// The firmware-install controller (@/composables/useFirmwareInstallController) and its two dialog
-// components are loaded lazily, via dynamic import, only once the operator takes a real action -
-// never eagerly on mount. The dialogs come from "DuetWebControl/components" (DWC's public,
-// externalised component palette - see build-plugin.js's PLUGIN_GLOBALS), not the internal
-// `@/components/dialogs/*` path: plugins are only ever built against the public surface, and
-// build-plugin.js's rolldown external list doesn't cover internal component paths at all. Two
-// independent reasons to defer the import itself:
-//   1. Safety: nothing that can touch the board's flash should be wired up before it's needed.
-//   2. dwc-plugin-test-kit's stub map (used by `npm test`) doesn't cover useFirmwareInstall's own
-//      transitive imports (@duet3d/connectors, @/utils/path) - a static top-level import here would
-//      fail to resolve the moment the widgets smoke test mounts this widget, since that test has no
-//      real DWC checkout behind it. A dynamic import deferred until an actual click never executes
-//      during that test, so it never hits the gap. verify-build (a real DWC checkout) resolves all
-//      of this normally either way.
-const controller = ref<FirmwareInstallController | null>(null);
-const firmwareUpdateDialogComp = ref<Component | null>(null);
-const configUpdatedDialogComp = ref<Component | null>(null);
-async function ensureController(): Promise<FirmwareInstallController> {
-	if (controller.value) {
-		return controller.value;
-	}
-	const [{ useFirmwareInstallController }, components] = await Promise.all([
-		import("@/composables/useFirmwareInstallController"),
-		import("DuetWebControl/components"),
-	]);
-	firmwareUpdateDialogComp.value = components.FirmwareUpdateDialog;
-	configUpdatedDialogComp.value = components.ConfigUpdatedDialog;
-	controller.value = useFirmwareInstallController();
-	return controller.value;
-}
+// Safe to create eagerly: the controller only sets up reactive dialog state here - it never touches
+// the board until runFirmwareUpload() is actually called from a real operator action below.
+const controller = useFirmwareInstallController();
 
 // Firmware must never be touched while the machine is doing anything else - conservative on
 // purpose (better to refuse a legitimate update than let one race a running job).
@@ -259,17 +236,17 @@ async function selectRelease(release: FirmwareRelease): Promise<void> {
 	findingFiles.value = true;
 	try {
 		const files = await activeSource.value.listFiles(release);
-		const wanted = [board.firmwareFileName, ...(board.iapFileNameSD ? [board.iapFileNameSD] : [])];
-		const found = wanted
-			.map((w) => files.find((f) => matchesBoardFile(w, f.name)))
-			.filter((f): f is FirmwareCandidateFile => !!f);
 
 		if (activeSource.value.id === "gloomyandy") {
-			if (!found.some((f) => matchesBoardFile(board.firmwareFileName!, f.name))) {
+			// gloomyandy's release tree has no combined bundle (unlike Duet3D's zip below), so every
+			// configured board (main AND every CAN-connected expansion/toolboard) needs its own file
+			// matched, not just the main one.
+			const matched = matchAllBoardFiles(boards.value, files);
+			if (!matched.some((f) => matchesBoardFile(board.firmwareFileName!, f.name))) {
 				findError.value = uiT("notFound", { release: release.tag });
 				return;
 			}
-			matchedFiles.value = found;
+			matchedFiles.value = matched;
 		} else {
 			// duet3d: prefer a loose asset matching the main image; fall back to a plausible combined
 			// bundle so the operator has SOMETHING to download - DWC's own planFiles() sorts out what's
@@ -370,8 +347,7 @@ async function downloadAndUpload(files: Array<FirmwareCandidateFile>): Promise<v
 			const blob = await res.blob();
 			return new File([blob], f.name, { type: "application/octet-stream" });
 		}));
-		const c = await ensureController();
-		await c.runFirmwareUpload(fetched);
+		await controller.runFirmwareUpload(fetched);
 	} catch (e) {
 		uiStore.makeNotification(LogLevel.error, "Firmware", (e as Error)?.message ?? String(e));
 	} finally {
@@ -390,8 +366,7 @@ async function uploadPicked(): Promise<void> {
 	if (!files.length) { return; }
 	uploading.value = true;
 	try {
-		const c = await ensureController();
-		await c.runFirmwareUpload(files);
+		await controller.runFirmwareUpload(files);
 	} catch (e) {
 		uiStore.makeNotification(LogLevel.error, "Firmware", (e as Error)?.message ?? String(e));
 	} finally {

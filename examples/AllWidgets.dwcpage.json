@@ -1,7 +1,7 @@
 {
   "kind": "dwcpage",
   "app": "FlexibleLayouts",
-  "exportedAt": "2026-06-10T09:31:50.319Z",
+  "exportedAt": "2026-08-07T11:19:37.835Z",
   "title": "All Widgets",
   "icon": "mdi-view-grid-plus",
   "page": {
@@ -63,8 +63,44 @@
       },
       {
         "i": "w2",
-        "x": 8,
-        "y": 0,
+        "x": 0,
+        "y": 8,
+        "w": 6,
+        "h": 9,
+        "widget": {
+          "type": "octopusJog",
+          "title": "8-Arm Jog",
+          "xAxis": "X",
+          "yAxis": "Y",
+          "zAxis": "Z",
+          "xySteps": [
+            100,
+            10,
+            1,
+            0.1
+          ],
+          "zSteps": [
+            10,
+            1,
+            0.1
+          ],
+          "xyFeedrate": 3000,
+          "zFeedrate": 600,
+          "showZ": true,
+          "showHome": true,
+          "showFeedrate": true,
+          "showMotorsOff": false,
+          "showDiagonals": true,
+          "showDistanceBullets": true,
+          "showDro": false,
+          "color": "primary"
+        },
+        "title": "octopusJog"
+      },
+      {
+        "i": "w3",
+        "x": 6,
+        "y": 8,
         "w": 4,
         "h": 2,
         "widget": {
@@ -84,9 +120,9 @@
         "title": "slider"
       },
       {
-        "i": "w3",
+        "i": "w4",
         "x": 0,
-        "y": 8,
+        "y": 17,
         "w": 3,
         "h": 2,
         "widget": {
@@ -101,9 +137,9 @@
         "title": "toggle"
       },
       {
-        "i": "w4",
+        "i": "w5",
         "x": 3,
-        "y": 8,
+        "y": 17,
         "w": 3,
         "h": 2,
         "widget": {
@@ -120,9 +156,9 @@
         "title": "stepper"
       },
       {
-        "i": "w5",
+        "i": "w6",
         "x": 6,
-        "y": 8,
+        "y": 17,
         "w": 4,
         "h": 2,
         "widget": {
@@ -136,9 +172,9 @@
         "title": "input"
       },
       {
-        "i": "w6",
+        "i": "w7",
         "x": 0,
-        "y": 10,
+        "y": 19,
         "w": 4,
         "h": 9,
         "widget": {
@@ -153,9 +189,9 @@
         "title": "neopixel"
       },
       {
-        "i": "w7",
+        "i": "w8",
         "x": 4,
-        "y": 10,
+        "y": 19,
         "w": 4,
         "h": 5,
         "widget": {
@@ -177,11 +213,11 @@
         "title": "extruder"
       },
       {
-        "i": "w8",
+        "i": "w9",
         "x": 8,
-        "y": 10,
+        "y": 19,
         "w": 4,
-        "h": 2,
+        "h": 4,
         "widget": {
           "type": "fan",
           "label": "Fan",
@@ -191,11 +227,11 @@
         "title": "fan"
       },
       {
-        "i": "w9",
+        "i": "w10",
         "x": 0,
-        "y": 19,
+        "y": 28,
         "w": 4,
-        "h": 3,
+        "h": 4,
         "widget": {
           "type": "heater",
           "label": "Bed",
@@ -212,11 +248,11 @@
         "title": "heater"
       },
       {
-        "i": "w10",
+        "i": "w11",
         "x": 4,
-        "y": 19,
+        "y": 28,
         "w": 4,
-        "h": 3,
+        "h": 4,
         "widget": {
           "type": "spindle",
           "label": "Spindle",
@@ -226,11 +262,11 @@
         "title": "spindle"
       },
       {
-        "i": "w11",
+        "i": "w12",
         "x": 8,
-        "y": 19,
+        "y": 28,
         "w": 4,
-        "h": 3,
+        "h": 7,
         "widget": {
           "type": "wcs",
           "label": "Work offsets",
@@ -239,16 +275,230 @@
             "Y",
             "Z"
           ],
-          "color": "primary"
+          "color": "primary",
+          "showMachine": true,
+          "goto": true,
+          "precision": 2
         },
         "title": "wcs"
       },
       {
-        "i": "w12",
+        "i": "w13",
         "x": 0,
-        "y": 22,
+        "y": 35,
+        "w": 8,
+        "h": 12,
+        "widget": {
+          "type": "wcsTable",
+          "label": "WCS table",
+          "color": "primary",
+          "axes": [
+            "X",
+            "Y",
+            "Z"
+          ],
+          "precision": 2,
+          "names": [],
+          "showCopy": true,
+          "showRotation": true
+        },
+        "title": "wcsTable"
+      },
+      {
+        "i": "w14",
+        "x": 8,
+        "y": 35,
         "w": 4,
-        "h": 2,
+        "h": 7,
+        "widget": {
+          "type": "probe",
+          "label": "Touch probe",
+          "color": "primary",
+          "diameter": 6,
+          "corner": "FL",
+          "confirm": true,
+          "ops": [
+            "z",
+            "x",
+            "y",
+            "corner"
+          ]
+        },
+        "title": "probe"
+      },
+      {
+        "i": "w15",
+        "x": 0,
+        "y": 47,
+        "w": 6,
+        "h": 10,
+        "widget": {
+          "type": "bedMesh",
+          "label": "Bed mesh",
+          "color": "primary",
+          "confirm": true,
+          "probeIndex": 0
+        },
+        "title": "bedMesh"
+      },
+      {
+        "i": "w16",
+        "x": 6,
+        "y": 47,
+        "w": 4,
+        "h": 5,
+        "widget": {
+          "type": "bedTram",
+          "label": "Bed tram",
+          "color": "primary",
+          "confirm": true,
+          "command": "G32"
+        },
+        "title": "bedTram"
+      },
+      {
+        "i": "w17",
+        "x": 0,
+        "y": 57,
+        "w": 5,
+        "h": 11,
+        "widget": {
+          "type": "xyzProbe",
+          "label": "XYZ probe",
+          "color": "primary",
+          "confirm": true,
+          "endmillDiameter": 6.35,
+          "plateWidth": 60,
+          "plateHeight": 60,
+          "plateThickness": 5,
+          "xOffset": 10,
+          "yOffset": 10,
+          "feedrate": 500,
+          "searchMargin": 10,
+          "probeIndex": 0
+        },
+        "title": "xyzProbe"
+      },
+      {
+        "i": "w18",
+        "x": 5,
+        "y": 57,
+        "w": 6,
+        "h": 13,
+        "widget": {
+          "type": "probeRoutines",
+          "label": "Probe routines",
+          "color": "primary",
+          "feedFast": 300,
+          "feedSlow": 60,
+          "searchDistance": 10,
+          "backoff": 1
+        },
+        "title": "probeRoutines"
+      },
+      {
+        "i": "w19",
+        "x": 0,
+        "y": 70,
+        "w": 5,
+        "h": 11,
+        "widget": {
+          "type": "surfacing",
+          "label": "Surfacing",
+          "color": "primary",
+          "width": 100,
+          "height": 100,
+          "toolDiameter": 6,
+          "stepoverPercent": 40,
+          "depthPerPass": 0.5,
+          "totalDepth": 0.5,
+          "clearance": 5,
+          "feed": 1000,
+          "direction": "x",
+          "spindleRpm": 0,
+          "confirm": true
+        },
+        "title": "surfacing"
+      },
+      {
+        "i": "w20",
+        "x": 5,
+        "y": 70,
+        "w": 4,
+        "h": 14,
+        "widget": {
+          "type": "machineHealth",
+          "title": "Machine health",
+          "showPower": true,
+          "showRam": true,
+          "showUptime": true,
+          "showNetwork": true,
+          "showProbes": true
+        },
+        "title": "machineHealth"
+      },
+      {
+        "i": "w21",
+        "x": 0,
+        "y": 84,
+        "w": 4,
+        "h": 6,
+        "widget": {
+          "type": "maintenanceWidget",
+          "label": "Maintenance",
+          "color": "primary"
+        },
+        "title": "maintenanceWidget"
+      },
+      {
+        "i": "w22",
+        "x": 4,
+        "y": 84,
+        "w": 6,
+        "h": 12,
+        "widget": {
+          "type": "preflight",
+          "label": "Preflight",
+          "color": "primary",
+          "defaultFile": "",
+          "rapidRate": 3000
+        },
+        "title": "preflight"
+      },
+      {
+        "i": "w23",
+        "x": 0,
+        "y": 96,
+        "w": 7,
+        "h": 12,
+        "widget": {
+          "type": "toolpath",
+          "label": "Toolpath",
+          "color": "primary",
+          "defaultFile": "",
+          "safeZ": 10
+        },
+        "title": "toolpath"
+      },
+      {
+        "i": "w24",
+        "x": 0,
+        "y": 108,
+        "w": 6,
+        "h": 12,
+        "widget": {
+          "type": "firmwareUpdate",
+          "label": "Firmware update",
+          "color": "primary"
+        },
+        "title": "firmwareUpdate"
+      },
+      {
+        "i": "w25",
+        "x": 6,
+        "y": 108,
+        "w": 4,
+        "h": 3,
         "widget": {
           "type": "toolSelect",
           "label": "Tools",
@@ -257,9 +507,9 @@
         "title": "toolSelect"
       },
       {
-        "i": "w13",
-        "x": 4,
-        "y": 22,
+        "i": "w26",
+        "x": 0,
+        "y": 120,
         "w": 6,
         "h": 12,
         "widget": {
@@ -273,16 +523,20 @@
           "overlayY": 50,
           "overlaySize": 60,
           "jogStep": 0.1,
-          "jogFeed": 6000
+          "jogFeed": 6000,
+          "enableZ": false,
+          "useG53": true,
+          "travelFeed": 6000,
+          "saveCommand": "M500"
         },
         "title": "toolAlign"
       },
       {
-        "i": "w14",
-        "x": 0,
-        "y": 34,
+        "i": "w27",
+        "x": 6,
+        "y": 120,
         "w": 4,
-        "h": 3,
+        "h": 4,
         "widget": {
           "type": "jobControl",
           "showProgress": true,
@@ -291,9 +545,9 @@
         "title": "jobControl"
       },
       {
-        "i": "w15",
-        "x": 4,
-        "y": 34,
+        "i": "w28",
+        "x": 0,
+        "y": 132,
         "w": 4,
         "h": 5,
         "widget": {
@@ -305,9 +559,9 @@
         "title": "macros"
       },
       {
-        "i": "w16",
-        "x": 8,
-        "y": 34,
+        "i": "w29",
+        "x": 4,
+        "y": 132,
         "w": 4,
         "h": 6,
         "widget": {
@@ -315,14 +569,15 @@
           "folder": "0:/gcodes",
           "columns": 1,
           "startCommand": "M32 \"{path}\"",
+          "thumbnails": true,
           "color": "primary"
         },
         "title": "files"
       },
       {
-        "i": "w17",
+        "i": "w30",
         "x": 0,
-        "y": 40,
+        "y": 138,
         "w": 6,
         "h": 5,
         "widget": {
@@ -333,11 +588,35 @@
         "title": "console"
       },
       {
-        "i": "w18",
+        "i": "w31",
         "x": 6,
-        "y": 40,
+        "y": 138,
+        "w": 6,
+        "h": 2,
+        "widget": {
+          "type": "consoleInput",
+          "placeholder": "Send code…"
+        },
+        "title": "consoleInput"
+      },
+      {
+        "i": "w32",
+        "x": 0,
+        "y": 143,
+        "w": 6,
+        "h": 5,
+        "widget": {
+          "type": "consoleOutput",
+          "rows": 20
+        },
+        "title": "consoleOutput"
+      },
+      {
+        "i": "w33",
+        "x": 6,
+        "y": 143,
         "w": 3,
-        "h": 3,
+        "h": 4,
         "widget": {
           "type": "value",
           "omPath": "",
@@ -348,11 +627,11 @@
         "title": "value"
       },
       {
-        "i": "w19",
+        "i": "w34",
         "x": 9,
-        "y": 40,
+        "y": 143,
         "w": 3,
-        "h": 4,
+        "h": 6,
         "widget": {
           "type": "dro",
           "title": "Position",
@@ -363,9 +642,9 @@
         "title": "dro"
       },
       {
-        "i": "w20",
+        "i": "w35",
         "x": 0,
-        "y": 45,
+        "y": 149,
         "w": 4,
         "h": 4,
         "widget": {
@@ -389,9 +668,9 @@
         "title": "table"
       },
       {
-        "i": "w21",
+        "i": "w36",
         "x": 4,
-        "y": 45,
+        "y": 149,
         "w": 5,
         "h": 4,
         "widget": {
@@ -419,9 +698,9 @@
         "title": "gaugeCluster"
       },
       {
-        "i": "w22",
+        "i": "w37",
         "x": 0,
-        "y": 49,
+        "y": 153,
         "w": 4,
         "h": 2,
         "widget": {
@@ -435,9 +714,9 @@
         "title": "progress"
       },
       {
-        "i": "w23",
+        "i": "w38",
         "x": 4,
-        "y": 49,
+        "y": 153,
         "w": 3,
         "h": 2,
         "widget": {
@@ -481,9 +760,9 @@
         "title": "status"
       },
       {
-        "i": "w24",
+        "i": "w39",
         "x": 7,
-        "y": 49,
+        "y": 153,
         "w": 4,
         "h": 3,
         "widget": {
@@ -504,9 +783,9 @@
         "title": "indicators"
       },
       {
-        "i": "w25",
+        "i": "w40",
         "x": 0,
-        "y": 52,
+        "y": 156,
         "w": 6,
         "h": 6,
         "widget": {
@@ -525,9 +804,9 @@
         "title": "chart"
       },
       {
-        "i": "w26",
+        "i": "w41",
         "x": 6,
-        "y": 52,
+        "y": 156,
         "w": 4,
         "h": 3,
         "widget": {
@@ -545,9 +824,9 @@
         "title": "sparkline"
       },
       {
-        "i": "w27",
+        "i": "w42",
         "x": 0,
-        "y": 58,
+        "y": 162,
         "w": 3,
         "h": 2,
         "widget": {
@@ -559,9 +838,9 @@
         "title": "clock"
       },
       {
-        "i": "w28",
+        "i": "w43",
         "x": 3,
-        "y": 58,
+        "y": 162,
         "w": 5,
         "h": 2,
         "widget": {
@@ -575,9 +854,9 @@
         "title": "alert"
       },
       {
-        "i": "w29",
+        "i": "w44",
         "x": 0,
-        "y": 60,
+        "y": 164,
         "w": 5,
         "h": 3,
         "widget": {
@@ -587,9 +866,9 @@
         "title": "messageBox"
       },
       {
-        "i": "w30",
+        "i": "w45",
         "x": 5,
-        "y": 60,
+        "y": 164,
         "w": 5,
         "h": 4,
         "widget": {
@@ -599,9 +878,9 @@
         "title": "note"
       },
       {
-        "i": "w31",
+        "i": "w46",
         "x": 0,
-        "y": 64,
+        "y": 168,
         "w": 6,
         "h": 5,
         "widget": {
@@ -611,9 +890,9 @@
         "title": "eventLog"
       },
       {
-        "i": "w32",
+        "i": "w47",
         "x": 6,
-        "y": 64,
+        "y": 168,
         "w": 4,
         "h": 2,
         "widget": {
@@ -625,9 +904,9 @@
         "title": "label"
       },
       {
-        "i": "w33",
+        "i": "w48",
         "x": 0,
-        "y": 69,
+        "y": 173,
         "w": 6,
         "h": 6,
         "widget": {
@@ -640,22 +919,23 @@
         "title": "webcam"
       },
       {
-        "i": "w34",
+        "i": "w49",
         "x": 6,
-        "y": 69,
+        "y": 173,
         "w": 4,
         "h": 5,
         "widget": {
           "type": "thumbnail",
           "title": "",
-          "fit": "contain"
+          "fit": "contain",
+          "source": "job"
         },
         "title": "thumbnail"
       },
       {
-        "i": "w35",
+        "i": "w50",
         "x": 0,
-        "y": 75,
+        "y": 179,
         "w": 6,
         "h": 6,
         "widget": {
@@ -666,9 +946,9 @@
         "title": "hotspot"
       },
       {
-        "i": "w36",
+        "i": "w51",
         "x": 6,
-        "y": 75,
+        "y": 179,
         "w": 4,
         "h": 2,
         "widget": {
@@ -683,9 +963,9 @@
         "title": "http"
       },
       {
-        "i": "w37",
+        "i": "w52",
         "x": 0,
-        "y": 81,
+        "y": 185,
         "w": 6,
         "h": 8,
         "widget": {
@@ -695,9 +975,9 @@
         "title": "web"
       },
       {
-        "i": "w38",
+        "i": "w53",
         "x": 6,
-        "y": 81,
+        "y": 185,
         "w": 6,
         "h": 6,
         "widget": {
@@ -710,9 +990,9 @@
         "title": "group"
       },
       {
-        "i": "w39",
+        "i": "w54",
         "x": 0,
-        "y": 89,
+        "y": 193,
         "w": 5,
         "h": 6,
         "widget": {
@@ -726,9 +1006,9 @@
         "title": "globals"
       },
       {
-        "i": "w40",
+        "i": "w55",
         "x": 5,
-        "y": 89,
+        "y": 193,
         "w": 3,
         "h": 2,
         "widget": {
@@ -739,9 +1019,9 @@
         "title": "profileSwitch"
       },
       {
-        "i": "w41",
+        "i": "w56",
         "x": 8,
-        "y": 89,
+        "y": 193,
         "w": 3,
         "h": 2,
         "widget": {
@@ -752,11 +1032,55 @@
         "title": "themeToggle"
       },
       {
-        "i": "w42",
+        "i": "w57",
         "x": 0,
-        "y": 95,
+        "y": 199,
+        "w": 5,
+        "h": 1,
+        "widget": {
+          "type": "codeInput"
+        },
+        "title": "codeInput"
+      },
+      {
+        "i": "w58",
+        "x": 5,
+        "y": 199,
+        "w": 2,
+        "h": 1,
+        "widget": {
+          "type": "editModeToggle"
+        },
+        "title": "editModeToggle"
+      },
+      {
+        "i": "w59",
+        "x": 7,
+        "y": 199,
+        "w": 2,
+        "h": 1,
+        "widget": {
+          "type": "uploadButton"
+        },
+        "title": "uploadButton"
+      },
+      {
+        "i": "w60",
+        "x": 9,
+        "y": 199,
+        "w": 2,
+        "h": 1,
+        "widget": {
+          "type": "accessChip"
+        },
+        "title": "accessChip"
+      },
+      {
+        "i": "w61",
+        "x": 0,
+        "y": 200,
         "w": 6,
-        "h": 6,
+        "h": 9,
         "widget": {
           "type": "builtinPanel",
           "component": "StatusPanel"
@@ -764,11 +1088,11 @@
         "title": "StatusPanel"
       },
       {
-        "i": "w43",
+        "i": "w62",
         "x": 6,
-        "y": 95,
+        "y": 200,
         "w": 6,
-        "h": 6,
+        "h": 8,
         "widget": {
           "type": "builtinPanel",
           "component": "ToolsPanel"
@@ -776,9 +1100,9 @@
         "title": "ToolsPanel"
       },
       {
-        "i": "w44",
+        "i": "w63",
         "x": 0,
-        "y": 101,
+        "y": 209,
         "w": 8,
         "h": 9,
         "widget": {
@@ -788,9 +1112,9 @@
         "title": "MovementPanel"
       },
       {
-        "i": "w45",
+        "i": "w64",
         "x": 0,
-        "y": 110,
+        "y": 218,
         "w": 6,
         "h": 7,
         "widget": {
@@ -800,9 +1124,9 @@
         "title": "ExtrudePanel"
       },
       {
-        "i": "w46",
+        "i": "w65",
         "x": 6,
-        "y": 110,
+        "y": 218,
         "w": 6,
         "h": 5,
         "widget": {
@@ -812,11 +1136,11 @@
         "title": "FanPanel"
       },
       {
-        "i": "w47",
+        "i": "w66",
         "x": 0,
-        "y": 117,
+        "y": 225,
         "w": 6,
-        "h": 5,
+        "h": 7,
         "widget": {
           "type": "builtinPanel",
           "component": "FansPanel"
@@ -824,9 +1148,9 @@
         "title": "FansPanel"
       },
       {
-        "i": "w48",
+        "i": "w67",
         "x": 6,
-        "y": 117,
+        "y": 225,
         "w": 3,
         "h": 4,
         "widget": {
@@ -836,9 +1160,9 @@
         "title": "ATXPanel"
       },
       {
-        "i": "w49",
+        "i": "w68",
         "x": 0,
-        "y": 122,
+        "y": 232,
         "w": 4,
         "h": 4,
         "widget": {
@@ -848,9 +1172,9 @@
         "title": "BabystepPanel"
       },
       {
-        "i": "w50",
+        "i": "w69",
         "x": 4,
-        "y": 122,
+        "y": 232,
         "w": 4,
         "h": 4,
         "widget": {
@@ -860,9 +1184,9 @@
         "title": "SpeedFactorPanel"
       },
       {
-        "i": "w51",
+        "i": "w70",
         "x": 8,
-        "y": 122,
+        "y": 232,
         "w": 4,
         "h": 5,
         "widget": {
@@ -872,9 +1196,9 @@
         "title": "ExtrusionFactorsPanel"
       },
       {
-        "i": "w52",
+        "i": "w71",
         "x": 0,
-        "y": 127,
+        "y": 237,
         "w": 4,
         "h": 4,
         "widget": {
@@ -884,9 +1208,21 @@
         "title": "SpindleSpeedPanel"
       },
       {
-        "i": "w53",
+        "i": "w72",
         "x": 4,
-        "y": 127,
+        "y": 237,
+        "w": 6,
+        "h": 6,
+        "widget": {
+          "type": "builtinPanel",
+          "component": "CNCAxesPosition"
+        },
+        "title": "CNCAxesPosition"
+      },
+      {
+        "i": "w73",
+        "x": 0,
+        "y": 243,
         "w": 6,
         "h": 6,
         "widget": {
@@ -896,9 +1232,9 @@
         "title": "JobControlPanel"
       },
       {
-        "i": "w54",
-        "x": 0,
-        "y": 133,
+        "i": "w74",
+        "x": 6,
+        "y": 243,
         "w": 6,
         "h": 7,
         "widget": {
@@ -908,9 +1244,9 @@
         "title": "JobInfoPanel"
       },
       {
-        "i": "w55",
-        "x": 6,
-        "y": 133,
+        "i": "w75",
+        "x": 0,
+        "y": 250,
         "w": 6,
         "h": 5,
         "widget": {
@@ -920,9 +1256,9 @@
         "title": "JobTimesPanel"
       },
       {
-        "i": "w56",
-        "x": 0,
-        "y": 140,
+        "i": "w76",
+        "x": 6,
+        "y": 250,
         "w": 6,
         "h": 8,
         "widget": {
@@ -932,9 +1268,9 @@
         "title": "WebcamPanel"
       },
       {
-        "i": "w57",
-        "x": 6,
-        "y": 140,
+        "i": "w77",
+        "x": 0,
+        "y": 258,
         "w": 4,
         "h": 9,
         "widget": {
@@ -944,9 +1280,9 @@
         "title": "MacroList"
       },
       {
-        "i": "w58",
-        "x": 0,
-        "y": 149,
+        "i": "w78",
+        "x": 4,
+        "y": 258,
         "w": 8,
         "h": 7,
         "widget": {
@@ -956,9 +1292,21 @@
         "title": "TemperatureChart"
       },
       {
-        "i": "w59",
+        "i": "w79",
         "x": 0,
-        "y": 156,
+        "y": 267,
+        "w": 8,
+        "h": 7,
+        "widget": {
+          "type": "builtinPanel",
+          "component": "JobLayerChart"
+        },
+        "title": "JobLayerChart"
+      },
+      {
+        "i": "w80",
+        "x": 0,
+        "y": 274,
         "w": 6,
         "h": 8,
         "widget": {
@@ -968,9 +1316,9 @@
         "title": "EventList"
       },
       {
-        "i": "w60",
+        "i": "w81",
         "x": 6,
-        "y": 156,
+        "y": 274,
         "w": 6,
         "h": 8,
         "widget": {
@@ -980,9 +1328,9 @@
         "title": "JobFileList"
       },
       {
-        "i": "w61",
+        "i": "w82",
         "x": 0,
-        "y": 164,
+        "y": 282,
         "w": 6,
         "h": 8,
         "widget": {

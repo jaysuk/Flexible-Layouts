@@ -50,3 +50,30 @@ export function matchesBoardFile(wanted: string, candidateName: string): boolean
 	const uf2RegEx = new RegExp(wanted.replace(/\.uf2$/, "(.*)\\.uf2"), "i");
 	return binRegEx.test(candidateName) || uf2RegEx.test(candidateName);
 }
+
+export interface BoardFirmwareWant {
+	firmwareFileName?: string;
+	iapFileNameSD?: string | null;
+}
+
+/**
+ * Matches EVERY board in a CAN network (main board plus every connected expansion/toolboard), not
+ * just the main one - a gloomyandy release has no combined bundle, each board's binary is its own
+ * separate file, so a firmware update that also touches a toolboard needs that file found too. A
+ * board with no match in this release is skipped, not an error - not every release touches every
+ * board. Deduplicates (two boards asking for the same file only appears once).
+ */
+export function matchAllBoardFiles(
+	boards: ReadonlyArray<BoardFirmwareWant>, files: ReadonlyArray<FirmwareCandidateFile>,
+): Array<FirmwareCandidateFile> {
+	const matched: Array<FirmwareCandidateFile> = [];
+	for (const b of boards) {
+		if (!b.firmwareFileName) { continue; }
+		const wanted = [b.firmwareFileName, ...(b.iapFileNameSD ? [b.iapFileNameSD] : [])];
+		for (const w of wanted) {
+			const f = files.find((cand) => matchesBoardFile(w, cand.name));
+			if (f && !matched.includes(f)) { matched.push(f); }
+		}
+	}
+	return matched;
+}

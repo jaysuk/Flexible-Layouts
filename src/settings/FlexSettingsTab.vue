@@ -56,6 +56,10 @@
 					   :title="configBackupTooltip" @click="openConfigBackup">
 					{{ $t("plugins.flexibleLayouts.configBackup.title") }}
 				</v-btn>
+				<v-btn variant="tonal" prepend-icon="mdi-wrench-cog-outline"
+					   :title="$t('plugins.flexibleLayouts.maintenance.openHelp')" @click="openMaintenance">
+					{{ $t("plugins.flexibleLayouts.maintenance.title") }}
+				</v-btn>
 				<v-btn variant="tonal" prepend-icon="mdi-lock-check-outline"
 					   :title="$t('plugins.flexibleLayouts.tlsSetup.openHelp')" @click="openTlsSetup">
 					{{ $t("plugins.flexibleLayouts.tlsSetup.title") }}
@@ -313,6 +317,7 @@ import ResetConfirmDialog from "../editor/ResetConfirmDialog.vue";
 import { can, requestAdmin } from "../model/access";
 import { resetToDefaults } from "../model/reset";
 import { CONFIG_BACKUP_ROUTE_PATH } from "../model/configBackup/constants";
+import { MAINTENANCE_ROUTE_PATH } from "../model/maintenance/constants";
 import { getLastBackupAt } from "dwc-config-backup-core";
 import TlsSetupDialog from "../tlsSetup/TlsSetupDialog.vue";
 
@@ -445,6 +450,16 @@ async function openConfigBackup(): Promise<void> {
 		return;
 	}
 	router.push(CONFIG_BACKUP_ROUTE_PATH);
+}
+
+// Maintenance tracking's setup wizard edits config.g/daemon.g and deploys macros, so it needs the
+// same gate as TLS setup (editConfig) rather than the layout-editing gate used above - viewing the
+// page itself (stats, the log) has no gate of its own, only the mutating actions within it do.
+async function openMaintenance(): Promise<void> {
+	if (!can("editConfig") && !(await requestAdmin())) {
+		return;
+	}
+	router.push(MAINTENANCE_ROUTE_PATH);
 }
 
 // TLS setup edits config.g and re-configures the network interface's security, so it needs the same

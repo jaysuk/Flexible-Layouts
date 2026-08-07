@@ -91,7 +91,7 @@ function revalidate(result: UpdateResult | null): UpdateResult | null {
 }
 
 /** Installed plugin version, from the object model's plugins map (the authoritative source). */
-function currentVersion(): string {
+export function currentVersion(): string {
 	const plugins = (useMachineStore().model as { plugins?: Map<string, { version?: string }> }).plugins;
 	return plugins?.get(PLUGIN_MANIFEST_ID)?.version ?? "0.0.0";
 }
