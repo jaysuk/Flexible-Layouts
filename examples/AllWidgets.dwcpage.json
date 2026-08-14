@@ -532,19 +532,6 @@
         "title": "toolAlign"
       },
       {
-        "i": "w27",
-        "x": 6,
-        "y": 120,
-        "w": 4,
-        "h": 4,
-        "widget": {
-          "type": "jobControl",
-          "showProgress": true,
-          "color": "primary"
-        },
-        "title": "jobControl"
-      },
-      {
         "i": "w28",
         "x": 0,
         "y": 132,
@@ -582,7 +569,6 @@
         "h": 5,
         "widget": {
           "type": "console",
-          "rows": 5,
           "placeholder": "Send code…"
         },
         "title": "console"
@@ -606,8 +592,8 @@
         "w": 6,
         "h": 5,
         "widget": {
-          "type": "consoleOutput",
-          "rows": 20
+          "type": "console",
+          "showInput": false
         },
         "title": "consoleOutput"
       },

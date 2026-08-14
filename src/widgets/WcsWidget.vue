@@ -11,16 +11,21 @@
     <div class="wcs-body flex-grow-1">
       <div v-for="a in axisRows" :key="a.letter" class="wcs-row">
         <span class="wcs-letter">{{ a.letter }}</span>
-        <span class="wcs-pos">{{ a.work }}</span>
+        <input v-if="editingAxis === a.letter" ref="editInput" type="number" step="any" class="wcs-pos-input"
+               :value="a.work" :disabled="disabledNow"
+               @change="commitEdit(a.letter, ($event.target as HTMLInputElement).value)"
+               @blur="editingAxis = null" @keydown.escape="editingAxis = null" />
+        <button v-else type="button" class="wcs-pos" :disabled="disabledNow"
+                :title="$t('plugins.flexibleLayouts.wcs.editHint')" @click="startEdit(a.letter)">{{ a.work }}</button>
         <span v-if="showMachine" class="wcs-mpos">{{ a.machine }}</span>
-        <v-btn size="x-small" variant="tonal" color="warning" class="wcs-zero" :disabled="disabledNow"
+        <v-btn size="x-small" variant="tonal" :color="widget.color || 'primary'" class="wcs-zero" :disabled="disabledNow"
                :title="`${$t('plugins.flexibleLayouts.wcs.zero')} ${a.letter}`" @click="zeroAxis(a.letter)">0</v-btn>
       </div>
       <div v-if="!axisRows.length" class="text-medium-emphasis text-caption">{{ $t("plugins.flexibleLayouts.dro.none") }}</div>
     </div>
 
     <div class="d-flex ga-1 mt-1 flex-shrink-0">
-      <v-btn size="small" variant="tonal" color="warning" class="flex-grow-1" :disabled="disabledNow"
+      <v-btn size="small" variant="tonal" :color="widget.color || 'primary'" class="flex-grow-1" :disabled="disabledNow"
              prepend-icon="mdi-crosshairs-gps" @click="zeroAll">{{ $t("plugins.flexibleLayouts.wcs.zeroHere") }}</v-btn>
       <v-btn v-if="widget.goto !== false" size="small" variant="tonal" :color="widget.color || 'primary'"
              class="flex-grow-1" :disabled="disabledNow" prepend-icon="mdi-target"
@@ -28,11 +33,15 @@
         {{ $t("plugins.flexibleLayouts.wcs.gotoZero") }}
       </v-btn>
     </div>
+    <v-btn size="small" variant="tonal" color="warning" class="flex-shrink-0 mt-1" :disabled="disabledNow"
+           prepend-icon="mdi-backup-restore" :title="$t('plugins.flexibleLayouts.wcs.resetHint')" @click="resetOffsets">
+      {{ $t("plugins.flexibleLayouts.wcs.reset") }}
+    </v-btn>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 
 import { useMachineStore } from "@/stores/machine";
 import { LogLevel, useUiStore } from "@/stores/ui";
@@ -81,6 +90,26 @@ function zeroAxis(letter: string): void { run(`G10 L20 P${activeWcs.value + 1} $
 function zeroAll(): void { run(`G10 L20 P${activeWcs.value + 1} ${wantAxes.value.map((a) => `${a}0`).join(" ")}`); }
 // Go to work XY zero only — never auto-move Z into the job. (Raise Z yourself first if needed.)
 function gotoWorkZero(): void { run("G90\nG0 X0 Y0"); }
+// Clears the raw offset for every shown axis back to 0 (G10 L2, not L20 - an actual reset of the
+// stored offset, distinct from "make my current spot read as zero"), so a badly-set workplace can be
+// returned to a known state without needing to know what value would undo it.
+function resetOffsets(): void {
+  run(`G10 L2 P${activeWcs.value + 1} ${wantAxes.value.map((a) => `${a}0`).join(" ")}`);
+}
+
+// Click-to-edit: generalises the existing zero button ("make my current position read as 0") to any
+// typed value, via the same G10 L20 primitive.
+const editingAxis = ref<string | null>(null);
+function startEdit(letter: string): void {
+  if (disabledNow.value) { return; }
+  editingAxis.value = letter;
+}
+function commitEdit(letter: string, text: string): void {
+  editingAxis.value = null;
+  const value = Number(text);
+  if (!Number.isFinite(value)) { return; }
+  run(`G10 L20 P${activeWcs.value + 1} ${letter}${value}`);
+}
 </script>
 
 <style scoped>
@@ -91,7 +120,17 @@ function gotoWorkZero(): void { run("G90\nG0 X0 Y0"); }
 .wcs-body { min-height: 0; overflow-y: auto; }
 .wcs-row { display: flex; align-items: baseline; gap: 6px; padding: 1px 2px; }
 .wcs-letter { font-weight: 700; width: 1.3em; }
-.wcs-pos { margin-left: auto; font-family: monospace; font-weight: 600; font-variant-numeric: tabular-nums; }
+.wcs-pos {
+  margin-left: auto; font: inherit; font-family: monospace; font-weight: 600; font-variant-numeric: tabular-nums;
+  background: none; border: none; color: inherit; padding: 0; cursor: pointer; border-radius: 3px;
+}
+.wcs-pos:hover, .wcs-pos:focus-visible { background: rgba(var(--v-theme-on-surface), 0.08); }
+.wcs-pos-input {
+  margin-left: auto; width: 5em; font: inherit; font-family: monospace; font-weight: 600;
+  font-variant-numeric: tabular-nums; text-align: right; color: inherit;
+  background: rgba(var(--v-theme-on-surface), 0.04); border: 1px solid rgb(var(--v-theme-primary)); border-radius: 3px;
+  padding: 0 3px;
+}
 .wcs-mpos { font-family: monospace; font-size: 0.72em; opacity: 0.6; font-variant-numeric: tabular-nums; min-width: 4.5em; text-align: right; }
 .wcs-zero { min-width: 0; padding: 0 6px; }
 </style>

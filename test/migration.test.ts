@@ -163,4 +163,60 @@ describe("backfillWidgetDefaults", () => {
 		expect(child.precision).toBe(1);
 		expect(child.omPath).toBe("move.axes[0].userPosition"); // existing value preserved
 	});
+
+	it("v5 -> v6: splits jog/octopusJog's legacy xyFeedrate into independent xFeedrate/yFeedrate", () => {
+		const doc = sampleDoc();
+		doc.schemaVersion = 5;
+		doc.pages["/"].items.push(
+			{ i: "j", x: 0, y: 6, w: 5, h: 8, widget: { type: "jog", xyFeedrate: 2400 } as unknown as Widget },
+			{ i: "o", x: 5, y: 6, w: 6, h: 9, widget: { type: "octopusJog", xyFeedrate: 1800 } as unknown as Widget },
+		);
+		const out = migrateDocument(doc);
+		expect(out.schemaVersion).toBe(DOCUMENT_SCHEMA_VERSION);
+
+		const jog = out.pages["/"].items.find((it) => it.i === "j")!.widget as unknown as Record<string, unknown>;
+		expect(jog.xFeedrate).toBe(2400);
+		expect(jog.yFeedrate).toBe(2400); // old combined value carried into BOTH - identical behaviour until split
+		expect("xyFeedrate" in jog).toBe(false);
+
+		const oct = out.pages["/"].items.find((it) => it.i === "o")!.widget as unknown as Record<string, unknown>;
+		expect(oct.xFeedrate).toBe(1800);
+		expect(oct.yFeedrate).toBe(1800);
+		expect("xyFeedrate" in oct).toBe(false);
+	});
+
+	it("v5 -> v6: a jog widget with no legacy xyFeedrate (already-default or already-migrated) is untouched", () => {
+		const doc = sampleDoc();
+		doc.schemaVersion = 5;
+		doc.pages["/"].items.push(
+			{ i: "j2", x: 0, y: 6, w: 5, h: 8, widget: { type: "jog", xFeedrate: 500, yFeedrate: 700 } as unknown as Widget },
+		);
+		const out = migrateDocument(doc);
+		const jog = out.pages["/"].items.find((it) => it.i === "j2")!.widget as unknown as Record<string, unknown>;
+		expect(jog.xFeedrate).toBe(500);
+		expect(jog.yFeedrate).toBe(700);
+	});
+
+	it("v6 -> v7: converts a retired jobControl widget in place to the builtin JobControlPanel", () => {
+		const doc = sampleDoc();
+		doc.schemaVersion = 6;
+		doc.pages["/"].items.push(
+			{ i: "jc", x: 0, y: 6, w: 4, h: 4, widget: { type: "jobControl", showProgress: true, color: "warning" } as unknown as Widget },
+		);
+		const out = migrateDocument(doc);
+		expect(out.schemaVersion).toBe(DOCUMENT_SCHEMA_VERSION);
+
+		const item = out.pages["/"].items.find((it) => it.i === "jc")!;
+		// Grid position/size is untouched - only the widget payload itself converts.
+		expect(item.x).toBe(0);
+		expect(item.y).toBe(6);
+		expect(item.w).toBe(4);
+		expect(item.h).toBe(4);
+
+		const widget = item.widget as unknown as Record<string, unknown>;
+		expect(widget.type).toBe("builtinPanel");
+		expect(widget.component).toBe("JobControlPanel");
+		expect("showProgress" in widget).toBe(false); // no equivalent on the builtin panel
+		expect("color" in widget).toBe(false);
+	});
 });

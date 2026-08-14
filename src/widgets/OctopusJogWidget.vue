@@ -11,14 +11,19 @@
 			</span>
 		</div>
 
-		<!-- Inline feedrate row -->
+		<!-- Inline feedrate row - X, Y and Z independently (a diagonal move still travels each axis at
+			 its own rate). -->
 		<div v-if="widget.showFeedrate !== false" class="d-flex ga-2 mb-1 flex-shrink-0">
 			<label class="oct-feed">
-				<span class="oct-feed-label">{{ $t("plugins.flexibleLayouts.jog.xyFeed") }}</span>
-				<input v-model.number="xyFeed" class="oct-feed-input" type="number" min="1" inputmode="numeric" />
+				<span class="oct-feed-label">{{ $t("plugins.flexibleLayouts.jog.axisFeed", { axis: xAxisLetter }) }}</span>
+				<input v-model.number="xFeed" class="oct-feed-input" type="number" min="1" inputmode="numeric" />
+			</label>
+			<label class="oct-feed">
+				<span class="oct-feed-label">{{ $t("plugins.flexibleLayouts.jog.axisFeed", { axis: yAxisLetter }) }}</span>
+				<input v-model.number="yFeed" class="oct-feed-input" type="number" min="1" inputmode="numeric" />
 			</label>
 			<label v-if="widget.showZ !== false" class="oct-feed">
-				<span class="oct-feed-label">{{ $t("plugins.flexibleLayouts.jog.zFeed") }}</span>
+				<span class="oct-feed-label">{{ $t("plugins.flexibleLayouts.jog.axisFeed", { axis: zAxisLetter }) }}</span>
 				<input v-model.number="zFeed" class="oct-feed-input" type="number" min="1" inputmode="numeric" />
 			</label>
 		</div>
@@ -69,11 +74,13 @@
 
 				<!-- Per-axis home buttons -->
 				<template v-if="widget.showHome !== false">
-					<button type="button" class="oct-axis-home oct-home-x" :style="axisBtnStyle" :disabled="disabledNow"
+					<button type="button" class="oct-axis-home oct-home-x" :class="{ 'oct-home-unhomed': isUnhomed(xAxisLetter) }"
+							:style="axisBtnStyle" :disabled="disabledNow"
 							:title="`${$t('plugins.flexibleLayouts.jog.home')} ${xAxisLetter}`" @click="homeX">
 						<v-icon size="x-small">mdi-home</v-icon><span class="oct-axis-letter">{{ xAxisLetter }}</span>
 					</button>
-					<button type="button" class="oct-axis-home oct-home-y" :style="axisBtnStyle" :disabled="disabledNow"
+					<button type="button" class="oct-axis-home oct-home-y" :class="{ 'oct-home-unhomed': isUnhomed(yAxisLetter) }"
+							:style="axisBtnStyle" :disabled="disabledNow"
 							:title="`${$t('plugins.flexibleLayouts.jog.home')} ${yAxisLetter}`" @click="homeY">
 						<v-icon size="x-small">mdi-home</v-icon><span class="oct-axis-letter">{{ yAxisLetter }}</span>
 					</button>
@@ -91,9 +98,10 @@
 					<span class="oct-zval">{{ fmt(s) }}</span>
 				</button>
 				<button v-if="widget.showHome !== false" type="button" class="oct-zbtn oct-zhome"
+						:class="{ 'oct-home-unhomed': isUnhomed(zAxisLetter) }"
 						:style="axisBtnStyle" :disabled="disabledNow"
 						:title="$t('plugins.flexibleLayouts.jog.homeZ')" @click="homeZ">
-					<v-icon size="x-small">mdi-home</v-icon>
+						<v-icon size="x-small">mdi-home</v-icon><span class="oct-axis-letter">{{ zAxisLetter }}</span>
 				</button>
 				<button v-for="(z, i) in zStepsDown" :key="'zn' + z.k" type="button" class="oct-zbtn"
 						:class="{ 'oct-zbtn-blocked': zBlocked }"
@@ -107,18 +115,18 @@
 		</div>
 
 		<!-- Distance bullets (colour-keyed ring legend) -->
-		<div v-if="widget.showDistanceBullets !== false" class="oct-bullets d-flex ga-1 flex-shrink-0 mt-1 justify-center flex-wrap">
+		<div v-if="widget.showDistanceBullets !== false" class="oct-bullets d-flex ga-2 flex-shrink-0 mt-1 justify-center flex-wrap">
 			<span v-for="(s, k) in xySteps" :key="k" class="oct-bullet"
 				  :style="{ color: ringColor(k) }"
 				  @mouseenter="hoveredRing = k"
 				  @mouseleave="hoveredRing = null"
 				  @contextmenu.prevent="editStep('xy', k)">
-				&#9679;{{ fmt(s) }}
+				<span class="oct-bullet-dot" :style="{ opacity: ringOpacity(k) }">&#9679;</span>{{ fmt(s) }}
 			</span>
 		</div>
 
 		<div v-if="widget.showMotorsOff" class="flex-shrink-0 mt-1">
-			<v-btn size="small" variant="tonal" block prepend-icon="mdi-power" :disabled="disabledNow"
+			<v-btn size="small" variant="tonal" block prepend-icon="mdi-power" :color="sectorFill" :disabled="disabledNow"
 				   @click="motorsOff">{{ $t("plugins.flexibleLayouts.jog.motorsOff") }}</v-btn>
 		</div>
 	</div>
@@ -162,6 +170,12 @@ const blockedAxes = computed(() => {
 const zBlocked = computed(() => blockedAxes.value.has(zAxisLetter.value.toUpperCase()));
 const diagonalBlocked = computed(() => blockedAxes.value.has(xAxisLetter.value.toUpperCase()) || blockedAxes.value.has(yAxisLetter.value.toUpperCase()));
 
+/** Whether `letter` is currently unhomed - see JogWidget.vue's identical helper for why this is
+ *  independent of blockedAxes and case-insensitive. */
+function isUnhomed(letter: string): boolean {
+	return unhomedNow.value.some((a) => a.toUpperCase() === letter.toUpperCase());
+}
+
 // --- configuration with fallbacks -----------------------------------------------
 const xySteps    = computed(() => props.widget.xySteps?.length ? props.widget.xySteps : [100, 10, 1, 0.1]);
 const zStepList  = computed(() => props.widget.zSteps?.length  ? props.widget.zSteps  : [10, 1, 0.1]);
@@ -174,10 +188,18 @@ const zSign       = computed(() => props.widget.invertZ ? -1 : 1);
 const sectorFill  = computed(() => resolveColor(props.widget.color));
 const axisBtnStyle = computed(() => ({ color: sectorFill.value }));
 
-const xyFeed = computed({
-	get: () => props.widget.xyFeedrate ?? 3000,
-	set: (v: number) => { props.widget.xyFeedrate = Number(v) || 0; },
+const xFeed = computed({
+	get: () => props.widget.xFeedrate ?? 3000,
+	set: (v: number) => { props.widget.xFeedrate = Number(v) || 0; },
 });
+const yFeed = computed({
+	get: () => props.widget.yFeedrate ?? 3000,
+	set: (v: number) => { props.widget.yFeedrate = Number(v) || 0; },
+});
+/** Which feedrate applies to a cardinal sector's axis - X and Y are independently settable. */
+function feedFor(axis: string): number {
+	return axis.toUpperCase() === xAxisLetter.value.toUpperCase() ? xFeed.value : yFeed.value;
+}
 const zFeed = computed({
 	get: () => props.widget.zFeedrate ?? 600,
 	set: (v: number) => { props.widget.zFeedrate = Number(v) || 0; },
@@ -355,7 +377,7 @@ function jog(letter: string, signed: number, feed: number): void {
 }
 
 function jogSingle(axis: string, signed: number): void {
-	jog(axis, signed, xyFeed.value);
+	jog(axis, signed, feedFor(axis));
 }
 
 function jogXY(xSign: number, ySign: number, step: number): void {
@@ -368,7 +390,11 @@ function jogXY(xSign: number, ySign: number, step: number): void {
 	const yAmt = Number((ySign * step).toFixed(4));
 	const x = quote(xAxisLetter.value);
 	const y = quote(yAxisLetter.value);
-	void machineStore.sendCode(`M120\nG91\nG1 ${x}${xAmt} ${y}${yAmt} F${xyFeed.value}\nM121`);
+	// A single G1 line only has one F - it sets the feed rate of the combined vector move, not a
+	// separate rate per axis, so a genuinely diagonal move can't honour X's and Y's rates
+	// independently the way a single-axis jog can. Uses X's configured rate as the diagonal speed
+	// (a documented, predictable choice) rather than inventing a blended value nobody asked for.
+	void machineStore.sendCode(`M120\nG91\nG1 ${x}${xAmt} ${y}${yAmt} F${xFeed.value}\nM121`);
 }
 
 function homeAll(): void { if (!disabledNow.value) { void machineStore.sendCode("G28"); } }
@@ -387,10 +413,12 @@ async function editStep(arr: "xy" | "z", index: number): Promise<void> {
 		0,
 	);
 	if (v !== null && !Number.isNaN(v) && v > 0) {
+		// Reassign the whole array rather than mutating one index in place - see JogWidget.vue's
+		// identical fix/comment; this is what a saved layout's persistence watcher reliably picks up.
 		if (arr === "xy") {
-			(props.widget.xySteps ??= [...xySteps.value])[index] = v;
+			props.widget.xySteps = xySteps.value.map((s, i) => (i === index ? v : s));
 		} else {
-			(props.widget.zSteps ??= [...zStepList.value])[index] = v;
+			props.widget.zSteps = zStepList.value.map((s, i) => (i === index ? v : s));
 		}
 	}
 }
@@ -422,9 +450,10 @@ async function editStep(arr: "xy" | "z", index: number): Promise<void> {
 	font-size: 0.55em;
 	line-height: 1.2;
 	opacity: 0.7;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
+	/* See JogWidget.vue's identical rule/comment: a per-panel label-size setting can raise this well
+	   past what nowrap+ellipsis was measured for, silently hiding text instead of growing the row. */
+	white-space: normal;
+	word-break: break-word;
 }
 .oct-feed-input {
 	width: 100%;
@@ -470,13 +499,16 @@ async function editStep(arr: "xy" | "z", index: number): Promise<void> {
 .oct-ring-highlight  { opacity: 1 !important; }
 .oct-sector-blocked  { cursor: not-allowed; fill: rgb(var(--v-theme-warning)) !important; }
 .oct-step-label {
-	font-size: 5.5px;
+	/* em, not a fixed px - see JogWidget.vue's identical rule/comment for why this can only ever
+	   track the panel's font-size setting approximately, not pixel-match the HTML labels outside
+	   the SVG, but that's still strictly better than ignoring the setting completely. */
+	font-size: 0.4em;
 	fill: rgb(var(--v-theme-on-surface));
 	pointer-events: none;
 	font-weight: 600;
 }
 .oct-dir-label {
-	font-size: 6px;
+	font-size: 0.43em;
 	fill: rgb(var(--v-theme-on-surface));
 	pointer-events: none;
 	opacity: 0.7;
@@ -494,9 +526,13 @@ async function editStep(arr: "xy" | "z", index: number): Promise<void> {
 	top: 2px;
 	display: flex;
 	align-items: center;
-	gap: 1px;
-	padding: 1px 4px;
-	font-size: 0.6em;
+	justify-content: center;
+	gap: 2px;
+	padding: 4px 7px;
+	/* A real hit-target floor - see JogWidget.vue's identical rule/comment. */
+	min-width: 24px;
+	min-height: 24px;
+	font-size: 0.7em;
 	line-height: 1;
 	border-radius: 4px;
 	color: currentColor;
@@ -510,6 +546,11 @@ async function editStep(arr: "xy" | "z", index: number): Promise<void> {
 .oct-home-x { left: 2px; }
 .oct-home-y { right: 2px; }
 .oct-axis-letter { font-weight: 600; }
+/* Matches DWC's own Movement panel convention - see JogWidget.vue's identical rule/comment. */
+.oct-home-unhomed {
+	color: rgb(var(--v-theme-warning)) !important;
+	border-color: rgb(var(--v-theme-warning)) !important;
+}
 .oct-z {
 	flex: 0 0 auto;
 	width: clamp(38px, 22%, 64px);
@@ -517,7 +558,7 @@ async function editStep(arr: "xy" | "z", index: number): Promise<void> {
 }
 .oct-zbtn {
 	flex: 1 1 0;
-	min-height: 0;
+	min-height: 20px;
 	min-width: 0;
 	display: flex;
 	align-items: center;
@@ -543,14 +584,24 @@ async function editStep(arr: "xy" | "z", index: number): Promise<void> {
 .oct-zhome { flex: 0 0 auto; padding: 4px 0; }
 .oct-zbtn-blocked { cursor: not-allowed; border-color: rgb(var(--v-theme-warning)) !important; color: rgb(var(--v-theme-warning)) !important; }
 .oct-bullets {
-	font-size: 0.65em;
+	font-size: 0.7em;
 	line-height: 1.2;
 }
 .oct-bullet {
 	cursor: pointer;
 	border-radius: 3px;
-	padding: 0 3px;
+	padding: 2px 4px;
 	transition: background 0.1s;
 }
 .oct-bullet:hover { background: rgba(var(--v-theme-on-surface), 0.08); }
+/* The dot is the whole point of the legend - it was the same size as the number text next to it,
+   at a font-size small enough that all four rings' dots looked like the same colour/weight and the
+   "legend" conveyed nothing. Bigger and bolder than the number, so the actual distinguishing signal
+   (each ring's own opacity, applied here via ringOpacity()) is visible at a glance. */
+.oct-bullet-dot {
+	font-size: 1.6em;
+	line-height: 0;
+	vertical-align: -0.12em;
+	margin-right: 1px;
+}
 </style>

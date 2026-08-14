@@ -5,7 +5,7 @@ import { defaultChromeForWidget, effectiveChromeForItem } from "../util/panelChr
 
 describe("defaultChromeForWidget", () => {
 	it("is on for panel-like widgets", () => {
-		for (const type of ["value", "heater", "gaugeCluster", "console", "consoleOutput", "table", "globals", "webcam"] as const) {
+		for (const type of ["value", "heater", "gaugeCluster", "console", "table", "globals", "webcam"] as const) {
 			expect(defaultChromeForWidget({ type } as Widget)).toBe(true);
 		}
 	});

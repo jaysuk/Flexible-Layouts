@@ -1,10 +1,13 @@
 /**
- * Spindle-on-hours tracking: accumulates seconds of spindle-on time entirely on the controller, so
- * the total is correct whenever DWC happens to reconnect, not just for the time it was watching.
+ * Machine-usage tracking: accumulates several counters entirely on the controller, so totals are
+ * correct whenever DWC happens to reconnect, not just for the time it was watching. Originally
+ * spindle-on-hours only (CNC/laser); extended to also cover FFF machines (print hours, filament used,
+ * tool-change count) - see the doc comments on each accumulator below for why each needs the same
+ * careful treatment spindle-hours already had, not a naive running read of a live OM value.
  *
  * RRF's `global.xxx` variables are RAM-only (confirmed against RRF source - no flash/SD backing), so a
- * counter needs its own persistence: `maintenance-daemon.g` accumulates into `global.flMaintSpindleSec`
- * every time it runs, and periodically calls `maintenance-flush.g` to write that value out to
+ * counter needs its own persistence: `maintenance-daemon.g` accumulates into `global.flMaint*` every
+ * time it runs, and periodically calls `maintenance-flush.g` to write those values out to
  * `0:/sys/flexible-layouts.maintenance-state.g` using the Duet3D wiki's documented "persistentGlobal.g"
  * pattern (`echo >`/`echo >>` writing `set`/`global` statements) - restored by `config.g` calling
  * `M98 P"0:/sys/flexible-layouts.maintenance-state.g"` early at boot (see configPatch.ts).
@@ -18,7 +21,11 @@
  * Which spindle to track (`global.flMaintSpindleIndex`) lives in the SAME persisted-state file as the
  * accumulated seconds, restored together - so changing the tracked spindle is just a setup-wizard
  * re-run, never a macro redeploy. The daemon macro itself is static content, indexing `spindles[]`
- * dynamically by that persisted value.
+ * dynamically by that persisted value. On a machine with no spindle configured at that index at all
+ * (any FFF machine, or a CNC/laser machine before its first spindle is set up), `#spindles >
+ * global.flMaintSpindleIndex` guards the spindle block so indexing a nonexistent array element never
+ * aborts the rest of the macro (RRF meta-gcode has no bounds-checked/optional indexing - an
+ * out-of-range access is a hard error for that whole daemon.g invocation).
  */
 import type { MachineIO } from "dwc-config-backup-core";
 
@@ -28,8 +35,9 @@ export const MAINTENANCE_FLUSH_FILE = "maintenance-flush.g";
 export const MAINTENANCE_STATE_PATH = "0:/sys/flexible-layouts.maintenance-state.g";
 
 /** Bumped whenever a change to these macro templates matters enough that an already-deployed copy
- *  should be flagged as outdated - see {@link maintenanceMacrosOutdated}. */
-export const MAINTENANCE_MACRO_SET_VERSION = 1;
+ *  should be flagged as outdated - see {@link maintenanceMacrosOutdated}. v2: added print-hours,
+ *  filament-used and tool-change tracking for FFF machines (previously spindle-hours only). */
+export const MAINTENANCE_MACRO_SET_VERSION = 2;
 
 const VERSION_MARKER_RE = /;\s*FL-MAINTENANCE-MACRO-VERSION:\s*(\d+)/;
 
@@ -44,22 +52,30 @@ function macroHeader(title: string): string {
 ; Part of Flexible Layouts' machine maintenance tracking.
 ;
 ; This file is yours to customize. Just leave the global.flMaint* variables alone - they're what
-; Flexible Layouts reads back to compute spindle-on hours.
+; Flexible Layouts reads back to compute spindle-on hours, print hours, filament used and tool changes.
 
 `;
 }
 
-/** Polls the tracked spindle's state and accumulates on-time. Bails out immediately (M99, "return
- *  from macro") if the persisted state hasn't been restored yet - config.g hasn't run
- *  maintenance-state.g, or setup hasn't completed - rather than accumulating against undeclared
- *  globals. Amount-based (not interval-based) flush trigger bounds SD writes to roughly once per 10
- *  minutes of continuous spindle-on time, regardless of how often this macro itself gets polled. */
-export const MAINTENANCE_DAEMON_MACRO = macroHeader("maintenance-daemon.g - spindle-hours accumulator") + `if !exists(global.flMaintSpindleIndex)
+/** Polls the tracked spindle's state (CNC/laser) and the print/filament/tool state (FFF) and
+ *  accumulates all of them - a single daemon macro covers every machine type rather than needing the
+ *  operator to know which one applies, and costs nothing extra on a machine type that doesn't use a
+ *  given counter (its accumulator just never moves). Bails out immediately (M99, "return from macro")
+ *  if the persisted state hasn't been restored yet - config.g hasn't run maintenance-state.g, or setup
+ *  hasn't completed - rather than accumulating against undeclared globals. Amount-based (not
+ *  interval-based) flush trigger bounds SD writes to roughly once per 10 minutes of continuous
+ *  spindle-on/printing time, regardless of how often this macro itself gets polled. */
+export const MAINTENANCE_DAEMON_MACRO = macroHeader("maintenance-daemon.g - usage accumulator") + `if !exists(global.flMaintSpindleIndex)
 	M99
 
 if !exists(global.flMaintLastPollTime)
 	global flMaintLastPollTime = state.upTime
 	global flMaintUnflushedSec = 0
+	; Last-seen extruder position/tool are pure poll-to-poll comparison state, not part of the
+	; reported totals themselves - re-seeding them fresh every boot (rather than persisting them) is
+	; correct, since move.extruders[].rawPosition itself resets to 0 on every boot too.
+	global flMaintLastExtruderPos = 0
+	global flMaintLastTool = state.currentTool
 
 var dt = state.upTime - global.flMaintLastPollTime
 ; state.upTime resets to 0 on reboot - without this clamp, a reboot between two polls would show as
@@ -68,10 +84,43 @@ if var.dt < 0
 	set var.dt = 0
 set global.flMaintLastPollTime = state.upTime
 
-var spindleState = spindles[global.flMaintSpindleIndex].state
-if var.spindleState == "forward" || var.spindleState == "reverse"
-	set global.flMaintSpindleSec = global.flMaintSpindleSec + var.dt
+; Spindle-on hours (CNC/laser). Guarded by #spindles so a machine with no spindle at this index -
+; every FFF machine, or a CNC/laser machine before its first spindle is configured - never indexes
+; a nonexistent array element (a hard RRF meta-gcode error, which would also abort the FFF tracking
+; below since it's the same macro invocation).
+if #spindles > global.flMaintSpindleIndex
+	var spindleState = spindles[global.flMaintSpindleIndex].state
+	if var.spindleState == "forward" || var.spindleState == "reverse"
+		set global.flMaintSpindleSec = global.flMaintSpindleSec + var.dt
+		set global.flMaintUnflushedSec = global.flMaintUnflushedSec + var.dt
+
+; Print hours (FFF) - accumulated independently of spindle-on time, not derived from the M929 event
+; log, so it still works even if the operator declined to enable event logging during setup.
+if state.status == "processing"
+	set global.flMaintPrintSec = global.flMaintPrintSec + var.dt
 	set global.flMaintUnflushedSec = global.flMaintUnflushedSec + var.dt
+
+; Filament used (FFF) - summed across every extruder. rawPosition is the slicer-commanded axis
+; position, which G92 E0 resets constantly (virtually every layer/segment in common slicer output) -
+; reading it as a running total would be wrong. Instead this diffs consecutive polls and clamps a
+; negative delta (a reset happened) to nothing, the exact same defensive technique as the state.upTime
+; reboot-clamp above, so a reset only ever loses that one interval rather than corrupting the total.
+var totalExtruderPos = 0
+var i = 0
+while var.i < #move.extruders
+	set var.totalExtruderPos = var.totalExtruderPos + move.extruders[var.i].rawPosition
+	set var.i = var.i + 1
+var deltaE = var.totalExtruderPos - global.flMaintLastExtruderPos
+if var.deltaE > 0
+	set global.flMaintFilamentMm = global.flMaintFilamentMm + var.deltaE
+set global.flMaintLastExtruderPos = var.totalExtruderPos
+
+; Tool changes (FFF, or any multi-tool machine) - counts only an actual change from the previously
+; polled tool, so re-selecting the same tool repeatedly (or a T-code that's a no-op because that tool
+; is already active) doesn't inflate the count.
+if state.currentTool != global.flMaintLastTool
+	set global.flMaintToolChanges = global.flMaintToolChanges + 1
+	set global.flMaintLastTool = state.currentTool
 
 if global.flMaintUnflushedSec >= 600
 	M98 P"${MAINTENANCE_MACRO_FOLDER}/${MAINTENANCE_FLUSH_FILE}"
@@ -80,7 +129,7 @@ if global.flMaintUnflushedSec >= 600
 
 /** Writes the accumulated counters to a small persistent-globals file (the Duet3D wiki's documented
  *  pattern for surviving a reboot, since global.* itself doesn't) - restored by config.g at boot. */
-export const MAINTENANCE_FLUSH_MACRO = macroHeader("maintenance-flush.g - persists the spindle-hours counter") + `echo >"${MAINTENANCE_STATE_PATH}" "; Auto-generated by Flexible Layouts - do not edit by hand"
+export const MAINTENANCE_FLUSH_MACRO = macroHeader("maintenance-flush.g - persists the usage counters") + `echo >"${MAINTENANCE_STATE_PATH}" "; Auto-generated by Flexible Layouts - do not edit by hand"
 echo >>"${MAINTENANCE_STATE_PATH}" "if !exists(global.flMaintSpindleIndex)"
 echo >>"${MAINTENANCE_STATE_PATH}" "  global flMaintSpindleIndex = " ^ global.flMaintSpindleIndex
 echo >>"${MAINTENANCE_STATE_PATH}" "else"
@@ -90,6 +139,21 @@ echo >>"${MAINTENANCE_STATE_PATH}" "if !exists(global.flMaintSpindleSec)"
 echo >>"${MAINTENANCE_STATE_PATH}" "  global flMaintSpindleSec = " ^ global.flMaintSpindleSec
 echo >>"${MAINTENANCE_STATE_PATH}" "else"
 echo >>"${MAINTENANCE_STATE_PATH}" "  set global.flMaintSpindleSec = " ^ global.flMaintSpindleSec
+echo >>"${MAINTENANCE_STATE_PATH}" "endif"
+echo >>"${MAINTENANCE_STATE_PATH}" "if !exists(global.flMaintPrintSec)"
+echo >>"${MAINTENANCE_STATE_PATH}" "  global flMaintPrintSec = " ^ global.flMaintPrintSec
+echo >>"${MAINTENANCE_STATE_PATH}" "else"
+echo >>"${MAINTENANCE_STATE_PATH}" "  set global.flMaintPrintSec = " ^ global.flMaintPrintSec
+echo >>"${MAINTENANCE_STATE_PATH}" "endif"
+echo >>"${MAINTENANCE_STATE_PATH}" "if !exists(global.flMaintFilamentMm)"
+echo >>"${MAINTENANCE_STATE_PATH}" "  global flMaintFilamentMm = " ^ global.flMaintFilamentMm
+echo >>"${MAINTENANCE_STATE_PATH}" "else"
+echo >>"${MAINTENANCE_STATE_PATH}" "  set global.flMaintFilamentMm = " ^ global.flMaintFilamentMm
+echo >>"${MAINTENANCE_STATE_PATH}" "endif"
+echo >>"${MAINTENANCE_STATE_PATH}" "if !exists(global.flMaintToolChanges)"
+echo >>"${MAINTENANCE_STATE_PATH}" "  global flMaintToolChanges = " ^ global.flMaintToolChanges
+echo >>"${MAINTENANCE_STATE_PATH}" "else"
+echo >>"${MAINTENANCE_STATE_PATH}" "  set global.flMaintToolChanges = " ^ global.flMaintToolChanges
 echo >>"${MAINTENANCE_STATE_PATH}" "endif"
 `;
 
@@ -132,6 +196,12 @@ export async function maintenanceMacrosOutdated(io: Pick<MachineIO, "downloadTex
 	}
 }
 
+export interface MaintenanceExtraCounters {
+	printSeconds?: number;
+	filamentMm?: number;
+	toolChanges?: number;
+}
+
 /** Writes the persisted-state file directly (setup, or re-running setup to change the tracked
  *  spindle - the flush macro can't do this itself, since it only ever writes the CURRENT live values,
  *  and on a true first run nothing has accumulated yet to call it) and reloads it immediately via M98
@@ -139,11 +209,12 @@ export async function maintenanceMacrosOutdated(io: Pick<MachineIO, "downloadTex
  *  pattern as the flush macro (not a bare `global x = ...`) because this can run again later in the
  *  same boot session, after the daemon macro has already declared these globals once - re-declaring
  *  an existing global with the bare `global` keyword is an error in RRF, only `set global.x = ...` is
- *  safe on an already-existing one. `spindleSeconds` lets re-running setup preserve an
- *  already-accumulated total rather than resetting it. */
+ *  safe on an already-existing one. `spindleSeconds`/`extra` let re-running setup preserve
+ *  already-accumulated totals rather than resetting them. */
 export async function seedMaintenanceState(
-	io: Pick<MachineIO, "upload" | "sendCode">, spindleIndex: number, spindleSeconds = 0,
+	io: Pick<MachineIO, "upload" | "sendCode">, spindleIndex: number, spindleSeconds = 0, extra: MaintenanceExtraCounters = {},
 ): Promise<boolean> {
+	const { printSeconds = 0, filamentMm = 0, toolChanges = 0 } = extra;
 	const content = `; Auto-generated by Flexible Layouts - do not edit by hand
 if !exists(global.flMaintSpindleIndex)
 	global flMaintSpindleIndex = ${spindleIndex}
@@ -153,6 +224,18 @@ if !exists(global.flMaintSpindleSec)
 	global flMaintSpindleSec = ${spindleSeconds}
 else
 	set global.flMaintSpindleSec = ${spindleSeconds}
+if !exists(global.flMaintPrintSec)
+	global flMaintPrintSec = ${printSeconds}
+else
+	set global.flMaintPrintSec = ${printSeconds}
+if !exists(global.flMaintFilamentMm)
+	global flMaintFilamentMm = ${filamentMm}
+else
+	set global.flMaintFilamentMm = ${filamentMm}
+if !exists(global.flMaintToolChanges)
+	global flMaintToolChanges = ${toolChanges}
+else
+	set global.flMaintToolChanges = ${toolChanges}
 `;
 	try {
 		await io.upload(MAINTENANCE_STATE_PATH, new Blob([content], { type: "text/plain" }));

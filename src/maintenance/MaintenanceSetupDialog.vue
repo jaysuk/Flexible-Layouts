@@ -221,11 +221,17 @@ async function onApply(): Promise<void> {
 			macrosOutdated.value = false;
 		}
 
-		// Preserve an already-accumulated total if setup is being re-run (e.g. to change the tracked
-		// spindle or add event logging afterwards) rather than resetting it to 0.
-		const existing = resolveOmPath(machineStore.model, "global.flMaintSpindleSec");
-		const existingSeconds = typeof existing === "number" ? existing : 0;
-		const seeded = await seedMaintenanceState(io, spindleIndex.value, existingSeconds);
+		// Preserve every already-accumulated total if setup is being re-run (e.g. to change the tracked
+		// spindle or add event logging afterwards) rather than resetting any of them to 0.
+		const numOm = (path: string): number => {
+			const v = resolveOmPath(machineStore.model, path);
+			return typeof v === "number" ? v : 0;
+		};
+		const seeded = await seedMaintenanceState(io, spindleIndex.value, numOm("global.flMaintSpindleSec"), {
+			printSeconds: numOm("global.flMaintPrintSec"),
+			filamentMm: numOm("global.flMaintFilamentMm"),
+			toolChanges: numOm("global.flMaintToolChanges"),
+		});
 		if (!seeded) { throw new Error("Could not write the maintenance state file to the SD card."); }
 
 		step.value = "done";

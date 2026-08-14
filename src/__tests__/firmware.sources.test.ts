@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { matchAllBoardFiles, matchesBoardFile, type FirmwareCandidateFile } from "../model/firmware/sources";
+import { selectDwcAsset } from "../model/firmware/dwcSource";
+import {
+	boardsNeedingOtherSource, looksLikeGloomyandyFirmware, matchAllBoardFiles, matchesBoardFile,
+	type FirmwareCandidateFile,
+} from "../model/firmware/sources";
 
 describe("matchesBoardFile", () => {
 	it("matches the exact filename a board asked for", () => {
@@ -57,6 +61,61 @@ describe("matchAllBoardFiles", () => {
 		const boards = [{ firmwareFileName: "same.bin" }, { firmwareFileName: "same.bin" }];
 		const files = [cand("same.bin")];
 		expect(matchAllBoardFiles(boards, files)).toHaveLength(1);
+	});
+
+	it("matches iapFileNameSBC instead of iapFileNameSD when isSbc is true", () => {
+		const boards = [{ firmwareFileName: "main.bin", iapFileNameSD: "iap_sd.bin", iapFileNameSBC: "iap_sbc.bin" }];
+		const files = [cand("main.bin"), cand("iap_sd.bin"), cand("iap_sbc.bin")];
+		const matched = matchAllBoardFiles(boards, files, { isSbc: true }).map((f) => f.name).sort();
+		expect(matched).toEqual(["iap_sbc.bin", "main.bin"]);
+		expect(matched).not.toContain("iap_sd.bin");
+	});
+
+	it("still matches iapFileNameSD (not SBC) by default, unaffected by the new option", () => {
+		const boards = [{ firmwareFileName: "main.bin", iapFileNameSD: "iap_sd.bin", iapFileNameSBC: "iap_sbc.bin" }];
+		const files = [cand("main.bin"), cand("iap_sd.bin"), cand("iap_sbc.bin")];
+		const matched = matchAllBoardFiles(boards, files).map((f) => f.name).sort();
+		expect(matched).toEqual(["iap_sd.bin", "main.bin"]);
+	});
+
+	it("only matches wifiFirmwareFileName when includeWifi is true", () => {
+		const boards = [{ firmwareFileName: "main.bin", wifiFirmwareFileName: "DuetWiFiServer.bin" }];
+		const files = [cand("main.bin"), cand("DuetWiFiServer.bin")];
+		expect(matchAllBoardFiles(boards, files).map((f) => f.name)).toEqual(["main.bin"]);
+		expect(matchAllBoardFiles(boards, files, { includeWifi: true }).map((f) => f.name).sort())
+			.toEqual(["DuetWiFiServer.bin", "main.bin"]);
+	});
+});
+
+describe("looksLikeGloomyandyFirmware", () => {
+	it("is true for a firmwareName containing STM32, case-insensitively", () => {
+		expect(looksLikeGloomyandyFirmware("RepRapFirmware for STM32F407")).toBe(true);
+		expect(looksLikeGloomyandyFirmware("RepRapFirmware for stm32h723")).toBe(true);
+	});
+	it("is false for a genuine Duet3D firmwareName, or an unset one", () => {
+		expect(looksLikeGloomyandyFirmware("RepRapFirmware for Duet 3 MB6HC")).toBe(false);
+		expect(looksLikeGloomyandyFirmware(undefined)).toBe(false);
+		expect(looksLikeGloomyandyFirmware(null)).toBe(false);
+	});
+});
+
+describe("boardsNeedingOtherSource", () => {
+	it("names a gloomyandy-firmware CAN toolboard when the genuine-Duet source is active (the hybrid case)", () => {
+		const boards = [
+			{ name: "Duet 3 MB6HC", firmwareName: "RepRapFirmware for Duet 3 MB6HC" },
+			{ name: "SB2040", firmwareName: "RepRapFirmware for STM32F401" },
+		];
+		expect(boardsNeedingOtherSource(boards, false)).toEqual(["SB2040"]);
+	});
+
+	it("is empty when every board agrees with the active source", () => {
+		const boards = [{ name: "Duet 3 MB6HC", firmwareName: "RepRapFirmware for Duet 3 MB6HC" }];
+		expect(boardsNeedingOtherSource(boards, false)).toEqual([]);
+	});
+
+	it("names a genuine board when gloomyandy is active but that board isn't STM32", () => {
+		const boards = [{ name: "Duet 3 MB6HC", firmwareName: "RepRapFirmware for Duet 3 MB6HC" }];
+		expect(boardsNeedingOtherSource(boards, true)).toEqual(["Duet 3 MB6HC"]);
 	});
 });
 
@@ -154,5 +213,52 @@ describe("gloomyandySource", () => {
 		vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 429 }));
 		const { gloomyandySource } = await import("../model/firmware/gloomyandySource");
 		await expect(gloomyandySource("v3.7-dev").listReleases()).rejects.toThrow(/rate-limiting/);
+	});
+});
+
+describe("dwcSource", () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+		vi.resetModules();
+	});
+
+	it("parses releases and lists that release's assets, same shape as duet3dSource", async () => {
+		const fetchMock = vi.fn().mockResolvedValue({
+			ok: true,
+			status: 200,
+			json: async () => [
+				{ tag_name: "3.7.0-beta.2", published_at: "2026-01-01T00:00:00Z", prerelease: true, html_url: "https://x/3.7.0-beta.2", draft: false,
+					assets: [
+						{ name: "DuetWebControl-SD.zip", browser_download_url: "https://dl/DuetWebControl-SD.zip", size: 100 },
+						{ name: "DuetWebControl-SBC.zip", browser_download_url: "https://dl/DuetWebControl-SBC.zip", size: 90 },
+					] },
+			],
+		});
+		vi.stubGlobal("fetch", fetchMock);
+		const { dwcSource } = await import("../model/firmware/dwcSource");
+
+		const releases = await dwcSource.listReleases();
+		expect(releases).toEqual([{ tag: "3.7.0-beta.2", publishedAt: "2026-01-01T00:00:00Z", prerelease: true, htmlUrl: "https://x/3.7.0-beta.2" }]);
+		const files = await dwcSource.listFiles(releases[0]);
+		expect(files.map((f) => f.name).sort()).toEqual(["DuetWebControl-SBC.zip", "DuetWebControl-SD.zip"]);
+		expect(files.every((f) => f.directDownload === false)).toBe(true); // same CORS limitation as duet3dSource
+	});
+});
+
+describe("selectDwcAsset", () => {
+	const cand = (name: string): FirmwareCandidateFile => ({ name, url: `https://x/${name}`, size: 1, directDownload: false });
+	const files = [cand("DuetWebControl-SD.zip"), cand("DuetWebControl-SBC.zip")];
+
+	it("picks the SD bundle for a standalone (non-SBC) machine", () => {
+		expect(selectDwcAsset(files, false)?.name).toBe("DuetWebControl-SD.zip");
+	});
+	it("picks the SBC bundle when running via an attached SBC", () => {
+		expect(selectDwcAsset(files, true)?.name).toBe("DuetWebControl-SBC.zip");
+	});
+	it("is case-insensitive on the asset name (GitHub asset casing isn't guaranteed)", () => {
+		expect(selectDwcAsset([cand("DUETWEBCONTROL-SD.zip")], false)?.name).toBe("DUETWEBCONTROL-SD.zip");
+	});
+	it("returns null when the wanted bundle isn't present", () => {
+		expect(selectDwcAsset([cand("DuetWebControl-SD.zip")], true)).toBeNull();
 	});
 });

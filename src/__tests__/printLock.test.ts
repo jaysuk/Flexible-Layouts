@@ -59,7 +59,6 @@ describe("defaultLockForWidget", () => {
 
 	it("leaves read-outs and safe controls unlocked", () => {
 		expect(defaultLockForWidget({ type: "value" } as Widget)).toBe(false);
-		expect(defaultLockForWidget({ type: "jobControl" } as Widget)).toBe(false);
 		expect(defaultLockForWidget({ type: "heater" } as Widget)).toBe(false);
 		expect(defaultLockForWidget({ type: "messageBox" } as Widget)).toBe(false);
 	});

@@ -60,6 +60,35 @@ describe("macro bodies", () => {
 		expect(MAINTENANCE_FLUSH_MACRO).toMatch(/if !exists\(global\.flMaintSpindleIndex\)/);
 		expect(MAINTENANCE_FLUSH_MACRO).toMatch(/set global\.flMaintSpindleIndex/);
 	});
+
+	// --- FFF tracking (print hours / filament used / tool changes), added alongside the original
+	// spindle-hours (CNC/laser) tracking - see macros.ts's header comment for the full design.
+	it("guards spindle tracking with #spindles so an FFF machine (no spindles array entry) never indexes out of bounds", () => {
+		expect(MAINTENANCE_DAEMON_MACRO).toMatch(/if #spindles > global\.flMaintSpindleIndex/);
+	});
+
+	it("accumulates print-seconds independently while state.status is processing", () => {
+		expect(MAINTENANCE_DAEMON_MACRO).toMatch(/if state\.status == "processing"/);
+		expect(MAINTENANCE_DAEMON_MACRO).toContain("global.flMaintPrintSec = global.flMaintPrintSec");
+	});
+
+	it("sums every extruder's rawPosition and clamps a negative (G92-reset) delta to nothing, not a subtraction", () => {
+		expect(MAINTENANCE_DAEMON_MACRO).toMatch(/while var\.i < #move\.extruders/);
+		expect(MAINTENANCE_DAEMON_MACRO).toMatch(/if var\.deltaE > 0/);
+		expect(MAINTENANCE_DAEMON_MACRO).toContain("global.flMaintFilamentMm = global.flMaintFilamentMm");
+	});
+
+	it("counts a tool change only when the polled tool actually differs from last time", () => {
+		expect(MAINTENANCE_DAEMON_MACRO).toMatch(/if state\.currentTool != global\.flMaintLastTool/);
+		expect(MAINTENANCE_DAEMON_MACRO).toContain("global.flMaintToolChanges = global.flMaintToolChanges + 1");
+	});
+
+	it("the flush macro also persists print-seconds, filament-mm and tool-changes", () => {
+		for (const g of ["flMaintPrintSec", "flMaintFilamentMm", "flMaintToolChanges"]) {
+			expect(MAINTENANCE_FLUSH_MACRO).toContain(`if !exists(global.${g})`);
+			expect(MAINTENANCE_FLUSH_MACRO).toContain(`set global.${g} = " ^ global.${g}`);
+		}
+	});
 });
 
 describe("extractMaintenanceMacroVersion", () => {
@@ -108,6 +137,24 @@ describe("seedMaintenanceState", () => {
 		const io = fakeIO();
 		await seedMaintenanceState(io, 0, 12345);
 		expect(io.files.get(MAINTENANCE_STATE_PATH)).toContain("flMaintSpindleSec = 12345");
+	});
+
+	it("defaults the FFF counters to 0 when extra is omitted", async () => {
+		const io = fakeIO();
+		await seedMaintenanceState(io, 0, 0);
+		const content = io.files.get(MAINTENANCE_STATE_PATH) ?? "";
+		expect(content).toContain("flMaintPrintSec = 0");
+		expect(content).toContain("flMaintFilamentMm = 0");
+		expect(content).toContain("flMaintToolChanges = 0");
+	});
+
+	it("preserves already-accumulated FFF counters when re-run with explicit extra values", async () => {
+		const io = fakeIO();
+		await seedMaintenanceState(io, 0, 0, { printSeconds: 7200, filamentMm: 15000, toolChanges: 42 });
+		const content = io.files.get(MAINTENANCE_STATE_PATH) ?? "";
+		expect(content).toContain("flMaintPrintSec = 7200");
+		expect(content).toContain("flMaintFilamentMm = 15000");
+		expect(content).toContain("flMaintToolChanges = 42");
 	});
 
 	it("is safe to call more than once (if-exists/else-set, not a bare global declaration)", async () => {

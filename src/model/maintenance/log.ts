@@ -29,6 +29,15 @@ export interface MaintenanceEntry {
 	spindleSecondsAtEntry: number | null;
 	/** Snapshot of the M929-event-log-derived cumulative job-run total at logging time; same null rule. */
 	jobSecondsAtEntry: number | null;
+	/** Snapshot of global.flMaintPrintSec (FFF) at logging time; same null rule. Optional (rather than
+	 *  matching spindleSecondsAtEntry/jobSecondsAtEntry's required style) because it's genuinely absent
+	 *  - not merely null - on any entry logged before this counter existed; secondsSince() already
+	 *  treats a missing key the same as an explicit null, so callers don't need to special-case it. */
+	printSecondsAtEntry?: number | null;
+	/** Snapshot of global.flMaintFilamentMm (FFF) at logging time; same rule as printSecondsAtEntry. */
+	filamentMmAtEntry?: number | null;
+	/** Snapshot of global.flMaintToolChanges (FFF) at logging time; same rule as printSecondsAtEntry. */
+	toolChangesAtEntry?: number | null;
 }
 
 export interface MaintenanceLog {

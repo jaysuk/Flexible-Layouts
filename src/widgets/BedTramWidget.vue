@@ -18,7 +18,7 @@
 
 			<div v-if="lastRunAt" class="btr-last mt-2">
 				<div class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.bedTram.lastRun", { when: lastRunAt }) }}</div>
-				<div v-if="lastResult" class="text-caption">{{ lastResult }}</div>
+				<div v-if="lastResult" class="text-caption btr-result">{{ lastResult }}</div>
 			</div>
 		</div>
 
@@ -105,16 +105,23 @@ function trigger(): void {
 async function run(): Promise<void> {
 	running.value = true;
 	try {
-		await machineStore.sendCode(command.value, false, false);
+		// A delta's G32 auto-calibration and a mesh probe both land in the object model, but a
+		// Cartesian/CoreXY bed-tramming macro - the common case this widget is actually used for -
+		// typically just echoes its measured mean/deviation as plain command-reply text, which has
+		// no object-model home at all. Discarding sendCode()'s own return value (as this used to)
+		// threw that text away, so nothing but a blank card showed for exactly that setup - "none of
+		// the values output by the popup box are shown". Prefer the reply text when the command
+		// actually printed something; fall back to the OM readings for delta/mesh setups that don't.
+		const reply = (await machineStore.sendCode(command.value, false, false)).trim();
 		lastRunAt.value = new Date().toLocaleTimeString();
 		// The object model updates asynchronously as the machine's own poll cycle catches up, so this
 		// read is best-effort "as of just now" rather than guaranteed to reflect this exact run - the
 		// timestamp above is deliberately shown alongside it so that's clear, not implied as instant.
-		lastResult.value = calibration.value
+		lastResult.value = reply || (calibration.value
 			? i18n.global.t("plugins.flexibleLayouts.bedTram.meanDeviation", { mean: fmt(calibration.value.mean), deviation: fmt(calibration.value.deviation) })
 			: meshDeviation.value
 				? i18n.global.t("plugins.flexibleLayouts.bedTram.meanDeviation", { mean: fmt(meshDeviation.value.mean), deviation: fmt(meshDeviation.value.deviation) })
-				: "";
+				: "");
 	} catch (e) {
 		uiStore.makeNotification(LogLevel.error, i18n.global.t("plugins.flexibleLayouts.bedTram.run"), (e as Error)?.message ?? String(e));
 	} finally {
@@ -132,5 +139,8 @@ async function run(): Promise<void> {
 .btr-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 2px 0; }
 .btr-value { font-variant-numeric: tabular-nums; }
 .btr-last { border-top: 1px solid rgba(127, 127, 127, 0.15); padding-top: 4px; }
+/* A tramming macro's plain-text reply is often multi-line (per-corner readings, one per line) -
+   without this a real reply just collapses into one run-on line. */
+.btr-result { white-space: pre-line; }
 .btr-pre { white-space: pre-wrap; font-size: 0.78rem; background: rgba(var(--v-theme-on-surface), 0.05); padding: 8px; border-radius: 4px; }
 </style>

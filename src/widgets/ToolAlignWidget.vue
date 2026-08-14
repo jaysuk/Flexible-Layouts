@@ -1,7 +1,7 @@
 <template>
-  <div class="ta-root fill-height d-flex flex-column" :class="{ 'ta-frozen': disabledNow }">
+  <div class="ta-root fill-height d-flex flex-row" :class="{ 'ta-frozen': disabledNow }">
     <!-- Camera with crosshair / target overlay -->
-    <div class="ta-cam flex-grow-1">
+    <div class="ta-cam flex-shrink-0">
       <div v-if="!widget.url" class="ta-noimg text-caption text-medium-emphasis pa-2">
         {{ $t("plugins.flexibleLayouts.toolAlign.noUrl") }}
       </div>
@@ -17,6 +17,10 @@
       </div>
     </div>
 
+    <!-- Controls + offsets table, stacked in their own scrollable column to the right of the
+         camera - was a single top-to-bottom column with the camera squeezed in above everything
+         else; a wide-but-short panel left almost no room for the image. -->
+    <div class="ta-controls d-flex flex-column">
     <!-- Tool buttons (auto-populated from the object model) -->
     <div class="ta-tools d-flex flex-wrap align-center ga-1 px-1 pt-1 flex-shrink-0">
       <v-btn v-for="t in tools" :key="t.number" size="small" class="text-none ta-btn"
@@ -121,6 +125,7 @@
                   :label="$t('plugins.flexibleLayouts.toolAlign.invert')" />
       </div>
       <div class="text-caption text-medium-emphasis mt-1">{{ $t("plugins.flexibleLayouts.toolAlign.persistHint") }}</div>
+    </div>
     </div>
   </div>
 </template>
@@ -381,9 +386,17 @@ onBeforeUnmount(() => { if (timer) clearInterval(timer); });
 .ta-root { min-height: 0; overflow: hidden; }
 .ta-frozen { opacity: 0.55; pointer-events: none; }
 
-.ta-cam { position: relative; min-height: 100px; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #000; }
+/* Camera sits in its own left-hand column now (was a top strip above everything else, which left
+   almost no room for the actual image on a wide-but-short panel). A percentage flex-basis keeps it
+   proportional as the whole widget resizes, clamped so it neither vanishes nor swallows the panel. */
+.ta-cam {
+  position: relative; flex: 0 0 40%; min-width: 110px; max-width: 320px; min-height: 100px;
+  display: flex; align-items: center; justify-content: center; overflow: hidden; background: #000;
+}
 .ta-img { max-width: 100%; max-height: 100%; display: block; }
 .ta-noimg { text-align: center; }
+
+.ta-controls { flex: 1 1 auto; min-width: 0; overflow-y: auto; }
 
 .ta-overlay { position: absolute; inset: 0; pointer-events: none; }
 .ta-cross-h { position: absolute; left: 0; right: 0; top: var(--ta-cy); border-top: var(--ta-lw) solid var(--ta-col); }
@@ -392,7 +405,10 @@ onBeforeUnmount(() => { if (timer) clearInterval(timer); });
 .ta-dot { position: absolute; left: var(--ta-cx); top: var(--ta-cy); width: 4px; height: 4px; transform: translate(-50%, -50%); border-radius: 50%; background: var(--ta-col); }
 
 .ta-btn { min-width: 0; }
-.ta-step { max-width: 116px; min-width: 92px; }
+/* Was 92-116px, which visibly truncated even the shortest option ("0.1 mm") to "0.1 ..." - a
+   compact outlined select's own padding plus its dropdown-arrow affix eats more of that budget
+   than the text itself gets. Widened so every option in stepItems renders in full. */
+.ta-step { max-width: 150px; min-width: 112px; }
 
 .ta-table { min-height: 0; overflow: auto; }
 .ta-grid { width: 100%; border-collapse: collapse; font-size: 0.8em; }

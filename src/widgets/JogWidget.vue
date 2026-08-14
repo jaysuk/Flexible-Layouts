@@ -3,15 +3,20 @@
 		<div v-if="widget.title" class="jog-title text-center text-truncate flex-shrink-0">{{ widget.title }}</div>
 		<UnhomedWarning :axes="unhomedNow" class="flex-shrink-0 mb-1" />
 
-		<!-- Inline, editable feedrates (Pronterface shows XY / Z mm/min). Native inputs, self-styled, so
-			 the value scales with the panel font and is never clipped by a fixed-height form control. -->
+		<!-- Inline, editable feedrates - X, Y and Z independently (a diagonal move still travels each
+			 axis at its own rate). Native inputs, self-styled, so the value scales with the panel font
+			 and is never clipped by a fixed-height form control. -->
 		<div v-if="widget.showFeedrate !== false" class="d-flex ga-2 mb-1 flex-shrink-0">
 			<label class="jog-feed">
-				<span class="jog-feed-label">{{ $t("plugins.flexibleLayouts.jog.xyFeed") }}</span>
-				<input v-model.number="xyFeed" class="jog-feed-input" type="number" min="1" inputmode="numeric" />
+				<span class="jog-feed-label">{{ $t("plugins.flexibleLayouts.jog.axisFeed", { axis: xAxisLetter }) }}</span>
+				<input v-model.number="xFeed" class="jog-feed-input" type="number" min="1" inputmode="numeric" />
+			</label>
+			<label class="jog-feed">
+				<span class="jog-feed-label">{{ $t("plugins.flexibleLayouts.jog.axisFeed", { axis: yAxisLetter }) }}</span>
+				<input v-model.number="yFeed" class="jog-feed-input" type="number" min="1" inputmode="numeric" />
 			</label>
 			<label v-if="widget.showZ !== false" class="jog-feed">
-				<span class="jog-feed-label">{{ $t("plugins.flexibleLayouts.jog.zFeed") }}</span>
+				<span class="jog-feed-label">{{ $t("plugins.flexibleLayouts.jog.axisFeed", { axis: zAxisLetter }) }}</span>
 				<input v-model.number="zFeed" class="jog-feed-input" type="number" min="1" inputmode="numeric" />
 			</label>
 		</div>
@@ -25,7 +30,7 @@
 						<path v-for="s in xySectors" :key="s.id" :d="s.d"
 							  class="jog-sector" :class="{ 'jog-sector-blocked': blockedAxes.has(s.axis.toUpperCase()) }"
 							  :style="{ fill: 'currentColor', opacity: s.opacity }"
-							  @click="jog(s.axis, s.signed, xyFeed)"
+							  @click="jog(s.axis, s.signed, feedFor(s.axis))"
 							  @contextmenu.prevent="editStep('xy', s.ringIndex)">
 							<title>{{ s.axis }}{{ s.signed > 0 ? "+" : "" }}{{ fmt(s.signed) }} mm{{ blockedAxes.has(s.axis.toUpperCase()) ? ` — ${$t('plugins.flexibleLayouts.jog.blockedUnhomed')}` : "" }}</title>
 						</path>
@@ -48,11 +53,13 @@
 
 				<!-- per-axis home buttons, tucked into the corners so they don't overlap the rings -->
 				<template v-if="widget.showHome !== false">
-					<button type="button" class="jog-axis-home jog-home-x" :style="zBtnStyle" :disabled="disabledNow"
+					<button type="button" class="jog-axis-home jog-home-x" :class="{ 'jog-home-unhomed': isUnhomed(xAxisLetter) }"
+							:style="zBtnStyle" :disabled="disabledNow"
 							:title="`${$t('plugins.flexibleLayouts.jog.home')} ${xAxisLetter}`" @click="homeX">
 						<v-icon size="x-small">mdi-home</v-icon><span class="jog-axis-letter">{{ xAxisLetter }}</span>
 					</button>
-					<button type="button" class="jog-axis-home jog-home-y" :style="zBtnStyle" :disabled="disabledNow"
+					<button type="button" class="jog-axis-home jog-home-y" :class="{ 'jog-home-unhomed': isUnhomed(yAxisLetter) }"
+							:style="zBtnStyle" :disabled="disabledNow"
 							:title="`${$t('plugins.flexibleLayouts.jog.home')} ${yAxisLetter}`" @click="homeY">
 						<v-icon size="x-small">mdi-home</v-icon><span class="jog-axis-letter">{{ yAxisLetter }}</span>
 					</button>
@@ -70,9 +77,10 @@
 					<span class="jog-zval">{{ fmt(s) }}</span>
 				</button>
 				<button v-if="widget.showHome !== false" type="button" class="jog-zbtn jog-zhome"
+						:class="{ 'jog-home-unhomed': isUnhomed(zAxisLetter) }"
 						:style="zBtnStyle" :disabled="disabledNow"
 						:title="$t('plugins.flexibleLayouts.jog.homeZ')" @click="homeZ">
-					<v-icon size="x-small">mdi-home</v-icon>
+						<v-icon size="x-small">mdi-home</v-icon><span class="jog-axis-letter">{{ zAxisLetter }}</span>
 				</button>
 				<button v-for="(z, i) in zStepsDown" :key="'zn' + z.k" type="button" class="jog-zbtn"
 						:class="{ 'jog-zbtn-blocked': zBlocked }"
@@ -86,7 +94,7 @@
 		</div>
 
 		<div v-if="widget.showMotorsOff" class="flex-shrink-0 mt-1">
-			<v-btn size="small" variant="tonal" block prepend-icon="mdi-power" :disabled="disabledNow"
+			<v-btn size="small" variant="tonal" block prepend-icon="mdi-power" :color="sectorFill" :disabled="disabledNow"
 				   @click="motorsOff">{{ $t("plugins.flexibleLayouts.jog.motorsOff") }}</v-btn>
 		</div>
 	</div>
@@ -132,6 +140,15 @@ const blockedAxes = computed(() => {
 });
 const zBlocked = computed(() => blockedAxes.value.has(zAxisLetter.value.toUpperCase()));
 
+/** Whether `letter` is currently unhomed - independent of blockedAxes/noMovesBeforeHoming, since the
+ *  home buttons should visibly flag an unhomed axis (like DWC's own Movement panel does) regardless
+ *  of whether the firmware would also refuse a jog on it. Case-insensitive: unhomedAxes() preserves
+ *  whatever case the configured axis letter uses, and RRF axis letters are legitimately lower-case
+ *  sometimes (see quote() below). */
+function isUnhomed(letter: string): boolean {
+	return unhomedNow.value.some((a) => a.toUpperCase() === letter.toUpperCase());
+}
+
 // --- configuration with fallbacks -------------------------------------------------
 const xySteps = computed(() => (props.widget.xySteps?.length ? props.widget.xySteps : [100, 10, 1, 0.1]));
 const zStepList = computed(() => (props.widget.zSteps?.length ? props.widget.zSteps : [10, 1, 0.1]));
@@ -145,14 +162,22 @@ const zSign = computed(() => (props.widget.invertZ ? -1 : 1));
 const sectorFill = computed(() => resolveColor(props.widget.color));
 const zBtnStyle = computed(() => ({ color: sectorFill.value }));
 
-const xyFeed = computed({
-	get: () => props.widget.xyFeedrate ?? 3000,
-	set: (v: number) => { props.widget.xyFeedrate = Number(v) || 0; },
+const xFeed = computed({
+	get: () => props.widget.xFeedrate ?? 3000,
+	set: (v: number) => { props.widget.xFeedrate = Number(v) || 0; },
+});
+const yFeed = computed({
+	get: () => props.widget.yFeedrate ?? 3000,
+	set: (v: number) => { props.widget.yFeedrate = Number(v) || 0; },
 });
 const zFeed = computed({
 	get: () => props.widget.zFeedrate ?? 600,
 	set: (v: number) => { props.widget.zFeedrate = Number(v) || 0; },
 });
+/** Which feedrate applies to a cardinal sector's axis - X and Y are independently settable. */
+function feedFor(axis: string): number {
+	return axis.toUpperCase() === xAxisLetter.value.toUpperCase() ? xFeed.value : yFeed.value;
+}
 
 // Backfill arrays on older saved widgets so right-click edits have something to mutate.
 onMounted(() => {
@@ -298,10 +323,15 @@ async function editStep(arr: "xy" | "z", index: number): Promise<void> {
 		0,
 	);
 	if (v !== null && !Number.isNaN(v) && v > 0) {
+		// Reassign the whole array rather than mutating one index in place: this is what a saved
+		// layout's persistence watcher reliably picks up (a plain `arr[index] = v` mutation of an
+		// array already sitting on the reactive widget can be missed depending on how deep that
+		// watcher tracks changes) - see the regression test pinning this. A right-click edit that
+		// silently doesn't survive a reload is worse than the extra array copy.
 		if (arr === "xy") {
-			(props.widget.xySteps ??= [...xySteps.value])[index] = v;
+			props.widget.xySteps = xySteps.value.map((s, i) => (i === index ? v : s));
 		} else {
-			(props.widget.zSteps ??= [...zStepList.value])[index] = v;
+			props.widget.zSteps = zStepList.value.map((s, i) => (i === index ? v : s));
 		}
 	}
 }
@@ -328,9 +358,13 @@ async function editStep(arr: "xy" | "z", index: number): Promise<void> {
 	font-size: 0.55em;
 	line-height: 1.2;
 	opacity: 0.7;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
+	/* Was nowrap+ellipsis: fine at the small default size, but FlexGridItem's per-panel "label size"
+	   setting (class ending in -label, see its own stylesheet) can raise this well past what the
+	   column below was ever measured for, and the ellipsis silently hid however much no longer fit -
+	   indistinguishable from the setting "not working" at a glance. Wrapping instead just grows the
+	   row, which .jog-feed's flex-column parent already accommodates. */
+	white-space: normal;
+	word-break: break-word;
 }
 .jog-feed-input {
 	width: 100%;
@@ -384,13 +418,18 @@ async function editStep(arr: "xy" | "z", index: number): Promise<void> {
 	fill: rgb(var(--v-theme-warning)) !important;
 }
 .jog-step-label {
-	font-size: 6px;
+	/* em, not a fixed px: this text lives inside the SVG's own 130-unit viewBox, so its rendered size
+	   is always relative to BOTH the inherited font-size AND however big the widget itself currently
+	   is on screen - there's no way to pin it to an exact HTML CSS pixel size that matches the labels
+	   outside the SVG. A fixed px value ignored the panel's font-size setting entirely (the actual
+	   reported bug); em at least tracks it in the right direction. */
+	font-size: 0.45em;
 	fill: rgb(var(--v-theme-on-surface));
 	pointer-events: none;
 	font-weight: 600;
 }
 .jog-dir-label {
-	font-size: 6.5px;
+	font-size: 0.48em;
 	fill: rgb(var(--v-theme-on-surface));
 	pointer-events: none;
 	opacity: 0.7;
@@ -414,9 +453,15 @@ async function editStep(arr: "xy" | "z", index: number): Promise<void> {
 	top: 2px;
 	display: flex;
 	align-items: center;
-	gap: 1px;
-	padding: 1px 4px;
-	font-size: 0.6em;
+	justify-content: center;
+	gap: 2px;
+	padding: 4px 7px;
+	/* A larger hit target than the label alone needs - was 1px/4px padding at 0.6em, reported too
+	   small to hit reliably. min-width/min-height set an actual floor rather than only relying on
+	   padding, which shrinks along with the panel's font-size setting. */
+	min-width: 24px;
+	min-height: 24px;
+	font-size: 0.7em;
 	line-height: 1;
 	border-radius: 4px;
 	color: currentColor;
@@ -436,6 +481,13 @@ async function editStep(arr: "xy" | "z", index: number): Promise<void> {
 .jog-axis-letter {
 	font-weight: 600;
 }
+/* Matches DWC's own Movement panel convention: an unhomed axis's home button turns the warning
+   colour rather than staying in the widget's configured accent, so "this axis needs homing" reads at
+   a glance instead of needing to check a separate banner. */
+.jog-home-unhomed {
+	color: rgb(var(--v-theme-warning)) !important;
+	border-color: rgb(var(--v-theme-warning)) !important;
+}
 .jog-z {
 	flex: 0 0 auto;
 	width: clamp(38px, 22%, 64px);
@@ -443,7 +495,7 @@ async function editStep(arr: "xy" | "z", index: number): Promise<void> {
 }
 .jog-zbtn {
 	flex: 1 1 0;
-	min-height: 0;
+	min-height: 20px;
 	min-width: 0;
 	display: flex;
 	align-items: center;

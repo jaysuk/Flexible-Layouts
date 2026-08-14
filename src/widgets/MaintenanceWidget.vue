@@ -6,7 +6,21 @@
 			{{ $t("plugins.flexibleLayouts.maintenance.notSetUp") }}
 		</div>
 		<div v-else class="mnt-body flex-grow-1">
-			<div class="mnt-row">
+			<template v-if="isFff">
+				<div class="mnt-row">
+					<span class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.maintenance.printHours") }}</span>
+					<span class="mnt-value">{{ printHoursDisplay }}</span>
+				</div>
+				<div class="mnt-row">
+					<span class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.maintenance.filamentUsed") }}</span>
+					<span class="mnt-value">{{ filamentUsedDisplay }}</span>
+				</div>
+				<div class="mnt-row">
+					<span class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.maintenance.toolChanges") }}</span>
+					<span class="mnt-value">{{ toolChangesDisplay }}</span>
+				</div>
+			</template>
+			<div v-else class="mnt-row">
 				<span class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.maintenance.spindleHours") }}</span>
 				<span class="mnt-value">{{ spindleHoursDisplay }}</span>
 			</div>
@@ -46,9 +60,19 @@ const router = useRouter();
 
 const trackingConfigured = ref(false);
 const liveSpindleSeconds = ref<number | null>(null);
+const livePrintSeconds = ref<number | null>(null);
+const liveFilamentMm = ref<number | null>(null);
+const liveToolChanges = ref<number | null>(null);
 const jobCounts = ref({ finished: 0, cancelled: 0 });
 
+// state.machineMode drives which stats make sense to show - a spindle-hours figure is meaningless on
+// an FFF machine (and vice versa for filament/tool-change counts on a CNC/laser one).
+const isFff = computed(() => resolveOmPath(machineStore.model, "state.machineMode") === "FFF");
+
 const spindleHoursDisplay = computed(() => (liveSpindleSeconds.value != null ? (liveSpindleSeconds.value / 3600).toFixed(1) : "—"));
+const printHoursDisplay = computed(() => (livePrintSeconds.value != null ? (livePrintSeconds.value / 3600).toFixed(1) : "—"));
+const filamentUsedDisplay = computed(() => (liveFilamentMm.value != null ? (liveFilamentMm.value / 1000).toFixed(1) + " m" : "—"));
+const toolChangesDisplay = computed(() => (liveToolChanges.value != null ? String(liveToolChanges.value) : "—"));
 
 onMounted(async () => {
 	if (!machineStore.isConnected) { return; }
@@ -58,6 +82,12 @@ onMounted(async () => {
 
 	const spindleSec = resolveOmPath(machineStore.model, "global.flMaintSpindleSec");
 	liveSpindleSeconds.value = typeof spindleSec === "number" ? spindleSec : null;
+	const printSec = resolveOmPath(machineStore.model, "global.flMaintPrintSec");
+	livePrintSeconds.value = typeof printSec === "number" ? printSec : null;
+	const filamentMm = resolveOmPath(machineStore.model, "global.flMaintFilamentMm");
+	liveFilamentMm.value = typeof filamentMm === "number" ? filamentMm : null;
+	const toolChanges = resolveOmPath(machineStore.model, "global.flMaintToolChanges");
+	liveToolChanges.value = typeof toolChanges === "number" ? toolChanges : null;
 
 	try {
 		const systemDir = (machineStore.model as { directories?: { system?: string } }).directories?.system || "0:/sys";

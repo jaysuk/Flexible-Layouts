@@ -29,23 +29,23 @@
 					<HelpTip class="ms-1" :text="$t('plugins.flexibleLayouts.properties.geometryHelp')" />
 				</div>
 				<v-row dense class="mb-3">
-					<v-col cols="3"><v-text-field v-model.number="geom.x" type="number" density="compact" variant="outlined" hide-details label="X" :title="$t('plugins.flexibleLayouts.properties.geomX')" /></v-col>
-					<v-col cols="3"><v-text-field v-model.number="geom.y" type="number" density="compact" variant="outlined" hide-details label="Y" :title="$t('plugins.flexibleLayouts.properties.geomY')" /></v-col>
-					<v-col cols="3"><v-text-field v-model.number="geom.w" type="number" density="compact" variant="outlined" hide-details label="W" :title="$t('plugins.flexibleLayouts.properties.geomW')" /></v-col>
-					<v-col cols="3"><v-text-field v-model.number="geom.h" type="number" density="compact" variant="outlined" hide-details label="H" :title="$t('plugins.flexibleLayouts.properties.geomH')" /></v-col>
+					<v-col cols="3"><v-text-field persistent-placeholder v-model.number="geom.x" type="number" density="compact" variant="outlined" hide-details label="X" :title="$t('plugins.flexibleLayouts.properties.geomX')" /></v-col>
+					<v-col cols="3"><v-text-field persistent-placeholder v-model.number="geom.y" type="number" density="compact" variant="outlined" hide-details label="Y" :title="$t('plugins.flexibleLayouts.properties.geomY')" /></v-col>
+					<v-col cols="3"><v-text-field persistent-placeholder v-model.number="geom.w" type="number" density="compact" variant="outlined" hide-details label="W" :title="$t('plugins.flexibleLayouts.properties.geomW')" /></v-col>
+					<v-col cols="3"><v-text-field persistent-placeholder v-model.number="geom.h" type="number" density="compact" variant="outlined" hide-details label="H" :title="$t('plugins.flexibleLayouts.properties.geomH')" /></v-col>
 				</v-row>
 
 				<!-- Command button -->
 				<template v-if="draft.type === 'codeButton'">
-					<v-text-field v-model="draft.label" class="mb-2" density="compact" variant="outlined"
+					<v-text-field persistent-placeholder v-model="draft.label" class="mb-2" density="compact" variant="outlined"
 								  hide-details :label="$t('plugins.flexibleLayouts.properties.label')" />
-					<v-select v-model="draft.action" :items="actionOptions" class="mb-2" density="compact"
+					<v-select persistent-placeholder v-model="draft.action" :items="actionOptions" class="mb-2" density="compact"
 							  variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.action')" />
-					<v-textarea v-if="(draft.action ?? 'gcode') === 'gcode'" v-model="draft.code" class="mb-2"
+					<v-textarea persistent-placeholder v-if="(draft.action ?? 'gcode') === 'gcode'" v-model="draft.code" class="mb-2"
 								density="compact" variant="outlined" hide-details rows="3" auto-grow
 								:label="$t('plugins.flexibleLayouts.properties.code')"
 								:hint="$t('plugins.flexibleLayouts.properties.codeHint')" persistent-hint />
-					<v-text-field v-else v-model="draft.url" class="mb-2" density="compact" variant="outlined"
+					<v-text-field persistent-placeholder v-else v-model="draft.url" class="mb-2" density="compact" variant="outlined"
 								  hide-details :label="$t('plugins.flexibleLayouts.properties.url')"
 								  placeholder="https://…" />
 					<div class="text-caption text-medium-emphasis mb-1">
@@ -53,19 +53,19 @@
 					</div>
 					<v-row dense class="mb-2">
 						<v-col cols="6"><IconPicker v-model="draft.icon" /></v-col>
-						<v-col cols="6"><v-text-field v-model.number="draft.iconSize" type="number" :min="0" density="compact"
+						<v-col cols="6"><v-text-field persistent-placeholder v-model.number="draft.iconSize" type="number" :min="0" density="compact"
 									  variant="outlined" hide-details clearable suffix="px"
 									  :label="$t('plugins.flexibleLayouts.properties.iconSize')"
 									  :placeholder="$t('plugins.flexibleLayouts.properties.iconSizeAuto')" /></v-col>
 					</v-row>
-					<v-select v-if="draft.icon" v-model="iconPos" :items="iconPositionOptions" class="mb-2"
+					<v-select persistent-placeholder v-if="draft.icon" v-model="iconPos" :items="iconPositionOptions" class="mb-2"
 							  density="compact" variant="outlined" hide-details
 							  :label="$t('plugins.flexibleLayouts.properties.iconPosition')" />
 					<ColorSelect v-model="draft.color" class="mb-2" density="compact"
 							  variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" />
 					<v-switch v-model="draft.confirm" color="primary" hide-details density="compact"
 							  :label="$t('plugins.flexibleLayouts.properties.confirm')" />
-					<v-text-field v-model.number="draft.debounceMs" type="number" :min="0" density="compact"
+					<v-text-field persistent-placeholder v-model.number="draft.debounceMs" type="number" :min="0" density="compact"
 								  variant="outlined" hide-details clearable class="mt-2" suffix="ms"
 								  :label="$t('plugins.flexibleLayouts.properties.debounce')"
 								  :hint="$t('plugins.flexibleLayouts.properties.debounceHint')" persistent-hint />
@@ -74,46 +74,46 @@
 					<v-expansion-panels class="mt-3" variant="accordion">
 						<v-expansion-panel :title="$t('plugins.flexibleLayouts.shape.heading')">
 							<v-expansion-panel-text>
-								<v-select v-model="shapeKind" :items="shapeKindOptions" density="compact"
+								<v-select persistent-placeholder v-model="shapeKind" :items="shapeKindOptions" density="compact"
 										  variant="outlined" hide-details class="mb-2"
 										  :label="$t('plugins.flexibleLayouts.shape.kind')" />
 								<template v-if="draft.shape && draft.shape.kind !== 'rect'">
 									<v-row v-if="draft.shape.kind === 'polygon'" dense class="mb-2">
-										<v-col cols="6"><v-text-field v-model.number="draft.shape.sides" type="number" :min="3" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.shape.sides')" /></v-col>
-										<v-col cols="6"><v-text-field v-model.number="draft.shape.shapeRotation" type="number" density="compact" variant="outlined" hide-details suffix="°" :label="$t('plugins.flexibleLayouts.shape.rotation')" /></v-col>
+										<v-col cols="6"><v-text-field persistent-placeholder v-model.number="draft.shape.sides" type="number" :min="3" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.shape.sides')" /></v-col>
+										<v-col cols="6"><v-text-field persistent-placeholder v-model.number="draft.shape.shapeRotation" type="number" density="compact" variant="outlined" hide-details suffix="°" :label="$t('plugins.flexibleLayouts.shape.rotation')" /></v-col>
 									</v-row>
 									<v-row v-if="draft.shape.kind === 'star'" dense class="mb-2">
-										<v-col cols="4"><v-text-field v-model.number="draft.shape.points" type="number" :min="3" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.shape.points')" /></v-col>
-										<v-col cols="4"><v-text-field v-model.number="draft.shape.innerRatio" type="number" step="0.05" :min="0" :max="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.shape.innerRatio')" /></v-col>
-										<v-col cols="4"><v-text-field v-model.number="draft.shape.shapeRotation" type="number" density="compact" variant="outlined" hide-details suffix="°" :label="$t('plugins.flexibleLayouts.shape.rotation')" /></v-col>
+										<v-col cols="4"><v-text-field persistent-placeholder v-model.number="draft.shape.points" type="number" :min="3" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.shape.points')" /></v-col>
+										<v-col cols="4"><v-text-field persistent-placeholder v-model.number="draft.shape.innerRatio" type="number" step="0.05" :min="0" :max="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.shape.innerRatio')" /></v-col>
+										<v-col cols="4"><v-text-field persistent-placeholder v-model.number="draft.shape.shapeRotation" type="number" density="compact" variant="outlined" hide-details suffix="°" :label="$t('plugins.flexibleLayouts.shape.rotation')" /></v-col>
 									</v-row>
 									<v-row v-if="draft.shape.kind === 'wedge'" dense class="mb-2">
-										<v-col cols="6"><v-text-field v-model.number="draft.shape.startAngle" type="number" density="compact" variant="outlined" hide-details suffix="°" :label="$t('plugins.flexibleLayouts.shape.startAngle')" /></v-col>
-										<v-col cols="6"><v-text-field v-model.number="draft.shape.sweepAngle" type="number" density="compact" variant="outlined" hide-details suffix="°" :label="$t('plugins.flexibleLayouts.shape.sweepAngle')" /></v-col>
-										<v-col cols="6"><v-text-field v-model.number="draft.shape.innerRadius" type="number" step="0.05" :min="0" :max="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.shape.innerRadius')" /></v-col>
-										<v-col cols="6"><v-text-field v-model.number="draft.shape.outerRadius" type="number" step="0.05" :min="0" :max="2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.shape.outerRadius')" /></v-col>
+										<v-col cols="6"><v-text-field persistent-placeholder v-model.number="draft.shape.startAngle" type="number" density="compact" variant="outlined" hide-details suffix="°" :label="$t('plugins.flexibleLayouts.shape.startAngle')" /></v-col>
+										<v-col cols="6"><v-text-field persistent-placeholder v-model.number="draft.shape.sweepAngle" type="number" density="compact" variant="outlined" hide-details suffix="°" :label="$t('plugins.flexibleLayouts.shape.sweepAngle')" /></v-col>
+										<v-col cols="6"><v-text-field persistent-placeholder v-model.number="draft.shape.innerRadius" type="number" step="0.05" :min="0" :max="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.shape.innerRadius')" /></v-col>
+										<v-col cols="6"><v-text-field persistent-placeholder v-model.number="draft.shape.outerRadius" type="number" step="0.05" :min="0" :max="2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.shape.outerRadius')" /></v-col>
 									</v-row>
 									<v-row v-if="draft.shape.kind === 'chevron' || draft.shape.kind === 'arrow'" dense class="mb-2">
-										<v-col cols="6"><v-select v-model="draft.shape.direction" :items="directionOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.shape.direction')" /></v-col>
-										<v-col cols="6" v-if="draft.shape.kind === 'chevron'"><v-text-field v-model.number="draft.shape.indent" type="number" step="0.05" :min="0" :max="0.9" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.shape.indent')" /></v-col>
-										<v-col cols="6" v-if="draft.shape.kind === 'arrow'"><v-text-field v-model.number="draft.shape.headRatio" type="number" step="0.05" :min="0" :max="0.9" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.shape.headRatio')" /></v-col>
+										<v-col cols="6"><v-select persistent-placeholder v-model="draft.shape.direction" :items="directionOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.shape.direction')" /></v-col>
+										<v-col cols="6" v-if="draft.shape.kind === 'chevron'"><v-text-field persistent-placeholder v-model.number="draft.shape.indent" type="number" step="0.05" :min="0" :max="0.9" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.shape.indent')" /></v-col>
+										<v-col cols="6" v-if="draft.shape.kind === 'arrow'"><v-text-field persistent-placeholder v-model.number="draft.shape.headRatio" type="number" step="0.05" :min="0" :max="0.9" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.shape.headRatio')" /></v-col>
 									</v-row>
 									<v-row v-if="draft.shape.kind === 'trapezoid'" dense class="mb-2">
-										<v-col cols="6"><v-text-field v-model.number="draft.shape.topRatio" type="number" step="0.05" :min="0" :max="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.shape.topRatio')" /></v-col>
+										<v-col cols="6"><v-text-field persistent-placeholder v-model.number="draft.shape.topRatio" type="number" step="0.05" :min="0" :max="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.shape.topRatio')" /></v-col>
 									</v-row>
 									<v-row v-if="draft.shape.kind === 'path'" dense class="mb-2">
-										<v-col cols="12"><v-textarea v-model="draft.shape.d" density="compact" variant="outlined" hide-details rows="2" auto-grow :label="$t('plugins.flexibleLayouts.shape.pathD')" /></v-col>
+										<v-col cols="12"><v-textarea persistent-placeholder v-model="draft.shape.d" density="compact" variant="outlined" hide-details rows="2" auto-grow :label="$t('plugins.flexibleLayouts.shape.pathD')" /></v-col>
 									</v-row>
 									<!-- Stroke, fill opacity, rotation (for all non-rect shapes) -->
 									<v-row dense class="mb-2">
-										<v-col cols="4"><v-text-field v-model.number="draft.fillOpacity" type="number" step="0.05" :min="0" :max="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.shape.fillOpacity')" /></v-col>
-										<v-col cols="4"><v-text-field v-model.number="draft.rotation" type="number" density="compact" variant="outlined" hide-details suffix="°" :label="$t('plugins.flexibleLayouts.shape.itemRotation')" /></v-col>
-										<v-col cols="4"><v-text-field v-model.number="draft.z" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.shape.zOrder')" /></v-col>
+										<v-col cols="4"><v-text-field persistent-placeholder v-model.number="draft.fillOpacity" type="number" step="0.05" :min="0" :max="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.shape.fillOpacity')" /></v-col>
+										<v-col cols="4"><v-text-field persistent-placeholder v-model.number="draft.rotation" type="number" density="compact" variant="outlined" hide-details suffix="°" :label="$t('plugins.flexibleLayouts.shape.itemRotation')" /></v-col>
+										<v-col cols="4"><v-text-field persistent-placeholder v-model.number="draft.z" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.shape.zOrder')" /></v-col>
 									</v-row>
 									<v-row dense>
-										<v-col cols="4"><v-text-field v-model.number="shapeStroke.width" type="number" :min="0" density="compact" variant="outlined" hide-details suffix="px" :label="$t('plugins.flexibleLayouts.shape.strokeWidth')" /></v-col>
-										<v-col cols="4"><v-text-field v-model="shapeStroke.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.shape.strokeColor')" placeholder="#fff" /></v-col>
-										<v-col cols="4"><v-text-field v-model="shapeStroke.dash" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.shape.strokeDash')" placeholder="4 2" /></v-col>
+										<v-col cols="4"><v-text-field persistent-placeholder v-model.number="shapeStroke.width" type="number" :min="0" density="compact" variant="outlined" hide-details suffix="px" :label="$t('plugins.flexibleLayouts.shape.strokeWidth')" /></v-col>
+										<v-col cols="4"><v-text-field persistent-placeholder v-model="shapeStroke.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.shape.strokeColor')" placeholder="#fff" /></v-col>
+										<v-col cols="4"><v-text-field persistent-placeholder v-model="shapeStroke.dash" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.shape.strokeDash')" placeholder="4 2" /></v-col>
 									</v-row>
 								</template>
 							</v-expansion-panel-text>
@@ -123,7 +123,7 @@
 
 				<!-- Object-model value -->
 				<template v-else-if="draft.type === 'value'">
-					<v-select :model-value="null" :items="presetItems" class="mb-2" density="compact"
+					<v-select persistent-placeholder :model-value="null" :items="presetItems" class="mb-2" density="compact"
 							  variant="outlined" hide-details clearable
 							  :label="$t('plugins.flexibleLayouts.properties.quickPick')"
 							  @update:model-value="(v: unknown) => applyPreset(v as string | null)" />
@@ -133,17 +133,17 @@
 						{{ $t("plugins.flexibleLayouts.properties.preview") }}:
 						<span class="font-weight-medium">{{ preview }}</span>
 					</div>
-					<v-text-field v-model="draft.label" class="mb-2" density="compact" variant="outlined"
+					<v-text-field persistent-placeholder v-model="draft.label" class="mb-2" density="compact" variant="outlined"
 								  hide-details :label="$t('plugins.flexibleLayouts.properties.label')" />
-					<v-select v-model="draft.display" :items="displayOptions" class="mb-2" density="compact"
+					<v-select persistent-placeholder v-model="draft.display" :items="displayOptions" class="mb-2" density="compact"
 							  variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.display')" />
 					<v-row dense>
 						<v-col cols="6">
-							<v-text-field v-model="draft.unit" density="compact" variant="outlined" hide-details
+							<v-text-field persistent-placeholder v-model="draft.unit" density="compact" variant="outlined" hide-details
 										  :label="$t('plugins.flexibleLayouts.properties.unit')" />
 						</v-col>
 						<v-col cols="6">
-							<v-text-field v-model.number="draft.precision" type="number" :min="0" density="compact"
+							<v-text-field persistent-placeholder v-model.number="draft.precision" type="number" :min="0" density="compact"
 										  variant="outlined" hide-details
 										  :label="$t('plugins.flexibleLayouts.properties.precision')">
 								<template #append-inner><HelpTip :text="$t('plugins.flexibleLayouts.properties.precisionHelp')" /></template>
@@ -152,12 +152,12 @@
 					</v-row>
 					<v-row v-if="draft.display === 'gauge'" dense class="mt-1">
 						<v-col cols="6">
-							<v-text-field v-model.number="draft.min" type="number" density="compact"
+							<v-text-field persistent-placeholder v-model.number="draft.min" type="number" density="compact"
 										  variant="outlined" hide-details
 										  :label="$t('plugins.flexibleLayouts.properties.min')" />
 						</v-col>
 						<v-col cols="6">
-							<v-text-field v-model.number="draft.max" type="number" density="compact"
+							<v-text-field persistent-placeholder v-model.number="draft.max" type="number" density="compact"
 										  variant="outlined" hide-details
 										  :label="$t('plugins.flexibleLayouts.properties.max')" />
 						</v-col>
@@ -170,27 +170,27 @@
 							<v-expansion-panel-text>
 								<v-row dense>
 									<v-col cols="6">
-										<v-text-field v-model.number="draft.scale" type="number" density="compact"
+										<v-text-field persistent-placeholder v-model.number="draft.scale" type="number" density="compact"
 													  variant="outlined" hide-details
 													  :label="$t('plugins.flexibleLayouts.properties.scale')" />
 									</v-col>
 									<v-col cols="6">
-										<v-text-field v-model.number="draft.offset" type="number" density="compact"
+										<v-text-field persistent-placeholder v-model.number="draft.offset" type="number" density="compact"
 													  variant="outlined" hide-details
 													  :label="$t('plugins.flexibleLayouts.properties.offset')" />
 									</v-col>
 									<v-col cols="12">
-										<v-text-field v-model="draft.expression" density="compact" variant="outlined"
+										<v-text-field persistent-placeholder v-model="draft.expression" density="compact" variant="outlined"
 													  hide-details clearable placeholder="x / 60"
 													  :label="$t('plugins.flexibleLayouts.properties.expression')" />
 										<div class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.properties.expressionHint") }}</div>
 									</v-col>
 									<v-col cols="6">
-										<v-text-field v-model="draft.boolOn" density="compact" variant="outlined"
+										<v-text-field persistent-placeholder v-model="draft.boolOn" density="compact" variant="outlined"
 													  hide-details :label="$t('plugins.flexibleLayouts.properties.boolOn')" />
 									</v-col>
 									<v-col cols="6">
-										<v-text-field v-model="draft.boolOff" density="compact" variant="outlined"
+										<v-text-field persistent-placeholder v-model="draft.boolOff" density="compact" variant="outlined"
 													  hide-details :label="$t('plugins.flexibleLayouts.properties.boolOff')" />
 									</v-col>
 								</v-row>
@@ -202,9 +202,9 @@
 									</v-btn>
 								</div>
 								<div v-for="(m, mi) in (draft.map ?? [])" :key="mi" class="d-flex ga-2 mb-1 align-center">
-									<v-text-field v-model="m.value" density="compact" variant="outlined" hide-details
+									<v-text-field persistent-placeholder v-model="m.value" density="compact" variant="outlined" hide-details
 												  :label="$t('plugins.flexibleLayouts.properties.mapValue')" />
-									<v-text-field v-model="m.text" density="compact" variant="outlined" hide-details
+									<v-text-field persistent-placeholder v-model="m.text" density="compact" variant="outlined" hide-details
 												  :label="$t('plugins.flexibleLayouts.properties.mapText')" />
 									<v-btn icon="mdi-delete" size="x-small" variant="text" color="error" @click="draft.map.splice(mi, 1)" />
 								</div>
@@ -215,16 +215,16 @@
 
 				<!-- Text / image / spacer -->
 				<template v-else-if="draft.type === 'label'">
-					<v-select v-model="draft.variant" :items="variantOptions" class="mb-2" density="compact"
+					<v-select persistent-placeholder v-model="draft.variant" :items="variantOptions" class="mb-2" density="compact"
 							  variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.variant')" />
-					<v-textarea v-if="draft.variant === 'text' || draft.variant === 'heading'"
+					<v-textarea persistent-placeholder v-if="draft.variant === 'text' || draft.variant === 'heading'"
 								v-model="draft.content" class="mb-2" density="compact" variant="outlined"
 								hide-details rows="2" auto-grow
 								:label="$t('plugins.flexibleLayouts.properties.text')" />
-					<v-text-field v-else-if="draft.variant === 'image'" v-model="draft.content" class="mb-2"
+					<v-text-field persistent-placeholder v-else-if="draft.variant === 'image'" v-model="draft.content" class="mb-2"
 								  density="compact" variant="outlined" hide-details
 								  :label="$t('plugins.flexibleLayouts.properties.imageUrl')" />
-					<v-select v-if="draft.variant !== 'spacer'" v-model="draft.align" :items="alignOptions"
+					<v-select persistent-placeholder v-if="draft.variant !== 'spacer'" v-model="draft.align" :items="alignOptions"
 							  class="mb-2" density="compact" variant="outlined" hide-details
 							  :label="$t('plugins.flexibleLayouts.properties.align')" />
 					<ColorSelect v-if="draft.variant === 'text' || draft.variant === 'heading'"
@@ -234,18 +234,19 @@
 
 				<!-- Input / variable -->
 				<template v-else-if="draft.type === 'input'">
-					<v-text-field v-model="draft.label" class="mb-2" density="compact" variant="outlined"
+					<v-text-field persistent-placeholder v-model="draft.label" class="mb-2" density="compact" variant="outlined"
 								  hide-details :label="$t('plugins.flexibleLayouts.properties.label')" />
-					<v-select v-model="draft.mode" :items="inputModeOptions" class="mb-2" density="compact"
+					<v-select persistent-placeholder v-model="draft.mode" :items="inputModeOptions" class="mb-2" density="compact"
 							  variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.inputMode')" />
-					<v-text-field v-if="draft.mode === 'command'" v-model="draft.commandTemplate" class="mb-2"
+					<v-text-field persistent-placeholder v-if="draft.mode === 'command'" v-model="draft.commandTemplate" class="mb-2"
 								  density="compact" variant="outlined" hide-details
 								  :label="$t('plugins.flexibleLayouts.properties.commandTemplate')"
 								  :hint="$t('plugins.flexibleLayouts.properties.commandTemplateHint')" persistent-hint />
-					<v-text-field v-else v-model="draft.globalName" class="mb-2" density="compact" variant="outlined"
-								  hide-details prefix="global."
-								  :label="$t('plugins.flexibleLayouts.properties.globalName')" />
-					<v-select v-model="draft.inputKind" :items="inputKindOptions" class="mb-2" density="compact"
+					<v-combobox persistent-placeholder v-else v-model="draft.globalName" :items="liveGlobalNames" class="mb-2"
+								density="compact" variant="outlined" hide-details prefix="global."
+								:label="$t('plugins.flexibleLayouts.properties.globalName')"
+								@update:model-value="onInputGlobalPicked" />
+					<v-select persistent-placeholder v-model="draft.inputKind" :items="inputKindOptions" class="mb-2" density="compact"
 							  variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.inputKind')" />
 					<ColorSelect v-model="draft.color" density="compact" variant="outlined"
 							  hide-details :label="$t('plugins.flexibleLayouts.properties.color')" />
@@ -253,7 +254,7 @@
 
 				<!-- Live chart -->
 				<template v-else-if="draft.type === 'chart'">
-					<v-text-field v-model="draft.title" class="mb-2" density="compact" variant="outlined"
+					<v-text-field persistent-placeholder v-model="draft.title" class="mb-2" density="compact" variant="outlined"
 								  hide-details :label="$t('plugins.flexibleLayouts.properties.label')" />
 					<div class="d-flex align-center mb-1">
 						<span class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.properties.series") }}</span>
@@ -269,7 +270,7 @@
 							<v-btn icon="mdi-delete" size="small" variant="text" color="error" @click="draft.series.splice(i, 1)" />
 						</div>
 						<div class="d-flex ga-2 mt-2">
-							<v-text-field v-model="s.label" density="compact" variant="outlined" hide-details
+							<v-text-field persistent-placeholder v-model="s.label" density="compact" variant="outlined" hide-details
 										  :label="$t('plugins.flexibleLayouts.properties.label')" />
 							<ColorSelect v-model="s.color" density="compact" variant="outlined"
 									  hide-details style="max-width: 180px"
@@ -278,29 +279,29 @@
 					</v-sheet>
 					<v-row dense>
 						<v-col cols="6">
-							<v-text-field v-model.number="draft.windowSeconds" type="number" density="compact"
+							<v-text-field persistent-placeholder v-model.number="draft.windowSeconds" type="number" density="compact"
 										  variant="outlined" hide-details
 										  :label="$t('plugins.flexibleLayouts.properties.windowSeconds')" />
 						</v-col>
 						<v-col cols="6">
-							<v-text-field v-model.number="draft.intervalMs" type="number" density="compact"
+							<v-text-field persistent-placeholder v-model.number="draft.intervalMs" type="number" density="compact"
 										  variant="outlined" hide-details
 										  :label="$t('plugins.flexibleLayouts.properties.intervalMs')" />
 						</v-col>
 						<v-col cols="6">
-							<v-text-field v-model.number="draft.min" type="number" density="compact" variant="outlined"
+							<v-text-field persistent-placeholder v-model.number="draft.min" type="number" density="compact" variant="outlined"
 										  hide-details :label="$t('plugins.flexibleLayouts.properties.min')" />
 						</v-col>
 						<v-col cols="6">
-							<v-text-field v-model.number="draft.max" type="number" density="compact" variant="outlined"
+							<v-text-field persistent-placeholder v-model.number="draft.max" type="number" density="compact" variant="outlined"
 										  hide-details :label="$t('plugins.flexibleLayouts.properties.max')" />
 						</v-col>
 						<v-col cols="6">
-							<v-text-field v-model="draft.xLabel" density="compact" variant="outlined" hide-details
+							<v-text-field persistent-placeholder v-model="draft.xLabel" density="compact" variant="outlined" hide-details
 										  :label="$t('plugins.flexibleLayouts.properties.xLabel')" />
 						</v-col>
 						<v-col cols="6">
-							<v-text-field v-model="draft.yLabel" density="compact" variant="outlined" hide-details
+							<v-text-field persistent-placeholder v-model="draft.yLabel" density="compact" variant="outlined" hide-details
 										  :label="$t('plugins.flexibleLayouts.properties.yLabel')" />
 						</v-col>
 					</v-row>
@@ -311,7 +312,7 @@
 
 				<!-- Web embed -->
 				<template v-else-if="draft.type === 'web'">
-					<v-text-field v-model="draft.url" density="compact" variant="outlined" hide-details
+					<v-text-field persistent-placeholder v-model="draft.url" density="compact" variant="outlined" hide-details
 								  :label="$t('plugins.flexibleLayouts.properties.url')" placeholder="https://…" />
 					<v-alert type="info" variant="tonal" density="compact" class="mt-2">
 						<div class="text-caption" v-html="urlFormatsHtml" />
@@ -324,57 +325,62 @@
 					<div class="text-caption text-medium-emphasis mb-2">
 						{{ $t("plugins.flexibleLayouts.jog.configHint") }}
 					</div>
-					<v-text-field v-model="draft.title" class="mb-2" density="compact" variant="outlined" hide-details
+					<v-text-field persistent-placeholder v-model="draft.title" class="mb-2" density="compact" variant="outlined" hide-details
 								  clearable :label="$t('plugins.flexibleLayouts.jog.titleField')" />
 					<v-row dense>
 						<v-col cols="4">
-							<v-text-field v-model="draft.xAxis" density="compact" variant="outlined" hide-details
+							<v-text-field persistent-placeholder v-model="draft.xAxis" density="compact" variant="outlined" hide-details
 										  :label="$t('plugins.flexibleLayouts.jog.xAxis')" />
 						</v-col>
 						<v-col cols="4">
-							<v-text-field v-model="draft.yAxis" density="compact" variant="outlined" hide-details
+							<v-text-field persistent-placeholder v-model="draft.yAxis" density="compact" variant="outlined" hide-details
 										  :label="$t('plugins.flexibleLayouts.jog.yAxis')" />
 						</v-col>
 						<v-col cols="4">
-							<v-text-field v-model="draft.zAxis" density="compact" variant="outlined" hide-details
+							<v-text-field persistent-placeholder v-model="draft.zAxis" density="compact" variant="outlined" hide-details
 										  :label="$t('plugins.flexibleLayouts.jog.zAxis')" />
 						</v-col>
 					</v-row>
-					<v-text-field v-model="xyStepsText" class="mt-2" density="compact" variant="outlined" hide-details
+					<v-text-field persistent-placeholder v-model="xyStepsText" class="mt-2" density="compact" variant="outlined" hide-details
 								  :label="$t('plugins.flexibleLayouts.jog.xySteps')"
 								  :hint="$t('plugins.flexibleLayouts.jog.stepsHint')" persistent-hint />
-					<v-text-field v-model="zStepsText" class="mt-2" density="compact" variant="outlined" hide-details
+					<v-text-field persistent-placeholder v-model="zStepsText" class="mt-2" density="compact" variant="outlined" hide-details
 								  :label="$t('plugins.flexibleLayouts.jog.zSteps')" />
 					<v-row dense class="mt-1">
-						<v-col cols="6">
-							<v-text-field v-model.number="draft.xyFeedrate" type="number" density="compact"
+						<v-col cols="4">
+							<v-text-field persistent-placeholder v-model.number="draft.xFeedrate" type="number" density="compact"
 										  variant="outlined" hide-details suffix="mm/min"
-										  :label="$t('plugins.flexibleLayouts.jog.xyFeed')" />
+										  :label="$t('plugins.flexibleLayouts.jog.axisFeed', { axis: draft.xAxis || 'X' })" />
 						</v-col>
-						<v-col cols="6">
-							<v-text-field v-model.number="draft.zFeedrate" type="number" density="compact"
+						<v-col cols="4">
+							<v-text-field persistent-placeholder v-model.number="draft.yFeedrate" type="number" density="compact"
 										  variant="outlined" hide-details suffix="mm/min"
-										  :label="$t('plugins.flexibleLayouts.jog.zFeed')" />
+										  :label="$t('plugins.flexibleLayouts.jog.axisFeed', { axis: draft.yAxis || 'Y' })" />
+						</v-col>
+						<v-col cols="4">
+							<v-text-field persistent-placeholder v-model.number="draft.zFeedrate" type="number" density="compact"
+										  variant="outlined" hide-details suffix="mm/min"
+										  :label="$t('plugins.flexibleLayouts.jog.axisFeed', { axis: draft.zAxis || 'Z' })" />
 						</v-col>
 					</v-row>
 					<ColorSelect v-model="draft.color" class="mt-2" density="compact"
 							  variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" />
-					<div class="d-flex flex-wrap ga-x-4">
-						<v-switch v-model="draft.showZ" color="primary" density="compact" hide-details
-								  :label="$t('plugins.flexibleLayouts.jog.showZ')" />
-						<v-switch v-model="draft.showHome" color="primary" density="compact" hide-details
-								  :label="$t('plugins.flexibleLayouts.jog.showHome')" />
-						<v-switch v-model="draft.showFeedrate" color="primary" density="compact" hide-details
-								  :label="$t('plugins.flexibleLayouts.jog.showFeedrate')" />
-						<v-switch v-model="draft.showMotorsOff" color="primary" density="compact" hide-details
-								  :label="$t('plugins.flexibleLayouts.jog.showMotorsOff')" />
-						<v-switch v-model="draft.invertX" color="primary" density="compact" hide-details
-								  :label="$t('plugins.flexibleLayouts.jog.invertX')" />
-						<v-switch v-model="draft.invertY" color="primary" density="compact" hide-details
-								  :label="$t('plugins.flexibleLayouts.jog.invertY')" />
-						<v-switch v-model="draft.invertZ" color="primary" density="compact" hide-details
-								  :label="$t('plugins.flexibleLayouts.jog.invertZ')" />
-					</div>
+					<v-row dense class="mt-1">
+						<v-col cols="6"><v-switch v-model="draft.showZ" color="primary" density="compact" hide-details
+								  :label="$t('plugins.flexibleLayouts.jog.showZ')" /></v-col>
+						<v-col cols="6"><v-switch v-model="draft.showHome" color="primary" density="compact" hide-details
+								  :label="$t('plugins.flexibleLayouts.jog.showHome')" /></v-col>
+						<v-col cols="6"><v-switch v-model="draft.showFeedrate" color="primary" density="compact" hide-details
+								  :label="$t('plugins.flexibleLayouts.jog.showFeedrate')" /></v-col>
+						<v-col cols="6"><v-switch v-model="draft.showMotorsOff" color="primary" density="compact" hide-details
+								  :label="$t('plugins.flexibleLayouts.jog.showMotorsOff')" /></v-col>
+						<v-col cols="6"><v-switch v-model="draft.invertX" color="primary" density="compact" hide-details
+								  :label="$t('plugins.flexibleLayouts.jog.invertX')" /></v-col>
+						<v-col cols="6"><v-switch v-model="draft.invertY" color="primary" density="compact" hide-details
+								  :label="$t('plugins.flexibleLayouts.jog.invertY')" /></v-col>
+						<v-col cols="6"><v-switch v-model="draft.invertZ" color="primary" density="compact" hide-details
+								  :label="$t('plugins.flexibleLayouts.jog.invertZ')" /></v-col>
+					</v-row>
 				</template>
 
 				<!-- 8-arm octopus jog control -->
@@ -382,77 +388,82 @@
 					<div class="text-caption text-medium-emphasis mb-2">
 						{{ $t("plugins.flexibleLayouts.jog.configHint") }}
 					</div>
-					<v-text-field v-model="draft.title" class="mb-2" density="compact" variant="outlined" hide-details
+					<v-text-field persistent-placeholder v-model="draft.title" class="mb-2" density="compact" variant="outlined" hide-details
 								  clearable :label="$t('plugins.flexibleLayouts.jog.titleField')" />
 					<v-row dense>
 						<v-col cols="4">
-							<v-text-field v-model="draft.xAxis" density="compact" variant="outlined" hide-details
+							<v-text-field persistent-placeholder v-model="draft.xAxis" density="compact" variant="outlined" hide-details
 										  :label="$t('plugins.flexibleLayouts.jog.xAxis')" />
 						</v-col>
 						<v-col cols="4">
-							<v-text-field v-model="draft.yAxis" density="compact" variant="outlined" hide-details
+							<v-text-field persistent-placeholder v-model="draft.yAxis" density="compact" variant="outlined" hide-details
 										  :label="$t('plugins.flexibleLayouts.jog.yAxis')" />
 						</v-col>
 						<v-col cols="4">
-							<v-text-field v-model="draft.zAxis" density="compact" variant="outlined" hide-details
+							<v-text-field persistent-placeholder v-model="draft.zAxis" density="compact" variant="outlined" hide-details
 										  :label="$t('plugins.flexibleLayouts.jog.zAxis')" />
 						</v-col>
 					</v-row>
-					<v-text-field v-model="xyStepsText" class="mt-2" density="compact" variant="outlined" hide-details
+					<v-text-field persistent-placeholder v-model="xyStepsText" class="mt-2" density="compact" variant="outlined" hide-details
 								  :label="$t('plugins.flexibleLayouts.jog.xySteps')"
 								  :hint="$t('plugins.flexibleLayouts.jog.stepsHint')" persistent-hint />
-					<v-text-field v-model="zStepsText" class="mt-2" density="compact" variant="outlined" hide-details
+					<v-text-field persistent-placeholder v-model="zStepsText" class="mt-2" density="compact" variant="outlined" hide-details
 								  :label="$t('plugins.flexibleLayouts.jog.zSteps')" />
 					<v-row dense class="mt-1">
-						<v-col cols="6">
-							<v-text-field v-model.number="draft.xyFeedrate" type="number" density="compact"
+						<v-col cols="4">
+							<v-text-field persistent-placeholder v-model.number="draft.xFeedrate" type="number" density="compact"
 										  variant="outlined" hide-details suffix="mm/min"
-										  :label="$t('plugins.flexibleLayouts.jog.xyFeed')" />
+										  :label="$t('plugins.flexibleLayouts.jog.axisFeed', { axis: draft.xAxis || 'X' })" />
 						</v-col>
-						<v-col cols="6">
-							<v-text-field v-model.number="draft.zFeedrate" type="number" density="compact"
+						<v-col cols="4">
+							<v-text-field persistent-placeholder v-model.number="draft.yFeedrate" type="number" density="compact"
 										  variant="outlined" hide-details suffix="mm/min"
-										  :label="$t('plugins.flexibleLayouts.jog.zFeed')" />
+										  :label="$t('plugins.flexibleLayouts.jog.axisFeed', { axis: draft.yAxis || 'Y' })" />
+						</v-col>
+						<v-col cols="4">
+							<v-text-field persistent-placeholder v-model.number="draft.zFeedrate" type="number" density="compact"
+										  variant="outlined" hide-details suffix="mm/min"
+										  :label="$t('plugins.flexibleLayouts.jog.axisFeed', { axis: draft.zAxis || 'Z' })" />
 						</v-col>
 					</v-row>
 					<ColorSelect v-model="draft.color" class="mt-2" density="compact"
 							  variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" />
-					<div class="d-flex flex-wrap ga-x-4">
-						<v-switch v-model="draft.showZ" color="primary" density="compact" hide-details
-								  :label="$t('plugins.flexibleLayouts.jog.showZ')" />
-						<v-switch v-model="draft.showHome" color="primary" density="compact" hide-details
-								  :label="$t('plugins.flexibleLayouts.jog.showHome')" />
-						<v-switch v-model="draft.showFeedrate" color="primary" density="compact" hide-details
-								  :label="$t('plugins.flexibleLayouts.jog.showFeedrate')" />
-						<v-switch v-model="draft.showMotorsOff" color="primary" density="compact" hide-details
-								  :label="$t('plugins.flexibleLayouts.jog.showMotorsOff')" />
-						<v-switch v-model="draft.showDiagonals" color="primary" density="compact" hide-details
-								  :label="$t('plugins.flexibleLayouts.octopusJog.showDiagonals')" />
-						<v-switch v-model="draft.showDistanceBullets" color="primary" density="compact" hide-details
-								  :label="$t('plugins.flexibleLayouts.octopusJog.showDistanceBullets')" />
-						<v-switch v-model="draft.showDro" color="primary" density="compact" hide-details
-								  :label="$t('plugins.flexibleLayouts.octopusJog.showDro')" />
-						<v-switch v-model="draft.invertX" color="primary" density="compact" hide-details
-								  :label="$t('plugins.flexibleLayouts.jog.invertX')" />
-						<v-switch v-model="draft.invertY" color="primary" density="compact" hide-details
-								  :label="$t('plugins.flexibleLayouts.jog.invertY')" />
-						<v-switch v-model="draft.invertZ" color="primary" density="compact" hide-details
-								  :label="$t('plugins.flexibleLayouts.jog.invertZ')" />
-					</div>
+					<v-row dense class="mt-1">
+						<v-col cols="6"><v-switch v-model="draft.showZ" color="primary" density="compact" hide-details
+								  :label="$t('plugins.flexibleLayouts.jog.showZ')" /></v-col>
+						<v-col cols="6"><v-switch v-model="draft.showHome" color="primary" density="compact" hide-details
+								  :label="$t('plugins.flexibleLayouts.jog.showHome')" /></v-col>
+						<v-col cols="6"><v-switch v-model="draft.showFeedrate" color="primary" density="compact" hide-details
+								  :label="$t('plugins.flexibleLayouts.jog.showFeedrate')" /></v-col>
+						<v-col cols="6"><v-switch v-model="draft.showMotorsOff" color="primary" density="compact" hide-details
+								  :label="$t('plugins.flexibleLayouts.jog.showMotorsOff')" /></v-col>
+						<v-col cols="6"><v-switch v-model="draft.showDiagonals" color="primary" density="compact" hide-details
+								  :label="$t('plugins.flexibleLayouts.octopusJog.showDiagonals')" /></v-col>
+						<v-col cols="6"><v-switch v-model="draft.showDistanceBullets" color="primary" density="compact" hide-details
+								  :label="$t('plugins.flexibleLayouts.octopusJog.showDistanceBullets')" /></v-col>
+						<v-col cols="6"><v-switch v-model="draft.showDro" color="primary" density="compact" hide-details
+								  :label="$t('plugins.flexibleLayouts.octopusJog.showDro')" /></v-col>
+						<v-col cols="6"><v-switch v-model="draft.invertX" color="primary" density="compact" hide-details
+								  :label="$t('plugins.flexibleLayouts.jog.invertX')" /></v-col>
+						<v-col cols="6"><v-switch v-model="draft.invertY" color="primary" density="compact" hide-details
+								  :label="$t('plugins.flexibleLayouts.jog.invertY')" /></v-col>
+						<v-col cols="6"><v-switch v-model="draft.invertZ" color="primary" density="compact" hide-details
+								  :label="$t('plugins.flexibleLayouts.jog.invertZ')" /></v-col>
+					</v-row>
 				</template>
 
 				<!-- NeoPixel / LED strip -->
 				<template v-else-if="draft.type === 'neopixel'">
-					<v-text-field v-model="draft.title" class="mb-2" density="compact" variant="outlined" hide-details
+					<v-text-field persistent-placeholder v-model="draft.title" class="mb-2" density="compact" variant="outlined" hide-details
 								  clearable :label="$t('plugins.flexibleLayouts.neopixel.titleField')" />
-					<v-select v-model="draft.stripMode" :items="stripModeOptions" class="mb-2" density="compact"
+					<v-select persistent-placeholder v-model="draft.stripMode" :items="stripModeOptions" class="mb-2" density="compact"
 							  variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.neopixel.stripMode')" />
-					<v-select v-if="draft.stripMode === 'fixed'" v-model.number="draft.stripIndex" :items="stripIndexItems"
+					<v-select persistent-placeholder v-if="draft.stripMode === 'fixed'" v-model.number="draft.stripIndex" :items="stripIndexItems"
 							  class="mb-2" density="compact" variant="outlined" hide-details
 							  :label="$t('plugins.flexibleLayouts.neopixel.stripIndex')" />
 					<v-row dense>
 						<v-col cols="6">
-							<v-text-field v-model.number="draft.ledCount" type="number" :min="1" density="compact"
+							<v-text-field persistent-placeholder v-model.number="draft.ledCount" type="number" :min="1" density="compact"
 										  variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.neopixel.count')" />
 						</v-col>
 						<v-col cols="6">
@@ -470,11 +481,11 @@
 
 				<!-- Globals -->
 				<template v-else-if="draft.type === 'globals'">
-					<v-text-field v-model="draft.title" class="mb-2" density="compact" variant="outlined" hide-details
+					<v-text-field persistent-placeholder v-model="draft.title" class="mb-2" density="compact" variant="outlined" hide-details
 								  clearable :label="$t('plugins.flexibleLayouts.globals.titleField')" />
-					<v-select v-model="draft.mode" :items="globalsModeOptions" class="mb-2" density="compact"
+					<v-select persistent-placeholder v-model="draft.mode" :items="globalsModeOptions" class="mb-2" density="compact"
 							  variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.globals.mode')" />
-					<v-combobox v-if="draft.mode === 'list'" v-model="draft.names" :items="liveGlobalNames" multiple
+					<v-combobox persistent-placeholder v-if="draft.mode === 'list'" v-model="draft.names" :items="liveGlobalNames" multiple
 								chips closable-chips clearable density="compact" variant="outlined" hide-details
 								class="mb-2" :label="$t('plugins.flexibleLayouts.globals.names')"
 								:hint="$t('plugins.flexibleLayouts.globals.namesHint')" persistent-hint />
@@ -488,25 +499,25 @@
 
 				<!-- Slider -->
 				<template v-else-if="draft.type === 'slider'">
-					<v-text-field v-model="draft.label" class="mb-2" density="compact" variant="outlined" hide-details
+					<v-text-field persistent-placeholder v-model="draft.label" class="mb-2" density="compact" variant="outlined" hide-details
 								  :label="$t('plugins.flexibleLayouts.properties.label')" />
-					<v-text-field v-model="draft.command" class="mb-2" density="compact" variant="outlined" hide-details
+					<v-text-field persistent-placeholder v-model="draft.command" class="mb-2" density="compact" variant="outlined" hide-details
 								  label="Command" placeholder="M106 P0 S{value}"
 								  :hint="$t('plugins.flexibleLayouts.properties.codeHint')" />
 					<OmPathField v-model="draft.omPath" class="mb-2"
 								 :label="$t('plugins.flexibleLayouts.slider.omPath')" />
 					<v-row dense>
-						<v-col cols="3"><v-text-field v-model.number="draft.min" type="number" density="compact" variant="outlined" hide-details label="Min" /></v-col>
-						<v-col cols="3"><v-text-field v-model.number="draft.max" type="number" density="compact" variant="outlined" hide-details label="Max" /></v-col>
-						<v-col cols="3"><v-text-field v-model.number="draft.step" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.slider.step')" /></v-col>
-						<v-col cols="3"><v-text-field v-model.number="draft.precision" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.precision')">
+						<v-col cols="3"><v-text-field persistent-placeholder v-model.number="draft.min" type="number" density="compact" variant="outlined" hide-details label="Min" /></v-col>
+						<v-col cols="3"><v-text-field persistent-placeholder v-model.number="draft.max" type="number" density="compact" variant="outlined" hide-details label="Max" /></v-col>
+						<v-col cols="3"><v-text-field persistent-placeholder v-model.number="draft.step" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.slider.step')" /></v-col>
+						<v-col cols="3"><v-text-field v-model.number="draft.precision" type="number" :min="0" density="compact" variant="outlined" hide-details persistent-placeholder :label="$t('plugins.flexibleLayouts.properties.precision')">
 							<template #append-inner><HelpTip :text="$t('plugins.flexibleLayouts.properties.precisionHelp')" /></template>
 						</v-text-field></v-col>
 					</v-row>
 					<v-row dense class="mt-1">
-						<v-col cols="4"><v-text-field v-model.number="draft.scale" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.slider.scale')" /></v-col>
-						<v-col cols="4"><v-text-field v-model.number="draft.offset" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.slider.offset')" /></v-col>
-						<v-col cols="4"><v-text-field v-model="draft.unit" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.unit')" /></v-col>
+						<v-col cols="4"><v-text-field persistent-placeholder v-model.number="draft.scale" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.slider.scale')" /></v-col>
+						<v-col cols="4"><v-text-field persistent-placeholder v-model.number="draft.offset" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.slider.offset')" /></v-col>
+						<v-col cols="4"><v-text-field persistent-placeholder v-model="draft.unit" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.unit')" /></v-col>
 					</v-row>
 					<ColorSelect v-model="draft.color" class="mt-2" density="compact" variant="outlined"
 							  hide-details :label="$t('plugins.flexibleLayouts.properties.color')" />
@@ -516,56 +527,87 @@
 
 				<!-- Toggle -->
 				<template v-else-if="draft.type === 'toggle'">
-					<v-text-field v-model="draft.label" class="mb-2" density="compact" variant="outlined" hide-details
+					<v-text-field persistent-placeholder v-model="draft.label" class="mb-2" density="compact" variant="outlined" hide-details
 								  :label="$t('plugins.flexibleLayouts.properties.label')" />
-					<v-text-field v-model="draft.onCommand" class="mb-2" density="compact" variant="outlined" hide-details
+					<v-text-field persistent-placeholder v-model="draft.onCommand" class="mb-2" density="compact" variant="outlined" hide-details
 								  :label="$t('plugins.flexibleLayouts.toggle.onCommand')" placeholder="M80" />
-					<v-text-field v-model="draft.offCommand" class="mb-2" density="compact" variant="outlined" hide-details
+					<v-text-field persistent-placeholder v-model="draft.offCommand" class="mb-2" density="compact" variant="outlined" hide-details
 								  :label="$t('plugins.flexibleLayouts.toggle.offCommand')" placeholder="M81" />
 					<OmPathField v-model="draft.omPath" class="mb-2"
 								 :label="$t('plugins.flexibleLayouts.toggle.omPath')" />
 					<v-row dense>
-						<v-col cols="6"><v-select v-model="draft.variant" :items="toggleVariantOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.toggle.variant')" /></v-col>
+						<v-col cols="6"><v-select persistent-placeholder v-model="draft.variant" :items="toggleVariantOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.toggle.variant')" /></v-col>
 						<v-col cols="6"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
+					</v-row>
+					<v-row v-if="draft.variant === 'button'" dense class="mt-1">
+						<v-col cols="12">
+							<v-select persistent-placeholder v-model="iconPos" :items="iconPositionOptions" density="compact" variant="outlined" hide-details
+									  :label="$t('plugins.flexibleLayouts.properties.iconPosition')" />
+						</v-col>
+					</v-row>
+					<v-row v-else dense class="mt-1">
+						<v-col cols="6"><ColorSelect v-model="draft.offColor" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.toggle.offColor')" /></v-col>
+						<v-col cols="6">
+							<v-select persistent-placeholder v-model="draft.labelPosition" :items="toggleLabelPositionOptions" density="compact" variant="outlined" hide-details
+									  :label="$t('plugins.flexibleLayouts.toggle.labelPosition')" />
+						</v-col>
 					</v-row>
 				</template>
 
 				<!-- Stepper -->
 				<template v-else-if="draft.type === 'stepper'">
-					<v-text-field v-model="draft.label" class="mb-2" density="compact" variant="outlined" hide-details
+					<v-text-field persistent-placeholder v-model="draft.label" class="mb-2" density="compact" variant="outlined" hide-details
 								  :label="$t('plugins.flexibleLayouts.properties.label')" />
-					<v-select v-model="draft.mode" :items="stepperModeOptions" class="mb-2" density="compact" variant="outlined"
+					<v-select persistent-placeholder v-model="draft.mode" :items="stepperModeOptions" class="mb-2" density="compact" variant="outlined"
 							  hide-details :label="$t('plugins.flexibleLayouts.stepper.mode')" />
-					<v-text-field v-model="draft.command" class="mb-2" density="compact" variant="outlined" hide-details
+					<v-text-field persistent-placeholder v-model="draft.command" class="mb-2" density="compact" variant="outlined" hide-details
 								  label="Command" placeholder="M290 Z{value}"
 								  :hint="$t('plugins.flexibleLayouts.stepper.commandHint')" persistent-hint />
 					<OmPathField v-model="draft.omPath" class="mb-2"
 								 :label="$t('plugins.flexibleLayouts.stepper.omPath')" />
 					<v-row dense>
-						<v-col cols="3"><v-text-field v-model.number="draft.step" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.slider.step')" /></v-col>
-						<v-col cols="3"><v-text-field v-model.number="draft.min" type="number" density="compact" variant="outlined" hide-details label="Min" /></v-col>
-						<v-col cols="3"><v-text-field v-model.number="draft.max" type="number" density="compact" variant="outlined" hide-details label="Max" /></v-col>
-						<v-col cols="3"><v-text-field v-model.number="draft.precision" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.stepper.precision')">
+						<v-col cols="3"><v-text-field persistent-placeholder v-model.number="draft.step" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.slider.step')" /></v-col>
+						<!-- persistent-placeholder: min/max have no default value (unlike step/precision, which
+							 always start pre-filled), so without this their labels sit in the "resting" centred
+							 position instead of floating - a visibly shorter, mismatched row height next to their
+							 siblings, which is what actually caused the "breaks into the row above" report. -->
+						<v-col cols="3"><v-text-field v-model.number="draft.min" type="number" density="compact" variant="outlined" hide-details persistent-placeholder label="Min" /></v-col>
+						<v-col cols="3"><v-text-field v-model.number="draft.max" type="number" density="compact" variant="outlined" hide-details persistent-placeholder label="Max" /></v-col>
+						<v-col cols="3"><v-text-field v-model.number="draft.precision" type="number" :min="0" density="compact" variant="outlined" hide-details persistent-placeholder :label="$t('plugins.flexibleLayouts.stepper.precision')">
 							<template #append-inner><HelpTip :text="$t('plugins.flexibleLayouts.properties.precisionHelp')" /></template>
 						</v-text-field></v-col>
 					</v-row>
-					<v-row dense class="mt-1">
-						<v-col cols="6"><v-text-field v-model="draft.unit" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.unit')" /></v-col>
+					<v-row dense class="mt-2">
+						<v-col cols="6"><v-text-field persistent-placeholder v-model="draft.unit" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.unit')" /></v-col>
 						<v-col cols="6"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
 					</v-row>
+					<v-row dense class="mt-2">
+						<v-col cols="6">
+							<v-text-field persistent-placeholder v-model="draft.plusIcon" density="compact" variant="outlined" hide-details
+										  prepend-inner-icon="mdi-plus" :label="$t('plugins.flexibleLayouts.stepper.plusIcon')"
+										  placeholder="mdi-plus" />
+						</v-col>
+						<v-col cols="6">
+							<v-text-field persistent-placeholder v-model="draft.minusIcon" density="compact" variant="outlined" hide-details
+										  prepend-inner-icon="mdi-minus" :label="$t('plugins.flexibleLayouts.stepper.minusIcon')"
+										  placeholder="mdi-minus" />
+						</v-col>
+					</v-row>
+					<v-switch v-model="draft.showValue" color="primary" density="compact" hide-details class="mt-2"
+							  :label="$t('plugins.flexibleLayouts.stepper.showValue')" />
 				</template>
 
 				<!-- Progress bar -->
 				<template v-else-if="draft.type === 'progress'">
-					<v-text-field v-model="draft.label" class="mb-2" density="compact" variant="outlined" hide-details
+					<v-text-field persistent-placeholder v-model="draft.label" class="mb-2" density="compact" variant="outlined" hide-details
 								  :label="$t('plugins.flexibleLayouts.properties.label')" />
 					<OmPathField v-model="draft.omPath" class="mb-2" :label="$t('plugins.flexibleLayouts.progress.omPath')" />
 					<OmPathField v-model="draft.maxPath" class="mb-2" :label="$t('plugins.flexibleLayouts.progress.maxPath')" />
 					<v-row dense>
-						<v-col cols="3"><v-text-field v-model.number="draft.min" type="number" density="compact" variant="outlined" hide-details label="Min" /></v-col>
-						<v-col cols="3"><v-text-field v-model.number="draft.max" type="number" density="compact" variant="outlined" hide-details label="Max" /></v-col>
-						<v-col cols="3"><v-text-field v-model.number="draft.scale" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.slider.scale')" /></v-col>
-						<v-col cols="3"><v-text-field v-model.number="draft.precision" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.precision')">
+						<v-col cols="3"><v-text-field persistent-placeholder v-model.number="draft.min" type="number" density="compact" variant="outlined" hide-details label="Min" /></v-col>
+						<v-col cols="3"><v-text-field persistent-placeholder v-model.number="draft.max" type="number" density="compact" variant="outlined" hide-details label="Max" /></v-col>
+						<v-col cols="3"><v-text-field persistent-placeholder v-model.number="draft.scale" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.slider.scale')" /></v-col>
+						<v-col cols="3"><v-text-field persistent-placeholder v-model.number="draft.precision" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.precision')">
 							<template #append-inner><HelpTip :text="$t('plugins.flexibleLayouts.properties.precisionHelp')" /></template>
 						</v-text-field></v-col>
 					</v-row>
@@ -577,7 +619,7 @@
 
 				<!-- Status indicator -->
 				<template v-else-if="draft.type === 'status'">
-					<v-text-field v-model="draft.label" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" />
+					<v-text-field persistent-placeholder v-model="draft.label" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" />
 					<OmPathField v-model="draft.omPath" class="mb-2" :label="$t('plugins.flexibleLayouts.status.omPath')" />
 					<div class="d-flex align-center mb-1">
 						<span class="text-title-small">{{ $t("plugins.flexibleLayouts.status.states") }}</span>
@@ -586,133 +628,129 @@
 					</div>
 					<v-sheet v-for="(s, i) in draft.states" :key="i" border rounded class="pa-2 mb-2">
 						<div class="d-flex ga-2">
-							<v-select v-model="s.operator" :items="operatorOptions" density="compact" variant="outlined" hide-details style="max-width:130px" :label="$t('plugins.flexibleLayouts.conditions.operator')" />
-							<v-text-field v-if="needsValue(s.operator)" v-model="s.value" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.conditions.value')" />
+							<v-select persistent-placeholder v-model="s.operator" :items="operatorOptions" density="compact" variant="outlined" hide-details style="max-width:130px" :label="$t('plugins.flexibleLayouts.conditions.operator')" />
+							<v-text-field persistent-placeholder v-if="needsValue(s.operator)" v-model="s.value" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.conditions.value')" />
 							<v-btn icon="mdi-delete" size="small" variant="text" color="error" @click="draft.states.splice(i, 1)" />
 						</div>
 						<div class="d-flex ga-2 mt-2">
-							<v-text-field v-model="s.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" />
-							<v-text-field v-model="s.icon" density="compact" variant="outlined" hide-details label="mdi-…" style="max-width:9rem" />
+							<v-text-field persistent-placeholder v-model="s.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" />
+							<v-text-field persistent-placeholder v-model="s.icon" density="compact" variant="outlined" hide-details label="mdi-…" style="max-width:9rem" />
 							<ColorSelect v-model="s.color" density="compact" variant="outlined" hide-details style="max-width:9rem" :label="$t('plugins.flexibleLayouts.properties.color')" />
 						</div>
 					</v-sheet>
 					<v-row dense>
-						<v-col cols="6"><v-text-field v-model="draft.defaultLabel" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.status.defaultLabel')" /></v-col>
+						<v-col cols="6"><v-text-field persistent-placeholder v-model="draft.defaultLabel" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.status.defaultLabel')" /></v-col>
 						<v-col cols="6"><ColorSelect v-model="draft.defaultColor" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.status.defaultColor')" /></v-col>
 					</v-row>
 				</template>
 
 				<!-- Alert banner -->
 				<template v-else-if="draft.type === 'alert'">
-					<v-text-field v-model="draft.message" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.alert.message')" />
+					<v-text-field persistent-placeholder v-model="draft.message" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.alert.message')" />
 					<OmPathField v-model="draft.omPath" class="mb-2" :label="$t('plugins.flexibleLayouts.alert.omPath')" />
 					<div class="d-flex ga-2 mb-2">
-						<v-select v-model="draft.operator" :items="operatorOptions" density="compact" variant="outlined" hide-details style="max-width:150px" :label="$t('plugins.flexibleLayouts.conditions.operator')" />
-						<v-text-field v-if="needsValue(draft.operator)" v-model="draft.value" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.conditions.value')" />
+						<v-select persistent-placeholder v-model="draft.operator" :items="operatorOptions" density="compact" variant="outlined" hide-details style="max-width:150px" :label="$t('plugins.flexibleLayouts.conditions.operator')" />
+						<v-text-field persistent-placeholder v-if="needsValue(draft.operator)" v-model="draft.value" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.conditions.value')" />
 					</div>
 					<v-row dense>
-						<v-col cols="6"><v-select v-model="draft.severity" :items="severityOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.alert.severity')" /></v-col>
-						<v-col cols="6"><v-text-field v-model="draft.icon" density="compact" variant="outlined" hide-details label="mdi-…" /></v-col>
+						<v-col cols="6"><v-select persistent-placeholder v-model="draft.severity" :items="severityOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.alert.severity')" /></v-col>
+						<v-col cols="6"><v-text-field persistent-placeholder v-model="draft.icon" density="compact" variant="outlined" hide-details label="mdi-…" /></v-col>
 					</v-row>
 				</template>
 
 				<!-- Webcam -->
 				<template v-else-if="draft.type === 'webcam'">
-					<v-text-field v-model="draft.url" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.webcam.url')" placeholder="http://…/webcam/?action=snapshot" />
+					<v-text-field persistent-placeholder v-model="draft.url" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.webcam.url')" placeholder="http://…/webcam/?action=snapshot" />
 					<v-row dense>
-						<v-col cols="4"><v-text-field v-model.number="draft.refreshMs" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.webcam.refreshMs')" /></v-col>
-						<v-col cols="4"><v-select v-model="draft.fit" :items="fitOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.webcam.fit')" /></v-col>
+						<v-col cols="4"><v-text-field persistent-placeholder v-model.number="draft.refreshMs" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.webcam.refreshMs')" /></v-col>
+						<v-col cols="4"><v-select persistent-placeholder v-model="draft.fit" :items="fitOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.webcam.fit')" /></v-col>
 						<v-col cols="4" class="d-flex align-center"><v-switch v-model="draft.fullscreen" color="primary" density="compact" hide-details :label="$t('plugins.flexibleLayouts.webcam.fullscreen')" /></v-col>
 					</v-row>
 				</template>
 
 				<!-- Tool alignment -->
 				<template v-else-if="draft.type === 'toolAlign'">
-					<v-text-field v-model="draft.url" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.webcam.url')" placeholder="http://…/webcam/?action=stream" />
+					<v-text-field persistent-placeholder v-model="draft.url" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.webcam.url')" placeholder="http://…/webcam/?action=stream" />
 					<v-row dense>
-						<v-col cols="6"><v-text-field v-model.number="draft.refreshMs" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.webcam.refreshMs')" /></v-col>
-						<v-col cols="6"><v-select v-model="draft.fit" :items="fitOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.webcam.fit')" /></v-col>
+						<v-col cols="6"><v-text-field persistent-placeholder v-model.number="draft.refreshMs" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.webcam.refreshMs')" /></v-col>
+						<v-col cols="6"><v-select persistent-placeholder v-model="draft.fit" :items="fitOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.webcam.fit')" /></v-col>
 					</v-row>
 					<div class="text-caption text-medium-emphasis mb-1 mt-2">{{ $t("plugins.flexibleLayouts.toolAlign.overlayHeading") }}</div>
 					<v-row dense>
-						<v-col cols="6"><v-select v-model="draft.overlay" :items="overlayOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.toolAlign.overlay')" /></v-col>
-						<v-col cols="6"><v-text-field v-model="draft.overlayColor" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.toolAlign.overlayColor')" placeholder="#39FF14" /></v-col>
-						<v-col cols="4"><v-text-field v-model.number="draft.overlayX" type="number" density="compact" variant="outlined" hide-details suffix="%" :label="$t('plugins.flexibleLayouts.toolAlign.centreX')" /></v-col>
-						<v-col cols="4"><v-text-field v-model.number="draft.overlayY" type="number" density="compact" variant="outlined" hide-details suffix="%" :label="$t('plugins.flexibleLayouts.toolAlign.centreY')" /></v-col>
-						<v-col cols="4"><v-text-field v-model.number="draft.overlaySize" type="number" density="compact" variant="outlined" hide-details suffix="px" :label="$t('plugins.flexibleLayouts.toolAlign.ringSize')" /></v-col>
+						<v-col cols="6"><v-select persistent-placeholder v-model="draft.overlay" :items="overlayOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.toolAlign.overlay')" /></v-col>
+						<v-col cols="6"><v-text-field persistent-placeholder v-model="draft.overlayColor" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.toolAlign.overlayColor')" placeholder="#39FF14" /></v-col>
+						<v-col cols="4"><v-text-field persistent-placeholder v-model.number="draft.overlayX" type="number" density="compact" variant="outlined" hide-details suffix="%" :label="$t('plugins.flexibleLayouts.toolAlign.centreX')" /></v-col>
+						<v-col cols="4"><v-text-field persistent-placeholder v-model.number="draft.overlayY" type="number" density="compact" variant="outlined" hide-details suffix="%" :label="$t('plugins.flexibleLayouts.toolAlign.centreY')" /></v-col>
+						<v-col cols="4"><v-text-field persistent-placeholder v-model.number="draft.overlaySize" type="number" density="compact" variant="outlined" hide-details suffix="px" :label="$t('plugins.flexibleLayouts.toolAlign.ringSize')" /></v-col>
 					</v-row>
 					<div class="text-caption text-medium-emphasis mb-1 mt-2">{{ $t("plugins.flexibleLayouts.toolAlign.jogHeading") }}</div>
 					<v-row dense>
-						<v-col cols="6"><v-text-field v-model.number="draft.jogStep" type="number" step="0.01" density="compact" variant="outlined" hide-details suffix="mm" :label="$t('plugins.flexibleLayouts.toolAlign.jogStep')" /></v-col>
-						<v-col cols="6"><v-text-field v-model.number="draft.jogFeed" type="number" density="compact" variant="outlined" hide-details suffix="mm/min" :label="$t('plugins.flexibleLayouts.toolAlign.jogFeed')" /></v-col>
+						<v-col cols="6"><v-text-field persistent-placeholder v-model.number="draft.jogStep" type="number" step="0.01" density="compact" variant="outlined" hide-details suffix="mm" :label="$t('plugins.flexibleLayouts.toolAlign.jogStep')" /></v-col>
+						<v-col cols="6"><v-text-field persistent-placeholder v-model.number="draft.jogFeed" type="number" density="compact" variant="outlined" hide-details suffix="mm/min" :label="$t('plugins.flexibleLayouts.toolAlign.jogFeed')" /></v-col>
 					</v-row>
 
 					<div class="text-caption text-medium-emphasis mb-1 mt-2">{{ $t("plugins.flexibleLayouts.toolAlign.zHeading") }}</div>
 					<v-switch v-model="draft.enableZ" color="primary" density="compact" hide-details
 							  :label="$t('plugins.flexibleLayouts.toolAlign.enableZ')" />
-					<v-text-field v-if="draft.enableZ" v-model="draft.zProbeCommand" class="mt-1" density="compact" variant="outlined"
+					<v-text-field persistent-placeholder v-if="draft.enableZ" v-model="draft.zProbeCommand" class="mt-1" density="compact" variant="outlined"
 								  hide-details clearable :label="$t('plugins.flexibleLayouts.toolAlign.zProbeCommand')"
 								  placeholder="G30 S-1" :hint="$t('plugins.flexibleLayouts.toolAlign.zProbeHint')" persistent-hint />
 
 					<div class="text-caption text-medium-emphasis mb-1 mt-3">{{ $t("plugins.flexibleLayouts.toolAlign.cameraHeading") }}</div>
 					<div class="text-caption text-medium-emphasis mb-1">{{ $t("plugins.flexibleLayouts.toolAlign.cameraConfigHint") }}</div>
 					<v-row dense>
-						<v-col cols="4"><v-text-field v-model.number="draft.cameraX" type="number" density="compact" variant="outlined" hide-details clearable label="X" /></v-col>
-						<v-col cols="4"><v-text-field v-model.number="draft.cameraY" type="number" density="compact" variant="outlined" hide-details clearable label="Y" /></v-col>
-						<v-col cols="4"><v-text-field v-model.number="draft.cameraZ" type="number" density="compact" variant="outlined" hide-details clearable label="Z" /></v-col>
-						<v-col cols="6"><v-text-field v-model.number="draft.travelFeed" type="number" density="compact" variant="outlined" hide-details suffix="mm/min" :label="$t('plugins.flexibleLayouts.toolAlign.travelFeed')" /></v-col>
-						<v-col cols="6"><v-text-field v-model.number="draft.safeZ" type="number" density="compact" variant="outlined" hide-details clearable suffix="mm" :label="$t('plugins.flexibleLayouts.toolAlign.safeZ')" /></v-col>
+						<v-col cols="4"><v-text-field persistent-placeholder v-model.number="draft.cameraX" type="number" density="compact" variant="outlined" hide-details clearable label="X" /></v-col>
+						<v-col cols="4"><v-text-field persistent-placeholder v-model.number="draft.cameraY" type="number" density="compact" variant="outlined" hide-details clearable label="Y" /></v-col>
+						<v-col cols="4"><v-text-field persistent-placeholder v-model.number="draft.cameraZ" type="number" density="compact" variant="outlined" hide-details clearable label="Z" /></v-col>
+						<v-col cols="6"><v-text-field persistent-placeholder v-model.number="draft.travelFeed" type="number" density="compact" variant="outlined" hide-details suffix="mm/min" :label="$t('plugins.flexibleLayouts.toolAlign.travelFeed')" /></v-col>
+						<v-col cols="6"><v-text-field persistent-placeholder v-model.number="draft.safeZ" type="number" density="compact" variant="outlined" hide-details clearable suffix="mm" :label="$t('plugins.flexibleLayouts.toolAlign.safeZ')" /></v-col>
 					</v-row>
 					<v-switch v-model="draft.useG53" color="primary" density="compact" hide-details
 							  :label="$t('plugins.flexibleLayouts.toolAlign.useG53')" />
 					<div class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.toolAlign.useG53Hint") }}</div>
 
 					<div class="text-caption text-medium-emphasis mb-1 mt-3">{{ $t("plugins.flexibleLayouts.toolAlign.hooksHeading") }}</div>
-					<v-text-field v-model="draft.startCommand" class="mb-2" density="compact" variant="outlined" hide-details clearable
+					<v-text-field persistent-placeholder v-model="draft.startCommand" class="mb-2" density="compact" variant="outlined" hide-details clearable
 								  :label="$t('plugins.flexibleLayouts.toolAlign.startCommand')" placeholder="G28" />
-					<v-text-field v-model="draft.finishCommand" class="mb-2" density="compact" variant="outlined" hide-details clearable
+					<v-text-field persistent-placeholder v-model="draft.finishCommand" class="mb-2" density="compact" variant="outlined" hide-details clearable
 								  :label="$t('plugins.flexibleLayouts.toolAlign.finishCommand')" placeholder="T-1" />
-					<v-text-field v-model="draft.saveCommand" density="compact" variant="outlined" hide-details clearable
+					<v-text-field persistent-placeholder v-model="draft.saveCommand" density="compact" variant="outlined" hide-details clearable
 								  :label="$t('plugins.flexibleLayouts.toolAlign.saveCommand')" placeholder="M500"
 								  :hint="$t('plugins.flexibleLayouts.toolAlign.saveHint')" persistent-hint />
 				</template>
 
 				<!-- Macro grid -->
 				<template v-else-if="draft.type === 'macros'">
-					<v-text-field v-model="draft.folder" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.macros.folder')" placeholder="0:/macros" />
+					<v-text-field persistent-placeholder v-model="draft.folder" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.macros.folder')" placeholder="0:/macros" />
 					<v-row dense>
-						<v-col cols="6"><v-text-field v-model.number="draft.columns" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.macros.columns')" /></v-col>
+						<v-col cols="6"><v-text-field persistent-placeholder v-model.number="draft.columns" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.macros.columns')" /></v-col>
 						<v-col cols="6"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
 					</v-row>
 				</template>
 
 				<!-- Mini console -->
 				<template v-else-if="draft.type === 'console'">
-					<v-row dense>
-						<v-col cols="4"><v-text-field v-model.number="draft.rows" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.console.rows')" /></v-col>
-						<v-col cols="8"><v-text-field v-model="draft.placeholder" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.console.placeholderLabel')" /></v-col>
-					</v-row>
+					<div class="d-flex align-center mb-2">
+						<v-switch v-model="draft.showInput" color="primary" density="compact" hide-details :label="$t('plugins.flexibleLayouts.console.showInput')" />
+					</div>
+					<v-text-field v-if="draft.showInput !== false" persistent-placeholder v-model="draft.placeholder" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.console.placeholderLabel')" />
+					<ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" />
 				</template>
 
 				<!-- Console input (split) -->
 				<template v-else-if="draft.type === 'consoleInput'">
-					<v-text-field v-model="draft.placeholder" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.console.placeholderLabel')" />
-				</template>
-
-				<!-- Console output (split) -->
-				<template v-else-if="draft.type === 'consoleOutput'">
-					<v-text-field v-model.number="draft.rows" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.console.rows')" />
+					<v-text-field persistent-placeholder v-model="draft.placeholder" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.console.placeholderLabel')" />
 				</template>
 
 				<!-- Heater -->
 				<template v-else-if="draft.type === 'heater'">
-					<v-text-field v-model="draft.label" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" />
+					<v-text-field persistent-placeholder v-model="draft.label" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" />
 					<OmPathField v-model="draft.omPath" class="mb-2" :label="$t('plugins.flexibleLayouts.heater.omPath')" />
-					<v-text-field v-model="draft.setCommand" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.heater.setCommand')" placeholder="M140 S{value}" />
-					<v-text-field v-model="draft.offCommand" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.heater.offCommand')" placeholder="M140 S-273.15" />
+					<v-text-field persistent-placeholder v-model="draft.setCommand" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.heater.setCommand')" placeholder="M140 S{value}" />
+					<v-text-field persistent-placeholder v-model="draft.offCommand" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.heater.offCommand')" placeholder="M140 S-273.15" />
 					<v-row dense>
-						<v-col cols="6"><v-text-field v-model="heaterPresetsText" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.heater.presets')" :hint="$t('plugins.flexibleLayouts.jog.stepsHint')" /></v-col>
-						<v-col cols="3"><v-text-field v-model.number="draft.precision" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.precision')">
+						<v-col cols="6"><v-text-field persistent-placeholder v-model="heaterPresetsText" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.heater.presets')" :hint="$t('plugins.flexibleLayouts.jog.stepsHint')" /></v-col>
+						<v-col cols="3"><v-text-field persistent-placeholder v-model.number="draft.precision" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.precision')">
 							<template #append-inner><HelpTip :text="$t('plugins.flexibleLayouts.properties.precisionHelp')" /></template>
 						</v-text-field></v-col>
 						<v-col cols="3"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
@@ -721,26 +759,26 @@
 
 				<!-- Clock -->
 				<template v-else-if="draft.type === 'clock'">
-					<v-text-field v-model="draft.label" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" />
+					<v-text-field persistent-placeholder v-model="draft.label" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" />
 					<v-row dense>
-						<v-col cols="6"><v-select v-model="draft.mode" :items="clockModeOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.clock.mode')" /></v-col>
-						<v-col cols="6"><v-select v-if="draft.mode === 'time'" v-model="draft.format" :items="clockFormatOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.clock.format')" /></v-col>
+						<v-col cols="6"><v-select persistent-placeholder v-model="draft.mode" :items="clockModeOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.clock.mode')" /></v-col>
+						<v-col cols="6"><v-select persistent-placeholder v-if="draft.mode === 'time'" v-model="draft.format" :items="clockFormatOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.clock.format')" /></v-col>
 					</v-row>
 				</template>
 
 				<!-- Job thumbnail -->
 				<template v-else-if="draft.type === 'thumbnail'">
-					<v-text-field v-model="draft.title" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.jog.titleField')" />
+					<v-text-field persistent-placeholder v-model="draft.title" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.jog.titleField')" />
 					<v-row dense>
-						<v-col cols="6"><v-select v-model="draft.source" :items="thumbnailSourceOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.thumbnail.source')" /></v-col>
-						<v-col cols="6"><v-select v-model="draft.fit" :items="thumbnailFitOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.thumbnail.fit')" /></v-col>
+						<v-col cols="6"><v-select persistent-placeholder v-model="draft.source" :items="thumbnailSourceOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.thumbnail.source')" /></v-col>
+						<v-col cols="6"><v-select persistent-placeholder v-model="draft.fit" :items="thumbnailFitOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.thumbnail.fit')" /></v-col>
 					</v-row>
-					<v-text-field v-if="draft.source === 'file'" v-model="draft.path" class="mt-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.thumbnail.path')" placeholder="0:/gcodes/benchy.gcode" />
+					<v-text-field persistent-placeholder v-if="draft.source === 'file'" v-model="draft.path" class="mt-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.thumbnail.path')" placeholder="0:/gcodes/benchy.gcode" />
 				</template>
 
 				<!-- Multi-value table -->
 				<template v-else-if="draft.type === 'table'">
-					<v-text-field v-model="draft.title" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.jog.titleField')" />
+					<v-text-field persistent-placeholder v-model="draft.title" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.jog.titleField')" />
 					<div class="d-flex align-center mb-1">
 						<span class="text-title-small">{{ $t("plugins.flexibleLayouts.table.rows") }}</span>
 						<v-spacer />
@@ -748,13 +786,13 @@
 					</div>
 					<v-sheet v-for="(r, i) in draft.rows" :key="i" border rounded class="pa-2 mb-2">
 						<div class="d-flex ga-2">
-							<v-text-field v-model="r.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" style="max-width:9rem" />
+							<v-text-field persistent-placeholder v-model="r.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" style="max-width:9rem" />
 							<OmPathField v-model="r.omPath" class="flex-grow-1" :label="$t('plugins.flexibleLayouts.conditions.omPath')" />
 							<v-btn icon="mdi-delete" size="small" variant="text" color="error" @click="draft.rows.splice(i, 1)" />
 						</div>
 						<div class="d-flex ga-2 mt-2">
-							<v-text-field v-model="r.unit" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.unit')" style="max-width:8rem" />
-							<v-text-field v-model.number="r.precision" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.stepper.precision')" style="max-width:8rem">
+							<v-text-field persistent-placeholder v-model="r.unit" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.unit')" style="max-width:8rem" />
+							<v-text-field persistent-placeholder v-model.number="r.precision" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.stepper.precision')" style="max-width:8rem">
 								<template #append-inner><HelpTip :text="$t('plugins.flexibleLayouts.properties.precisionHelp')" /></template>
 							</v-text-field>
 						</div>
@@ -763,26 +801,26 @@
 
 				<!-- Extruder -->
 				<template v-else-if="draft.type === 'extruder'">
-					<v-text-field v-model="draft.label" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" />
-					<v-text-field v-model="extruderAmountsText" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.extruder.amounts')" :hint="$t('plugins.flexibleLayouts.jog.stepsHint')" />
+					<v-text-field persistent-placeholder v-model="draft.label" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" />
+					<v-text-field persistent-placeholder v-model="extruderAmountsText" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.extruder.amounts')" :hint="$t('plugins.flexibleLayouts.jog.stepsHint')" />
 					<v-row dense>
-						<v-col cols="6"><v-select v-model="draft.mode" :items="extruderModeOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.extruder.speedBy')" /></v-col>
-						<v-col cols="6"><v-text-field v-model.number="draft.tool" type="number" density="compact" variant="outlined" hide-details clearable :label="$t('plugins.flexibleLayouts.extruder.tool')" /></v-col>
+						<v-col cols="6"><v-select persistent-placeholder v-model="draft.mode" :items="extruderModeOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.extruder.speedBy')" /></v-col>
+						<v-col cols="6"><v-text-field persistent-placeholder v-model.number="draft.tool" type="number" density="compact" variant="outlined" hide-details clearable :label="$t('plugins.flexibleLayouts.extruder.tool')" /></v-col>
 					</v-row>
 					<v-row dense class="mt-1">
-						<v-col cols="4"><v-text-field v-model.number="draft.feedrate" type="number" density="compact" variant="outlined" hide-details suffix="mm/min" :label="$t('plugins.flexibleLayouts.extruder.speed')" /></v-col>
-						<v-col cols="4"><v-text-field v-model.number="draft.flowRate" type="number" step="0.1" density="compact" variant="outlined" hide-details suffix="mm³/s" :label="$t('plugins.flexibleLayouts.extruder.flow')" /></v-col>
-						<v-col cols="4"><v-text-field v-model.number="draft.filamentDiameter" type="number" step="0.05" density="compact" variant="outlined" hide-details suffix="mm" :label="$t('plugins.flexibleLayouts.extruder.filamentDiameter')" /></v-col>
+						<v-col cols="4"><v-text-field persistent-placeholder v-model.number="draft.feedrate" type="number" density="compact" variant="outlined" hide-details suffix="mm/min" :label="$t('plugins.flexibleLayouts.extruder.speed')" /></v-col>
+						<v-col cols="4"><v-text-field persistent-placeholder v-model.number="draft.flowRate" type="number" step="0.1" density="compact" variant="outlined" hide-details suffix="mm³/s" :label="$t('plugins.flexibleLayouts.extruder.flow')" /></v-col>
+						<v-col cols="4"><v-text-field persistent-placeholder v-model.number="draft.filamentDiameter" type="number" step="0.05" density="compact" variant="outlined" hide-details suffix="mm" :label="$t('plugins.flexibleLayouts.extruder.filamentDiameter')" /></v-col>
 					</v-row>
 					<ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details class="mt-1" :label="$t('plugins.flexibleLayouts.properties.color')" />
 				</template>
 
 				<!-- WCS -->
 				<template v-else-if="draft.type === 'wcs'">
-					<v-text-field v-model="draft.label" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" />
+					<v-text-field persistent-placeholder v-model="draft.label" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" />
 					<v-row dense>
-						<v-col cols="6"><v-text-field v-model="wcsAxesText" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.wcs.axes')" /></v-col>
-						<v-col cols="3"><v-text-field v-model.number="draft.precision" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.precision')" /></v-col>
+						<v-col cols="6"><v-text-field persistent-placeholder v-model="wcsAxesText" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.wcs.axes')" /></v-col>
+						<v-col cols="3"><v-text-field persistent-placeholder v-model.number="draft.precision" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.precision')" /></v-col>
 						<v-col cols="3"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
 					</v-row>
 					<v-switch v-model="draft.showMachine" color="primary" density="compact" hide-details :label="$t('plugins.flexibleLayouts.wcs.showMachine')" />
@@ -792,12 +830,12 @@
 				<!-- WCS table -->
 				<template v-else-if="draft.type === 'wcsTable'">
 					<v-row dense>
-						<v-col cols="8"><v-text-field v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
+						<v-col cols="8"><v-text-field persistent-placeholder v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
 						<v-col cols="4"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
 					</v-row>
 					<v-row dense class="mt-1">
-						<v-col cols="8"><v-text-field v-model="wcsAxesText" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.wcs.axes')" /></v-col>
-						<v-col cols="4"><v-text-field v-model.number="draft.precision" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.precision')" /></v-col>
+						<v-col cols="8"><v-text-field persistent-placeholder v-model="wcsAxesText" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.wcs.axes')" /></v-col>
+						<v-col cols="4"><v-text-field persistent-placeholder v-model.number="draft.precision" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.precision')" /></v-col>
 					</v-row>
 					<v-row dense class="mt-1">
 						<v-col cols="6" class="d-flex align-center"><v-switch v-model="draft.showCopy" color="primary" density="compact" hide-details :label="$t('plugins.flexibleLayouts.wcsTable.showCopy')" /></v-col>
@@ -806,7 +844,7 @@
 					<div class="text-caption text-medium-emphasis mt-2 mb-1">{{ $t('plugins.flexibleLayouts.wcsTable.namesHelp') }}</div>
 					<v-row dense>
 						<v-col v-for="(code, i) in WCS_CODES" :key="code" cols="4">
-							<v-text-field v-model="wcsNames[i].value" density="compact" variant="outlined" hide-details :label="code" />
+							<v-text-field persistent-placeholder v-model="wcsNames[i].value" density="compact" variant="outlined" hide-details :label="code" />
 						</v-col>
 					</v-row>
 				</template>
@@ -814,45 +852,45 @@
 				<!-- Touch probe -->
 				<template v-else-if="draft.type === 'probe'">
 					<v-row dense>
-						<v-col cols="8"><v-text-field v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
+						<v-col cols="8"><v-text-field persistent-placeholder v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
 						<v-col cols="4"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
 					</v-row>
 					<v-row dense class="mt-1">
-						<v-col cols="6"><v-text-field v-model.number="draft.diameter" type="number" :min="0.01" :step="0.01" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.probe.diameter')" /></v-col>
+						<v-col cols="6"><v-text-field persistent-placeholder v-model.number="draft.diameter" type="number" :min="0.01" :step="0.01" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.probe.diameter')" /></v-col>
 						<v-col cols="6" class="d-flex align-center"><v-switch v-model="draft.confirm" color="primary" density="compact" hide-details :label="$t('plugins.flexibleLayouts.probe.confirmOpt')" /></v-col>
 					</v-row>
-					<v-select v-model="draft.ops" :items="probeOpsItems" multiple chips density="compact" variant="outlined" hide-details class="mt-2" :label="$t('plugins.flexibleLayouts.probe.opsLabel')" />
+					<v-select persistent-placeholder v-model="draft.ops" :items="probeOpsItems" multiple chips density="compact" variant="outlined" hide-details class="mt-2" :label="$t('plugins.flexibleLayouts.probe.opsLabel')" />
 					<div class="text-caption text-medium-emphasis mt-2 mb-1">{{ $t('plugins.flexibleLayouts.probe.cmdHelp') }}</div>
-					<v-text-field v-model="draft.zCmd" class="mb-1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.probe.opZ')" :placeholder="PROBE_DEFAULTS.z" />
-					<v-text-field v-model="draft.xCmd" class="mb-1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.probe.opX')" :placeholder="PROBE_DEFAULTS.x" />
-					<v-text-field v-model="draft.yCmd" class="mb-1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.probe.opY')" :placeholder="PROBE_DEFAULTS.y" />
-					<v-text-field v-model="draft.cornerCmd" class="mb-1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.probe.opCorner')" :placeholder="PROBE_DEFAULTS.corner" />
-					<v-text-field v-model="draft.centreCmd" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.probe.opCentre')" :placeholder="PROBE_DEFAULTS.centre" />
+					<v-text-field persistent-placeholder v-model="draft.zCmd" class="mb-1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.probe.opZ')" :placeholder="PROBE_DEFAULTS.z" />
+					<v-text-field persistent-placeholder v-model="draft.xCmd" class="mb-1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.probe.opX')" :placeholder="PROBE_DEFAULTS.x" />
+					<v-text-field persistent-placeholder v-model="draft.yCmd" class="mb-1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.probe.opY')" :placeholder="PROBE_DEFAULTS.y" />
+					<v-text-field persistent-placeholder v-model="draft.cornerCmd" class="mb-1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.probe.opCorner')" :placeholder="PROBE_DEFAULTS.corner" />
+					<v-text-field persistent-placeholder v-model="draft.centreCmd" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.probe.opCentre')" :placeholder="PROBE_DEFAULTS.centre" />
 				</template>
 
 				<!-- Bed mesh -->
 				<template v-else-if="draft.type === 'bedMesh'">
 					<v-row dense>
-						<v-col cols="8"><v-text-field v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
+						<v-col cols="8"><v-text-field persistent-placeholder v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
 						<v-col cols="4"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
 					</v-row>
 					<v-row dense class="mt-1">
-						<v-col cols="6"><v-text-field v-model="draft.fileName" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.bedMesh.file')" :placeholder="DEFAULT_HEIGHTMAP_FILE" /></v-col>
-						<v-col cols="3"><v-text-field v-model.number="draft.probeIndex" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.bedMesh.probeIndex')" /></v-col>
+						<v-col cols="6"><v-text-field persistent-placeholder v-model="draft.fileName" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.bedMesh.file')" :placeholder="DEFAULT_HEIGHTMAP_FILE" /></v-col>
+						<v-col cols="3"><v-text-field persistent-placeholder v-model.number="draft.probeIndex" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.bedMesh.probeIndex')" /></v-col>
 						<v-col cols="3" class="d-flex align-center"><v-switch v-model="draft.confirm" color="primary" density="compact" hide-details :label="$t('plugins.flexibleLayouts.probe.confirmOpt')" /></v-col>
 					</v-row>
 					<div class="text-caption text-medium-emphasis mt-2 mb-1">{{ $t('plugins.flexibleLayouts.bedMesh.cmdHelp') }}</div>
-					<v-text-field v-model="draft.probeCmd" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.bedMesh.probeCmd')" :placeholder="DEFAULT_BED_MESH_PROBE_COMMAND" />
+					<v-text-field persistent-placeholder v-model="draft.probeCmd" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.bedMesh.probeCmd')" :placeholder="DEFAULT_BED_MESH_PROBE_COMMAND" />
 				</template>
 
 				<!-- Bed tram -->
 				<template v-else-if="draft.type === 'bedTram'">
 					<v-row dense>
-						<v-col cols="8"><v-text-field v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
+						<v-col cols="8"><v-text-field persistent-placeholder v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
 						<v-col cols="4"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
 					</v-row>
 					<v-row dense class="mt-1">
-						<v-col cols="8"><v-text-field v-model="draft.command" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.bedTram.command')" placeholder="G32" /></v-col>
+						<v-col cols="8"><v-text-field persistent-placeholder v-model="draft.command" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.bedTram.command')" placeholder="G32" /></v-col>
 						<v-col cols="4" class="d-flex align-center"><v-switch v-model="draft.confirm" color="primary" density="compact" hide-details :label="$t('plugins.flexibleLayouts.probe.confirmOpt')" /></v-col>
 					</v-row>
 				</template>
@@ -860,27 +898,27 @@
 				<!-- XYZ probe -->
 				<template v-else-if="draft.type === 'xyzProbe'">
 					<v-row dense>
-						<v-col cols="8"><v-text-field v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
+						<v-col cols="8"><v-text-field persistent-placeholder v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
 						<v-col cols="4"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
 					</v-row>
 					<v-row dense class="mt-1">
-						<v-col cols="6"><v-text-field v-model.number="draft.endmillDiameter" type="number" :min="0.01" :step="0.01" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.xyzProbe.endmillDiameter')" /></v-col>
-						<v-col cols="3"><v-text-field v-model.number="draft.probeIndex" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.bedMesh.probeIndex')" /></v-col>
+						<v-col cols="6"><v-text-field persistent-placeholder v-model.number="draft.endmillDiameter" type="number" :min="0.01" :step="0.01" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.xyzProbe.endmillDiameter')" /></v-col>
+						<v-col cols="3"><v-text-field persistent-placeholder v-model.number="draft.probeIndex" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.bedMesh.probeIndex')" /></v-col>
 						<v-col cols="3" class="d-flex align-center"><v-switch v-model="draft.confirm" color="primary" density="compact" hide-details :label="$t('plugins.flexibleLayouts.probe.confirmOpt')" /></v-col>
 					</v-row>
 					<v-row dense class="mt-1">
-						<v-col cols="4"><v-text-field v-model.number="draft.plateWidth" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.xyzProbe.plateWidth')" /></v-col>
-						<v-col cols="4"><v-text-field v-model.number="draft.plateHeight" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.xyzProbe.plateHeight')" /></v-col>
-						<v-col cols="4"><v-text-field v-model.number="draft.plateThickness" type="number" :min="0.01" :step="0.01" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.xyzProbe.plateThickness')" /></v-col>
+						<v-col cols="4"><v-text-field persistent-placeholder v-model.number="draft.plateWidth" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.xyzProbe.plateWidth')" /></v-col>
+						<v-col cols="4"><v-text-field persistent-placeholder v-model.number="draft.plateHeight" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.xyzProbe.plateHeight')" /></v-col>
+						<v-col cols="4"><v-text-field persistent-placeholder v-model.number="draft.plateThickness" type="number" :min="0.01" :step="0.01" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.xyzProbe.plateThickness')" /></v-col>
 					</v-row>
 					<v-row dense class="mt-1">
-						<v-col cols="4"><v-text-field v-model.number="draft.xOffset" type="number" :step="0.01" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.xyzProbe.xOffset')" /></v-col>
-						<v-col cols="4"><v-text-field v-model.number="draft.yOffset" type="number" :step="0.01" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.xyzProbe.yOffset')" /></v-col>
-						<v-col cols="4"><v-text-field v-model.number="draft.feedrate" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.xyzProbe.feedrate')" /></v-col>
+						<v-col cols="4"><v-text-field persistent-placeholder v-model.number="draft.xOffset" type="number" :step="0.01" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.xyzProbe.xOffset')" /></v-col>
+						<v-col cols="4"><v-text-field persistent-placeholder v-model.number="draft.yOffset" type="number" :step="0.01" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.xyzProbe.yOffset')" /></v-col>
+						<v-col cols="4"><v-text-field persistent-placeholder v-model.number="draft.feedrate" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.xyzProbe.feedrate')" /></v-col>
 					</v-row>
 					<v-row dense class="mt-1">
-						<v-col cols="6"><v-text-field v-model.number="draft.searchMargin" type="number" :min="0.1" :step="0.5" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.xyzProbe.searchMargin')" /></v-col>
-						<v-col cols="6"><v-text-field v-model="draft.macroFolder" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.xyzProbe.macroFolder')" :placeholder="XYZ_PROBE_MACRO_FOLDER" /></v-col>
+						<v-col cols="6"><v-text-field persistent-placeholder v-model.number="draft.searchMargin" type="number" :min="0.1" :step="0.5" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.xyzProbe.searchMargin')" /></v-col>
+						<v-col cols="6"><v-text-field persistent-placeholder v-model="draft.macroFolder" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.xyzProbe.macroFolder')" :placeholder="XYZ_PROBE_MACRO_FOLDER" /></v-col>
 					</v-row>
 					<div class="text-caption text-medium-emphasis mt-2">{{ $t('plugins.flexibleLayouts.xyzProbe.requirementsNote') }}</div>
 				</template>
@@ -889,28 +927,28 @@
 					 the widget itself per run (see SurfacingWidget.vue), these are just its starting defaults. -->
 				<template v-else-if="draft.type === 'surfacing'">
 					<v-row dense>
-						<v-col cols="8"><v-text-field v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
+						<v-col cols="8"><v-text-field persistent-placeholder v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
 						<v-col cols="4"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
 					</v-row>
 					<v-row dense class="mt-1">
-						<v-col cols="6"><v-text-field v-model.number="draft.width" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.surfacing.width')" /></v-col>
-						<v-col cols="6"><v-text-field v-model.number="draft.height" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.surfacing.height')" /></v-col>
+						<v-col cols="6"><v-text-field persistent-placeholder v-model.number="draft.width" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.surfacing.width')" /></v-col>
+						<v-col cols="6"><v-text-field persistent-placeholder v-model.number="draft.height" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.surfacing.height')" /></v-col>
 					</v-row>
 					<v-row dense class="mt-1">
-						<v-col cols="6"><v-text-field v-model.number="draft.toolDiameter" type="number" :min="0.1" :step="0.1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.surfacing.toolDiameter')" /></v-col>
-						<v-col cols="6"><v-text-field v-model.number="draft.stepoverPercent" type="number" :min="1" :max="100" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.surfacing.stepover')" /></v-col>
+						<v-col cols="6"><v-text-field persistent-placeholder v-model.number="draft.toolDiameter" type="number" :min="0.1" :step="0.1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.surfacing.toolDiameter')" /></v-col>
+						<v-col cols="6"><v-text-field persistent-placeholder v-model.number="draft.stepoverPercent" type="number" :min="1" :max="100" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.surfacing.stepover')" /></v-col>
 					</v-row>
 					<v-row dense class="mt-1">
-						<v-col cols="6"><v-text-field v-model.number="draft.depthPerPass" type="number" :min="0.01" :step="0.01" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.surfacing.depthPerPass')" /></v-col>
-						<v-col cols="6"><v-text-field v-model.number="draft.totalDepth" type="number" :min="0.01" :step="0.01" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.surfacing.totalDepth')" /></v-col>
+						<v-col cols="6"><v-text-field persistent-placeholder v-model.number="draft.depthPerPass" type="number" :min="0.01" :step="0.01" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.surfacing.depthPerPass')" /></v-col>
+						<v-col cols="6"><v-text-field persistent-placeholder v-model.number="draft.totalDepth" type="number" :min="0.01" :step="0.01" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.surfacing.totalDepth')" /></v-col>
 					</v-row>
 					<v-row dense class="mt-1">
-						<v-col cols="6"><v-text-field v-model.number="draft.clearance" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.surfacing.clearance')" /></v-col>
-						<v-col cols="6"><v-text-field v-model.number="draft.feed" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.surfacing.feed')" /></v-col>
+						<v-col cols="6"><v-text-field persistent-placeholder v-model.number="draft.clearance" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.surfacing.clearance')" /></v-col>
+						<v-col cols="6"><v-text-field persistent-placeholder v-model.number="draft.feed" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.surfacing.feed')" /></v-col>
 					</v-row>
 					<v-row dense class="mt-1">
-						<v-col cols="6"><v-select v-model="draft.direction" :items="surfacingDirectionItems" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.surfacing.direction')" /></v-col>
-						<v-col cols="6"><v-text-field v-model.number="draft.spindleRpm" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.surfacing.spindleRpm')" /></v-col>
+						<v-col cols="6"><v-select persistent-placeholder v-model="draft.direction" :items="surfacingDirectionItems" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.surfacing.direction')" /></v-col>
+						<v-col cols="6"><v-text-field persistent-placeholder v-model.number="draft.spindleRpm" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.surfacing.spindleRpm')" /></v-col>
 					</v-row>
 					<v-switch v-model="draft.confirm" color="primary" density="compact" hide-details class="mt-1" :label="$t('plugins.flexibleLayouts.probe.confirmOpt')" />
 				</template>
@@ -918,7 +956,7 @@
 				<!-- Firmware update -->
 				<template v-else-if="draft.type === 'firmwareUpdate'">
 					<v-row dense>
-						<v-col cols="8"><v-text-field v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
+						<v-col cols="8"><v-text-field persistent-placeholder v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
 						<v-col cols="4"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
 					</v-row>
 				</template>
@@ -926,7 +964,7 @@
 				<!-- Maintenance widget -->
 				<template v-else-if="draft.type === 'maintenanceWidget'">
 					<v-row dense>
-						<v-col cols="8"><v-text-field v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
+						<v-col cols="8"><v-text-field persistent-placeholder v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
 						<v-col cols="4"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
 					</v-row>
 				</template>
@@ -934,46 +972,46 @@
 				<!-- Toolpath -->
 				<template v-else-if="draft.type === 'toolpath'">
 					<v-row dense>
-						<v-col cols="8"><v-text-field v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
+						<v-col cols="8"><v-text-field persistent-placeholder v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
 						<v-col cols="4"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
 					</v-row>
 					<v-row dense class="mt-1">
-						<v-col cols="8"><v-text-field v-model="draft.defaultFile" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.toolpath.file')" placeholder="0:/gcodes/part.gcode" /></v-col>
-						<v-col cols="4"><v-text-field v-model.number="draft.safeZ" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.toolpath.safeZ')" /></v-col>
+						<v-col cols="8"><v-text-field persistent-placeholder v-model="draft.defaultFile" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.toolpath.file')" placeholder="0:/gcodes/part.gcode" /></v-col>
+						<v-col cols="4"><v-text-field persistent-placeholder v-model.number="draft.safeZ" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.toolpath.safeZ')" /></v-col>
 					</v-row>
 				</template>
 
 				<!-- Preflight -->
 				<template v-else-if="draft.type === 'preflight'">
 					<v-row dense>
-						<v-col cols="8"><v-text-field v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
+						<v-col cols="8"><v-text-field persistent-placeholder v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
 						<v-col cols="4"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
 					</v-row>
 					<v-row dense class="mt-1">
-						<v-col cols="8"><v-text-field v-model="draft.defaultFile" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.preflight.file')" placeholder="0:/gcodes/part.gcode" /></v-col>
-						<v-col cols="4"><v-text-field v-model.number="draft.rapidRate" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.preflight.rapidRate')" /></v-col>
+						<v-col cols="8"><v-text-field persistent-placeholder v-model="draft.defaultFile" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.preflight.file')" placeholder="0:/gcodes/part.gcode" /></v-col>
+						<v-col cols="4"><v-text-field persistent-placeholder v-model.number="draft.rapidRate" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.preflight.rapidRate')" /></v-col>
 					</v-row>
 				</template>
 
 				<!-- Probe routines -->
 				<template v-else-if="draft.type === 'probeRoutines'">
 					<v-row dense>
-						<v-col cols="8"><v-text-field v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
+						<v-col cols="8"><v-text-field persistent-placeholder v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
 						<v-col cols="4"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
 					</v-row>
 					<v-row dense class="mt-1">
-						<v-col cols="6"><v-text-field v-model.number="draft.feedFast" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.probeRoutines.feedFast')" /></v-col>
-						<v-col cols="6"><v-text-field v-model.number="draft.feedSlow" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.probeRoutines.feedSlow')" /></v-col>
+						<v-col cols="6"><v-text-field persistent-placeholder v-model.number="draft.feedFast" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.probeRoutines.feedFast')" /></v-col>
+						<v-col cols="6"><v-text-field persistent-placeholder v-model.number="draft.feedSlow" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.probeRoutines.feedSlow')" /></v-col>
 					</v-row>
 					<v-row dense class="mt-1">
-						<v-col cols="6"><v-text-field v-model.number="draft.searchDistance" type="number" :min="0.1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.probeRoutines.searchDistance')" /></v-col>
-						<v-col cols="6"><v-text-field v-model.number="draft.backoff" type="number" :min="0.01" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.probeRoutines.backoff')" /></v-col>
+						<v-col cols="6"><v-text-field persistent-placeholder v-model.number="draft.searchDistance" type="number" :min="0.1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.probeRoutines.searchDistance')" /></v-col>
+						<v-col cols="6"><v-text-field persistent-placeholder v-model.number="draft.backoff" type="number" :min="0.01" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.probeRoutines.backoff')" /></v-col>
 					</v-row>
 				</template>
 
 				<!-- Machine health -->
 				<template v-else-if="draft.type === 'machineHealth'">
-					<v-text-field v-model="draft.title" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.jog.titleField')" />
+					<v-text-field persistent-placeholder v-model="draft.title" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.jog.titleField')" />
 					<v-row dense>
 						<v-col cols="6"><v-switch v-model="draft.showPower" color="primary" density="compact" hide-details :label="$t('plugins.flexibleLayouts.machineHealth.showPower')" /></v-col>
 						<v-col cols="6"><v-switch v-model="draft.showRam" color="primary" density="compact" hide-details :label="$t('plugins.flexibleLayouts.machineHealth.showRam')" /></v-col>
@@ -986,7 +1024,7 @@
 				<!-- Tool selector -->
 				<template v-else-if="draft.type === 'toolSelect'">
 					<v-row dense>
-						<v-col cols="8"><v-text-field v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
+						<v-col cols="8"><v-text-field persistent-placeholder v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
 						<v-col cols="4"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
 					</v-row>
 				</template>
@@ -994,29 +1032,26 @@
 				<!-- Fan -->
 				<template v-else-if="draft.type === 'fan'">
 					<v-row dense>
-						<v-col cols="4"><v-text-field v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
-						<v-col cols="3"><v-text-field v-model.number="draft.fanIndex" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.fan.index')" /></v-col>
-						<v-col cols="2"><v-text-field v-model.number="draft.precision" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.precision')">
+						<v-col cols="6"><v-text-field persistent-placeholder v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
+						<v-col cols="6"><v-text-field persistent-placeholder v-model.number="draft.fanIndex" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.fan.index')" /></v-col>
+					</v-row>
+					<!-- Was crammed into a 4-across row with label/index above (2 cols each for precision's
+						 help icon and the colour swatch+dropdown) - too narrow for either's content, per the
+						 "colour box is clipped, same with the decimal box" report. Own row, 6/6 split. -->
+					<v-row dense class="mt-2">
+						<v-col cols="6"><v-text-field persistent-placeholder v-model.number="draft.precision" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.precision')">
 							<template #append-inner><HelpTip :text="$t('plugins.flexibleLayouts.properties.precisionHelp')" /></template>
 						</v-text-field></v-col>
-						<v-col cols="3"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
+						<v-col cols="6"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
 					</v-row>
-				</template>
-
-				<!-- Job control -->
-				<template v-else-if="draft.type === 'jobControl'">
-					<div class="d-flex flex-wrap ga-x-4 align-center">
-						<v-switch v-model="draft.showProgress" color="primary" density="compact" hide-details :label="$t('plugins.flexibleLayouts.progress.showValue')" />
-						<ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details style="max-width:11rem" :label="$t('plugins.flexibleLayouts.properties.color')" />
-					</div>
 				</template>
 
 				<!-- Files -->
 				<template v-else-if="draft.type === 'files'">
-					<v-text-field v-model="draft.folder" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.files.folder')" placeholder="0:/gcodes" />
-					<v-text-field v-model="draft.startCommand" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.files.startCommand')" placeholder='M32 "{path}"' />
+					<v-text-field persistent-placeholder v-model="draft.folder" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.files.folder')" placeholder="0:/gcodes" />
+					<v-text-field persistent-placeholder v-model="draft.startCommand" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.files.startCommand')" placeholder='M32 "{path}"' />
 					<v-row dense>
-						<v-col cols="6"><v-text-field v-model.number="draft.columns" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.macros.columns')" /></v-col>
+						<v-col cols="6"><v-text-field persistent-placeholder v-model.number="draft.columns" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.macros.columns')" /></v-col>
 						<v-col cols="6"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
 					</v-row>
 					<v-switch v-model="draft.thumbnails" color="primary" density="compact" hide-details class="mt-1" :label="$t('plugins.flexibleLayouts.files.thumbnails')" />
@@ -1025,8 +1060,8 @@
 				<!-- Gauge cluster -->
 				<template v-else-if="draft.type === 'gaugeCluster'">
 					<v-row dense class="mb-2">
-						<v-col cols="8"><v-text-field v-model="draft.title" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.jog.titleField')" /></v-col>
-						<v-col cols="4"><v-text-field v-model.number="draft.precision" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.precision')">
+						<v-col cols="8"><v-text-field persistent-placeholder v-model="draft.title" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.jog.titleField')" /></v-col>
+						<v-col cols="4"><v-text-field persistent-placeholder v-model.number="draft.precision" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.precision')">
 							<template #append-inner><HelpTip :text="$t('plugins.flexibleLayouts.properties.precisionHelp')" /></template>
 						</v-text-field></v-col>
 					</v-row>
@@ -1037,14 +1072,14 @@
 					</div>
 					<v-sheet v-for="(g, i) in draft.gauges" :key="i" border rounded class="pa-2 mb-2">
 						<div class="d-flex ga-2">
-							<v-text-field v-model="g.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" style="max-width:8rem" />
+							<v-text-field persistent-placeholder v-model="g.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" style="max-width:8rem" />
 							<OmPathField v-model="g.omPath" class="flex-grow-1" :label="$t('plugins.flexibleLayouts.conditions.omPath')" />
 							<v-btn icon="mdi-delete" size="small" variant="text" color="error" @click="draft.gauges.splice(i, 1)" />
 						</div>
 						<div class="d-flex ga-2 mt-2">
-							<v-text-field v-model.number="g.min" type="number" density="compact" variant="outlined" hide-details label="Min" style="max-width:5rem" />
-							<v-text-field v-model.number="g.max" type="number" density="compact" variant="outlined" hide-details label="Max" style="max-width:5rem" />
-							<v-text-field v-model="g.unit" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.unit')" style="max-width:5rem" />
+							<v-text-field persistent-placeholder v-model.number="g.min" type="number" density="compact" variant="outlined" hide-details label="Min" style="max-width:5rem" />
+							<v-text-field persistent-placeholder v-model.number="g.max" type="number" density="compact" variant="outlined" hide-details label="Max" style="max-width:5rem" />
+							<v-text-field persistent-placeholder v-model="g.unit" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.unit')" style="max-width:5rem" />
 							<ColorSelect v-model="g.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" />
 						</div>
 					</v-sheet>
@@ -1062,8 +1097,8 @@
 				<!-- Indicators -->
 				<template v-else-if="draft.type === 'indicators'">
 					<v-row dense class="mb-1">
-						<v-col cols="8"><v-text-field v-model="draft.title" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.jog.titleField')" /></v-col>
-						<v-col cols="4"><v-text-field v-model.number="draft.columns" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.macros.columns')" /></v-col>
+						<v-col cols="8"><v-text-field persistent-placeholder v-model="draft.title" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.jog.titleField')" /></v-col>
+						<v-col cols="4"><v-text-field persistent-placeholder v-model.number="draft.columns" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.macros.columns')" /></v-col>
 					</v-row>
 					<div class="d-flex align-center mb-1">
 						<span class="text-title-small">{{ $t("plugins.flexibleLayouts.indicators.items") }}</span>
@@ -1072,7 +1107,7 @@
 					</div>
 					<v-sheet v-for="(it, i) in draft.items" :key="i" border rounded class="pa-2 mb-2">
 						<div class="d-flex ga-2">
-							<v-text-field v-model="it.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" style="max-width:8rem" />
+							<v-text-field persistent-placeholder v-model="it.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" style="max-width:8rem" />
 							<OmPathField v-model="it.omPath" class="flex-grow-1" :label="$t('plugins.flexibleLayouts.conditions.omPath')" />
 							<v-btn icon="mdi-delete" size="small" variant="text" color="error" @click="draft.items.splice(i, 1)" />
 						</div>
@@ -1085,7 +1120,7 @@
 
 				<!-- Sparkline -->
 				<template v-else-if="draft.type === 'sparkline'">
-					<v-text-field v-model="draft.title" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.jog.titleField')" />
+					<v-text-field persistent-placeholder v-model="draft.title" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.jog.titleField')" />
 					<div class="d-flex align-center mb-1">
 						<span class="text-title-small">{{ $t("plugins.flexibleLayouts.sparkline.series") }}</span>
 						<v-spacer />
@@ -1099,9 +1134,9 @@
 						</div>
 					</v-sheet>
 					<v-row dense>
-						<v-col cols="4"><v-text-field v-model.number="draft.windowSeconds" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.windowSeconds')" /></v-col>
-						<v-col cols="4"><v-text-field v-model.number="draft.intervalMs" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.intervalMs')" /></v-col>
-						<v-col cols="4"><v-text-field v-model.number="draft.precision" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.precision')">
+						<v-col cols="4"><v-text-field persistent-placeholder v-model.number="draft.windowSeconds" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.windowSeconds')" /></v-col>
+						<v-col cols="4"><v-text-field persistent-placeholder v-model.number="draft.intervalMs" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.intervalMs')" /></v-col>
+						<v-col cols="4"><v-text-field persistent-placeholder v-model.number="draft.precision" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.precision')">
 							<template #append-inner><HelpTip :text="$t('plugins.flexibleLayouts.properties.precisionHelp')" /></template>
 						</v-text-field></v-col>
 					</v-row>
@@ -1109,21 +1144,21 @@
 
 				<!-- Note -->
 				<template v-else-if="draft.type === 'note'">
-					<v-textarea v-model="draft.content" density="compact" variant="outlined" auto-grow rows="6"
+					<v-textarea persistent-placeholder v-model="draft.content" density="compact" variant="outlined" auto-grow rows="6"
 								:label="$t('plugins.flexibleLayouts.note.content')" :hint="$t('plugins.flexibleLayouts.note.hint')" persistent-hint />
 				</template>
 
 				<!-- HTTP / REST -->
 				<template v-else-if="draft.type === 'http'">
-					<v-text-field v-model="draft.label" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" />
-					<v-text-field v-model="draft.url" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.http.url')" placeholder="https://…" />
+					<v-text-field persistent-placeholder v-model="draft.label" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" />
+					<v-text-field persistent-placeholder v-model="draft.url" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.http.url')" placeholder="https://…" />
 					<v-row dense>
-						<v-col cols="6"><v-text-field v-model.number="draft.pollMs" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.http.pollMs')" /></v-col>
-						<v-col cols="6"><v-text-field v-model="draft.jsonPath" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.http.jsonPath')" placeholder="data.value" /></v-col>
+						<v-col cols="6"><v-text-field persistent-placeholder v-model.number="draft.pollMs" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.http.pollMs')" /></v-col>
+						<v-col cols="6"><v-text-field persistent-placeholder v-model="draft.jsonPath" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.http.jsonPath')" placeholder="data.value" /></v-col>
 					</v-row>
 					<v-row dense class="mt-1">
-						<v-col cols="6"><v-text-field v-model="draft.prefix" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.http.prefix')" /></v-col>
-						<v-col cols="6"><v-text-field v-model="draft.suffix" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.http.suffix')" /></v-col>
+						<v-col cols="6"><v-text-field persistent-placeholder v-model="draft.prefix" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.http.prefix')" /></v-col>
+						<v-col cols="6"><v-text-field persistent-placeholder v-model="draft.suffix" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.http.suffix')" /></v-col>
 					</v-row>
 					<v-alert type="info" variant="tonal" density="compact" class="mt-2">
 						<div class="text-caption" v-html="urlFormatsHtml" />
@@ -1133,12 +1168,12 @@
 
 				<!-- Event log -->
 				<template v-else-if="draft.type === 'eventLog'">
-					<v-text-field v-model.number="draft.rows" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.console.rows')" />
+					<v-text-field persistent-placeholder v-model.number="draft.rows" type="number" :min="1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.console.rows')" />
 				</template>
 
 				<!-- Hotspot image -->
 				<template v-else-if="draft.type === 'hotspot'">
-					<v-text-field v-model="draft.url" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.hotspot.url')" placeholder="https://…" />
+					<v-text-field persistent-placeholder v-model="draft.url" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.hotspot.url')" placeholder="https://…" />
 					<div class="d-flex align-center mb-1">
 						<span class="text-title-small">{{ $t("plugins.flexibleLayouts.hotspot.regions") }}</span>
 						<v-spacer />
@@ -1147,26 +1182,26 @@
 					<div class="text-caption text-medium-emphasis mb-2">{{ $t("plugins.flexibleLayouts.hotspot.hint") }}</div>
 					<v-sheet v-for="(r, i) in draft.regions" :key="i" border rounded class="pa-2 mb-2">
 						<div class="d-flex ga-2">
-							<v-text-field v-model="r.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" style="max-width:8rem" />
-							<v-text-field v-model="r.command" density="compact" variant="outlined" hide-details label="Command" class="flex-grow-1" />
+							<v-text-field persistent-placeholder v-model="r.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" style="max-width:8rem" />
+							<v-text-field persistent-placeholder v-model="r.command" density="compact" variant="outlined" hide-details label="Command" class="flex-grow-1" />
 							<v-btn icon="mdi-delete" size="small" variant="text" color="error" @click="draft.regions.splice(i, 1)" />
 						</div>
 						<div class="d-flex ga-2 mt-2">
-							<v-text-field v-model.number="r.x" type="number" density="compact" variant="outlined" hide-details label="X%" style="max-width:5rem" />
-							<v-text-field v-model.number="r.y" type="number" density="compact" variant="outlined" hide-details label="Y%" style="max-width:5rem" />
-							<v-text-field v-model.number="r.w" type="number" density="compact" variant="outlined" hide-details label="W%" style="max-width:5rem" />
-							<v-text-field v-model.number="r.h" type="number" density="compact" variant="outlined" hide-details label="H%" style="max-width:5rem" />
+							<v-text-field persistent-placeholder v-model.number="r.x" type="number" density="compact" variant="outlined" hide-details label="X%" style="max-width:5rem" />
+							<v-text-field persistent-placeholder v-model.number="r.y" type="number" density="compact" variant="outlined" hide-details label="Y%" style="max-width:5rem" />
+							<v-text-field persistent-placeholder v-model.number="r.w" type="number" density="compact" variant="outlined" hide-details label="W%" style="max-width:5rem" />
+							<v-text-field persistent-placeholder v-model.number="r.h" type="number" density="compact" variant="outlined" hide-details label="H%" style="max-width:5rem" />
 						</div>
 					</v-sheet>
 				</template>
 
 				<!-- DRO -->
 				<template v-else-if="draft.type === 'dro'">
-					<v-text-field v-model="draft.title" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.jog.titleField')" />
-					<v-text-field v-model="droAxesText" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.dro.axes')" :hint="$t('plugins.flexibleLayouts.dro.axesHint')" persistent-hint />
+					<v-text-field persistent-placeholder v-model="draft.title" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.jog.titleField')" />
+					<v-text-field persistent-placeholder v-model="droAxesText" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.dro.axes')" :hint="$t('plugins.flexibleLayouts.dro.axesHint')" persistent-hint />
 					<v-row dense>
-						<v-col cols="6"><v-select v-model="draft.coord" :items="droCoordOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.dro.coord')" /></v-col>
-						<v-col cols="6"><v-text-field v-model.number="draft.precision" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.stepper.precision')">
+						<v-col cols="6"><v-select persistent-placeholder v-model="draft.coord" :items="droCoordOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.dro.coord')" /></v-col>
+						<v-col cols="6"><v-text-field persistent-placeholder v-model.number="draft.precision" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.stepper.precision')">
 							<template #append-inner><HelpTip :text="$t('plugins.flexibleLayouts.properties.precisionHelp')" /></template>
 						</v-text-field></v-col>
 					</v-row>
@@ -1174,12 +1209,12 @@
 
 				<!-- Spindle -->
 				<template v-else-if="draft.type === 'spindle'">
-					<v-text-field v-model="draft.label" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" />
+					<v-text-field persistent-placeholder v-model="draft.label" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" />
 					<v-row dense>
-						<v-col cols="3"><v-text-field v-model.number="draft.spindleIndex" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.spindle.index')" /></v-col>
-						<v-col cols="3"><v-text-field v-model.number="draft.min" type="number" density="compact" variant="outlined" hide-details label="Min RPM" /></v-col>
-						<v-col cols="3"><v-text-field v-model.number="draft.max" type="number" density="compact" variant="outlined" hide-details label="Max RPM" /></v-col>
-						<v-col cols="3"><v-text-field v-model.number="draft.precision" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.precision')">
+						<v-col cols="3"><v-text-field persistent-placeholder v-model.number="draft.spindleIndex" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.spindle.index')" /></v-col>
+						<v-col cols="3"><v-text-field persistent-placeholder v-model.number="draft.min" type="number" density="compact" variant="outlined" hide-details label="Min RPM" /></v-col>
+						<v-col cols="3"><v-text-field persistent-placeholder v-model.number="draft.max" type="number" density="compact" variant="outlined" hide-details label="Max RPM" /></v-col>
+						<v-col cols="3"><v-text-field persistent-placeholder v-model.number="draft.precision" type="number" :min="0" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.precision')">
 							<template #append-inner><HelpTip :text="$t('plugins.flexibleLayouts.properties.precisionHelp')" /></template>
 						</v-text-field></v-col>
 						<v-col cols="3"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
@@ -1194,16 +1229,16 @@
 				<!-- Profile switcher -->
 				<template v-else-if="draft.type === 'profileSwitch'">
 					<v-row dense>
-						<v-col cols="7"><v-text-field v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
-						<v-col cols="5"><v-select v-model="draft.variant" :items="selectButtonsOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.toggle.variant')" /></v-col>
+						<v-col cols="7"><v-text-field persistent-placeholder v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
+						<v-col cols="5"><v-select persistent-placeholder v-model="draft.variant" :items="selectButtonsOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.toggle.variant')" /></v-col>
 					</v-row>
 				</template>
 
 				<!-- Theme toggle -->
 				<template v-else-if="draft.type === 'themeToggle'">
 					<v-row dense>
-						<v-col cols="7"><v-text-field v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
-						<v-col cols="5"><v-select v-model="draft.variant" :items="toggleVariantOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.toggle.variant')" /></v-col>
+						<v-col cols="7"><v-text-field persistent-placeholder v-model="draft.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" /></v-col>
+						<v-col cols="5"><v-select persistent-placeholder v-model="draft.variant" :items="toggleVariantOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.toggle.variant')" /></v-col>
 					</v-row>
 				</template>
 
@@ -1223,17 +1258,17 @@
 								<div class="text-caption text-medium-emphasis mb-2">{{ $t("plugins.flexibleLayouts.inputModifier.help") }}</div>
 								<v-row dense>
 									<v-col cols="6">
-										<v-text-field v-model.number="draft.modifier.scale" type="number" density="compact"
+										<v-text-field persistent-placeholder v-model.number="draft.modifier.scale" type="number" density="compact"
 													  variant="outlined" hide-details clearable
 													  :label="$t('plugins.flexibleLayouts.properties.scale')" />
 									</v-col>
 									<v-col cols="6">
-										<v-text-field v-model.number="draft.modifier.offset" type="number" density="compact"
+										<v-text-field persistent-placeholder v-model.number="draft.modifier.offset" type="number" density="compact"
 													  variant="outlined" hide-details clearable
 													  :label="$t('plugins.flexibleLayouts.properties.offset')" />
 									</v-col>
 									<v-col cols="12">
-										<v-text-field v-model="draft.modifier.expression" density="compact" variant="outlined"
+										<v-text-field persistent-placeholder v-model="draft.modifier.expression" density="compact" variant="outlined"
 													  hide-details clearable placeholder="x * 60"
 													  :label="$t('plugins.flexibleLayouts.properties.expression')" />
 										<div class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.inputModifier.expressionHint") }}</div>
@@ -1247,9 +1282,9 @@
 									</v-btn>
 								</div>
 								<div v-for="(m, mi) in (draft.modifier.map ?? [])" :key="mi" class="d-flex ga-2 mb-1 align-center">
-									<v-text-field v-model="m.from" density="compact" variant="outlined" hide-details
+									<v-text-field persistent-placeholder v-model="m.from" density="compact" variant="outlined" hide-details
 												  :label="$t('plugins.flexibleLayouts.inputModifier.from')" />
-									<v-text-field v-model="m.to" density="compact" variant="outlined" hide-details
+									<v-text-field persistent-placeholder v-model="m.to" density="compact" variant="outlined" hide-details
 												  :label="$t('plugins.flexibleLayouts.inputModifier.to')" />
 									<v-btn icon="mdi-delete" size="x-small" variant="text" color="error" @click="draft.modifier.map.splice(mi, 1)" />
 								</div>
@@ -1281,10 +1316,10 @@
 							   @click="removeRule(i)" />
 					</div>
 					<div class="d-flex ga-2 mt-2">
-						<v-select v-model="rule.operator" :items="operatorOptions" density="compact"
+						<v-select persistent-placeholder v-model="rule.operator" :items="operatorOptions" density="compact"
 								  variant="outlined" hide-details style="max-width: 170px"
 								  :label="$t('plugins.flexibleLayouts.conditions.operator')" />
-						<v-text-field v-if="needsValue(rule.operator)" v-model="rule.value" density="compact"
+						<v-text-field persistent-placeholder v-if="needsValue(rule.operator)" v-model="rule.value" density="compact"
 									  variant="outlined" hide-details
 									  :label="$t('plugins.flexibleLayouts.conditions.value')" />
 					</div>
@@ -1323,12 +1358,12 @@
 				</div>
 				<v-row dense>
 					<v-col cols="6">
-						<v-text-field v-model.number="typography.fontSize" type="number" density="compact"
+						<v-text-field persistent-placeholder v-model.number="typography.fontSize" type="number" density="compact"
 									  variant="outlined" hide-details clearable
 									  :label="$t('plugins.flexibleLayouts.typography.fontSize')" suffix="px" />
 					</v-col>
 					<v-col cols="6">
-						<v-select v-model="typography.fontFamily" :items="fontOptions" density="compact"
+						<v-select persistent-placeholder v-model="typography.fontFamily" :items="fontOptions" density="compact"
 								  variant="outlined" hide-details clearable
 								  :label="$t('plugins.flexibleLayouts.typography.fontFamily')" />
 					</v-col>
@@ -1338,8 +1373,8 @@
 				<div class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.typography.responsiveHint") }}</div>
 				<div class="text-caption text-medium-emphasis mb-1 mt-2">{{ $t("plugins.flexibleLayouts.typography.labelFont") }}</div>
 				<v-row dense>
-					<v-col cols="6"><v-text-field v-model.number="typography.labelFontSize" type="number" density="compact" variant="outlined" hide-details clearable :label="$t('plugins.flexibleLayouts.typography.fontSize')" suffix="px" /></v-col>
-					<v-col cols="6"><v-select v-model="typography.labelFontFamily" :items="fontOptions" density="compact" variant="outlined" hide-details clearable :label="$t('plugins.flexibleLayouts.typography.fontFamily')" /></v-col>
+					<v-col cols="6"><v-text-field persistent-placeholder v-model.number="typography.labelFontSize" type="number" density="compact" variant="outlined" hide-details clearable :label="$t('plugins.flexibleLayouts.typography.fontSize')" suffix="px" /></v-col>
+					<v-col cols="6"><v-select persistent-placeholder v-model="typography.labelFontFamily" :items="fontOptions" density="compact" variant="outlined" hide-details clearable :label="$t('plugins.flexibleLayouts.typography.fontFamily')" /></v-col>
 				</v-row>
 				<v-switch v-model="fit" color="primary" density="compact" hide-details class="mt-1"
 						  :label="$t('plugins.flexibleLayouts.typography.fit')" />
@@ -1347,7 +1382,7 @@
 				<v-switch v-model="autoHeight" color="primary" density="compact" hide-details class="mt-1"
 						  :label="$t('plugins.flexibleLayouts.typography.autoHeight')" />
 				<div class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.typography.autoHeightHint") }}</div>
-				<v-text-field v-model="tooltip" class="mt-3" density="compact" variant="outlined" hide-details clearable
+				<v-text-field persistent-placeholder v-model="tooltip" class="mt-3" density="compact" variant="outlined" hide-details clearable
 							  :label="$t('plugins.flexibleLayouts.properties.tooltip')" />
 				<div class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.properties.tooltipHint") }}</div>
 
@@ -1379,7 +1414,7 @@ import { getWidgetConfig, HelpTip, PluginWidgetConfigForm } from "dwc-plugin-run
 import i18n from "@/i18n";
 import { useMachineStore } from "@/stores/machine";
 
-import type { ButtonShape, ConditionOperator, ConditionRule, GridItemModel, PanelColors, Typography, Widget } from "../model/document";
+import { DEFAULT_GRID, type ButtonShape, type ConditionOperator, type ConditionRule, type GridItemModel, type PanelColors, type Typography, type Widget } from "../model/document";
 import { hasInputModifier } from "../util/inputModifier";
 import { DEFAULT_BED_MESH_PROBE_COMMAND, DEFAULT_PROBE_COMMANDS as PROBE_DEFAULTS } from "../util/probe";
 import { DEFAULT_HEIGHTMAP_FILE } from "../model/bedMesh/store";
@@ -1502,12 +1537,22 @@ onBeforeUnmount(() => {
 
 // Reflect the edited panel colours + typography in the preview container (these are applied by the
 // grid wrapper at runtime, not by WidgetView itself), so colour/font changes show without saving.
+//
+// Height tracks the widget's own placed size (geom.h rows, same rowHeight the real grid uses)
+// instead of a fixed box: a fixed height forced every widget's real aspect ratio into the same
+// small box, which either squeezed a tall/complex widget (rings, Z bar and home buttons all fighting
+// for ~130px on the jog control) into looking squashed, or triggered `.flex-preview`'s scrollbar for
+// content that only overflowed because the box was too short to begin with. Clamped so a very tall
+// widget still gets a scrollbar (better than an enormous dialog) and a very short one doesn't render
+// as an oddly tall empty box.
 const previewStyle = computed(() => {
 	const s: Record<string, string> = {};
 	if (typography.value.fontSize) s.fontSize = `${typography.value.fontSize}px`;
 	if (typography.value.fontFamily) s.fontFamily = typography.value.fontFamily;
 	if (colors.value.background) s.background = colors.value.background;
 	if (colors.value.text) s.color = colors.value.text;
+	const naturalHeight = (geom.value.h || 4) * DEFAULT_GRID.rowHeight;
+	s.height = `${Math.max(140, Math.min(320, naturalHeight))}px`;
 	return s;
 });
 
@@ -1700,6 +1745,10 @@ const toggleVariantOptions = computed(() => [
 	{ title: t("toggle.variantSwitch"), value: "switch" },
 	{ title: t("toggle.variantButton"), value: "button" },
 ]);
+const toggleLabelPositionOptions = computed(() => [
+	{ title: t("toggle.labelPositionLeft"), value: "left" },
+	{ title: t("toggle.labelPositionRight"), value: "right" },
+]);
 const stepperModeOptions = computed(() => [
 	{ title: t("stepper.modeRelative"), value: "relative" },
 	{ title: t("stepper.modeAbsolute"), value: "absolute" },
@@ -1825,6 +1874,22 @@ const liveGlobalNames = computed(() => {
 	return g instanceof Map ? Array.from(g.keys()).sort() : [];
 });
 
+/**
+ * When the "global." combobox picks an EXISTING variable (not freehand text for one not yet
+ * declared), default the input widget's inputKind from that variable's own current live type. This
+ * doesn't remove manual choice - inferring it can't be done at all for a fresh/undeclared global,
+ * and can't be done for command-template mode (there's no OM value to inspect, only whatever the
+ * downstream command happens to expect) - but it removes the manual step for the common case of
+ * pointing an input at a global that's already there.
+ */
+function onInputGlobalPicked(name: unknown): void {
+	if (typeof name !== "string" || !name || !draft.value || draft.value.type !== "input") return;
+	const g = (machineStore.model as unknown as { global?: Map<string, unknown> }).global;
+	if (!(g instanceof Map) || !g.has(name)) return;
+	const v = g.get(name);
+	draft.value.inputKind = typeof v === "number" ? "number" : "text";
+}
+
 const iconPositionOptions = computed(() => [
 	{ title: t("properties.iconPosTop"), value: "top" },
 	{ title: t("properties.iconPosLeft"), value: "left" },
@@ -1901,7 +1966,8 @@ function save() {
 <style scoped>
 .flex-preview {
 	position: relative;
-	height: 130px;
+	/* Default before previewStyle's inline height (computed from the widget's own placed size) applies. */
+	height: 140px;
 	overflow: auto;
 	background: rgba(var(--v-theme-on-surface), 0.03);
 }

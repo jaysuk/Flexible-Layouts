@@ -72,13 +72,13 @@ export interface FreeformCatalogEntry {
 
 export const FREEFORM_WIDGETS: ReadonlyArray<FreeformCatalogEntry> = [
 	// Controls — interactive, send commands
-	{ type: "codeButton",  labelKey: "widgets.codeButton",  icon: "mdi-gesture-tap-button", defaultSize: { w: 3, h: 3 }, category: "controls" },
+	{ type: "codeButton",  labelKey: "widgets.codeButton",  icon: "mdi-gesture-tap-button", defaultSize: { w: 2, h: 2 }, category: "controls" },
 	{ type: "jog",         labelKey: "widgets.jog",         icon: "mdi-circle-double",      defaultSize: { w: 5, h: 8 }, category: "controls" },
 	{ type: "octopusJog",  labelKey: "widgets.octopusJog",  icon: "mdi-arrow-all",          defaultSize: { w: 6, h: 9 }, category: "controls" },
 	{ type: "slider",     labelKey: "widgets.slider",     icon: "mdi-tune-variant",       defaultSize: { w: 4, h: 2 }, category: "controls" },
 	{ type: "toggle",     labelKey: "widgets.toggle",     icon: "mdi-toggle-switch",      defaultSize: { w: 3, h: 2 }, category: "controls" },
 	{ type: "stepper",    labelKey: "widgets.stepper",    icon: "mdi-plus-minus-variant", defaultSize: { w: 3, h: 2 }, category: "controls" },
-	{ type: "input",      labelKey: "widgets.input",      icon: "mdi-form-textbox",       defaultSize: { w: 4, h: 2 }, category: "controls" },
+	{ type: "input",      labelKey: "widgets.input",      icon: "mdi-form-textbox",       defaultSize: { w: 4, h: 3 }, category: "controls" },
 	{ type: "neopixel",   labelKey: "widgets.neopixel",   icon: "mdi-led-strip-variant",  defaultSize: { w: 4, h: 9 }, category: "controls" },
 
 	// Machine — printer/CNC specific
@@ -87,7 +87,7 @@ export const FREEFORM_WIDGETS: ReadonlyArray<FreeformCatalogEntry> = [
 	{ type: "heater",     labelKey: "widgets.heater",     icon: "mdi-radiator",           defaultSize: { w: 4, h: 4 }, category: "machine" },
 	{ type: "spindle",    labelKey: "widgets.spindle",    icon: "mdi-saw-blade",          defaultSize: { w: 4, h: 4 }, category: "machine" },
 	{ type: "wcs",        labelKey: "widgets.wcs",        icon: "mdi-axis-arrow",         defaultSize: { w: 4, h: 7 }, category: "machine" },
-	{ type: "wcsTable",   labelKey: "widgets.wcsTable",   icon: "mdi-table-large",        defaultSize: { w: 8, h: 12 }, category: "machine" },
+	{ type: "wcsTable",   labelKey: "widgets.wcsTable",   icon: "mdi-table-large",        defaultSize: { w: 8, h: 16 }, category: "machine" },
 	{ type: "probe",      labelKey: "widgets.probe",      subKey: "widgets.probeSub",      icon: "mdi-target-variant",     defaultSize: { w: 4, h: 7 }, category: "machine" },
 	{ type: "bedMesh",    labelKey: "widgets.bedMesh",    icon: "mdi-grid",               defaultSize: { w: 6, h: 10 }, category: "machine" },
 	{ type: "bedTram",    labelKey: "widgets.bedTram",    icon: "mdi-square-outline",     defaultSize: { w: 4, h: 5 }, category: "machine" },
@@ -101,12 +101,10 @@ export const FREEFORM_WIDGETS: ReadonlyArray<FreeformCatalogEntry> = [
 	{ type: "firmwareUpdate", labelKey: "widgets.firmwareUpdate", icon: "mdi-chip", defaultSize: { w: 6, h: 12 }, category: "machine" },
 	{ type: "toolSelect", labelKey: "widgets.toolSelect", icon: "mdi-tools",              defaultSize: { w: 4, h: 3 }, category: "machine" },
 	{ type: "toolAlign",  labelKey: "widgets.toolAlign",  icon: "mdi-image-filter-center-focus", defaultSize: { w: 6, h: 12 }, category: "machine" },
-	{ type: "jobControl", labelKey: "widgets.jobControl", icon: "mdi-play-pause",         defaultSize: { w: 4, h: 4 }, category: "machine" },
 	{ type: "macros",     labelKey: "widgets.macros",     icon: "mdi-cog-play",           defaultSize: { w: 4, h: 5 }, category: "machine" },
 	{ type: "files",      labelKey: "widgets.files",      icon: "mdi-file-document-multiple", defaultSize: { w: 4, h: 6 }, category: "machine" },
 	{ type: "console",    labelKey: "widgets.console",    icon: "mdi-console-line",       defaultSize: { w: 6, h: 5 }, category: "machine" },
 	{ type: "consoleInput", labelKey: "widgets.consoleInput", icon: "mdi-console-line",  defaultSize: { w: 6, h: 2 }, category: "machine" },
-	{ type: "consoleOutput", labelKey: "widgets.consoleOutput", icon: "mdi-text-box-multiple-outline", defaultSize: { w: 6, h: 5 }, category: "machine" },
 
 	// Read-outs — display object-model values
 	{ type: "value",      labelKey: "widgets.value",      icon: "mdi-counter",            defaultSize: { w: 3, h: 4 }, category: "readouts" },
@@ -244,8 +242,6 @@ export function describeWidget(widget: Widget): { title: string; icon: string } 
 			return { title: i18n.global.t("plugins.flexibleLayouts.widgets.console"), icon: "mdi-console-line" };
 		case "consoleInput":
 			return { title: i18n.global.t("plugins.flexibleLayouts.widgets.consoleInput"), icon: "mdi-console-line" };
-		case "consoleOutput":
-			return { title: i18n.global.t("plugins.flexibleLayouts.widgets.consoleOutput"), icon: "mdi-text-box-multiple-outline" };
 		case "heater":
 			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.heater"), icon: "mdi-radiator" };
 		case "clock":
@@ -274,8 +270,6 @@ export function describeWidget(widget: Widget): { title: string; icon: string } 
 			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.toolAlign"), icon: "mdi-image-filter-center-focus" };
 		case "fan":
 			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.fan"), icon: "mdi-fan" };
-		case "jobControl":
-			return { title: i18n.global.t("plugins.flexibleLayouts.widgets.jobControl"), icon: "mdi-play-pause" };
 		case "files":
 			return { title: i18n.global.t("plugins.flexibleLayouts.widgets.files"), icon: "mdi-file-document-multiple" };
 		case "gaugeCluster":

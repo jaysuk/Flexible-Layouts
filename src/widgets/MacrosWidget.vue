@@ -26,7 +26,15 @@ const disabledNow = computed(() => props.disabled || uiStore.uiFrozen);
 const files = ref<Array<string>>([]);
 const loading = ref(false);
 
-const folder = computed(() => props.widget.folder || "0:/macros");
+// DWC's own macro browser (components/lists/MacroList.vue) never hardcodes "0:/macros" - it always
+// resolves against the live object model's directories.macros, since RRF (M505) lets that be
+// customised away from the default. A widget that hardcodes the literal default string silently
+// queries the wrong folder - and reports "empty" - on any machine that's changed it.
+const omMacrosDir = computed(() => {
+  const dirs = (machineStore.model as { directories?: { macros?: string } } | null)?.directories;
+  return dirs?.macros || "0:/macros";
+});
+const folder = computed(() => props.widget.folder || omMacrosDir.value);
 
 async function load(): Promise<void> {
   if (!machineStore.isConnected) { files.value = []; return; }

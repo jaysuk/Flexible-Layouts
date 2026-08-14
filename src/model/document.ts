@@ -9,7 +9,7 @@
  */
 
 /** Bump whenever the shape below changes incompatibly; add a migration in migrateDocument(). */
-export const DOCUMENT_SCHEMA_VERSION = 5;
+export const DOCUMENT_SCHEMA_VERSION = 8;
 
 /**
  * A widget is the thing that lives inside a grid cell.
@@ -176,7 +176,10 @@ export type Widget =
 		zAxis?: string;
 		xySteps?: Array<number>;
 		zSteps?: Array<number>;
-		xyFeedrate?: number;
+		/** Independent jog feedrates per axis (mm/min) - X and Y are separately settable, not one
+		 *  shared "XY" value (a diagonal arm jogs both at once, but each still moves at its own rate). */
+		xFeedrate?: number;
+		yFeedrate?: number;
 		zFeedrate?: number;
 		invertX?: boolean;
 		invertY?: boolean;
@@ -206,8 +209,9 @@ export type Widget =
 		/** Step rings, outer → inner. Right-click a ring to change its value. */
 		xySteps?: Array<number>;
 		zSteps?: Array<number>;
-		/** Jog feedrates (mm/min). */
-		xyFeedrate?: number;
+		/** Jog feedrates (mm/min) - X and Y are independently settable, not one shared "XY" value. */
+		xFeedrate?: number;
+		yFeedrate?: number;
 		zFeedrate?: number;
 		/** Flip the travel direction of an axis (e.g. bed-moves-down printers). */
 		invertX?: boolean;
@@ -297,7 +301,15 @@ export type Widget =
 		offCommand?: string;
 		/** Render as a switch (default) or a pressable button. */
 		variant?: "switch" | "button";
+		/** Colour while on. */
 		color?: string;
+		/** Colour while off (switch variant only - a button's "off" look is its plain tonal state,
+		 *  matching every other command button rather than introducing a second accent colour). */
+		offColor?: string;
+		/** Switch variant only: which side of the switch the label sits on. Default left. */
+		labelPosition?: "left" | "right";
+		/** Button variant only: icon/label layout, matching codeButton's own iconPosition. */
+		iconPosition?: "top" | "left" | "right" | "bottom";
 	}
 	| {
 		/** +/- adjuster that sends a command template ({value}); absolute or relative. */
@@ -316,6 +328,13 @@ export type Widget =
 		/** Command template; `{value}` is replaced. */
 		command?: string;
 		color?: string;
+		/** MDI icon names, default mdi-plus/mdi-minus. */
+		plusIcon?: string;
+		minusIcon?: string;
+		/** Show the live omPath value between the two buttons. Default true - this has always been
+		 *  rendered unconditionally; the setting exists so it can be turned off, not so it has to be
+		 *  turned on. */
+		showValue?: boolean;
 	}
 	| {
 		/** Horizontal progress bar for an OM fraction. */
@@ -414,20 +433,18 @@ export type Widget =
 		color?: string;
 	}
 	| {
-		/** Send a command and show the last few replies. */
+		/** Shows the reply log; optionally a command box too (default on) - showInput:false is what
+		 *  used to be the separate `consoleOutput` type, retired since it was a strict subset of this. */
 		type: "console";
-		rows?: number;
 		placeholder?: string;
+		showInput?: boolean;
+		/** Tints the reply title text and normal (non-error/warning) message text. */
+		color?: string;
 	}
 	| {
 		/** Console input half (split from `console`): bare G-code entry box. */
 		type: "consoleInput";
 		placeholder?: string;
-	}
-	| {
-		/** Console output half (split from `console`): read-only reply log. */
-		type: "consoleOutput";
-		rows?: number;
 	}
 	| {
 		/** Compact heater tile: live readout + target presets / off (template-driven). */
@@ -543,8 +560,12 @@ export type Widget =
 		amounts?: Array<number>;
 		/** How the speed is set: "length" = feed-rate (mm/min, default); "flow" = volumetric (mm³/s). */
 		mode?: "length" | "flow";
-		/** Feed-rate (mm/min) used in length mode. */
+		/** Feed-rate (mm/min) used in length mode. Always stored in mm/min regardless of feedUnit -
+		 *  that's what G1's F parameter takes; feedUnit only controls how it's displayed/entered. */
 		feedrate?: number;
+		/** Display/entry unit for feedrate in the widget itself (toggled by clicking the unit label);
+		 *  "mmMin" (default) shows the raw value, "mmS" shows/accepts it divided/multiplied by 60. */
+		feedUnit?: "mmMin" | "mmS";
 		/** Target volumetric flow rate (mm³/s) used in flow mode. */
 		flowRate?: number;
 		/** Filament diameter (mm) for the flow→feed-rate conversion; falls back to the object model then 1.75. */
@@ -734,12 +755,6 @@ export type Widget =
 		color?: string;
 	}
 	| {
-		/** Job pause / resume / cancel with progress. */
-		type: "jobControl";
-		showProgress?: boolean;
-		color?: string;
-	}
-	| {
 		/** File picker: a button per file in a folder; starts it. */
 		type: "files";
 		folder?: string;
@@ -925,7 +940,7 @@ export function createDefaultWidget(type: WidgetType): Widget {
 				xAxis: "X", yAxis: "Y", zAxis: "Z",
 				xySteps: [100, 10, 1, 0.1],
 				zSteps: [10, 1, 0.1],
-				xyFeedrate: 3000, zFeedrate: 600,
+				xFeedrate: 3000, yFeedrate: 3000, zFeedrate: 600,
 				showZ: true, showHome: true, showFeedrate: true, showMotorsOff: false,
 				showDiagonals: true, showDistanceBullets: true, showDro: false,
 				color: "primary",
@@ -937,7 +952,7 @@ export function createDefaultWidget(type: WidgetType): Widget {
 				xAxis: "X", yAxis: "Y", zAxis: "Z",
 				xySteps: [100, 10, 1, 0.1],
 				zSteps: [10, 1, 0.1],
-				xyFeedrate: 3000, zFeedrate: 600,
+				xFeedrate: 3000, yFeedrate: 3000, zFeedrate: 600,
 				showZ: true, showHome: true, showFeedrate: true, showMotorsOff: false,
 				color: "primary",
 			};
@@ -990,6 +1005,7 @@ export function createDefaultWidget(type: WidgetType): Widget {
 				step: 0.05, precision: 3, unit: "mm",
 				command: "M290 Z{value}",
 				color: "primary",
+				showValue: true,
 			};
 		case "progress":
 			return {
@@ -1034,13 +1050,16 @@ export function createDefaultWidget(type: WidgetType): Widget {
 				enableZ: false, useG53: true, travelFeed: 6000, saveCommand: "M500",
 			};
 		case "macros":
-			return { type: "macros", folder: "0:/macros", columns: 2, color: "primary" };
+			// No default folder: baking in the literal "0:/macros" here permanently overrode
+			// MacrosWidget's own OM-aware fallback (machineStore.model.directories.macros) for every
+			// widget instance, even on a firmware that reports a different macros directory (RRF's
+			// M505 lets it be customised) - the widget silently queried the wrong path and showed
+			// "empty". Leaving it blank lets that live fallback actually take effect.
+			return { type: "macros", folder: "", columns: 2, color: "primary" };
 		case "console":
-			return { type: "console", rows: 5, placeholder: "Send code…" };
+			return { type: "console", placeholder: "Send code…", showInput: true };
 		case "consoleInput":
 			return { type: "consoleInput", placeholder: "Send code…" };
-		case "consoleOutput":
-			return { type: "consoleOutput", rows: 20 };
 		case "heater":
 			return {
 				type: "heater",
@@ -1065,7 +1084,11 @@ export function createDefaultWidget(type: WidgetType): Widget {
 				],
 			};
 		case "extruder":
-			return { type: "extruder", label: "Extruder", amounts: [1, 5, 10, 50], mode: "length", feedrate: 300, flowRate: 5, filamentDiameter: 1.75, tool: null, color: "primary" };
+			// No default label: the chrome title bar already reads "Extruder" (widgets.extruder), and
+			// this widget's own internal label used to default to the identical string, rendering the
+			// same word twice, stacked directly on top of each other. Leaving it blank matches Fan's/
+			// Heater's/Spindle's own defaults, which are deliberately distinct from their chrome titles.
+			return { type: "extruder", label: "", amounts: [1, 5, 10, 50], mode: "length", feedrate: 300, flowRate: 5, filamentDiameter: 1.75, tool: null, color: "primary" };
 		case "wcs":
 			return { type: "wcs", label: "Work offsets", axes: ["X", "Y", "Z"], color: "primary", showMachine: true, goto: true, precision: 2 };
 		case "wcsTable":
@@ -1113,8 +1136,6 @@ export function createDefaultWidget(type: WidgetType): Widget {
 			return { type: "toolSelect", label: "Tools", color: "primary" };
 		case "fan":
 			return { type: "fan", label: "Fan", fanIndex: 0, color: "primary" };
-		case "jobControl":
-			return { type: "jobControl", showProgress: true, color: "primary" };
 		case "files":
 			return { type: "files", folder: "0:/gcodes", columns: 1, startCommand: "M32 \"{path}\"", thumbnails: true, color: "primary" };
 		case "gaugeCluster":
@@ -1523,6 +1544,51 @@ const DOC_MIGRATIONS: Array<DocMigration> = [
 		}
 		doc.header.items = items.map((it) => converted.get(it.i) ?? it);
 	} },
+	// v5 → v6: jog/octopusJog's single shared `xyFeedrate` splits into independent `xFeedrate` and
+	// `yFeedrate` - a diagonal arm on the octopus jog moves both axes at once, but each should still
+	// be settable to its own rate. Existing widgets carry the old combined value into BOTH new fields
+	// (matching current behaviour exactly - nothing moves at a different speed than before until the
+	// user deliberately splits them).
+	{ to: 6, up: (doc) => forEachWidget(doc, (w) => {
+		if (w.type !== "jog" && w.type !== "octopusJog") return;
+		const legacy = w as unknown as { xyFeedrate?: number; xFeedrate?: number; yFeedrate?: number };
+		if (legacy.xyFeedrate === undefined) return;
+		if (legacy.xFeedrate === undefined) legacy.xFeedrate = legacy.xyFeedrate;
+		if (legacy.yFeedrate === undefined) legacy.yFeedrate = legacy.xyFeedrate;
+		delete legacy.xyFeedrate;
+	}) },
+	// v6 → v7: the freeform `jobControl` widget is retired in favour of DWC's own built-in Job Control
+	// panel (already available as a builtinPanel entry - same underlying component DWC's stock
+	// dashboard uses, so nothing is lost, just no longer duplicated). An existing placement converts
+	// in place to that builtin panel, keeping its grid position/size exactly as it was; its own
+	// `showProgress`/`color` settings have no equivalent on the builtin panel and are dropped.
+	{ to: 7, up: (doc) => forEachWidget(doc, (w) => {
+		const legacy = w as unknown as Record<string, unknown>;
+		if (legacy.type !== "jobControl") return;
+		delete legacy.showProgress;
+		delete legacy.color;
+		legacy.type = "builtinPanel";
+		legacy.component = "JobControlPanel";
+	}) },
+	// v7 → v8: `consoleOutput` (a strict subset of `console` - the reply log with no input row) is
+	// retired into `console` with `showInput: false`, keeping its `color`. `rows` is dropped from both
+	// - it capped the log to the last N entries client-side even though DWC's own shared log
+	// (uiStore.logMessages) is itself unbounded, so the "mini console" widget was silently hiding
+	// scrollback that genuinely existed. The log now renders everything available (bounded only by an
+	// internal, generous DOM-safety cap - see MAX_RENDERED_ENTRIES in consoleLog.ts), so a `rows` cap
+	// no longer has a job to do.
+	{ to: 8, up: (doc) => forEachWidget(doc, (w) => {
+		const legacy = w as unknown as Record<string, unknown>;
+		if (legacy.type === "consoleOutput") {
+			delete legacy.rows;
+			legacy.type = "console";
+			legacy.showInput = false;
+			return;
+		}
+		if (legacy.type === "console") {
+			delete legacy.rows;
+		}
+	}) },
 ];
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {

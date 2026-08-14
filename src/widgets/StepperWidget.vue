@@ -2,10 +2,10 @@
   <div class="st-root fill-height d-flex flex-column justify-center px-2" :class="{ 'st-frozen': disabledNow }">
     <span v-if="widget.label" class="st-label text-truncate text-center">{{ widget.label }}</span>
     <div class="d-flex align-center justify-center ga-1">
-      <v-btn icon="mdi-minus" size="small" variant="tonal" :color="widget.color || 'primary'"
+      <v-btn :icon="widget.minusIcon || 'mdi-minus'" size="small" variant="tonal" :color="widget.color || 'primary'"
              :disabled="disabledNow" @click="bump(-1)" />
-      <span class="st-val text-center flex-grow-1">{{ displayValue }}<span v-if="widget.unit" class="st-unit">{{ widget.unit }}</span></span>
-      <v-btn icon="mdi-plus" size="small" variant="tonal" :color="widget.color || 'primary'"
+      <span v-if="widget.showValue !== false" class="st-val text-center flex-grow-1">{{ displayValue }}<span v-if="widget.unit" class="st-unit">{{ widget.unit }}</span></span>
+      <v-btn :icon="widget.plusIcon || 'mdi-plus'" size="small" variant="tonal" :color="widget.color || 'primary'"
              :disabled="disabledNow" @click="bump(1)" />
     </div>
   </div>
@@ -64,6 +64,9 @@ function bump(dir: number): void {
 .st-root { min-height: 0; }
 .st-frozen { opacity: 0.5; pointer-events: none; }
 .st-label { font-size: 0.78em; font-weight: 500; line-height: 1.3; }
-.st-val { font-size: 0.95em; font-weight: 600; font-variant-numeric: tabular-nums; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* min-width was 0, which combined with flex-grow let the two buttons squeeze this to nothing at the
+   widget's default (quite narrow) size - the value was there in the DOM but not visibly on screen,
+   easy to mistake for "never shows". A real floor keeps at least a few digits legible. */
+.st-val { font-size: 0.95em; font-weight: 600; font-variant-numeric: tabular-nums; min-width: 2.5em; overflow: hidden; text-overflow: ellipsis; }
 .st-unit { font-size: 0.75em; font-weight: 400; opacity: 0.7; margin-left: 1px; }
 </style>

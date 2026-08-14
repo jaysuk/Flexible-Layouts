@@ -1,6 +1,6 @@
 import { flushPromises } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
-import { byText, byTitle, dwc, lastCode, mountInDwc, sentCodes, setFiles, setMessageBox } from "dwc-plugin-test-kit";
+import { byText, byTitle, lastCode, mountInDwc, sentCodes, setFiles, setMessageBox } from "dwc-plugin-test-kit";
 
 import { createDefaultWidget } from "../src/model/document";
 import WidgetView from "../src/widgets/WidgetView.vue";
@@ -24,6 +24,46 @@ describe("widgets emit the expected G-code", () => {
 		await buttons[buttons.length - 1].trigger("click"); // the "+" button
 		await flushPromises();
 		expect(lastCode()).toBe("M290 Z0.05");
+	});
+
+	it("stepper hides its live value when showValue is explicitly false", async () => {
+		const withValue = mountWidget("stepper");
+		expect(withValue.find(".st-val").exists()).toBe(true);
+
+		const hidden = mountInDwc(WidgetView, { props: { widget: { ...createDefaultWidget("stepper"), showValue: false } } });
+		expect(hidden.find(".st-val").exists()).toBe(false);
+	});
+
+	it("stepper's +/- icons are configurable", async () => {
+		const w = mountInDwc(WidgetView, {
+			props: { widget: { ...createDefaultWidget("stepper"), plusIcon: "mdi-arrow-up", minusIcon: "mdi-arrow-down" } },
+		});
+		expect(w.html()).toContain("mdi-arrow-up");
+		expect(w.html()).toContain("mdi-arrow-down");
+		expect(w.html()).not.toContain("mdi-plus");
+		expect(w.html()).not.toContain("mdi-minus");
+	});
+
+	it("slider sends the value converted back through scale/offset, not the raw display position", async () => {
+		// Default slider: scale 100, offset 0, command "M106 P0 S{value}" - RRF's M106 S is a 0.0-1.0
+		// fraction (verified against Duet3D/wiki-content's Gcodes.md), and the slider displays 0-100%.
+		// Dragging to the full-scale end (100 on the display) must send S1, not the literal S100 the
+		// old code sent (which RRF's own M106 doc says means "100 out of 255", not 100%).
+		const w = mountWidget("slider");
+		const slider = w.findComponent({ name: "VSlider" });
+		await slider.vm.$emit("update:model-value", 100);
+		await slider.vm.$emit("end", 100);
+		await flushPromises();
+		expect(lastCode()).toBe("M106 P0 S1");
+	});
+
+	it("slider at a mid position converts proportionally", async () => {
+		const w = mountWidget("slider");
+		const slider = w.findComponent({ name: "VSlider" });
+		await slider.vm.$emit("update:model-value", 40);
+		await slider.vm.$emit("end", 40);
+		await flushPromises();
+		expect(lastCode()).toBe("M106 P0 S0.4");
 	});
 
 	it("WCS zero sends G10 L20 for the active workplace", async () => {
@@ -60,15 +100,6 @@ describe("widgets emit the expected G-code", () => {
 		await w.find('input[type="checkbox"]').setValue(true);
 		await flushPromises();
 		expect(lastCode()).toBe("M80");
-	});
-
-	it("jobControl pause sends M25 while printing", async () => {
-		const w = mountWidget("jobControl");
-		(dwc.model as { state: { status: string } }).state.status = "processing";
-		await flushPromises();
-		await byTitle(w, "plugins.flexibleLayouts.jobControl.pause")!.trigger("click");
-		await flushPromises();
-		expect(lastCode()).toBe("M25");
 	});
 
 	it("messageBox OK acknowledges with M292", async () => {

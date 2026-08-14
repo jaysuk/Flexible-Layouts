@@ -52,9 +52,20 @@ const displayValue = computed(() => {
 
 watch(omPosition, () => { if (dragging.value === null) { /* re-render via computed */ } });
 
+// Inverse of omPosition's `raw * scale + offset`: the slider's own min/max/step are in DISPLAY
+// units (e.g. a 0-100% dial), but the command needs whatever units the underlying object-model value
+// itself uses (e.g. RRF's M106 S is a 0.0-1.0 fraction). Without this, {value} was substituted with
+// the raw 0-100 slider position regardless of scale/offset - scale/offset only ever affected what was
+// DISPLAYED, never what was SENT, so a slider showing "100%" could send a command nowhere near what
+// 100% actually meant to the machine.
+function toRawValue(v: number): number {
+  const scale = props.widget.scale ?? 1;
+  const offset = props.widget.offset ?? 0;
+  return scale !== 0 ? (v - offset) / scale : v;
+}
 function send(v: number): void {
   if (disabledNow.value || !props.widget.command) return;
-  const code = props.widget.command.replace(/\{value\}/g, String(v));
+  const code = props.widget.command.replace(/\{value\}/g, String(toRawValue(v)));
   void machineStore.sendCode(code, false, false).catch((e: unknown) =>
     uiStore.makeNotification(LogLevel.error, "Command failed", (e as Error)?.message ?? String(e)));
 }

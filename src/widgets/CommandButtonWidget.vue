@@ -10,21 +10,21 @@
 				  :stroke-width="widget.stroke?.width ?? 0"
 				  :stroke-dasharray="widget.stroke?.dash ?? undefined"
 				  class="cmd-shape-path" />
-			<foreignObject x="0" y="0" :width="SVG_W" :height="SVG_H" class="cmd-shape-fo"
-						   style="pointer-events:none; overflow:visible;">
-				<div xmlns="http://www.w3.org/1999/xhtml" style="position:relative; width:100%; height:100%;">
-					<!-- Label/icon anchored at the shape's visual centre — the CENTROID for wedges, so the
-						 text sits inside the wedge instead of at the box centre (which is outside it). The
-						 label is deliberately NOT clipped to the shape: clipping mis-placed text was exactly
-						 what garbled wedge labels. -->
-					<div class="cmd-shape-content d-flex align-center justify-center ga-1" :class="iconLayoutClass"
-						 :style="contentStyle">
-						<v-icon v-if="widget.icon" :size="iconSize" :color="labelColor">{{ widget.icon }}</v-icon>
-						<span v-if="widget.label" class="text-truncate" :style="{ color: labelColor }">{{ widget.label }}</span>
-					</div>
-				</div>
-			</foreignObject>
 		</svg>
+		<!-- Label/icon rendered as a plain HTML sibling, deliberately OUTSIDE the <svg> - a shape using
+			 preserveAspectRatio="none" (rect/pill/squircle/ellipse/chevron/arrow/diamond/trapezoid) needs
+			 its PATH stretched non-uniformly to fill a non-square cell, but a <foreignObject> here used to
+			 sit inside that same transform, so the label/icon HTML was stretched right along with it -
+			 visibly distorted text on exactly those 7 shapes. Positioned by the same `contentStyle`
+			 percentages (anchored at the shape's centroid, not just the box centre, so a wedge's label
+			 lands inside the wedge), but CSS percentages here resolve against the outer container's real
+			 box, not the SVG's internal coordinate space, so nothing stretches. Deliberately NOT clipped to
+			 the shape: clipping mis-placed text was exactly what garbled wedge labels before. -->
+		<div class="cmd-shape-content d-flex align-center justify-center ga-1" :class="iconLayoutClass"
+			 :style="contentStyle">
+			<v-icon v-if="widget.icon" :size="iconSize" :color="labelColor">{{ widget.icon }}</v-icon>
+			<span v-if="widget.label" class="text-truncate" :style="{ color: labelColor }">{{ widget.label }}</span>
+		</div>
 
 		<v-dialog v-model="confirmOpen" max-width="400">
 			<v-card>
@@ -327,8 +327,11 @@ function onShapeClick() {
 .cmd-shape-path:hover {
 	filter: brightness(1.12);
 }
-.cmd-shape-fo {
+/* Clicks on the label/icon itself must still fall through to the shape path beneath (which alone
+   re-enables pointer-events via .cmd-shape-path) - otherwise a click that lands on the text inside
+   a wedge, where the box's empty corners are meant to pass clicks through to a widget underneath,
+   would fire the button even in the empty-corner case for shapes where the label sits near an edge. */
+.cmd-shape-content {
 	pointer-events: none;
-	overflow: visible;
 }
 </style>

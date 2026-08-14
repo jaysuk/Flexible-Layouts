@@ -20,7 +20,6 @@
 	<MacrosWidget v-else-if="widget.type === 'macros'" :widget="widget" :disabled="disabled" />
 	<ConsoleWidget v-else-if="widget.type === 'console'" :widget="widget" :disabled="disabled" />
 	<ConsoleInputWidget v-else-if="widget.type === 'consoleInput'" :widget="widget" :disabled="disabled" />
-	<ConsoleOutputWidget v-else-if="widget.type === 'consoleOutput'" :widget="widget" />
 	<HeaterWidget v-else-if="widget.type === 'heater'" :widget="widget" :disabled="disabled" />
 	<ClockWidget v-else-if="widget.type === 'clock'" :widget="widget" />
 	<ThumbnailWidget v-else-if="widget.type === 'thumbnail'" :widget="widget" />
@@ -42,7 +41,6 @@
 	<ToolSelectWidget v-else-if="widget.type === 'toolSelect'" :widget="widget" :disabled="disabled" />
 	<ToolAlignWidget v-else-if="widget.type === 'toolAlign'" :widget="widget" :disabled="disabled" />
 	<FanWidget v-else-if="widget.type === 'fan'" :widget="widget" :disabled="disabled" />
-	<JobControlWidget v-else-if="widget.type === 'jobControl'" :widget="widget" :disabled="disabled" />
 	<FilesWidget v-else-if="widget.type === 'files'" :widget="widget" :disabled="disabled" />
 	<GaugeClusterWidget v-else-if="widget.type === 'gaugeCluster'" :widget="widget" />
 	<IndicatorsWidget v-else-if="widget.type === 'indicators'" :widget="widget" />
@@ -82,7 +80,6 @@ import ClockWidget from "./ClockWidget.vue";
 import CommandButtonWidget from "./CommandButtonWidget.vue";
 import ConsoleWidget from "./ConsoleWidget.vue";
 import ConsoleInputWidget from "./ConsoleInputWidget.vue";
-import ConsoleOutputWidget from "./ConsoleOutputWidget.vue";
 import DroWidget from "./DroWidget.vue";
 import EmbeddableWidget from "./EmbeddableWidget.vue";
 import EventLogWidget from "./EventLogWidget.vue";
@@ -97,7 +94,6 @@ import HotspotWidget from "./HotspotWidget.vue";
 import HttpWidget from "./HttpWidget.vue";
 import IndicatorsWidget from "./IndicatorsWidget.vue";
 import InputWidget from "./InputWidget.vue";
-import JobControlWidget from "./JobControlWidget.vue";
 import JogWidget from "./JogWidget.vue";
 import OctopusJogWidget from "./OctopusJogWidget.vue";
 import LabelWidget from "./LabelWidget.vue";

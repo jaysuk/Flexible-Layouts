@@ -6,8 +6,10 @@
       <v-btn v-for="t in tools" :key="t.number" size="small" :variant="t.number === current ? 'flat' : 'tonal'"
              :color="t.number === current ? (widget.color || 'primary') : undefined" :disabled="disabledNow"
              class="ts-btn text-none" @click="select(t.number)">{{ t.name || ("T" + t.number) }}</v-btn>
-      <v-btn v-if="tools.length" size="small" variant="tonal" :disabled="disabledNow" class="ts-btn"
-             icon="mdi-close" :title="$t('plugins.flexibleLayouts.toolSelect.none')" @click="select(-1)" />
+      <v-btn v-if="tools.length" size="small" :variant="current === -1 ? 'flat' : 'tonal'"
+             :color="current === -1 ? (widget.color || 'primary') : undefined" :disabled="disabledNow"
+             class="ts-btn text-none" prepend-icon="mdi-close"
+             :title="$t('plugins.flexibleLayouts.toolSelect.none')" @click="select(-1)">T-1</v-btn>
     </div>
     <div v-if="!tools.length" class="text-medium-emphasis text-caption">{{ $t("plugins.flexibleLayouts.toolSelect.empty") }}</div>
   </div>

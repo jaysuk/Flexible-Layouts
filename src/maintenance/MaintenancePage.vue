@@ -14,7 +14,27 @@
 		</v-alert>
 
 		<v-row dense class="mb-4">
-			<v-col cols="6" sm="3">
+			<template v-if="isFff">
+				<v-col cols="6" sm="3">
+					<v-card variant="tonal" class="pa-3 text-center">
+						<div class="text-h6">{{ printHoursDisplay }}</div>
+						<div class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.maintenance.printHours") }}</div>
+					</v-card>
+				</v-col>
+				<v-col cols="6" sm="3">
+					<v-card variant="tonal" class="pa-3 text-center">
+						<div class="text-h6">{{ filamentUsedDisplay }}</div>
+						<div class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.maintenance.filamentUsed") }}</div>
+					</v-card>
+				</v-col>
+				<v-col cols="6" sm="3">
+					<v-card variant="tonal" class="pa-3 text-center">
+						<div class="text-h6">{{ toolChangesDisplay }}</div>
+						<div class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.maintenance.toolChanges") }}</div>
+					</v-card>
+				</v-col>
+			</template>
+			<v-col v-else cols="6" sm="3">
 				<v-card variant="tonal" class="pa-3 text-center">
 					<div class="text-h6">{{ spindleHoursDisplay }}</div>
 					<div class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.maintenance.spindleHours") }}</div>
@@ -83,11 +103,19 @@ const setupOpen = ref(false);
 const trackingConfigured = ref(false);
 
 const liveSpindleSeconds = ref<number | null>(null);
+const livePrintSeconds = ref<number | null>(null);
+const liveFilamentMm = ref<number | null>(null);
+const liveToolChanges = ref<number | null>(null);
 const liveJobSeconds = ref<number | null>(null);
 const jobCounts = ref({ finished: 0, cancelled: 0 });
 const log = ref<MaintenanceLog>(emptyMaintenanceLog());
 
+const isFff = computed(() => resolveOmPath(machineStore.model, "state.machineMode") === "FFF");
+
 const spindleHoursDisplay = computed(() => (liveSpindleSeconds.value != null ? (liveSpindleSeconds.value / 3600).toFixed(1) : "—"));
+const printHoursDisplay = computed(() => (livePrintSeconds.value != null ? (livePrintSeconds.value / 3600).toFixed(1) : "—"));
+const filamentUsedDisplay = computed(() => (liveFilamentMm.value != null ? (liveFilamentMm.value / 1000).toFixed(1) + " m" : "—"));
+const toolChangesDisplay = computed(() => (liveToolChanges.value != null ? String(liveToolChanges.value) : "—"));
 
 async function refresh(): Promise<void> {
 	const io = defaultMachineIO();
@@ -97,6 +125,12 @@ async function refresh(): Promise<void> {
 
 	const spindleSec = resolveOmPath(machineStore.model, "global.flMaintSpindleSec");
 	liveSpindleSeconds.value = typeof spindleSec === "number" ? spindleSec : null;
+	const printSec = resolveOmPath(machineStore.model, "global.flMaintPrintSec");
+	livePrintSeconds.value = typeof printSec === "number" ? printSec : null;
+	const filamentMm = resolveOmPath(machineStore.model, "global.flMaintFilamentMm");
+	liveFilamentMm.value = typeof filamentMm === "number" ? filamentMm : null;
+	const toolChanges = resolveOmPath(machineStore.model, "global.flMaintToolChanges");
+	liveToolChanges.value = typeof toolChanges === "number" ? toolChanges : null;
 
 	try {
 		const systemDir = (machineStore.model as { directories?: { system?: string } }).directories?.system || "0:/sys";
@@ -139,6 +173,9 @@ async function onLogEntry(): Promise<void> {
 			note: newNote.value,
 			spindleSecondsAtEntry: liveSpindleSeconds.value,
 			jobSecondsAtEntry: liveJobSeconds.value,
+			printSecondsAtEntry: livePrintSeconds.value,
+			filamentMmAtEntry: liveFilamentMm.value,
+			toolChangesAtEntry: liveToolChanges.value,
 		});
 		newNote.value = "";
 		log.value = await readMaintenanceLog();
@@ -155,11 +192,15 @@ function formatWhen(loggedAt: number): string {
 	try { return new Date(loggedAt).toLocaleString(); } catch { return String(loggedAt); }
 }
 
-/** "Hours since THIS entry's category was last logged" - null when the live spindle counter or this
- *  entry's own baseline is unavailable, rather than showing a misleadingly precise number. */
+/** "Hours since THIS entry's category was last logged" - null when the relevant live counter or this
+ *  entry's own baseline is unavailable, rather than showing a misleadingly precise number. Compares
+ *  print-hours on an FFF machine, spindle-hours otherwise - whichever this machine's mode actually
+ *  accumulates, matching what's shown as the live stat above. */
 function sinceEntry(entry: MaintenanceEntry): string | null {
 	if (mostRecentEntry(log.value, entry.category)?.id !== entry.id) { return null; } // only the newest entry per category shows this
-	const seconds = secondsSince(liveSpindleSeconds.value, entry.spindleSecondsAtEntry);
+	const seconds = isFff.value
+		? secondsSince(livePrintSeconds.value, entry.printSecondsAtEntry ?? null)
+		: secondsSince(liveSpindleSeconds.value, entry.spindleSecondsAtEntry);
 	return seconds != null ? (seconds / 3600).toFixed(1) : null;
 }
 </script>

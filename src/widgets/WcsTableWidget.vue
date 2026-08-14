@@ -46,7 +46,7 @@
 			<v-icon size="16">mdi-arrow-right</v-icon>
 			<v-select v-model="copyTo" :items="wcsItems" density="compact" variant="outlined" hide-details
 					  class="wt-copy-select" :disabled="disabledNow" />
-			<v-btn size="small" variant="tonal" :disabled="disabledNow || copyFrom === copyTo" @click="copyOffsets">
+			<v-btn size="small" variant="tonal" :color="widget.color || 'primary'" :disabled="disabledNow || copyFrom === copyTo" @click="copyOffsets">
 				{{ $t("plugins.flexibleLayouts.wcsTable.copyButton") }}
 			</v-btn>
 		</div>

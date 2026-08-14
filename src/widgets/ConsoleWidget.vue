@@ -1,17 +1,24 @@
 <template>
-  <div class="cn-root fill-height d-flex flex-column pa-1" :class="{ 'cn-frozen': disabledNow }">
+  <div class="cn-root fill-height d-flex flex-column pa-1" :class="{ 'cn-frozen': disabledNow }"
+       :style="widget.color ? { '--cn-color': resolveColor(widget.color) } : {}">
     <div ref="log" class="cn-log flex-grow-1">
       <div v-for="(m, i) in entries" :key="i" class="cn-entry" :class="`cn-${m.type}`">
         <div v-if="m.title" class="cn-title">{{ m.title }}</div>
         <pre v-if="m.message" class="cn-msg">{{ m.message }}</pre>
       </div>
       <div v-if="!entries.length" class="cn-empty text-medium-emphasis text-caption">
-        {{ widget.placeholder || $t("plugins.flexibleLayouts.console.placeholder") }}
+        <!-- With the input row showing, the input's own placeholder doubles as a "type here" hint;
+             with it hidden (showInput:false - the retired standalone consoleOutput's role) there's
+             no input to hint at, so it needs its own dedicated empty-state message instead. -->
+        {{ widget.showInput === false
+          ? $t("plugins.flexibleLayouts.console.empty")
+          : (widget.placeholder || $t("plugins.flexibleLayouts.console.placeholder")) }}
       </div>
     </div>
     <!-- Native, self-styled input pinned at the bottom (a v-text-field could be clipped by a large
-         panel font or a short tile). Enter sends; ↑/↓ recall recent commands. -->
-    <div class="cn-input-row flex-shrink-0">
+         panel font or a short tile). Enter sends; ↑/↓ recall recent commands. Hidden (not merely
+         disabled) when showInput is false - the same role the retired `consoleOutput` widget had. -->
+    <div v-if="widget.showInput !== false" class="cn-input-row flex-shrink-0">
       <input v-model="cmd" class="cn-input" type="text" autocomplete="off" spellcheck="false"
              :placeholder="widget.placeholder || $t('plugins.flexibleLayouts.console.placeholder')"
              :disabled="disabledNow"
@@ -31,6 +38,7 @@ import { useUiStore } from "@/stores/ui";
 
 import type { Widget } from "../model/document";
 import { useAutoScroll, useConsoleEntries, useConsoleSend } from "../util/consoleLog";
+import { resolveColor } from "../util/color";
 
 const props = defineProps<{ widget: Extract<Widget, { type: "console" }>; disabled?: boolean }>();
 const uiStore = useUiStore();
@@ -38,7 +46,7 @@ const uiStore = useUiStore();
 const disabledNow = computed(() => props.disabled || uiStore.uiFrozen);
 const log = ref<HTMLElement | null>(null);
 
-const entries = useConsoleEntries(() => props.widget.rows ?? 5);
+const entries = useConsoleEntries();
 useAutoScroll(entries, log);
 const { cmd, recall, send } = useConsoleSend(() => disabledNow.value);
 </script>
@@ -48,8 +56,10 @@ const { cmd, recall, send } = useConsoleSend(() => disabledNow.value);
 .cn-frozen { opacity: 0.5; pointer-events: none; }
 .cn-log { min-height: 0; overflow-y: auto; font-family: monospace; font-size: 0.75em; }
 .cn-entry { margin-bottom: 4px; }
-.cn-title { color: rgb(var(--v-theme-primary)); font-weight: 600; }
-.cn-msg { white-space: pre-wrap; margin: 0; opacity: 0.9; }
+/* Falls back to today's defaults (primary title, inherited/neutral message text) via the CSS var()
+   fallback when no colour is set, so an existing widget with no custom colour looks unchanged. */
+.cn-title { color: var(--cn-color, rgb(var(--v-theme-primary))); font-weight: 600; }
+.cn-msg { white-space: pre-wrap; margin: 0; opacity: 0.9; color: var(--cn-color, inherit); }
 .cn-error .cn-title, .cn-error .cn-msg { color: rgb(var(--v-theme-error)); opacity: 1; }
 .cn-warning .cn-title, .cn-warning .cn-msg { color: rgb(var(--v-theme-warning)); opacity: 1; }
 
