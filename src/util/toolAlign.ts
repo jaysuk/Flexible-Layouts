@@ -1,10 +1,19 @@
 /**
  * Pure tool-offset maths for the tool-alignment widget.
  *
- * Each tool's offset is taken relative to a reference tool: O_t = O_ref + s·(M_t − M_ref) per axis,
+ * Each tool's offset is taken relative to a reference tool: O_t = O_ref + s·(M_ref − M_t) per axis,
  * where M is the captured machine position and s is the (optional) inversion sign. Only axes captured
  * on BOTH the reference and the tool contribute, so XY (from the camera) and Z (from a switch/probe)
  * can be calibrated independently.
+ *
+ * Sign, worked from RepRapFirmware's own G10 docs ("tool offsets are... subtracted from the required
+ * printing locations during printing", i.e. machinePosition = commandedPosition − toolOffset):
+ * picture tool 1 mounted 5mm further toward +X than the reference tool. Centred on the same physical
+ * point, the reference reads machine X=100 and tool 1 reads X=95 (it needs 5mm less carriage travel,
+ * since its nozzle already sticks out that much further). Commanding X=100 with tool 1 active must
+ * land the carriage at X=95, so 95 = 100 − offset ⟹ offset = +5 = M_ref − M_t, not M_t − M_ref. The
+ * previous (M_t − M_ref) default produced the offset with the sign backwards for every alignment run
+ * unless "Invert offsets" was manually ticked to compensate.
  */
 
 export interface AxisCapture {
@@ -33,7 +42,7 @@ export function computeToolOffset(
 		const r = ref[axis];
 		const t = tool[axis];
 		if (typeof r === "number" && typeof t === "number") {
-			out[axis] = (refOffset[axis] ?? 0) + s * (t - r);
+			out[axis] = (refOffset[axis] ?? 0) + s * (r - t);
 		}
 	}
 	return out;
