@@ -83,7 +83,10 @@
 			<EmergencyButton v-if="showEmergencyStopNow" class="me-2" />
 		</v-app-bar>
 
-		<v-navigation-drawer v-model="drawer" :temporary="!mdAndUp">
+		<v-navigation-drawer v-model="drawer" :temporary="!mdAndUp" :width="drawerWidth">
+			<!-- Drag to resize - only while editing, matching HeaderWidgets.vue's own item-resize handles
+				 (same pointer-capture idiom, see onDrawerResizePointerDown above). -->
+			<div v-if="editMode" class="fl-drawer-resizer" @pointerdown="onDrawerResizePointerDown" />
 			<v-list nav density="compact">
 				<template v-for="group in navGroups" :key="group.category.key">
 					<v-list-subheader>{{ $t(group.category.captionKey) }}</v-list-subheader>
@@ -609,6 +612,49 @@ const drawer = ref(true);
 // collapses so the canvas gets the full viewport
 watch(mdAndUp, (value) => { drawer.value = value; }, { immediate: true });
 
+// --- Side panel (nav drawer) width, adjustable only in edit mode ------------------------------------
+//
+// Same drag-resize idiom as HeaderWidgets.vue's item resizer (pointer capture, window-level move/up
+// listeners), but plain pixels rather than a percentage of a canvas - a nav drawer has no equivalent
+// "canvas" to measure against. Persisted directly to localStorage (matching this file's own SKIP_KEY
+// precedent below) rather than the layout document - it's a per-browser UI preference, not something
+// that belongs in a shareable/exportable layout.
+const DRAWER_WIDTH_KEY = "flexibleLayouts.drawerWidth";
+const DRAWER_WIDTH_MIN = 220;
+const DRAWER_WIDTH_MAX = 560;
+const DRAWER_WIDTH_DEFAULT = 256; // Vuetify's own v-navigation-drawer default
+
+function loadDrawerWidth(): number {
+	try {
+		const raw = Number(localStorage.getItem(DRAWER_WIDTH_KEY));
+		if (Number.isFinite(raw) && raw >= DRAWER_WIDTH_MIN && raw <= DRAWER_WIDTH_MAX) { return raw; }
+	} catch { /* ignore - falls through to the default */ }
+	return DRAWER_WIDTH_DEFAULT;
+}
+const drawerWidth = ref(loadDrawerWidth());
+
+interface DrawerResizeState { startX: number; origWidth: number }
+let drawerResizeState: DrawerResizeState | null = null;
+
+function onDrawerResizePointerDown(e: PointerEvent): void {
+	if (!editMode.value) { return; }
+	(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+	drawerResizeState = { startX: e.clientX, origWidth: drawerWidth.value };
+	window.addEventListener("pointermove", onDrawerResizeMove);
+	window.addEventListener("pointerup", onDrawerResizeUp, { once: true });
+	window.addEventListener("pointercancel", onDrawerResizeUp, { once: true });
+}
+function onDrawerResizeMove(e: PointerEvent): void {
+	if (!drawerResizeState) { return; }
+	const dx = e.clientX - drawerResizeState.startX;
+	drawerWidth.value = Math.max(DRAWER_WIDTH_MIN, Math.min(DRAWER_WIDTH_MAX, drawerResizeState.origWidth + dx));
+}
+function onDrawerResizeUp(): void {
+	drawerResizeState = null;
+	window.removeEventListener("pointermove", onDrawerResizeMove);
+	try { localStorage.setItem(DRAWER_WIDTH_KEY, String(drawerWidth.value)); } catch { /* ignore */ }
+}
+
 const machineName = computed(() => machineStore.model.network.name || "Duet Web Control");
 const statusPanelVisible = computed(() => mdAndUp.value || settingsStore.showStatusPanel);
 
@@ -625,6 +671,7 @@ onUnmounted(() => {
 	unsubscribeUpdates?.();
 	Events.off("dwcPluginUnloaded", onPluginUnloaded);
 	dropPluginsGuard();
+	onDrawerResizeUp();
 });
 </script>
 
@@ -658,5 +705,17 @@ onUnmounted(() => {
 }
 @media (min-width: 840px) {
 	.machine-name { max-width: none; }
+}
+.fl-drawer-resizer {
+	position: absolute;
+	top: 0;
+	right: 0;
+	width: 6px;
+	height: 100%;
+	cursor: ew-resize;
+	z-index: 5;
+}
+.fl-drawer-resizer:hover {
+	background: rgba(var(--v-theme-primary), 0.4);
 }
 </style>
