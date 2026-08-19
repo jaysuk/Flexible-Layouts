@@ -18,6 +18,10 @@ export interface JobEvent {
 	date: Date;
 	finished: boolean;
 	cancelled: boolean;
+	/** A real print starting (not a simulation - see the "simulat" exclusion below, confirmed against
+	 *  RRF's actual source: `GCodes.cpp` logs "Started simulating printing file %s" for a dry run and
+	 *  "Started printing file %s" for a real one, both at the same WARN level). */
+	started: boolean;
 	/** Null when the log line didn't include a duration (seen on some cancelled-job lines). */
 	printMinutes: number | null;
 }
@@ -51,12 +55,13 @@ export function parseEventLog(text: string): Array<JobEvent> {
 		if (!lc.includes("[warn]")) { continue; }
 		const finished = lc.includes("finished");
 		const cancelled = lc.includes("cancelled") || lc.includes("canceled");
-		if (!finished && !cancelled) { continue; }
+		const started = lc.includes("started") && !lc.includes("simulat");
+		if (!finished && !cancelled && !started) { continue; }
 
 		const date = new Date(`${dateStr}T${timeStr}Z`);
 		if (Number.isNaN(date.getTime())) { continue; }
 
-		events.push({ date, finished, cancelled, printMinutes: extractPrintTimeMinutes(line) });
+		events.push({ date, finished, cancelled, started, printMinutes: extractPrintTimeMinutes(line) });
 	}
 	return events;
 }
@@ -71,11 +76,16 @@ export function totalJobSeconds(events: Array<JobEvent>): number {
 export interface JobEventCounts {
 	finished: number;
 	cancelled: number;
+	started: number;
 }
 
 export function countJobEvents(events: Array<JobEvent>): JobEventCounts {
 	return events.reduce(
-		(acc, e) => ({ finished: acc.finished + (e.finished ? 1 : 0), cancelled: acc.cancelled + (e.cancelled ? 1 : 0) }),
-		{ finished: 0, cancelled: 0 },
+		(acc, e) => ({
+			finished: acc.finished + (e.finished ? 1 : 0),
+			cancelled: acc.cancelled + (e.cancelled ? 1 : 0),
+			started: acc.started + (e.started ? 1 : 0),
+		}),
+		{ finished: 0, cancelled: 0, started: 0 },
 	);
 }

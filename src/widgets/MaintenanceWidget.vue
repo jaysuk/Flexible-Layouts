@@ -32,6 +32,14 @@
 				<span class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.maintenance.jobsCancelled") }}</span>
 				<span class="mnt-value">{{ jobCounts.cancelled }}</span>
 			</div>
+			<div class="mnt-row">
+				<span class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.maintenance.powerOnHours") }}</span>
+				<span class="mnt-value">{{ powerOnHoursDisplay }}</span>
+			</div>
+			<div v-if="isFff" class="mnt-row">
+				<span class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.maintenance.filamentErrors") }}</span>
+				<span class="mnt-value">{{ filamentErrorsDisplay }}</span>
+			</div>
 		</div>
 
 		<v-btn size="small" variant="tonal" :color="widget.color || 'primary'" class="flex-shrink-0" prepend-icon="mdi-open-in-new" @click="open">
@@ -49,8 +57,6 @@ import { useMachineStore } from "@/stores/machine";
 import type { Widget } from "../model/document";
 import { defaultMachineIO } from "../model/configBackup/machineIO";
 import { MAINTENANCE_ROUTE_PATH } from "../model/maintenance/constants";
-import { DEFAULT_EVENT_LOG_FILE } from "../model/maintenance/configPatch";
-import { countJobEvents, parseEventLog } from "../model/maintenance/eventLog";
 import { maintenanceMacrosMissing, maintenanceMacrosOutdated } from "../model/maintenance/macros";
 import { resolveOmPath } from "../util/omPath";
 
@@ -59,41 +65,45 @@ const machineStore = useMachineStore();
 const router = useRouter();
 
 const trackingConfigured = ref(false);
-const liveSpindleSeconds = ref<number | null>(null);
-const livePrintSeconds = ref<number | null>(null);
-const liveFilamentMm = ref<number | null>(null);
-const liveToolChanges = ref<number | null>(null);
-const jobCounts = ref({ finished: 0, cancelled: 0 });
 
 // state.machineMode drives which stats make sense to show - a spindle-hours figure is meaningless on
 // an FFF machine (and vice versa for filament/tool-change counts on a CNC/laser one).
 const isFff = computed(() => resolveOmPath(machineStore.model, "state.machineMode") === "FFF");
 
+// Every figure below reads straight off the live object model via a computed, so it updates the
+// instant the machine reports a new value (already reactive - DWC pushes model updates on its own
+// poll/websocket) - no manual refresh, no polling, no stale numbers left over from whenever this
+// widget happened to last mount. Job counts are incremented directly by start.g/stop.g/cancel.g
+// (jobTrackingPatch.ts), so - unlike before - they're just as reactive as everything else here; no
+// SD-card event-log fetch is needed for this widget at all any more.
+function liveNumber(path: string): number | null {
+	const v = resolveOmPath(machineStore.model, path);
+	return typeof v === "number" ? v : null;
+}
+const liveSpindleSeconds = computed(() => liveNumber("global.flMaintSpindleSec"));
+const livePrintSeconds = computed(() => liveNumber("global.flMaintPrintSec"));
+const liveFilamentMm = computed(() => liveNumber("global.flMaintFilamentMm"));
+const liveToolChanges = computed(() => liveNumber("global.flMaintToolChanges"));
+const livePowerOnSeconds = computed(() => liveNumber("global.flMaintPowerOnSec"));
+const liveFilamentErrors = computed(() => liveNumber("global.flMaintFilamentErrors"));
+const jobCounts = computed(() => ({
+	started: liveNumber("global.flMaintJobsStarted") ?? 0,
+	finished: liveNumber("global.flMaintJobsFinished") ?? 0,
+	cancelled: liveNumber("global.flMaintJobsCancelled") ?? 0,
+}));
+
 const spindleHoursDisplay = computed(() => (liveSpindleSeconds.value != null ? (liveSpindleSeconds.value / 3600).toFixed(1) : "—"));
 const printHoursDisplay = computed(() => (livePrintSeconds.value != null ? (livePrintSeconds.value / 3600).toFixed(1) : "—"));
 const filamentUsedDisplay = computed(() => (liveFilamentMm.value != null ? (liveFilamentMm.value / 1000).toFixed(1) + " m" : "—"));
 const toolChangesDisplay = computed(() => (liveToolChanges.value != null ? String(liveToolChanges.value) : "—"));
+const powerOnHoursDisplay = computed(() => (livePowerOnSeconds.value != null ? (livePowerOnSeconds.value / 3600).toFixed(1) : "—"));
+const filamentErrorsDisplay = computed(() => (liveFilamentErrors.value != null ? String(liveFilamentErrors.value) : "—"));
 
 onMounted(async () => {
 	if (!machineStore.isConnected) { return; }
 	const io = defaultMachineIO();
 	const missing = await maintenanceMacrosMissing(io);
 	trackingConfigured.value = !missing && !(await maintenanceMacrosOutdated(io));
-
-	const spindleSec = resolveOmPath(machineStore.model, "global.flMaintSpindleSec");
-	liveSpindleSeconds.value = typeof spindleSec === "number" ? spindleSec : null;
-	const printSec = resolveOmPath(machineStore.model, "global.flMaintPrintSec");
-	livePrintSeconds.value = typeof printSec === "number" ? printSec : null;
-	const filamentMm = resolveOmPath(machineStore.model, "global.flMaintFilamentMm");
-	liveFilamentMm.value = typeof filamentMm === "number" ? filamentMm : null;
-	const toolChanges = resolveOmPath(machineStore.model, "global.flMaintToolChanges");
-	liveToolChanges.value = typeof toolChanges === "number" ? toolChanges : null;
-
-	try {
-		const systemDir = (machineStore.model as { directories?: { system?: string } }).directories?.system || "0:/sys";
-		const text = await io.downloadText(`${systemDir}/${DEFAULT_EVENT_LOG_FILE}`);
-		jobCounts.value = countJobEvents(parseEventLog(text));
-	} catch { /* no event log yet */ }
 });
 
 function open(): void {

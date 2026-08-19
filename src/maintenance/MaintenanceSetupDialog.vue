@@ -53,6 +53,22 @@
 							</template>
 							<v-list-item-title>{{ $t("plugins.flexibleLayouts.maintenance.checkMacros") }}</v-list-item-title>
 						</v-list-item>
+						<v-list-item>
+							<template #prepend>
+								<v-icon :color="tpostHooksReady ? 'success' : 'warning'">
+									{{ tpostHooksReady ? "mdi-check-circle-outline" : "mdi-alert-circle-outline" }}
+								</v-icon>
+							</template>
+							<v-list-item-title>{{ $t("plugins.flexibleLayouts.maintenance.checkToolChangeHooks") }}</v-list-item-title>
+						</v-list-item>
+						<v-list-item>
+							<template #prepend>
+								<v-icon :color="jobHooksReady ? 'success' : 'warning'">
+									{{ jobHooksReady ? "mdi-check-circle-outline" : "mdi-alert-circle-outline" }}
+								</v-icon>
+							</template>
+							<v-list-item-title>{{ $t("plugins.flexibleLayouts.maintenance.checkJobHooks") }}</v-list-item-title>
+						</v-list-item>
 					</v-list>
 
 					<v-checkbox v-if="!eventLoggingEnabled" v-model="enableEventLogging" density="compact" hide-details
@@ -108,6 +124,8 @@ import {
 import {
 	deployMaintenanceMacros, maintenanceMacrosMissing, maintenanceMacrosOutdated, seedMaintenanceState,
 } from "../model/maintenance/macros";
+import { applyJobTrackingPatches, planJobTrackingPatches, type JobMacroPlan } from "../model/maintenance/jobTrackingPatch";
+import { applyTpostPatches, planTpostPatches, type TpostPatchPlan } from "../model/maintenance/toolChangePatch";
 import { resolveOmPath } from "../util/omPath";
 import { CONFIG_G_PATH, DAEMON_G_PATH } from "../util/gcodeFilePatch";
 
@@ -139,11 +157,15 @@ const daemonText = ref<string | null>(null); // null = file doesn't exist yet (d
 const macrosMissing = ref(true);
 const macrosOutdated = ref(false);
 const enableEventLogging = ref(true);
+const tpostPlans = ref<Array<TpostPatchPlan>>([]);
+const jobPlans = ref<Array<JobMacroPlan>>([]);
 
 const eventLoggingEnabled = computed(() => (configText.value != null ? configGHasEventLogging(configText.value) : false));
 const daemonHookPresent = computed(() => (daemonText.value != null ? daemonGHasMaintenanceHook(daemonText.value) : false));
 const configRestorePresent = computed(() => (configText.value != null ? configGHasMaintenanceRestore(configText.value) : false));
 const macrosReady = computed(() => !macrosMissing.value && !macrosOutdated.value);
+const tpostHooksReady = computed(() => tpostPlans.value.every((p) => !p.plan.changed));
+const jobHooksReady = computed(() => jobPlans.value.every((p) => !p.plan.changed));
 
 async function loadState(): Promise<void> {
 	loading.value = true;
@@ -153,6 +175,8 @@ async function loadState(): Promise<void> {
 		daemonText.value = await io.downloadText(DAEMON_G_PATH).catch(() => null);
 		macrosMissing.value = await maintenanceMacrosMissing(io);
 		macrosOutdated.value = macrosMissing.value ? false : await maintenanceMacrosOutdated(io);
+		tpostPlans.value = await planTpostPatches(io);
+		jobPlans.value = await planJobTrackingPatches(io);
 	} finally {
 		loading.value = false;
 	}
@@ -179,6 +203,12 @@ const plannedChanges = computed(() => {
 	const daemonPlan = patchDaemonGForMaintenance(daemonText.value);
 	if (daemonPlan.changed) { changes.push(...daemonPlan.changes); }
 	if (!macrosReady.value) { changes.push("Deploy Flexible Layouts' maintenance-tracking macros."); }
+	for (const { file, plan } of tpostPlans.value) {
+		if (plan.changed) { changes.push(`${file}: ${plan.changes[0]}`); }
+	}
+	for (const { file, plan } of jobPlans.value) {
+		if (plan.changed) { changes.push(`${file}: ${plan.changes[0]}`); }
+	}
 	return changes;
 });
 
@@ -221,17 +251,34 @@ async function onApply(): Promise<void> {
 			macrosOutdated.value = false;
 		}
 
-		// Preserve every already-accumulated total if setup is being re-run (e.g. to change the tracked
-		// spindle or add event logging afterwards) rather than resetting any of them to 0.
+		if (!tpostHooksReady.value) {
+			await applyTpostPatches(io, tpostPlans.value);
+			tpostPlans.value = tpostPlans.value.map((p) => ({ ...p, plan: { ...p.plan, changed: false } }));
+		}
+
+		if (!jobHooksReady.value) {
+			await applyJobTrackingPatches(io, jobPlans.value);
+			jobPlans.value = jobPlans.value.map((p) => ({ ...p, plan: { ...p.plan, changed: false } }));
+		}
+
+		// Preserve every already-accumulated total, and the current pause state, if setup is being
+		// re-run (e.g. to change the tracked spindle or add event logging afterwards) rather than
+		// resetting any of them.
 		const numOm = (path: string): number => {
 			const v = resolveOmPath(machineStore.model, path);
 			return typeof v === "number" ? v : 0;
 		};
+		const enabledOm = resolveOmPath(machineStore.model, "global.flMaintEnabled");
 		const seeded = await seedMaintenanceState(io, spindleIndex.value, numOm("global.flMaintSpindleSec"), {
 			printSeconds: numOm("global.flMaintPrintSec"),
 			filamentMm: numOm("global.flMaintFilamentMm"),
 			toolChanges: numOm("global.flMaintToolChanges"),
-		});
+			powerOnSeconds: numOm("global.flMaintPowerOnSec"),
+			filamentErrors: numOm("global.flMaintFilamentErrors"),
+			jobsStarted: numOm("global.flMaintJobsStarted"),
+			jobsFinished: numOm("global.flMaintJobsFinished"),
+			jobsCancelled: numOm("global.flMaintJobsCancelled"),
+		}, typeof enabledOm === "boolean" ? enabledOm : true);
 		if (!seeded) { throw new Error("Could not write the maintenance state file to the SD card."); }
 
 		step.value = "done";

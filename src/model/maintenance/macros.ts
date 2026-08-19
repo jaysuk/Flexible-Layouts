@@ -2,8 +2,11 @@
  * Machine-usage tracking: accumulates several counters entirely on the controller, so totals are
  * correct whenever DWC happens to reconnect, not just for the time it was watching. Originally
  * spindle-on-hours only (CNC/laser); extended to also cover FFF machines (print hours, filament used,
- * tool-change count) - see the doc comments on each accumulator below for why each needs the same
- * careful treatment spindle-hours already had, not a naive running read of a live OM value.
+ * tool-change count), then further extended with power-on time and a filament-runout/jam/slippage
+ * count (both machine-type-agnostic) - see the doc comments on each accumulator below for why each
+ * needs the same careful treatment spindle-hours already had, not a naive running read of a live OM
+ * value. Job-start counting does NOT live here - it's derived by re-parsing RRF's own SD event log
+ * (see eventLog.ts), the same source finished/cancelled counts already came from.
  *
  * RRF's `global.xxx` variables are RAM-only (confirmed against RRF source - no flash/SD backing), so a
  * counter needs its own persistence: `maintenance-daemon.g` accumulates into `global.flMaint*` every
@@ -36,8 +39,30 @@ export const MAINTENANCE_STATE_PATH = "0:/sys/flexible-layouts.maintenance-state
 
 /** Bumped whenever a change to these macro templates matters enough that an already-deployed copy
  *  should be flagged as outdated - see {@link maintenanceMacrosOutdated}. v2: added print-hours,
- *  filament-used and tool-change tracking for FFF machines (previously spindle-hours only). */
-export const MAINTENANCE_MACRO_SET_VERSION = 2;
+ *  filament-used and tool-change tracking for FFF machines (previously spindle-hours only). v3: fixed
+ *  a real bug where the v2 counters could end up NEVER seeded on a machine that already had an older
+ *  daemon macro running (global.flMaintLastPollTime already existed from before, so the one shared
+ *  exists-guard around all four seed variables never ran again - each now has its own guard); also
+ *  added the flMaintEnabled pause/resume flag and simplified the filament-summing loop to use RRF's
+ *  own `iterations` loop counter instead of a hand-rolled index variable. v4: added power-on time
+ *  (unconditional accumulation) and a filament-runout/jam/slippage error count (edge-triggered off
+ *  extruder 0's filament monitor status). v5: fixed a real bug in the flush macro - it terminated
+ *  each `if !exists(...) / else` block with an `echo`-written "endif" line, but RRF meta-gcode has no
+ *  such keyword at all (blocks are closed purely by dedenting, confirmed against RRF's own
+ *  persistentGlobal.g reference example on the wiki) - every machine that ever flushed produced a
+ *  state file RRF then failed to load at the next boot ("Bad command: endif"), silently losing all
+ *  tracked totals. v6: removed tool-change counting from the daemon's poll loop - comparing
+ *  `state.currentTool` between polls only sees the LATEST tool at each poll, so a rapid multi-tool
+ *  sequence between two polls (or the daemon simply not polling often enough) silently undercounted.
+ *  Tool changes are now counted by a direct increment appended into RRF's own tpost#.g/tpost.g macros
+ *  (see toolChangePatch.ts), which RRF guarantees runs exactly once per genuine tool change - so
+ *  `global.flMaintLastTool` is no longer read or written anywhere in this file. v7: added
+ *  flMaintJobsStarted/flMaintJobsFinished/flMaintJobsCancelled to the flush macro and
+ *  seedMaintenanceState - these are incremented by start.g/stop.g/cancel.g (see jobTrackingPatch.ts),
+ *  not by anything in this file, replacing the old approach of pattern-matching "started"/"finished"/
+ *  "cancelled" text in RRF's WARN-level event log (eventLog.ts), which had no way to scope "started" to
+ *  actually being about a print - any warn-level line merely containing that word counted. */
+export const MAINTENANCE_MACRO_SET_VERSION = 7;
 
 const VERSION_MARKER_RE = /;\s*FL-MAINTENANCE-MACRO-VERSION:\s*(\d+)/;
 
@@ -52,7 +77,8 @@ function macroHeader(title: string): string {
 ; Part of Flexible Layouts' machine maintenance tracking.
 ;
 ; This file is yours to customize. Just leave the global.flMaint* variables alone - they're what
-; Flexible Layouts reads back to compute spindle-on hours, print hours, filament used and tool changes.
+; Flexible Layouts reads back to compute spindle-on hours, print hours, filament used, tool changes,
+; power-on time and filament-error counts.
 
 `;
 }
@@ -68,14 +94,31 @@ function macroHeader(title: string): string {
 export const MAINTENANCE_DAEMON_MACRO = macroHeader("maintenance-daemon.g - usage accumulator") + `if !exists(global.flMaintSpindleIndex)
 	M99
 
+; Each of these gets its OWN exists-guard, deliberately not one combined check - global.* variables
+; survive a macro-file redeploy (they only clear on an actual reboot), so a machine already running
+; an older version of this file may already have flMaintLastPollTime declared while a newer variable
+; introduced later (e.g. flMaintLastExtruderPos) is not. A single shared guard would then skip
+; seeding the new variable forever, since its guard condition is already false - "unknown variable"
+; on every poll, permanently, until the next reboot. Per-variable guards seed each one exactly once,
+; whichever poll first finds it missing, regardless of what else already exists.
 if !exists(global.flMaintLastPollTime)
 	global flMaintLastPollTime = state.upTime
+if !exists(global.flMaintUnflushedSec)
 	global flMaintUnflushedSec = 0
-	; Last-seen extruder position/tool are pure poll-to-poll comparison state, not part of the
-	; reported totals themselves - re-seeding them fresh every boot (rather than persisting them) is
-	; correct, since move.extruders[].rawPosition itself resets to 0 on every boot too.
+; Last-seen extruder position is pure poll-to-poll comparison state, not part of the reported totals
+; itself - re-seeding it fresh (rather than persisting it) is correct, since move.extruders[].
+; rawPosition itself resets to 0 on every boot too.
+if !exists(global.flMaintLastExtruderPos)
 	global flMaintLastExtruderPos = 0
-	global flMaintLastTool = state.currentTool
+if !exists(global.flMaintEnabled)
+	global flMaintEnabled = true
+if !exists(global.flMaintPowerOnSec)
+	global flMaintPowerOnSec = 0
+; Seeded to the CURRENT status, not "ok" or "noMonitor" - seeding a fixed guess would falsely count
+; the very first poll as a transition into (or out of) an error state if the monitor already happened
+; to be in one when tracking was set up.
+if !exists(global.flMaintLastFilamentStatus) && #sensors.filamentMonitors > 0
+	global flMaintLastFilamentStatus = sensors.filamentMonitors[0].status
 
 var dt = state.upTime - global.flMaintLastPollTime
 ; state.upTime resets to 0 on reboot - without this clamp, a reboot between two polls would show as
@@ -83,6 +126,17 @@ var dt = state.upTime - global.flMaintLastPollTime
 if var.dt < 0
 	set var.dt = 0
 set global.flMaintLastPollTime = state.upTime
+
+; Tracking can be paused without undeploying anything - flMaintLastPollTime (above) is kept current
+; regardless, so re-enabling later doesn't count the paused interval as a sudden burst of activity.
+if !global.flMaintEnabled
+	M99
+
+; Power-on time - unlike every other counter below, this is unconditional: it accumulates whenever
+; the daemon polls at all (state.upTime itself is "time since boot", not "time since power applied",
+; but the two are the same thing on a controller with no sleep/standby state).
+set global.flMaintPowerOnSec = global.flMaintPowerOnSec + var.dt
+set global.flMaintUnflushedSec = global.flMaintUnflushedSec + var.dt
 
 ; Spindle-on hours (CNC/laser). Guarded by #spindles so a machine with no spindle at this index -
 ; every FFF machine, or a CNC/laser machine before its first spindle is configured - never indexes
@@ -106,21 +160,33 @@ if state.status == "processing"
 ; negative delta (a reset happened) to nothing, the exact same defensive technique as the state.upTime
 ; reboot-clamp above, so a reset only ever loses that one interval rather than corrupting the total.
 var totalExtruderPos = 0
-var i = 0
-while var.i < #move.extruders
-	set var.totalExtruderPos = var.totalExtruderPos + move.extruders[var.i].rawPosition
-	set var.i = var.i + 1
+; "iterations" is RRF's own built-in loop counter (0-based, auto-incremented on every "continue"
+; back to the while-condition) - no need for a hand-rolled index variable.
+while iterations < #move.extruders
+	set var.totalExtruderPos = var.totalExtruderPos + move.extruders[iterations].rawPosition
 var deltaE = var.totalExtruderPos - global.flMaintLastExtruderPos
 if var.deltaE > 0
 	set global.flMaintFilamentMm = global.flMaintFilamentMm + var.deltaE
 set global.flMaintLastExtruderPos = var.totalExtruderPos
 
-; Tool changes (FFF, or any multi-tool machine) - counts only an actual change from the previously
-; polled tool, so re-selecting the same tool repeatedly (or a T-code that's a no-op because that tool
-; is already active) doesn't inflate the count.
-if state.currentTool != global.flMaintLastTool
-	set global.flMaintToolChanges = global.flMaintToolChanges + 1
-	set global.flMaintLastTool = state.currentTool
+; Tool changes are NOT counted here - see MAINTENANCE_MACRO_SET_VERSION's v6 note. They're counted by
+; a direct increment appended into RRF's own tpost#.g/tpost.g macros instead (toolChangePatch.ts),
+; which RRF guarantees runs exactly once per genuine tool change - polling state.currentTool here can
+; only ever see the latest tool at each poll, silently undercounting rapid tool-change sequences.
+
+; Filament runout/jam/slippage count (extruder 0's monitor only, for now - mirrors the single-spindle
+; simplification above). Counts a TRANSITION into a problem status, not every poll spent in one, so a
+; sensor sitting in noFilament for several polls while the operator notices and fixes it still counts
+; as exactly one event. noDataReceived is deliberately excluded from "problem" - it's the sensor's
+; normal pre-extrusion state (no pulses seen yet), not a fault; noMonitor/ok are the two non-problem
+; states RRF actually reports.
+if #sensors.filamentMonitors > 0
+	var fmStatus = sensors.filamentMonitors[0].status
+	var fmWasProblem = global.flMaintLastFilamentStatus == "noFilament" || global.flMaintLastFilamentStatus == "tooLittleMovement" || global.flMaintLastFilamentStatus == "tooMuchMovement" || global.flMaintLastFilamentStatus == "sensorError"
+	var fmIsProblem = var.fmStatus == "noFilament" || var.fmStatus == "tooLittleMovement" || var.fmStatus == "tooMuchMovement" || var.fmStatus == "sensorError"
+	if var.fmIsProblem && !var.fmWasProblem
+		set global.flMaintFilamentErrors = global.flMaintFilamentErrors + 1
+	set global.flMaintLastFilamentStatus = var.fmStatus
 
 if global.flMaintUnflushedSec >= 600
 	M98 P"${MAINTENANCE_MACRO_FOLDER}/${MAINTENANCE_FLUSH_FILE}"
@@ -134,27 +200,46 @@ echo >>"${MAINTENANCE_STATE_PATH}" "if !exists(global.flMaintSpindleIndex)"
 echo >>"${MAINTENANCE_STATE_PATH}" "  global flMaintSpindleIndex = " ^ global.flMaintSpindleIndex
 echo >>"${MAINTENANCE_STATE_PATH}" "else"
 echo >>"${MAINTENANCE_STATE_PATH}" "  set global.flMaintSpindleIndex = " ^ global.flMaintSpindleIndex
-echo >>"${MAINTENANCE_STATE_PATH}" "endif"
 echo >>"${MAINTENANCE_STATE_PATH}" "if !exists(global.flMaintSpindleSec)"
 echo >>"${MAINTENANCE_STATE_PATH}" "  global flMaintSpindleSec = " ^ global.flMaintSpindleSec
 echo >>"${MAINTENANCE_STATE_PATH}" "else"
 echo >>"${MAINTENANCE_STATE_PATH}" "  set global.flMaintSpindleSec = " ^ global.flMaintSpindleSec
-echo >>"${MAINTENANCE_STATE_PATH}" "endif"
 echo >>"${MAINTENANCE_STATE_PATH}" "if !exists(global.flMaintPrintSec)"
 echo >>"${MAINTENANCE_STATE_PATH}" "  global flMaintPrintSec = " ^ global.flMaintPrintSec
 echo >>"${MAINTENANCE_STATE_PATH}" "else"
 echo >>"${MAINTENANCE_STATE_PATH}" "  set global.flMaintPrintSec = " ^ global.flMaintPrintSec
-echo >>"${MAINTENANCE_STATE_PATH}" "endif"
 echo >>"${MAINTENANCE_STATE_PATH}" "if !exists(global.flMaintFilamentMm)"
 echo >>"${MAINTENANCE_STATE_PATH}" "  global flMaintFilamentMm = " ^ global.flMaintFilamentMm
 echo >>"${MAINTENANCE_STATE_PATH}" "else"
 echo >>"${MAINTENANCE_STATE_PATH}" "  set global.flMaintFilamentMm = " ^ global.flMaintFilamentMm
-echo >>"${MAINTENANCE_STATE_PATH}" "endif"
 echo >>"${MAINTENANCE_STATE_PATH}" "if !exists(global.flMaintToolChanges)"
 echo >>"${MAINTENANCE_STATE_PATH}" "  global flMaintToolChanges = " ^ global.flMaintToolChanges
 echo >>"${MAINTENANCE_STATE_PATH}" "else"
 echo >>"${MAINTENANCE_STATE_PATH}" "  set global.flMaintToolChanges = " ^ global.flMaintToolChanges
-echo >>"${MAINTENANCE_STATE_PATH}" "endif"
+echo >>"${MAINTENANCE_STATE_PATH}" "if !exists(global.flMaintPowerOnSec)"
+echo >>"${MAINTENANCE_STATE_PATH}" "  global flMaintPowerOnSec = " ^ global.flMaintPowerOnSec
+echo >>"${MAINTENANCE_STATE_PATH}" "else"
+echo >>"${MAINTENANCE_STATE_PATH}" "  set global.flMaintPowerOnSec = " ^ global.flMaintPowerOnSec
+echo >>"${MAINTENANCE_STATE_PATH}" "if !exists(global.flMaintFilamentErrors)"
+echo >>"${MAINTENANCE_STATE_PATH}" "  global flMaintFilamentErrors = " ^ global.flMaintFilamentErrors
+echo >>"${MAINTENANCE_STATE_PATH}" "else"
+echo >>"${MAINTENANCE_STATE_PATH}" "  set global.flMaintFilamentErrors = " ^ global.flMaintFilamentErrors
+echo >>"${MAINTENANCE_STATE_PATH}" "if !exists(global.flMaintJobsStarted)"
+echo >>"${MAINTENANCE_STATE_PATH}" "  global flMaintJobsStarted = " ^ global.flMaintJobsStarted
+echo >>"${MAINTENANCE_STATE_PATH}" "else"
+echo >>"${MAINTENANCE_STATE_PATH}" "  set global.flMaintJobsStarted = " ^ global.flMaintJobsStarted
+echo >>"${MAINTENANCE_STATE_PATH}" "if !exists(global.flMaintJobsFinished)"
+echo >>"${MAINTENANCE_STATE_PATH}" "  global flMaintJobsFinished = " ^ global.flMaintJobsFinished
+echo >>"${MAINTENANCE_STATE_PATH}" "else"
+echo >>"${MAINTENANCE_STATE_PATH}" "  set global.flMaintJobsFinished = " ^ global.flMaintJobsFinished
+echo >>"${MAINTENANCE_STATE_PATH}" "if !exists(global.flMaintJobsCancelled)"
+echo >>"${MAINTENANCE_STATE_PATH}" "  global flMaintJobsCancelled = " ^ global.flMaintJobsCancelled
+echo >>"${MAINTENANCE_STATE_PATH}" "else"
+echo >>"${MAINTENANCE_STATE_PATH}" "  set global.flMaintJobsCancelled = " ^ global.flMaintJobsCancelled
+echo >>"${MAINTENANCE_STATE_PATH}" "if !exists(global.flMaintEnabled)"
+echo >>"${MAINTENANCE_STATE_PATH}" "  global flMaintEnabled = " ^ global.flMaintEnabled
+echo >>"${MAINTENANCE_STATE_PATH}" "else"
+echo >>"${MAINTENANCE_STATE_PATH}" "  set global.flMaintEnabled = " ^ global.flMaintEnabled
 `;
 
 export const MAINTENANCE_MACROS: Record<string, string> = {
@@ -200,6 +285,11 @@ export interface MaintenanceExtraCounters {
 	printSeconds?: number;
 	filamentMm?: number;
 	toolChanges?: number;
+	powerOnSeconds?: number;
+	filamentErrors?: number;
+	jobsStarted?: number;
+	jobsFinished?: number;
+	jobsCancelled?: number;
 }
 
 /** Writes the persisted-state file directly (setup, or re-running setup to change the tracked
@@ -209,12 +299,16 @@ export interface MaintenanceExtraCounters {
  *  pattern as the flush macro (not a bare `global x = ...`) because this can run again later in the
  *  same boot session, after the daemon macro has already declared these globals once - re-declaring
  *  an existing global with the bare `global` keyword is an error in RRF, only `set global.x = ...` is
- *  safe on an already-existing one. `spindleSeconds`/`extra` let re-running setup preserve
- *  already-accumulated totals rather than resetting them. */
+ *  safe on an already-existing one. `spindleSeconds`/`extra`/`enabled` let re-running setup preserve
+ *  already-accumulated totals and the current pause state rather than resetting them. */
 export async function seedMaintenanceState(
 	io: Pick<MachineIO, "upload" | "sendCode">, spindleIndex: number, spindleSeconds = 0, extra: MaintenanceExtraCounters = {},
+	enabled = true,
 ): Promise<boolean> {
-	const { printSeconds = 0, filamentMm = 0, toolChanges = 0 } = extra;
+	const {
+		printSeconds = 0, filamentMm = 0, toolChanges = 0, powerOnSeconds = 0, filamentErrors = 0,
+		jobsStarted = 0, jobsFinished = 0, jobsCancelled = 0,
+	} = extra;
 	const content = `; Auto-generated by Flexible Layouts - do not edit by hand
 if !exists(global.flMaintSpindleIndex)
 	global flMaintSpindleIndex = ${spindleIndex}
@@ -236,6 +330,30 @@ if !exists(global.flMaintToolChanges)
 	global flMaintToolChanges = ${toolChanges}
 else
 	set global.flMaintToolChanges = ${toolChanges}
+if !exists(global.flMaintPowerOnSec)
+	global flMaintPowerOnSec = ${powerOnSeconds}
+else
+	set global.flMaintPowerOnSec = ${powerOnSeconds}
+if !exists(global.flMaintFilamentErrors)
+	global flMaintFilamentErrors = ${filamentErrors}
+else
+	set global.flMaintFilamentErrors = ${filamentErrors}
+if !exists(global.flMaintJobsStarted)
+	global flMaintJobsStarted = ${jobsStarted}
+else
+	set global.flMaintJobsStarted = ${jobsStarted}
+if !exists(global.flMaintJobsFinished)
+	global flMaintJobsFinished = ${jobsFinished}
+else
+	set global.flMaintJobsFinished = ${jobsFinished}
+if !exists(global.flMaintJobsCancelled)
+	global flMaintJobsCancelled = ${jobsCancelled}
+else
+	set global.flMaintJobsCancelled = ${jobsCancelled}
+if !exists(global.flMaintEnabled)
+	global flMaintEnabled = ${enabled}
+else
+	set global.flMaintEnabled = ${enabled}
 `;
 	try {
 		await io.upload(MAINTENANCE_STATE_PATH, new Blob([content], { type: "text/plain" }));

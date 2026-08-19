@@ -6,14 +6,25 @@ describe("parseEventLog", () => {
 	it("parses a finished-job line with a duration", () => {
 		const events = parseEventLog("2024-01-01 12:34:56 [warn] Print finished, print time was 2h 15m\n");
 		expect(events).toHaveLength(1);
-		expect(events[0]).toMatchObject({ finished: true, cancelled: false, printMinutes: 135 });
+		expect(events[0]).toMatchObject({ finished: true, cancelled: false, started: false, printMinutes: 135 });
 		expect(events[0].date.toISOString()).toBe("2024-01-01T12:34:56.000Z");
 	});
 
 	it("parses a cancelled-job line", () => {
 		const events = parseEventLog("2024-01-02 08:00:00 [warn] Print cancelled, print time was 0h 48m\n");
 		expect(events).toHaveLength(1);
-		expect(events[0]).toMatchObject({ finished: false, cancelled: true, printMinutes: 48 });
+		expect(events[0]).toMatchObject({ finished: false, cancelled: true, started: false, printMinutes: 48 });
+	});
+
+	it("parses a real print-started line", () => {
+		const events = parseEventLog("2024-01-02 08:00:00 [warn] Started printing file 0:/gcodes/part.gcode\n");
+		expect(events).toHaveLength(1);
+		expect(events[0]).toMatchObject({ finished: false, cancelled: false, started: true });
+	});
+
+	it("does not count a simulation run as a print start", () => {
+		const events = parseEventLog("2024-01-02 08:00:00 [warn] Started simulating printing file 0:/gcodes/part.gcode\n");
+		expect(events).toHaveLength(0);
 	});
 
 	it("ignores power-up lines entirely", () => {
@@ -63,6 +74,6 @@ describe("totalJobSeconds / countJobEvents", () => {
 	});
 
 	it("counts finished vs cancelled separately", () => {
-		expect(countJobEvents(events)).toEqual({ finished: 1, cancelled: 2 });
+		expect(countJobEvents(events)).toEqual({ finished: 1, cancelled: 2, started: 0 });
 	});
 });
