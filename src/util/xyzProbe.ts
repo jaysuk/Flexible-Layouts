@@ -37,9 +37,21 @@ export interface XyzProbeSettings {
 	yOffset: number;
 	/** Probing feedrate (mm/min). */
 	feedrate: number;
-	/** How far beyond the plate's assumed edge each G38.2 search is allowed to travel before it gives
-	 *  up and errors (mm) - covers placement tolerance and an imprecise jogged starting position.
-	 *  Also used, alone, as how far below the retracted start height the Z probe searches. */
+	/** Which Z-probe (`sensors.probes[n]`) the macros actually use, passed through to every G38.2's
+	 *  `K` parameter. Previously the macros hardcoded `K0` while the widget's status chip read
+	 *  whichever probe the user configured, so a non-zero setting showed one probe's state while
+	 *  physically probing with another. */
+	probeIndex: number;
+	/**
+	 * How far past the EXPECTED CONTACT POINT each G38.2 keeps searching before giving up and
+	 * erroring (mm) - covers placement tolerance and an imprecise jogged starting position.
+	 *
+	 * Each edge probe positions the tool exactly 5mm clear of the plate face first, so it searches
+	 * `5 + searchMargin`. Up to macro set version 3 the X/Y searches instead asked for the whole
+	 * return-to-centre distance plus this margin - roughly 48mm on default settings, i.e. ~43mm PAST
+	 * contact - so a probe that failed to trigger drove the endmill clean through the plate and out
+	 * the far side of its centre, rather than stopping just past where the edge should have been.
+	 */
 	searchMargin: number;
 }
 
@@ -87,9 +99,33 @@ export const XYZ_PROBE_Y_FILE = "xyz_y.g";
 export const XYZ_PROBE_Z_FILE = "xyz_z.g";
 
 /**
- * Builds the M98 call for one macro: 9 parameters (A-J), corner geometry pre-computed so the macros
- * themselves don't need to branch on which corner was selected. `toFixed(4)` for decimals and a
- * rounded integer feedrate match the formatting the reference plugin itself uses.
+ * Parameter letters that must never be used to pass a value to a macro via M98.
+ *
+ * `G` and `M` are fatal at the PARSER level, before the macro is ever entered: RRF's
+ * `StringParser::FindParameters` (src/GCodes/GCodeBuffer/StringParser.cpp) documents its own rule as
+ * "we assume that a G or M not inside quotes or { } and not preceded by ' is the start of a new
+ * command", and implements it as a bare `break` out of the parameter scan. So an `M98 ... G60 H40
+ * I500` line is silently CUT IN TWO: the M98 keeps only the parameters before the `G`, and the rest
+ * of the line is re-parsed as a separate `G60` command (which really exists - "save position to
+ * slot"). Every parameter from the offending letter onward simply never reaches the macro, and the
+ * first `{param.<missing>}` the macro evaluates aborts it with an unknown-value error - before any
+ * motion at all. FL shipped `G` as the plate X dimension up to macro set version 2, which is exactly
+ * why nothing ever moved; `L` carries it from version 3 on.
+ *
+ * `P` and `R` are reserved by M98 itself (P is the filename, R marks a restartable macro) - the
+ * wiki's "Macro parameters" section (Duet3D/wiki-content, Reference/Gcode_meta_commands.md) states
+ * this outright. `N` is the line-number prefix and `T` reads as a tool-change command letter.
+ */
+export const M98_FORBIDDEN_PARAM_LETTERS: ReadonlySet<string> = new Set(["G", "M", "N", "P", "R", "T"]);
+
+/**
+ * Builds the M98 call for one macro: 11 parameters, corner geometry pre-computed so the macros
+ * themselves don't need to branch on which corner was selected. `toFixed(4)` for decimals and
+ * rounded integers for the feedrate and probe index match the formatting the reference plugin uses.
+ *
+ * Letters skip `G` entirely (see {@link M98_FORBIDDEN_PARAM_LETTERS}), so the plate X dimension is
+ * carried on `L`. `K` is the probe index, chosen to match the `K` word G38.2 itself takes for the
+ * same thing, so the macros read `G38.2 ... K{param.K}`.
  */
 export function buildXyzProbeCommand(macroFolder: string, macroFile: string, corner: CornerId, settings: XyzProbeSettings): string {
 	const p = computeCornerParams(corner, settings);
@@ -102,10 +138,11 @@ export function buildXyzProbeCommand(macroFolder: string, macroFile: string, cor
 		`D${n(settings.plateThickness)}`,
 		`E${n(p.xOffset)}`,
 		`F${n(p.yOffset)}`,
-		`G${n(p.xDimension)}`,
+		`L${n(p.xDimension)}`,
 		`H${n(p.yDimension)}`,
 		`I${Math.round(settings.feedrate)}`,
 		`J${n(settings.searchMargin)}`,
+		`K${Math.max(0, Math.round(settings.probeIndex))}`,
 	].join(" ");
 }
 
@@ -115,19 +152,26 @@ const PARAM_DOC = `; param.A  X direction sign (+1 or -1) - which way "into the 
 ; param.D  Plate Thickness (mm)
 ; param.E  X-Axis Offset (mm, corner-adjusted)
 ; param.F  Y-Axis Offset (mm, corner-adjusted)
-; param.G  Plate X Dimension (mm, corner-adjusted)
+; param.L  Plate X Dimension (mm, corner-adjusted)
 ; param.H  Plate Y Dimension (mm, corner-adjusted)
 ; param.I  Feedrate (mm/min)
-; param.J  Search overtravel margin (mm) - how far past the assumed edge each probe searches
-;          before giving up`;
+; param.J  Search overtravel margin (mm) - how far past the expected contact point each probe
+;          keeps searching before giving up. Each edge probe starts 5mm clear of the plate, so
+;          it searches 5+J and errors out if nothing triggered by then.
+; param.K  Z-probe index, used as the K parameter of every G38.2 below`;
 
 /**
  * Bumped whenever a change to the shipped macro templates matters enough that an already-deployed
  * copy should be flagged as outdated (e.g. the P0->K0 G38.2 fix, or adding the M291 confirmations
  * below) - see {@link xyzProbeMacrosOutdated}. The header comment explicitly invites hand-editing,
  * so a stale file is only ever flagged, never silently overwritten.
+ *
+ * Version 3 renamed the plate-X-dimension parameter from `G` to `K`. Anything still on version 2 or
+ * below reads `param.G`, which the widget no longer sends and RRF could never have delivered anyway
+ * (see {@link M98_FORBIDDEN_PARAM_LETTERS}) - such a macro cannot work at all and must be restored,
+ * so the "outdated" banner is the only route back to a functioning widget for an existing install.
  */
-export const MACRO_SET_VERSION = 2;
+export const MACRO_SET_VERSION = 3;
 
 function macroHeader(title: string, extraDoc = PARAM_DOC): string {
 	return `; ${title}
@@ -150,8 +194,8 @@ export const XYZ_PROBE_CORNER_MACRO = macroHeader("xyz_corner.g - XYZ corner pro
 
 ; Move from the jogged start position to the plate's center and probe Z
 G1 Z5 F{param.I}
-G1 X{(param.G / 2 - param.E) * param.A} Y{(param.H / 2 - param.F) * param.B} F{param.I}
-G38.2 Z{-(5 + param.J)} F{param.I} K0
+G1 X{(param.L / 2 - param.E) * param.A} Y{(param.H / 2 - param.F) * param.B} F{param.I}
+G38.2 Z{-(5 + param.J)} F{param.I} K{param.K}
 G10 L20 Z{param.D}
 G1 Z5 F{param.I}
 
@@ -160,9 +204,9 @@ G1 Z5 F{param.I}
 M291 R"Z Probed" P{"Z zeroed. Cancelling now KEEPS this Z offset. Continue to the X edge?"} S3
 
 ; Move past the X edge, drop to plate-side height, probe inward
-G1 X{(param.G / 2 + 5 + param.C / 2) * param.A * -1} F{param.I}
+G1 X{(param.L / 2 + 5 + param.C / 2) * param.A * -1} F{param.I}
 G1 Z{-5 - param.D / 2} F{param.I}
-G38.2 X{(param.G / 2 + 5 + param.C / 2 + param.J) * param.A} F{param.I} K0
+G38.2 X{(5 + param.J) * param.A} F{param.I} K{param.K}
 G10 L20 X{(param.E + param.C / 2) * -1 * param.A}
 G1 X{-5 * param.A} F{param.I}
 G1 Z{5 + param.D / 2} F{param.I}
@@ -171,9 +215,9 @@ G1 Z{5 + param.D / 2} F{param.I}
 M291 R"X Probed" P{"X zeroed. Cancelling now KEEPS Z+X offsets. Continue to the Y edge?"} S3
 
 ; Move past the Y edge, drop to plate-side height, probe inward
-G1 X{(5 + param.G / 2) * param.A} Y{(param.H / 2 + 5 + param.C / 2) * param.B * -1} F{param.I}
+G1 X{(5 + param.L / 2) * param.A} Y{(param.H / 2 + 5 + param.C / 2) * param.B * -1} F{param.I}
 G1 Z{-5 - param.D / 2} F{param.I}
-G38.2 Y{(param.H / 2 + 5 + param.C / 2 + param.J) * param.B} F{param.I} K0
+G38.2 Y{(5 + param.J) * param.B} F{param.I} K{param.K}
 G10 L20 Y{(param.F + param.C / 2) * -1 * param.B}
 G1 Y{-5 * param.B} F{param.I}
 G1 Z{5 + param.D / 2} F{param.I}
@@ -182,7 +226,7 @@ G1 Z{5 + param.D / 2} F{param.I}
 M291 R"Y Probed" P{"Y zeroed. Cancelling now KEEPS all three offsets."} S3
 
 ; Return to the newly-set zero
-G1 X{(param.G / 2 - param.E) * param.A * -1} F{param.I}
+G1 X{(param.L / 2 - param.E) * param.A * -1} F{param.I}
 G90
 G1 X0 Y0 F{param.I}
 `;
@@ -191,10 +235,10 @@ G1 X0 Y0 F{param.I}
 export const XYZ_PROBE_X_MACRO = macroHeader("xyz_x.g - X-only probe for touch plate") + `G91
 
 G1 Z5 F{param.I}
-G1 X{(param.G / 2 - param.E) * param.A} Y{(param.H / 2 - param.F) * param.B} F{param.I}
-G1 X{(param.G / 2 + 5 + param.C / 2) * param.A * -1} F{param.I}
+G1 X{(param.L / 2 - param.E) * param.A} Y{(param.H / 2 - param.F) * param.B} F{param.I}
+G1 X{(param.L / 2 + 5 + param.C / 2) * param.A * -1} F{param.I}
 G1 Z{-5 - param.D / 2} F{param.I}
-G38.2 X{(param.G / 2 + 5 + param.C / 2 + param.J) * param.A} F{param.I} K0
+G38.2 X{(5 + param.J) * param.A} F{param.I} K{param.K}
 G10 L20 X{(param.E + param.C / 2) * -1 * param.A}
 G1 X{-5 * param.A} F{param.I}
 G1 Z{5 + param.D / 2} F{param.I}
@@ -208,14 +252,14 @@ G1 X0 F{param.I}
 export const XYZ_PROBE_Y_MACRO = macroHeader("xyz_y.g - Y-only probe for touch plate") + `G91
 
 G1 Z5 F{param.I}
-G1 X{(param.G / 2 - param.E) * param.A} Y{(param.H / 2 - param.F) * param.B} F{param.I}
+G1 X{(param.L / 2 - param.E) * param.A} Y{(param.H / 2 - param.F) * param.B} F{param.I}
 G1 Y{(param.H / 2 + 5 + param.C / 2) * param.B * -1} F{param.I}
 G1 Z{-5 - param.D / 2} F{param.I}
-G38.2 Y{(param.H / 2 + 5 + param.C / 2 + param.J) * param.B} F{param.I} K0
+G38.2 Y{(5 + param.J) * param.B} F{param.I} K{param.K}
 G10 L20 Y{(param.F + param.C / 2) * -1 * param.B}
 G1 Y{-5 * param.B} F{param.I}
 G1 Z{5 + param.D / 2} F{param.I}
-G1 X{(param.G / 2 - param.E) * param.A * -1} F{param.I}
+G1 X{(param.L / 2 - param.E) * param.A * -1} F{param.I}
 
 G90
 G1 Y0 F{param.I}
@@ -227,13 +271,14 @@ export const XYZ_PROBE_Z_MACRO = macroHeader(
 	"xyz_z.g - Z-only probe for touch plate",
 	`; param.D  Plate Thickness (mm)
 ; param.I  Feedrate (mm/min)
-; param.J  Search overtravel margin (mm)
+; param.J  Search overtravel margin (mm) - searches 5+J down from where it starts
+; param.K  Z-probe index, used as the K parameter of the G38.2 below
 ;
 ; Probes straight down wherever the machine currently is - use this to re-check Z without
 ; repeating a full corner probe.`,
 ) + `G91
 
-G38.2 Z{-(5 + param.J)} F{param.I} K0
+G38.2 Z{-(5 + param.J)} F{param.I} K{param.K}
 G10 L20 Z{param.D}
 G1 Z5 F{param.I}
 

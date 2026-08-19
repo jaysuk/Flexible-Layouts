@@ -3,6 +3,17 @@
 		<span v-if="widget.label" class="xpw-label text-truncate flex-shrink-0">{{ widget.label }}</span>
 		<UnhomedWarning :axes="unhomedNow" class="flex-shrink-0 mb-1" />
 
+		<!-- Not closable, and not merely advisory: without the macros on the card there is nothing for
+		     the probe buttons to call, so this is the one action available until it's done. -->
+		<v-alert v-if="macrosMissing" type="info" density="compact" variant="tonal" class="mb-2 flex-shrink-0">
+			{{ $t("plugins.flexibleLayouts.xyzProbe.macrosMissing") }}
+			<template #append>
+				<v-btn size="x-small" variant="tonal" :loading="deployingMacros" :disabled="disabledNow" @click="restoreMacros">
+					{{ $t("plugins.flexibleLayouts.xyzProbe.deployMacrosAction") }}
+				</v-btn>
+			</template>
+		</v-alert>
+
 		<v-alert v-if="macrosOutdated" type="warning" density="compact" variant="tonal" closable class="mb-2 flex-shrink-0"
 				 @click:close="macrosOutdated = false">
 			{{ $t("plugins.flexibleLayouts.xyzProbe.macrosOutdated") }}
@@ -33,18 +44,18 @@
 		</div>
 
 		<v-btn block :color="widget.color || 'primary'" prepend-icon="mdi-crosshairs-gps" class="mb-2 flex-shrink-0"
-			   :loading="probingOp === 'corner'" :disabled="disabledNow" @click="trigger('corner')">
+			   :loading="probingOp === 'corner'" :disabled="disabledNow || macrosMissing" @click="trigger('corner')">
 			{{ $t("plugins.flexibleLayouts.xyzProbe.probeCorner") }}
 		</v-btn>
 
 		<div class="d-flex ga-2 mb-2 flex-shrink-0">
-			<v-btn variant="outlined" class="flex-grow-1" :loading="probingOp === 'x'" :disabled="disabledNow" @click="trigger('x')">
+			<v-btn variant="outlined" class="flex-grow-1" :loading="probingOp === 'x'" :disabled="disabledNow || macrosMissing" @click="trigger('x')">
 				{{ $t("plugins.flexibleLayouts.xyzProbe.probeX") }}
 			</v-btn>
-			<v-btn variant="outlined" class="flex-grow-1" :loading="probingOp === 'y'" :disabled="disabledNow" @click="trigger('y')">
+			<v-btn variant="outlined" class="flex-grow-1" :loading="probingOp === 'y'" :disabled="disabledNow || macrosMissing" @click="trigger('y')">
 				{{ $t("plugins.flexibleLayouts.xyzProbe.probeY") }}
 			</v-btn>
-			<v-btn variant="outlined" class="flex-grow-1" :loading="probingOp === 'z'" :disabled="disabledNow" @click="trigger('z')">
+			<v-btn variant="outlined" class="flex-grow-1" :loading="probingOp === 'z'" :disabled="disabledNow || macrosMissing" @click="trigger('z')">
 				{{ $t("plugins.flexibleLayouts.xyzProbe.probeZ") }}
 			</v-btn>
 		</div>
@@ -109,6 +120,7 @@ import {
 	XYZ_PROBE_MACRO_FOLDER, XYZ_PROBE_X_FILE, XYZ_PROBE_Y_FILE, XYZ_PROBE_Z_FILE,
 	type CornerId, type XyzProbeSettings,
 } from "../util/xyzProbe";
+import { sendCodeChecked } from "../util/codeReply";
 import { unhomedAxes } from "../util/homedCheck";
 import { isProbeTriggered, type ProbeTriggerInfo } from "../util/probe";
 import { WIDGET_PATCH_KEY } from "../util/widgetPatch";
@@ -120,7 +132,17 @@ const uiStore = useUiStore();
 const io = defaultMachineIO();
 const patch = inject(WIDGET_PATCH_KEY, null);
 
-const disabledNow = computed(() => props.disabled || uiStore.uiFrozen);
+// Probing drives the machine into a physical object, so it must never race a job or a tool change -
+// the same conservative "don't touch hardware right now" status set CanAddressChangeDialog and
+// FirmwareUpdateWidget already use for their own hardware-touching actions, deliberately broader
+// than just "printing".
+const BUSY_STATUSES = new Set([
+	"starting", "updating", "processing", "simulating", "pausing", "paused",
+	"resuming", "cancelling", "busy", "changingTool", "halted",
+]);
+const machineBusy = computed(() => BUSY_STATUSES.has(String(machineStore.model.state?.status ?? "")));
+
+const disabledNow = computed(() => props.disabled || uiStore.uiFrozen || machineBusy.value);
 const unhomedNow = computed(() => unhomedAxes(machineStore.model, ["X", "Y", "Z"]));
 
 function t(k: string, args?: Record<string, unknown>): string {
@@ -160,6 +182,9 @@ function settings(): XyzProbeSettings {
 		yOffset: yOffset.value || 0,
 		feedrate: feedrate.value || 0,
 		searchMargin: searchMargin.value || 0,
+		// Passed through to every G38.2's K parameter, so the probe the macros physically use is the
+		// same one the status chip above reads - they used to be able to disagree (macros hardcoded K0).
+		probeIndex: probeIndex.value,
 	};
 }
 
@@ -177,15 +202,18 @@ const statusMessage = ref("");
 const statusType = ref<"success" | "error">("success");
 const macrosOutdated = ref(false);
 
-async function checkAndDeployMacros(): Promise<void> {
+const macrosMissing = ref(false);
+
+/**
+ * Reports what's on the card; deliberately writes NOTHING. This used to silently upload four files
+ * to the SD card the first time the widget rendered - an unprompted write to the user's machine as a
+ * side effect of merely putting a widget on a page (and it ran even when the widget was disabled).
+ * Deploying is now always an explicit click, via the same banner + button the "outdated" case uses.
+ */
+async function checkMacros(): Promise<void> {
 	if (!machineStore.isConnected) { return; }
-	const missing = await xyzProbeMacrosMissing(io, macroFolder.value);
-	if (missing) {
-		await deployMacros();
-		macrosOutdated.value = false;
-		return;
-	}
-	macrosOutdated.value = await xyzProbeMacrosOutdated(io, macroFolder.value);
+	macrosMissing.value = await xyzProbeMacrosMissing(io, macroFolder.value);
+	macrosOutdated.value = macrosMissing.value ? false : await xyzProbeMacrosOutdated(io, macroFolder.value);
 }
 
 async function deployMacros(): Promise<boolean> {
@@ -209,11 +237,12 @@ async function restoreMacros(): Promise<void> {
 		statusType.value = "success";
 		statusMessage.value = t("macrosRestored");
 		macrosOutdated.value = false;
+		macrosMissing.value = false;
 	}
 }
 
 onMounted(() => {
-	void checkAndDeployMacros();
+	void checkMacros();
 });
 
 // --- Probing ---------------------------------------------------------------------------------------
@@ -247,7 +276,10 @@ async function runPending(): Promise<void> {
 	probingOp.value = op;
 	statusMessage.value = "";
 	try {
-		await machineStore.sendCode(code, false, false);
+		// sendCodeChecked, not a bare sendCode: RRF reports a refused/aborted macro as a RESOLVED
+		// "Error: ..." reply, so without this the catch below never fires and a probe that never
+		// moved still reports success (see util/codeReply.ts).
+		await sendCodeChecked((c) => machineStore.sendCode(c, false, false), code);
 		statusType.value = "success";
 		statusMessage.value = op === "corner" ? t("cornerProbed", { corner: t(`corner${corner.value}`) }) : t("axisProbed", { axis: op.toUpperCase() });
 	} catch (e) {

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
 	buildXyzProbeCommand, computeCornerParams, deployXyzProbeMacros, extractMacroVersion,
+	M98_FORBIDDEN_PARAM_LETTERS,
 	MACRO_SET_VERSION, XYZ_PROBE_CORNER_FILE, XYZ_PROBE_CORNER_MACRO, XYZ_PROBE_MACROS, XYZ_PROBE_X_FILE,
 	XYZ_PROBE_X_MACRO, XYZ_PROBE_Y_FILE, XYZ_PROBE_Y_MACRO, XYZ_PROBE_Z_FILE, XYZ_PROBE_Z_MACRO,
 	xyzProbeMacrosMissing, xyzProbeMacrosOutdated, type XyzProbeSettings,
@@ -12,7 +13,7 @@ import {
 // make a broken swap look identical to a correct one.
 const SETTINGS: XyzProbeSettings = {
 	endmillDiameter: 6.35, plateWidth: 60, plateHeight: 40, plateThickness: 5,
-	xOffset: 10, yOffset: 15, feedrate: 500, searchMargin: 8,
+	xOffset: 10, yOffset: 15, feedrate: 500, searchMargin: 8, probeIndex: 0,
 };
 
 describe("computeCornerParams", () => {
@@ -45,19 +46,19 @@ describe("computeCornerParams", () => {
 });
 
 describe("buildXyzProbeCommand", () => {
-	// Exact string format, hand-verified: toFixed(4) for decimals, rounded integer feedrate, the 9
-	// lettered params (A-J) in order - a byte-for-byte regression here would be caught immediately.
+	// Exact string format, hand-verified: toFixed(4) for decimals, rounded integer feedrate, the 10
+	// lettered params in order - a byte-for-byte regression here would be caught immediately.
 	it("formats the FL corner command exactly", () => {
 		const cmd = buildXyzProbeCommand("0:/macros/XyzProbe", "xyz_corner.g", "FL", SETTINGS);
 		expect(cmd).toBe(
-			'M98 P"0:/macros/XyzProbe/xyz_corner.g" A1 B1 C6.3500 D5.0000 E10.0000 F15.0000 G60.0000 H40.0000 I500 J8.0000',
+			'M98 P"0:/macros/XyzProbe/xyz_corner.g" A1 B1 C6.3500 D5.0000 E10.0000 F15.0000 L60.0000 H40.0000 I500 J8.0000 K0',
 		);
 	});
 
-	it("formats the FR corner command exactly, with swapped E/F/G/H and negative A", () => {
+	it("formats the FR corner command exactly, with swapped E/F/K/H and negative A", () => {
 		const cmd = buildXyzProbeCommand("0:/macros/XyzProbe", "xyz_corner.g", "FR", SETTINGS);
 		expect(cmd).toBe(
-			'M98 P"0:/macros/XyzProbe/xyz_corner.g" A-1 B1 C6.3500 D5.0000 E15.0000 F10.0000 G40.0000 H60.0000 I500 J8.0000',
+			'M98 P"0:/macros/XyzProbe/xyz_corner.g" A-1 B1 C6.3500 D5.0000 E15.0000 F10.0000 L40.0000 H60.0000 I500 J8.0000 K0',
 		);
 	});
 
@@ -69,6 +70,34 @@ describe("buildXyzProbeCommand", () => {
 	it("uses the given macro folder and file", () => {
 		const cmd = buildXyzProbeCommand("0:/macros/Custom", "xyz_x.g", "BR", SETTINGS);
 		expect(cmd.startsWith('M98 P"0:/macros/Custom/xyz_x.g"')).toBe(true);
+	});
+
+	/**
+	 * THE regression test for the bug that made this widget do nothing at all.
+	 *
+	 * RRF's StringParser::FindParameters ends the current command at the first bare `G` or `M`
+	 * outside quotes/braces ("we assume that a G or M ... is the start of a new command", implemented
+	 * as a literal `break`). FL used to pass the plate X dimension as `G60.0000`, so RRF cut the line
+	 * in two: M98 lost every parameter from `G` onward, the macro's first `{param.I}` reference blew
+	 * up with an unknown-value error before any motion, and the orphaned tail ran as a real `G60`
+	 * (save position to slot). This asserts the property directly rather than just the fixed strings
+	 * above, so re-introducing ANY forbidden letter fails here with a pointed message.
+	 */
+	it("never passes a parameter on a letter RRF would read as the start of a new command", () => {
+		for (const corner of ["FL", "FR", "BL", "BR"] as const) {
+			for (const file of [XYZ_PROBE_CORNER_FILE, XYZ_PROBE_X_FILE, "xyz_y.g", "xyz_z.g"]) {
+				const cmd = buildXyzProbeCommand("0:/macros/XyzProbe", file, corner, SETTINGS);
+				// Strip the quoted filename first - its own ".g" is inside quotes, which RRF's parser
+				// tracks and skips, so it is not a command boundary and must not be tested as one.
+				const withoutFilename = cmd.replace(/"[^"]*"/g, '""');
+				for (const letter of M98_FORBIDDEN_PARAM_LETTERS) {
+					expect(
+						new RegExp(`\\s${letter}[-\\d]`).test(withoutFilename),
+						`${file} @ ${corner} passes a parameter on forbidden letter "${letter}": ${cmd}`,
+					).toBe(false);
+				}
+			}
+		}
 	});
 });
 
@@ -111,6 +140,34 @@ describe("macro bodies", () => {
 	it("every macro carries the current version stamp", () => {
 		for (const [name, body] of Object.entries(XYZ_PROBE_MACROS)) {
 			expect(extractMacroVersion(body), name).toBe(MACRO_SET_VERSION);
+		}
+	});
+
+	/**
+	 * Every edge probe positions the tool exactly 5mm clear of the plate face before searching, so the
+	 * search vector must be `5 + searchMargin` - just far enough to reach contact plus the operator's
+	 * placement tolerance. It used to ask for the whole return-to-centre distance as well
+	 * (`plateDim/2 + 5 + endmill/2 + margin`), which on default settings is ~48mm: about 43mm PAST
+	 * contact, ending beyond the plate's own centre. A probe that failed to trigger therefore drove
+	 * the endmill straight through the plate instead of stopping just past the expected edge.
+	 */
+	it("searches only 5 + searchMargin on every X/Y edge probe, never the return-to-centre distance", () => {
+		for (const [name, body] of Object.entries(XYZ_PROBE_MACROS)) {
+			for (const line of codeLines(body).filter((l) => /^G38\.2\s+[XY]/.test(l.trim()))) {
+				expect(line, `${name}: "${line}" searches further than 5 + searchMargin`)
+					.toMatch(/^G38\.2 [XY]\{\(5 \+ param\.J\) \* param\.[AB]\}/);
+			}
+		}
+	});
+
+	it("uses the probe index it was given for every G38.2, rather than hardcoding probe 0", () => {
+		for (const [name, body] of Object.entries(XYZ_PROBE_MACROS)) {
+			const probeMoves = codeLines(body).filter((l) => l.trim().startsWith("G38.2"));
+			expect(probeMoves.length, `${name} has no probing moves`).toBeGreaterThan(0);
+			for (const line of probeMoves) {
+				expect(line, `${name}: "${line}"`).toContain("K{param.K}");
+				expect(line, `${name} still hardcodes a probe index`).not.toMatch(/\bK\d/);
+			}
 		}
 	});
 });
