@@ -19,6 +19,12 @@
  * matching DWC's own default macro-list behaviour exactly. A binary file picked up this way just
  * yields no matches; harmless.
  *
+ * DOES skip any file ending in ".bak" though - that's DWC's own backup-copy convention (see
+ * src/utils/path.ts's `configBackupFile: "config.g.bak"` and MonacoEditor.vue's save-time backup), a
+ * stale snapshot of an earlier version of a file, never something RRF executes live. Rewriting one
+ * would edit dead content that just sits there looking like it still matches the current config.g -
+ * actively misleading rather than harmless.
+ *
  * Deliberately does NOT restart the whole machine. M952 only takes effect once the EXPANSION board
  * itself is restarted (RRF Gcode Dictionary: "the change of CAN address will not take place until the
  * expansion board is restarted"), which `M999 B<oldAddr>` does - note the OLD address, since the board
@@ -49,7 +55,7 @@ async function listAllFilesRecursive(io: Pick<MachineIO, "getFileList">, dir: st
 		const path = `${dir}/${entry.name}`;
 		if (entry.isDirectory) {
 			out.push(...await listAllFilesRecursive(io, path));
-		} else {
+		} else if (!/\.bak$/i.test(entry.name)) {
 			out.push(path);
 		}
 	}

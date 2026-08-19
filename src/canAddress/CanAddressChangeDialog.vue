@@ -191,6 +191,17 @@ async function onApply(): Promise<void> {
 		await applyCanAddressRewrite(io, plans.value);
 		await sendCanAddressChange(io, selectedAddress.value, newAddress.value);
 		step.value = "done";
+		// The expansion board is now restarting itself, but the MAIN board's own in-memory drive
+		// mapping (from the M584/M569 lines just rewritten in config.g) is only re-read at ITS next
+		// boot - see change.ts's module doc comment. Offer that restart now rather than just telling
+		// the user in doneBody and leaving it to them to remember, matching RestorePanel.vue's own
+		// post-restore M999 prompt.
+		const restartNow = await showConfirmDialog(
+			i18n.global.t("plugins.flexibleLayouts.canAddress.promptRestartTitle"),
+			i18n.global.t("plugins.flexibleLayouts.canAddress.promptRestartBody"),
+			"mdi-restart",
+		);
+		if (restartNow) { await io.sendCode("M999"); }
 	} catch (e) {
 		applyError.value = e instanceof Error ? e.message : String(e);
 	} finally {

@@ -108,6 +108,18 @@ describe("planCanAddressRewrite", () => {
 		expect(plans).toEqual([]);
 	});
 
+	it("skips .bak files even when they DO reference the old address - a stale backup copy, not live gcode", async () => {
+		const { io } = fakeIo(
+			{
+				"0:/sys/config.g": "M569 P121.0 S1\n",
+				"0:/sys/config.g.bak": "M569 P121.0 S1\n", // identical content, but a backup copy - must not be rewritten
+			},
+			{ "0:/sys": [{ name: "config.g", isDirectory: false }, { name: "config.g.bak", isDirectory: false }], "0:/macros": [] },
+		);
+		const plans = await planCanAddressRewrite(io, 121, 20);
+		expect(plans.map((p) => p.path)).toEqual(["0:/sys/config.g"]);
+	});
+
 	it("resolves to an empty plan (not a throw) if a directory listing fails, e.g. offline", async () => {
 		const io = {
 			getFileList: async () => { throw new Error("offline"); },

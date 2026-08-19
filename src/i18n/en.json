@@ -1670,7 +1670,9 @@
 		"applyButton": "Apply",
 		"back": "Back",
 		"doneHeading": "CAN address changed.",
-		"doneBody": "The board is restarting under its new address. A full machine restart is recommended once you've confirmed it reconnected, so the main board picks up the corrected driver mapping."
+		"doneBody": "The board is restarting under its new address.",
+		"promptRestartTitle": "Restart the machine?",
+		"promptRestartBody": "The board is restarting under its new address, but the main board still needs a full restart to re-read the corrected driver mapping from config.g. Send M999 now?"
 	},
 	"tlsSetup": {
 		"title": "TLS / HTTPS setup",
