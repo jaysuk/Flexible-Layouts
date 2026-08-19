@@ -27,7 +27,12 @@ if errorlevel 1 (
 if exist "%PLUGIN_REPO%\dist" rmdir /s /q "%PLUGIN_REPO%\dist"
 if exist "%PLUGIN_REPO%\pkg" rmdir /s /q "%PLUGIN_REPO%\pkg"
 
-for /f "delims=" %%f in ('dir /b /o-d "%PLUGIN_REPO%\%PLUGIN_ID%-*.zip" 2^>nul') do (
+:: DWC 3.7.0-beta.3+ also writes <id>-<version>-srcmap.zip alongside the real package (a stable
+:: build's sourcemaps, held back from the installable ZIP - see PLUGINS.md's "Sourcemaps" section).
+:: It matches the same "%PLUGIN_ID%-*.zip" glob and is written AFTER the real package, so a naive
+:: "newest file" pick grabs the sourcemap archive instead - exclude it explicitly. Keep the file
+:: itself; it's meant to be kept alongside a release for decoding a user's stack trace later.
+for /f "delims=" %%f in ('dir /b /o-d "%PLUGIN_REPO%\%PLUGIN_ID%-*.zip" 2^>nul ^| findstr /v /i "srcmap"') do (
     echo Done: %PLUGIN_REPO%\%%f
     goto :done
 )
