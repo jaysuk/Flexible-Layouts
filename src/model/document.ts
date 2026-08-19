@@ -424,6 +424,9 @@ export type Widget =
 		/** Optional G-code to persist offsets (e.g. M500); shown as a Save button and appended to Apply all. */
 		saveCommand?: string;
 		color?: string;
+		/** Camera column width (px), set by dragging the divider between it and the controls column.
+		 *  Unset = the original fixed 40% (clamped 110-320px) default. */
+		camWidth?: number;
 	}
 	| {
 		/** Button grid built from the .g files in a macros folder. */

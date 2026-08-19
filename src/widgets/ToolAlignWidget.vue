@@ -1,7 +1,7 @@
 <template>
-  <div class="ta-root fill-height d-flex flex-row" :class="{ 'ta-frozen': disabledNow }">
+  <div ref="rootRef" class="ta-root fill-height d-flex flex-row" :class="{ 'ta-frozen': disabledNow }">
     <!-- Camera with crosshair / target overlay -->
-    <div class="ta-cam flex-shrink-0">
+    <div ref="camRef" class="ta-cam flex-shrink-0" :style="camStyle">
       <div v-if="!widget.url" class="ta-noimg text-caption text-medium-emphasis pa-2">
         {{ $t("plugins.flexibleLayouts.toolAlign.noUrl") }}
       </div>
@@ -16,6 +16,12 @@
         <div class="ta-dot" />
       </div>
     </div>
+
+    <!-- Drag handle between the camera and controls columns - lets the operator make the camera
+         image bigger/smaller instead of being stuck with a fixed 40% split. -->
+    <div class="ta-divider flex-shrink-0" :class="{ 'ta-divider-active': draggingDivider }"
+         role="separator" aria-orientation="vertical" :title="$t('plugins.flexibleLayouts.toolAlign.dragResize')"
+         @mousedown="startDrag" @touchstart="startDrag" />
 
     <!-- Controls + offsets table, stacked in their own scrollable column to the right of the
          camera - was a single top-to-bottom column with the camera squeezed in above everything
@@ -148,6 +154,57 @@ const machineStore = useMachineStore();
 const uiStore = useUiStore();
 
 const disabledNow = computed(() => props.disabled || uiStore.uiFrozen);
+
+// --- Draggable camera/controls divider -----------------------------------------
+// Undragged widgets keep the original CSS default (40%, clamped 110-320px) via the .ta-cam class;
+// once dragged, an explicit pixel width takes over (persisted on the widget itself, the same direct-
+// mutation pattern already used for cameraX/cameraY/referenceTool/invertOffsets below) and overrides
+// the class's max-width, which would otherwise still cap an inline flex-basis.
+const rootRef = ref<HTMLElement | null>(null);
+const camRef = ref<HTMLElement | null>(null);
+const camWidthPx = ref<number | null>(props.widget.camWidth ?? null);
+const camStyle = computed(() => (camWidthPx.value != null ? { flex: `0 0 ${camWidthPx.value}px`, maxWidth: "none" } : {}));
+const draggingDivider = ref(false);
+const CAM_MIN_PX = 110; // matches .ta-cam's own CSS min-width, so the two never fight each other
+let dragStartX = 0;
+let dragStartWidth = 0;
+let dragMaxPx = 0;
+
+function clientXOf(e: MouseEvent | TouchEvent): number | null {
+  if ("touches" in e) return e.touches[0]?.clientX ?? null;
+  return e.clientX;
+}
+function startDrag(e: MouseEvent | TouchEvent): void {
+  const root = rootRef.value, cam = camRef.value;
+  const x = clientXOf(e);
+  if (!root || !cam || x == null) return;
+  draggingDivider.value = true;
+  dragStartX = x;
+  dragStartWidth = cam.getBoundingClientRect().width;
+  // Leave at least 150px for the controls column regardless of how wide the whole widget is.
+  dragMaxPx = Math.max(CAM_MIN_PX, root.getBoundingClientRect().width - 150);
+  window.addEventListener("mousemove", onDrag);
+  window.addEventListener("mouseup", stopDrag);
+  window.addEventListener("touchmove", onDrag, { passive: false });
+  window.addEventListener("touchend", stopDrag);
+  e.preventDefault();
+}
+function onDrag(e: MouseEvent | TouchEvent): void {
+  if (!draggingDivider.value) return;
+  const x = clientXOf(e);
+  if (x == null) return;
+  camWidthPx.value = Math.min(dragMaxPx, Math.max(CAM_MIN_PX, dragStartWidth + (x - dragStartX)));
+  if (e.cancelable) e.preventDefault();
+}
+function stopDrag(): void {
+  if (!draggingDivider.value) return;
+  draggingDivider.value = false;
+  window.removeEventListener("mousemove", onDrag);
+  window.removeEventListener("mouseup", stopDrag);
+  window.removeEventListener("touchmove", onDrag);
+  window.removeEventListener("touchend", stopDrag);
+  if (camWidthPx.value != null) props.widget.camWidth = Math.round(camWidthPx.value);
+}
 
 // --- Camera + overlay ---------------------------------------------------------
 const tick = ref(0);
@@ -379,7 +436,15 @@ onMounted(() => {
   const ms = props.widget.refreshMs ?? 0;
   if (ms > 0) timer = setInterval(() => { tick.value = Date.now(); }, ms);
 });
-onBeforeUnmount(() => { if (timer) clearInterval(timer); });
+onBeforeUnmount(() => {
+  if (timer) clearInterval(timer);
+  // Safety net if the widget unmounts mid-drag (e.g. the layout is edited while dragging) - stopDrag()
+  // already removes these on a normal mouseup/touchend, so this is a no-op in the common case.
+  window.removeEventListener("mousemove", onDrag);
+  window.removeEventListener("mouseup", stopDrag);
+  window.removeEventListener("touchmove", onDrag);
+  window.removeEventListener("touchend", stopDrag);
+});
 </script>
 
 <style scoped>
@@ -395,6 +460,15 @@ onBeforeUnmount(() => { if (timer) clearInterval(timer); });
 }
 .ta-img { max-width: 100%; max-height: 100%; display: block; }
 .ta-noimg { text-align: center; }
+
+/* Wider than it looks (a real 6px bar is a hard target to grab) - the ::after pseudo-element extends
+   the actual hit area another 4px into each neighbour without changing visible layout width. */
+.ta-divider {
+  width: 6px; position: relative; cursor: col-resize; touch-action: none;
+  background: rgba(127, 127, 127, 0.15);
+}
+.ta-divider::after { content: ""; position: absolute; inset: 0 -4px; }
+.ta-divider:hover, .ta-divider-active { background: rgba(var(--v-theme-primary), 0.5); }
 
 .ta-controls { flex: 1 1 auto; min-width: 0; overflow-y: auto; }
 

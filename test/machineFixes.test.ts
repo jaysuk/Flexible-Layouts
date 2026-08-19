@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { mountInDwc } from "dwc-plugin-test-kit";
 
 import { createDefaultWidget } from "../src/model/document";
@@ -54,5 +54,87 @@ describe("toolAlign widget - step-distance select", () => {
 			{ title: "0.5 mm", value: 0.5 },
 			{ title: "1 mm", value: 1 },
 		]);
+	});
+});
+
+describe("toolAlign widget - draggable camera/controls divider", () => {
+	// happy-dom has no real layout engine (every element's getBoundingClientRect() is all zeros by
+	// default), so the root/camera widths the drag math depends on are stubbed explicitly here.
+	function stubRects(rootWidth: number, camWidth: number) {
+		const spy = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect");
+		spy.mockImplementation(function (this: HTMLElement) {
+			const width = this.classList.contains("ta-root") ? rootWidth : camWidth;
+			return { width, height: 0, top: 0, left: 0, right: width, bottom: 0, x: 0, y: 0, toJSON() { return {}; } };
+		});
+		return spy;
+	}
+
+	it("applies an inline flex-basis (overriding the CSS max-width) when the widget already has a saved camWidth", () => {
+		const widget = { ...createDefaultWidget("toolAlign"), camWidth: 250 };
+		const w = mountInDwc(WidgetView, { props: { widget } });
+		const cam = w.find(".ta-cam");
+		// Vue expands the "flex" shorthand into its longhand properties when rendering :style.
+		expect(cam.attributes("style")).toContain("flex-basis: 250px");
+		expect(cam.attributes("style")).toContain("max-width: none");
+	});
+
+	it("has no inline style at all when camWidth was never set (falls back to the original CSS default)", () => {
+		const w = mountInDwc(WidgetView, { props: { widget: createDefaultWidget("toolAlign") } });
+		const cam = w.find(".ta-cam");
+		expect(cam.attributes("style") ?? "").toBe("");
+	});
+
+	it("dragging the divider persists the new width onto the widget itself, clamped within bounds", async () => {
+		const spy = stubRects(600, 200); // root 600px wide, camera starts at 200px
+		try {
+			const widget = createDefaultWidget("toolAlign");
+			const w = mountInDwc(WidgetView, { props: { widget } });
+			const divider = w.find(".ta-divider");
+
+			await divider.trigger("mousedown", { clientX: 100 });
+			window.dispatchEvent(new MouseEvent("mousemove", { clientX: 150 })); // +50px right
+			window.dispatchEvent(new MouseEvent("mouseup"));
+			await w.vm.$nextTick();
+
+			expect(widget.camWidth).toBe(250); // 200 + 50, well within the 110..450 clamp range
+		} finally {
+			spy.mockRestore();
+		}
+	});
+
+	it("clamps to the minimum width instead of collapsing to nothing", async () => {
+		const spy = stubRects(600, 200);
+		try {
+			const widget = createDefaultWidget("toolAlign");
+			const w = mountInDwc(WidgetView, { props: { widget } });
+			const divider = w.find(".ta-divider");
+
+			await divider.trigger("mousedown", { clientX: 100 });
+			window.dispatchEvent(new MouseEvent("mousemove", { clientX: -1000 })); // drag way past the left edge
+			window.dispatchEvent(new MouseEvent("mouseup"));
+			await w.vm.$nextTick();
+
+			expect(widget.camWidth).toBe(110); // CAM_MIN_PX
+		} finally {
+			spy.mockRestore();
+		}
+	});
+
+	it("clamps to leave at least 150px for the controls column instead of swallowing the whole widget", async () => {
+		const spy = stubRects(600, 200); // max = 600 - 150 = 450
+		try {
+			const widget = createDefaultWidget("toolAlign");
+			const w = mountInDwc(WidgetView, { props: { widget } });
+			const divider = w.find(".ta-divider");
+
+			await divider.trigger("mousedown", { clientX: 100 });
+			window.dispatchEvent(new MouseEvent("mousemove", { clientX: 5000 })); // drag way past the right edge
+			window.dispatchEvent(new MouseEvent("mouseup"));
+			await w.vm.$nextTick();
+
+			expect(widget.camWidth).toBe(450);
+		} finally {
+			spy.mockRestore();
+		}
 	});
 });

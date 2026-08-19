@@ -893,6 +893,7 @@
 		"empty": "No tools defined."
 	},
 	"toolAlign": {
+		"dragResize": "Drag to resize the camera",
 		"noUrl": "Set a camera URL in this widget's settings.",
 		"empty": "No tools defined.",
 		"selectTool": "Select a tool first.",
