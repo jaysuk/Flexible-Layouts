@@ -74,7 +74,14 @@ describe("millimetresPerUnit", () => {
 	// to a naive check but are really the 96px/inch guess, and getting either wrong suppresses the one
 	// warning that stands between the operator and a part cut at 25.4x the intended scale.
 	it("a percentage width is NOT a declared size - it describes the container, not the part", () => {
-		for (const args of [["50%", "30%", null], ["50%", "30%", "0 0 200 100"]] as const) {
+		// Annotated as a real tuple type rather than `as const`: spreading a UNION of readonly tuples
+		// into a call is something TypeScript refuses outright ("a spread argument must either have a
+		// tuple type or be passed to a rest parameter").
+		const cases: Array<[string, string, string | null]> = [
+			["50%", "30%", null],
+			["50%", "30%", "0 0 200 100"],
+		];
+		for (const args of cases) {
 			const result = millimetresPerUnit(...args);
 			expect(result.declared).toBe(false);
 			expect(result.warning).toBeTruthy();

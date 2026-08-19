@@ -2,24 +2,32 @@ import { describe, expect, it, vi } from "vitest";
 import { mountInDwc } from "dwc-plugin-test-kit";
 
 import { createDefaultWidget } from "../src/model/document";
+import type { Widget } from "../src/model/document";
 import { describeWidget, FREEFORM_WIDGETS } from "../src/widgets/registry";
 import WidgetView from "../src/widgets/WidgetView.vue";
 
+/** createDefaultWidget returns the whole `Widget` union, so reading a variant's own field off it
+ *  (label, camWidth, ...) is a type error. Tests here always know which variant they asked for, so
+ *  narrow once here rather than casting at every call site. */
+function defaultWidget<T extends Widget["type"]>(type: T): Extract<Widget, { type: T }> {
+	return createDefaultWidget(type) as Extract<Widget, { type: T }>;
+}
+
 describe("extruder widget - no redundant default label", () => {
 	it("has no default label, so the widget's own label span doesn't render", () => {
-		const widget = createDefaultWidget("extruder");
+		const widget = defaultWidget("extruder");
 		expect(widget.label).toBe("");
 		const w = mountInDwc(WidgetView, { props: { widget } });
 		expect(w.find(".ex-label").exists()).toBe(false);
 	});
 
 	it("the chrome title still falls back to the translated default (not blank)", () => {
-		const widget = createDefaultWidget("extruder");
+		const widget = defaultWidget("extruder");
 		expect(describeWidget(widget).title).toBe("plugins.flexibleLayouts.widgets.extruder");
 	});
 
 	it("a user-set label still renders on the widget itself", () => {
-		const widget = { ...createDefaultWidget("extruder"), label: "Extruder 2" };
+		const widget = { ...defaultWidget("extruder"), label: "Extruder 2" };
 		const w = mountInDwc(WidgetView, { props: { widget } });
 		expect(w.find(".ex-label").text()).toBe("Extruder 2");
 	});
@@ -45,7 +53,7 @@ describe("toolAlign widget - step-distance select", () => {
 	// see the CSS comment in ToolAlignWidget.vue. This pins the underlying data the fix has to keep
 	// working for: every step distance renders with its full, untruncated "N mm" title.
 	it("offers every configured jog step with its full, untruncated label", () => {
-		const w = mountInDwc(WidgetView, { props: { widget: createDefaultWidget("toolAlign") } });
+		const w = mountInDwc(WidgetView, { props: { widget: defaultWidget("toolAlign") } });
 		const select = w.findComponent({ name: "VSelect" });
 		expect(select.props("items")).toEqual([
 			{ title: "0.01 mm", value: 0.01 },
@@ -70,7 +78,7 @@ describe("toolAlign widget - draggable camera/controls divider", () => {
 	}
 
 	it("applies an inline flex-basis (overriding the CSS max-width) when the widget already has a saved camWidth", () => {
-		const widget = { ...createDefaultWidget("toolAlign"), camWidth: 250 };
+		const widget = { ...defaultWidget("toolAlign"), camWidth: 250 };
 		const w = mountInDwc(WidgetView, { props: { widget } });
 		const cam = w.find(".ta-cam");
 		// Vue expands the "flex" shorthand into its longhand properties when rendering :style.
@@ -79,7 +87,7 @@ describe("toolAlign widget - draggable camera/controls divider", () => {
 	});
 
 	it("has no inline style at all when camWidth was never set (falls back to the original CSS default)", () => {
-		const w = mountInDwc(WidgetView, { props: { widget: createDefaultWidget("toolAlign") } });
+		const w = mountInDwc(WidgetView, { props: { widget: defaultWidget("toolAlign") } });
 		const cam = w.find(".ta-cam");
 		expect(cam.attributes("style") ?? "").toBe("");
 	});
@@ -87,7 +95,7 @@ describe("toolAlign widget - draggable camera/controls divider", () => {
 	it("dragging the divider persists the new width onto the widget itself, clamped within bounds", async () => {
 		const spy = stubRects(600, 200); // root 600px wide, camera starts at 200px
 		try {
-			const widget = createDefaultWidget("toolAlign");
+			const widget = defaultWidget("toolAlign");
 			const w = mountInDwc(WidgetView, { props: { widget } });
 			const divider = w.find(".ta-divider");
 
@@ -105,7 +113,7 @@ describe("toolAlign widget - draggable camera/controls divider", () => {
 	it("clamps to the minimum width instead of collapsing to nothing", async () => {
 		const spy = stubRects(600, 200);
 		try {
-			const widget = createDefaultWidget("toolAlign");
+			const widget = defaultWidget("toolAlign");
 			const w = mountInDwc(WidgetView, { props: { widget } });
 			const divider = w.find(".ta-divider");
 
@@ -123,7 +131,7 @@ describe("toolAlign widget - draggable camera/controls divider", () => {
 	it("clamps to leave at least 150px for the controls column instead of swallowing the whole widget", async () => {
 		const spy = stubRects(600, 200); // max = 600 - 150 = 450
 		try {
-			const widget = createDefaultWidget("toolAlign");
+			const widget = defaultWidget("toolAlign");
 			const w = mountInDwc(WidgetView, { props: { widget } });
 			const divider = w.find(".ta-divider");
 

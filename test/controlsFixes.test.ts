@@ -6,6 +6,12 @@ import { createDefaultWidget } from "../src/model/document";
 import type { Widget } from "../src/model/document";
 import WidgetView from "../src/widgets/WidgetView.vue";
 
+/** createDefaultWidget returns the whole `Widget` union, so reading a variant's own field off it
+ *  (xySteps, zSteps, ...) is a type error. These tests always know which variant they asked for. */
+function defaultWidget<T extends Widget["type"]>(type: T): Extract<Widget, { type: T }> {
+	return createDefaultWidget(type) as Extract<Widget, { type: T }>;
+}
+
 // The kit's useInputDialog stub auto-resolves null (nothing to type into). Override it here so the
 // editStep tests below can drive a specific "typed" answer.
 let nextNumericAnswer: number | null = null;
@@ -157,7 +163,7 @@ describe("jog widget - motors off and step editing", () => {
 
 	it("right-click on a step updates the saved xySteps array with the typed answer", async () => {
 		nextNumericAnswer = 42;
-		const widget = createDefaultWidget("jog");
+		const widget = defaultWidget("jog");
 		const w = mount(widget);
 		await w.find(".jog-sector").trigger("contextmenu");
 		await flushPromises();
@@ -167,7 +173,7 @@ describe("jog widget - motors off and step editing", () => {
 
 	it("right-click on a Z step updates the saved zSteps array", async () => {
 		nextNumericAnswer = 3;
-		const widget = createDefaultWidget("jog");
+		const widget = defaultWidget("jog");
 		const w = mount(widget);
 		await w.find(".jog-zbtn").trigger("contextmenu");
 		await flushPromises();
@@ -206,7 +212,7 @@ describe("octopusJog widget - motors off, DRO and step editing", () => {
 
 	it("right-click on a step updates the saved xySteps array with the typed answer", async () => {
 		nextNumericAnswer = 7;
-		const widget = createDefaultWidget("octopusJog");
+		const widget = defaultWidget("octopusJog");
 		const w = mount(widget);
 		await w.find(".oct-sector").trigger("contextmenu");
 		await flushPromises();

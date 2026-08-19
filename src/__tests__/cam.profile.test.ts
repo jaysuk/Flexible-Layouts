@@ -126,7 +126,9 @@ describe("profile", () => {
 		// that rather than letting it propagate as an uncaught exception or, worse, the old upstream
 		// behaviour of silently emitting "0" (a feed move to the work origin at cut depth).
 		const bad: Polyline = { points: [[0, 0], [Infinity, 0], [10, 10], [0, 10]], closed: true };
-		let result;
+		// Explicitly typed: a bare `let result;` is implicitly `any`, which silently makes the
+		// callback parameter below `any` too and fails CI's stricter type-check.
+		let result: ReturnType<typeof profile> | undefined;
 		expect(() => (result = profile([bad], baseParams()))).not.toThrow();
 		expect(result!.summary).not.toBe("Nothing to cut"); // it reached the try block, not the empty-input path
 		expect(result!.warnings.some((w) => w.includes("refused"))).toBe(true);

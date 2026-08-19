@@ -7,7 +7,10 @@ function fakeIo(files: Record<string, string>, dirs: Record<string, Array<{ name
 	const sentCodes: Array<string> = [];
 	return {
 		io: {
-			getFileList: async (dir: string) => dirs[dir] ?? [],
+			// Padded out to a full FileListEntry (which also carries size/lastModified) so this
+			// satisfies MachineIO's real signature - the tests themselves only ever care about
+			// name/isDirectory, so those stay the only thing each case has to spell out.
+			getFileList: async (dir: string) => (dirs[dir] ?? []).map((e) => ({ ...e, size: 0, lastModified: null })),
 			downloadText: async (path: string) => {
 				if (!(path in files)) { throw new Error("not found"); }
 				return files[path];

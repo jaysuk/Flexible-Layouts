@@ -70,7 +70,10 @@ describe("cutLoopWithTabs", () => {
 		});
 		const triples = xyz(g.toString());
 		// centres at 50/150/250/350mm around the perimeter are the midpoints of each side.
-		for (const midpoint of [[50, 0], [100, 50], [50, 100], [0, 50]] as const) {
+		// Annotated rather than `as const`: the latter yields readonly tuples, which don't satisfy
+		// nearestZ's mutable [number, number] parameter.
+		const midpoints: Array<[number, number]> = [[50, 0], [100, 50], [50, 100], [0, 50]];
+		for (const midpoint of midpoints) {
 			expect(nearestZ(triples, midpoint)).toBeCloseTo(-1, 6);
 		}
 	});
