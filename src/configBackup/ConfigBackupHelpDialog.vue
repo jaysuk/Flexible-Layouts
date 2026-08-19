@@ -91,12 +91,18 @@
 						and click <strong>Create app</strong>.</li>
 					<li>Choose <strong>Scoped access</strong>, pick an access type (App folder is the more
 						restrictive/safer option), name the app, and create it.</li>
-					<li>On the app's <strong>Permissions</strong> tab, enable <strong>files.content.write</strong>
-						and <strong>files.content.read</strong>, then click <strong>Submit</strong>.</li>
+					<li>On the app's <strong>Permissions</strong> tab, enable <strong>all four</strong> of
+						<strong>account_info.read</strong>, <strong>files.metadata.read</strong>,
+						<strong>files.content.read</strong> and <strong>files.content.write</strong>, then click
+						<strong>Submit</strong>. All four are needed: account_info.read for the Save button below,
+						files.metadata.read to list existing backups, and the content ones to upload and restore.</li>
 					<li>Back on the <strong>Settings</strong> tab, under <strong>OAuth 2</strong>, click
-						<strong>Generate</strong> next to <strong>Generated access token</strong> and copy it — this
-						is a long-lived token, no interactive sign-in needed, so it works fine from a plain-HTTP DWC
-						page.</li>
+						<strong>Generate</strong> next to <strong>Generated access token</strong> and copy it — no
+						interactive sign-in needed, so it works fine from a plain-HTTP DWC page. Do this
+						<em>after</em> setting the permissions above: a token only ever carries the scopes its app
+						had at the moment it was generated, so if you change permissions later you must come back
+						here and Generate a replacement token — the existing one keeps the old, wrong scopes and
+						will keep failing with a 401.</li>
 					<li>Paste it into <strong>Access token</strong> in the Dropbox section here and click
 						<strong>Save</strong>.</li>
 				</ol>
