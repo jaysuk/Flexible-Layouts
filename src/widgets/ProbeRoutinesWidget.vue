@@ -167,6 +167,7 @@ import {
 	type BoreTouches, type EdgeTouch,
 } from "../model/probing/routines";
 import { resolveOmPath } from "../util/omPath";
+import { sendCodeChecked } from "../util/codeReply";
 import { unhomedAxes } from "../util/homedCheck";
 import { WIDGET_PATCH_KEY } from "../util/widgetPatch";
 import UnhomedWarning from "./UnhomedWarning.vue";
@@ -210,6 +211,17 @@ const statusMessage = ref("");
 const statusType = ref<"success" | "error">("success");
 const busy = ref<string | null>(null);
 
+/**
+ * Reads a MACHINE coordinate - deliberately `machinePosition`, not `userPosition`: the object model
+ * documents machinePosition as "the machine position of the move being performed or of the last one"
+ * whereas userPosition "reflects the target position of the last move fed into the look-ahead
+ * buffer", i.e. where the machine was ASKED to go, which after a probe that stopped early on contact
+ * is not where it actually is. Only machinePosition reports a real measurement.
+ *
+ * The corollary is that these values are NOT valid targets for a plain G0/G1, which in G90 are
+ * interpreted in the active workplace coordinate system (and with tool offsets applied). Anything
+ * feeding a value from here back into a move must prefix it with G53 - see {@link moveToMachineXY}.
+ */
 function axisPosition(letter: "X" | "Y" | "Z"): number {
 	const arr = resolveOmPath(machineStore.model, "move.axes");
 	if (!Array.isArray(arr)) { return 0; }
@@ -217,12 +229,51 @@ function axisPosition(letter: "X" | "Y" | "Z"): number {
 	return a?.machinePosition ?? 0;
 }
 
-async function sendAndSettle(code: string): Promise<void> {
-	await machineStore.sendCode(code, false, false);
-	// The object model updates asynchronously as DWC's own poll cycle catches up - a short pause
-	// here keeps the immediate read-back below from racing that, same "best-effort" acceptance
-	// already used by BedTramWidget for reading a result straight after a completed motion command.
+/**
+ * A rapid to an absolute MACHINE XY position. G53 makes the coordinates on its own line machine
+ * coordinates, ignoring both the active WCS offset and any tool offset, and is explicitly documented
+ * as non-modal ("must be programmed on each line on which it is intended to be active"), hence one
+ * G53 per move line rather than one for the block.
+ */
+function moveToMachineXY(x: number, y: number): string {
+	return `G90\nG53 G0 X${fmtCoord(x)} Y${fmtCoord(y)}`;
+}
+
+function fmtCoord(n: number): string {
+	return String(Math.round(n * 1e6) / 1e6);
+}
+
+/** Every code this widget sends goes through here or {@link send} - RRF reports a refused probe
+ *  ("Error: Probe was not triggered during probing move") as a RESOLVED reply, so a bare sendCode
+ *  would let a failed touch fall through to reading back a stale position as if it were a result. */
+function send(code: string): Promise<string> {
+	return sendCodeChecked((c) => machineStore.sendCode(c, false, false), code);
+}
+
+/**
+ * The object model updates asynchronously as DWC's own poll cycle catches up, so the position read
+ * back straight after a probe can still be the PRE-probe one. `waitForModelUpdate()` resolves on the
+ * next full model update, which is the actual event being waited for - deterministic, and no slower
+ * than it has to be.
+ *
+ * Read as a plain property rather than called directly because it is not present on every DWC a
+ * plugin can be installed into (`plugin.json`'s `dwcVersion: "auto-major"` only resolves to "3.7" and
+ * cannot express a finer floor - the same constraint documented in composables/useFlexDisplay.ts).
+ * Where it is missing this falls back to the previous fixed pause, which is racy but no worse than
+ * what this widget already did.
+ */
+async function settle(): Promise<void> {
+	const store = machineStore as unknown as { waitForModelUpdate?: () => Promise<void> };
+	if (typeof store.waitForModelUpdate === "function") {
+		await store.waitForModelUpdate();
+		return;
+	}
 	await new Promise((resolve) => setTimeout(resolve, 350));
+}
+
+async function sendAndSettle(code: string): Promise<void> {
+	await send(code);
+	await settle();
 }
 
 function fail(e: unknown): void {
@@ -279,7 +330,7 @@ async function probeToolAndApply(): Promise<void> {
 		await sendAndSettle(buildTouch({ probeIndex: toolLengthProbeIndex.value, axis: "Z", direction: -1, searchDistance: searchDistance.value, backoff: backoff.value, feedFast: feedFast.value, feedSlow: feedSlow.value }));
 		const toolProbedZ = axisPosition("Z");
 		const offset = computeToolLengthOffset(masterProbedZ.value, toolProbedZ);
-		confirm(buildToolOffset(toolNumber.value, offset), () => machineStore.sendCode(buildToolOffset(toolNumber.value, offset), false, false).then(() => {}));
+		confirm(buildToolOffset(toolNumber.value, offset), () => send(buildToolOffset(toolNumber.value, offset)).then(() => {}));
 	} catch (e) {
 		fail(e);
 	} finally {
@@ -294,7 +345,10 @@ const rotationCentreX = ref(0);
 const rotationCentreY = ref(0);
 const skewTouch1 = ref<EdgeTouch | null>(null);
 const skewTouch2 = ref<EdgeTouch | null>(null);
-const skewAngle = computed(() => (skewTouch1.value && skewTouch2.value) ? computeSkewAngle(skewTouch1.value, skewTouch2.value) : null);
+// skewAxis is passed through because the sign of the result depends on it - see computeSkewAngle.
+const skewAngle = computed(() => (skewTouch1.value && skewTouch2.value)
+	? computeSkewAngle(skewTouch1.value, skewTouch2.value, skewAxis.value)
+	: null);
 
 async function touchSkew(which: 1 | 2): Promise<void> {
 	if (workpieceProbeIndex.value === null) { return; }
@@ -314,7 +368,7 @@ async function touchSkew(which: 1 | 2): Promise<void> {
 function applyRotation(): void {
 	if (skewAngle.value === null) { return; }
 	const cmd = buildRotation(skewAngle.value, rotationCentreX.value, rotationCentreY.value);
-	confirm(cmd, () => machineStore.sendCode(cmd, false, false).then(() => {}));
+	confirm(cmd, () => send(cmd).then(() => {}));
 }
 
 // --- Bore / boss ----------------------------------------------------------------------------------------
@@ -335,7 +389,10 @@ async function touchBore(which: keyof BoreTouches): Promise<void> {
 		await sendAndSettle(buildTouch({ probeIndex: workpieceProbeIndex.value, axis, direction, searchDistance: searchDistance.value, backoff: backoff.value, feedFast: feedFast.value, feedSlow: feedSlow.value }));
 		boreTouches.value = { ...boreTouches.value, [which]: axisPosition(axis) };
 		// Return to the common start point so all four touches are referenced from the same spot.
-		await sendAndSettle(`G90\nG0 X${start.x} Y${start.y}`);
+		// `start` came from axisPosition (machine coords), so this must move in machine coords too -
+		// a plain G0 would read them as workplace coordinates and fly to the wrong place by exactly
+		// the active WCS offset.
+		await sendAndSettle(moveToMachineXY(start.x, start.y));
 	} catch (e) {
 		fail(e);
 	} finally {
@@ -345,8 +402,10 @@ async function touchBore(which: keyof BoreTouches): Promise<void> {
 
 function applyBoreCentre(): void {
 	if (!boreCentre.value) { return; }
-	const cmd = `G90\nG0 X${boreCentre.value.x} Y${boreCentre.value.y}\n${buildSetWorkOffset("X", 0)}\n${buildSetWorkOffset("Y", 0)}`;
-	confirm(cmd, () => machineStore.sendCode(cmd, false, false).then(() => {}));
+	// The centre is the mean of four machinePosition readings, so the move to it is a machine-coordinate
+	// move; the G10 L20s that follow then zero the WCS at wherever the machine physically ended up.
+	const cmd = `${moveToMachineXY(boreCentre.value.x, boreCentre.value.y)}\n${buildSetWorkOffset("X", 0)}\n${buildSetWorkOffset("Y", 0)}`;
+	confirm(cmd, () => send(cmd).then(() => {}));
 }
 
 // --- Edge -----------------------------------------------------------------------------------------------
@@ -371,7 +430,7 @@ async function touchEdge(): Promise<void> {
 function applyEdgeOffset(): void {
 	if (edgeTouched.value === null) { return; }
 	const cmd = buildSetWorkOffset(edgeAxis.value, edgeTargetValue.value);
-	confirm(cmd, () => machineStore.sendCode(cmd, false, false).then(() => {}));
+	confirm(cmd, () => send(cmd).then(() => {}));
 }
 </script>
 

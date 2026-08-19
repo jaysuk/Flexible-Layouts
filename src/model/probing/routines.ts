@@ -60,7 +60,14 @@ export function buildToolOffset(toolNumber: number, value: number): string {
 	return `G10 L1 P${toolNumber} Z${fmt(value)}`;
 }
 
-/** G68 - apply coordinate rotation about (centreX, centreY) in the current WCS. */
+/**
+ * G68 - apply coordinate rotation about (centreX, centreY) in the current WCS.
+ *
+ * `R` is positive-anticlockwise, and RRF applies it as `machine = R(+angle) · programmed`
+ * (GCodes3.cpp's `RotateCoordinates`: `newX = dx·cos − dy·sin + cx`, the standard CCW matrix). So
+ * passing the workpiece's own +θ rotation - which is what {@link computeSkewAngle} returns - rotates
+ * nominally-square programmed geometry onto the physically skewed part, rather than away from it.
+ */
 export function buildRotation(angleDeg: number, centreX: number, centreY: number): string {
 	return `G68 X${fmt(centreX)} Y${fmt(centreY)} R${fmt(angleDeg)}`;
 }
@@ -75,15 +82,30 @@ export interface EdgeTouch {
 /**
  * Two touches on the SAME physical edge give its rotation angle independent of probe-tip radius -
  * touching the same edge twice cancels the tip-radius error exactly (it's a constant offset present
- * in both readings). Returns degrees; 0 means the edge already runs parallel to the probed axis.
+ * in both readings). Returns the workpiece's rotation in degrees, positive = anticlockwise viewed
+ * from above, which is the sign convention `G68 R` uses; 0 means the part is square to the axes.
+ *
+ * `probedAxis` is the axis the PROBE MOVED ALONG to touch the edge, and it is load-bearing, not
+ * informational. The edge itself runs perpendicular to it, so the two cases carry opposite signs:
+ *
+ * - probing Y (edge runs along X): a part rotated +θ turns the edge direction (1,0) into
+ *   (cos θ, sin θ), so `atan2(dAcross, dAlong) = atan2(sin θ, cos θ) = +θ`.
+ * - probing X (edge runs along Y): the same +θ turns the edge direction (0,1) into
+ *   (−sin θ, cos θ), so `atan2(dAcross, dAlong) = atan2(−sin θ, cos θ) = −θ`.
+ *
+ * Taking the raw atan2 for both (as this did before) meant the two probe axes reported opposite
+ * signs for the same physical skew, so one of them fed `G68` a rotation in the wrong direction -
+ * doubling the misalignment instead of removing it. Negating the X case puts both on the +θ
+ * convention that {@link buildRotation} needs.
  */
-export function computeSkewAngle(touch1: EdgeTouch, touch2: EdgeTouch): number {
+export function computeSkewAngle(touch1: EdgeTouch, touch2: EdgeTouch, probedAxis: "X" | "Y"): number {
 	const dAlong = touch2.along - touch1.along;
 	const dAcross = touch2.across - touch1.across;
 	if (dAlong === 0) {
 		return 0;
 	}
-	return Math.atan2(dAcross, dAlong) * (180 / Math.PI);
+	const raw = Math.atan2(dAcross, dAlong) * (180 / Math.PI);
+	return probedAxis === "X" ? -raw : raw;
 }
 
 export interface BoreTouches {

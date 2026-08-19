@@ -50,17 +50,54 @@ describe("buildSetWorkOffset / buildToolOffset / buildRotation", () => {
 });
 
 describe("computeSkewAngle", () => {
+	/**
+	 * Simulates two touches on one edge of a workpiece rotated `theta` degrees anticlockwise, for a
+	 * given probe axis. Deriving the touches from the rotation (rather than hand-picking numbers)
+	 * is what makes the sign assertions below meaningful: the expected answer is the theta that went
+	 * in, whichever axis was probed.
+	 */
+	function touchesFor(theta: number, probedAxis: "X" | "Y", span = 50) {
+		const rad = theta * (Math.PI / 180);
+		// The edge runs perpendicular to the probed axis: probing X means the edge runs along Y.
+		const dir = probedAxis === "X"
+			? { x: -Math.sin(rad), y: Math.cos(rad) }   // nominal (0,1) rotated by +theta
+			: { x: Math.cos(rad), y: Math.sin(rad) };   // nominal (1,0) rotated by +theta
+		const alongOf = (p: { x: number; y: number }) => (probedAxis === "X" ? p.y : p.x);
+		const acrossOf = (p: { x: number; y: number }) => (probedAxis === "X" ? p.x : p.y);
+		const p1 = { x: 0, y: 0 };
+		const p2 = { x: dir.x * span, y: dir.y * span };
+		return [
+			{ along: alongOf(p1), across: acrossOf(p1) },
+			{ along: alongOf(p2), across: acrossOf(p2) },
+		] as const;
+	}
+
+	// toBeCloseTo, not toBe: negating the X case yields -0, which is === 0 but fails Object.is. It has
+	// no effect on the emitted G-code (String(-0) is "0"), so the value is what matters here.
 	it("is 0 for two touches with the same 'across' reading (edge parallel to the axis)", () => {
-		expect(computeSkewAngle({ along: 0, across: 5 }, { along: 50, across: 5 })).toBe(0);
+		expect(computeSkewAngle({ along: 0, across: 5 }, { along: 50, across: 5 }, "Y")).toBeCloseTo(0, 10);
+		expect(computeSkewAngle({ along: 0, across: 5 }, { along: 50, across: 5 }, "X")).toBeCloseTo(0, 10);
 	});
-	it("computes a positive angle for a CCW-rotated edge", () => {
-		// Edge runs mostly in Y but drifts +1mm in X over 100mm of Y - a small positive skew.
-		const angle = computeSkewAngle({ along: 0, across: 5 }, { along: 100, across: 6 });
-		expect(angle).toBeCloseTo(Math.atan2(1, 100) * (180 / Math.PI), 6);
+
+	/**
+	 * The regression test for a real sign bug: the raw atan2 of (across, along) reports OPPOSITE
+	 * signs for the two probe axes, because probing X measures an edge running along Y (whose
+	 * nominal direction vector is (0,1)) while probing Y measures one running along X ((1,0)).
+	 * Feeding the unflipped X-axis result to G68 rotated the coordinate system the wrong way,
+	 * roughly doubling the misalignment instead of removing it.
+	 */
+	it("reports the SAME rotation for the same physical skew, whichever axis was probed", () => {
+		for (const theta of [3, -3, 0.25, -0.25, 12]) {
+			for (const axis of ["X", "Y"] as const) {
+				const [t1, t2] = touchesFor(theta, axis);
+				expect(computeSkewAngle(t1, t2, axis), `theta=${theta} probing ${axis}`).toBeCloseTo(theta, 6);
+			}
+		}
 	});
+
 	it("is independent of a constant tip-radius error added to both touches", () => {
-		const withoutTip = computeSkewAngle({ along: 0, across: 5 }, { along: 100, across: 6 });
-		const withTip = computeSkewAngle({ along: 0, across: 5 + 3 }, { along: 100, across: 6 + 3 });
+		const withoutTip = computeSkewAngle({ along: 0, across: 5 }, { along: 100, across: 6 }, "Y");
+		const withTip = computeSkewAngle({ along: 0, across: 5 + 3 }, { along: 100, across: 6 + 3 }, "Y");
 		expect(withTip).toBeCloseTo(withoutTip, 9);
 	});
 });
