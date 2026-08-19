@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
 import { describe, expect, it, vi } from "vitest";
 import { mountInDwc, setConnected } from "dwc-plugin-test-kit";
 
@@ -116,5 +119,44 @@ describe("config backup panels mount without throwing", () => {
 	it("mounts ConfigBackupHelpDialog open", () => {
 		const wrapper = mountInDwc(ConfigBackupHelpDialog, { props: { modelValue: true } });
 		expect(wrapper.exists()).toBe(true);
+	});
+});
+
+/**
+ * The setup walkthrough for every cloud destination lives in the help dialog, but its only entry
+ * point used to be a single "?" icon in the page header - nowhere near the fields being filled in,
+ * and giving no hint the instructions existed. Each destination now links to its own section.
+ */
+describe("cloud destination setup links", () => {
+	const DESTINATIONS = ["duet", "github", "drive", "dropbox", "webdav"];
+
+	// Read the sources rather than the mounted DOM: Vuetify teleports v-dialog content out of the
+	// wrapper entirely, and v-expansion-panel-text bodies are rendered lazily (so the links don't
+	// exist until a human expands that panel). Neither shows up in wrapper.html(), which would make a
+	// DOM-based version of this test pass vacuously. The failure actually worth catching is a link
+	// pointing at a section id that has no matching anchor - it would silently just not scroll - and
+	// that is a pure source-level contract between these two files.
+	function read(relative: string): string {
+		return readFileSync(fileURLToPath(new URL(relative, import.meta.url)), "utf8");
+	}
+
+	const emittedSections = [...read("../src/configBackup/CloudPanel.vue")
+		.matchAll(/emit\('help',\s*'([a-z]+)'\)/g)].map((m) => m[1]);
+	const anchoredSections = [...read("../src/configBackup/ConfigBackupHelpDialog.vue")
+		.matchAll(/data-help-section="([a-z]+)"/g)].map((m) => m[1]);
+
+	it("every cloud destination offers a link to its own setup instructions", () => {
+		expect(emittedSections).toEqual(DESTINATIONS);
+	});
+
+	it("every section a destination links to actually exists in the help dialog", () => {
+		for (const id of emittedSections) {
+			expect(anchoredSections, `CloudPanel links to "${id}" but the help dialog has no such anchor`)
+				.toContain(id);
+		}
+	});
+
+	it("the help dialog anchors every destination, so none is left unreachable by a link", () => {
+		expect([...anchoredSections].sort()).toEqual([...DESTINATIONS].sort());
 	});
 });

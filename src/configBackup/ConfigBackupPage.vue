@@ -4,7 +4,9 @@
 			<v-icon size="large" class="me-3">mdi-archive-arrow-down</v-icon>
 			<div class="text-title-medium">{{ $t("plugins.flexibleLayouts.configBackup.title") }}</div>
 			<v-spacer />
-			<v-btn icon="mdi-help-circle-outline" variant="text" :title="$t('plugins.flexibleLayouts.help.title')" @click="helpOpen = true" />
+			<!-- The generic entry point clears any previous section so it always opens at the top. -->
+			<v-btn icon="mdi-help-circle-outline" variant="text" :title="$t('plugins.flexibleLayouts.help.title')"
+				   @click="openHelpAt('')" />
 		</div>
 
 		<v-tabs v-model="tab" class="mb-3">
@@ -16,10 +18,10 @@
 		<v-window v-model="tab">
 			<v-window-item value="create"><BackupCreatePanel :active="tab === 'create'" /></v-window-item>
 			<v-window-item value="restore"><RestorePanel :active="tab === 'restore'" /></v-window-item>
-			<v-window-item value="cloud"><CloudPanel /></v-window-item>
+			<v-window-item value="cloud"><CloudPanel @help="openHelpAt" /></v-window-item>
 		</v-window>
 
-		<ConfigBackupHelpDialog v-model="helpOpen" />
+		<ConfigBackupHelpDialog v-model="helpOpen" :section="helpSection" />
 	</v-container>
 </template>
 
@@ -33,4 +35,12 @@ import ConfigBackupHelpDialog from "./ConfigBackupHelpDialog.vue";
 
 const tab = ref("create");
 const helpOpen = ref(false);
+/** Which destination's instructions to scroll to, when the dialog was opened from a specific
+ *  destination's "Setup instructions" link rather than the generic "?" in the header. */
+const helpSection = ref<string | undefined>(undefined);
+
+function openHelpAt(section: string): void {
+	helpSection.value = section;
+	helpOpen.value = true;
+}
 </script>

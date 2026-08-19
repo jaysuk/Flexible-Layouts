@@ -1520,6 +1520,7 @@
 			"otherMachinesNote": "Backups from your other machines are listed here too - useful if you've swapped a mainboard and need to restore this machine's old config onto the new one.",
 			"configIntro": "Configure each backup method here and save its credentials - the Create tab then just picks which one to use, and the Restore tab browses and restores from it.",
 			"browseInRestoreTab": "To browse and restore your backups from here, go to the Restore tab.",
+			"setupInstructions": "Setup instructions",
 			"duetHeading": "Duet backup service",
 			"githubHeading": "GitHub",
 			"driveHeading": "Google Drive",

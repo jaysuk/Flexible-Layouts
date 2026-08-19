@@ -8,7 +8,7 @@
 				<v-btn icon="mdi-close" variant="text" density="comfortable" @click="close" />
 			</v-card-title>
 
-			<v-card-text style="max-height: 72vh;">
+			<v-card-text ref="body" style="max-height: 72vh;">
 				<p>
 					<strong>Settings → Flexible Layouts → Backup &amp; restore config</strong> backs up the whole
 					machine (<code>sys</code>/<code>macros</code>/<code>filaments</code>, an object-model snapshot,
@@ -28,7 +28,7 @@
 				<p class="mb-1"><strong>Local (.zip)</strong> — always available. No setup: just pick it as the
 					destination on the Create tab and the zip downloads to your PC.</p>
 
-				<p class="mb-1"><strong>Duet backup service</strong></p>
+				<p class="mb-1" data-help-section="duet"><strong>Duet backup service</strong></p>
 				<ol class="mb-2 ps-4">
 					<li>Open the <strong>Duet backup service</strong> section.</li>
 					<li>If a <strong>Backup service URL</strong> field is shown, enter the service URL your
@@ -42,7 +42,7 @@
 				<p class="text-caption text-medium-emphasis mb-2">2 MB limit per backup (the service's own cap);
 					keeps the newest 5 backups per machine by default (configurable once signed in).</p>
 
-				<p class="mb-1"><strong>GitHub</strong></p>
+				<p class="mb-1" data-help-section="github"><strong>GitHub</strong></p>
 				<ol class="mb-2 ps-4">
 					<li>Go to
 						<a href="https://github.com/settings/tokens?type=beta" target="_blank" rel="noopener">github.com/settings/tokens</a>
@@ -65,7 +65,7 @@
 					(typed confirmation required) since it would publish your WiFi password to a permanently
 					indexed location.</p>
 
-				<p class="mb-1"><strong>Google Drive</strong></p>
+				<p class="mb-1" data-help-section="drive"><strong>Google Drive</strong></p>
 				<ol class="mb-2 ps-4">
 					<li>Needs DWC loaded over <strong>HTTPS</strong> (or <code>localhost</code>) — this is a Google
 						requirement, not something the plugin can work around on a plain-HTTP printer. Skip this one
@@ -84,30 +84,39 @@
 				<p class="text-caption text-medium-emphasis mb-2">Uses the <code>drive.file</code> scope only, so
 					the plugin can only ever see files it created itself, never your other Drive files.</p>
 
-				<p class="mb-1"><strong>Dropbox</strong></p>
+				<p class="mb-1" data-help-section="dropbox"><strong>Dropbox</strong></p>
+				<p class="text-caption text-medium-emphasis mb-2">
+					Order matters here. Set the permissions <em>before</em> you generate the token — see step 5.
+				</p>
 				<ol class="mb-2 ps-4">
 					<li>Go to the
 						<a href="https://www.dropbox.com/developers/apps" target="_blank" rel="noopener">Dropbox App Console</a>
 						and click <strong>Create app</strong>.</li>
-					<li>Choose <strong>Scoped access</strong>, pick an access type (App folder is the more
-						restrictive/safer option), name the app, and create it.</li>
-					<li>On the app's <strong>Permissions</strong> tab, enable <strong>all four</strong> of
-						<strong>account_info.read</strong>, <strong>files.metadata.read</strong>,
-						<strong>files.content.read</strong> and <strong>files.content.write</strong>, then click
-						<strong>Submit</strong>. All four are needed: account_info.read for the Save button below,
-						files.metadata.read to list existing backups, and the content ones to upload and restore.</li>
-					<li>Back on the <strong>Settings</strong> tab, under <strong>OAuth 2</strong>, click
-						<strong>Generate</strong> next to <strong>Generated access token</strong> and copy it — no
-						interactive sign-in needed, so it works fine from a plain-HTTP DWC page. Do this
-						<em>after</em> setting the permissions above: a token only ever carries the scopes its app
-						had at the moment it was generated, so if you change permissions later you must come back
-						here and Generate a replacement token — the existing one keeps the old, wrong scopes and
-						will keep failing with a 401.</li>
-					<li>Paste it into <strong>Access token</strong> in the Dropbox section here and click
-						<strong>Save</strong>.</li>
+					<li>Choose <strong>Scoped access</strong>, then pick an access type:
+						<strong>App folder</strong> is the safer option (this plugin can only ever see its own
+						folder); <strong>Full Dropbox</strong> also works if you prefer. Name the app and create it.</li>
+					<li>Open the app's <strong>Permissions</strong> tab and tick <strong>all four</strong> of these:
+						<ul class="mt-1 mb-1">
+							<li><strong>account_info.read</strong> — lets <strong>Save</strong> below check the token</li>
+							<li><strong>files.metadata.read</strong> — lets the <strong>Restore</strong> tab list your backups</li>
+							<li><strong>files.content.write</strong> — uploads the backup</li>
+							<li><strong>files.content.read</strong> — downloads it again when restoring</li>
+						</ul>
+						Miss any one and that feature alone fails, usually with a confusing
+						<code>401</code>. Click <strong>Submit</strong> when done.</li>
+					<li>Go to the <strong>Settings</strong> tab, find <strong>OAuth 2</strong> →
+						<strong>Generated access token</strong>, click <strong>Generate</strong>, and copy the token.
+						No sign-in popup is involved, so this works from a plain-HTTP DWC page.</li>
+					<li><strong>If you change the permissions later, you must click Generate again.</strong>
+						A token permanently keeps whatever permissions the app had at the moment it was created —
+						ticking a new box never updates a token you already made. This is the usual reason a
+						<code>401</code> keeps happening even after you think you have fixed the permissions:
+						the fix is a <em>new</em> token, not a new tick.</li>
+					<li>Paste the token into <strong>Access token</strong> in the Dropbox section here and click
+						<strong>Save</strong>. It should confirm your account name.</li>
 				</ol>
 
-				<p class="mb-1"><strong>WebDAV</strong> <span class="text-caption text-medium-emphasis">(Nextcloud, ownCloud, Synology, or any WebDAV server)</span></p>
+				<p class="mb-1" data-help-section="webdav"><strong>WebDAV</strong> <span class="text-caption text-medium-emphasis">(Nextcloud, ownCloud, Synology, or any WebDAV server)</span></p>
 				<ol class="mb-2 ps-4">
 					<li>Find your server's WebDAV URL — for Nextcloud/ownCloud it's typically
 						<code>https://your-server/remote.php/dav/files/USERNAME/</code>; for a Synology NAS, enable
@@ -184,8 +193,33 @@
 </template>
 
 <script setup lang="ts">
-defineProps<{ modelValue: boolean }>();
+import { nextTick, ref, watch } from "vue";
+
+/** `section` scrolls a named destination's instructions into view when the dialog opens - this is a
+ *  long document and every cloud destination's setup lives inside it, so opening it at the top from
+ *  a specific service's "Setup instructions" link would make the reader hunt for their own section. */
+const props = defineProps<{ modelValue: boolean; section?: string }>();
 const emit = defineEmits<{ "update:modelValue": [boolean] }>();
+
+const body = ref<{ $el?: HTMLElement } | HTMLElement | null>(null);
+
+// nextTick alone isn't enough: v-dialog mounts its content lazily, so on the very first open the
+// target element doesn't exist yet when the watcher fires. Retry across a couple of frames and give
+// up quietly - failing to scroll must never be worse than not linking at all.
+watch(() => [props.modelValue, props.section] as const, ([open, section]) => {
+	if (!open || !section) { return; }
+	let attempts = 0;
+	const tryScroll = (): void => {
+		const root = (body.value && "$el" in body.value ? body.value.$el : body.value) as HTMLElement | undefined;
+		const target = root?.querySelector<HTMLElement>(`[data-help-section="${section}"]`);
+		if (target) {
+			target.scrollIntoView({ block: "start", behavior: "smooth" });
+		} else if (++attempts < 5) {
+			requestAnimationFrame(tryScroll);
+		}
+	};
+	void nextTick(tryScroll);
+}, { immediate: true });
 
 function close(): void {
 	emit("update:modelValue", false);
