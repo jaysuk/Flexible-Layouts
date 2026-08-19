@@ -46,9 +46,10 @@
         <div class="ex-derived">{{ $t("plugins.flexibleLayouts.extruder.atFeed", { feed: derivedFeed }) }}</div>
       </template>
 
-      <div v-if="belowExtrudeTemp || belowRetractTemp" class="ex-cold-warning">
-        <v-icon size="14" class="mr-1">mdi-snowflake-alert</v-icon>
-        {{ $t("plugins.flexibleLayouts.extruder.coldWarning", { temp: hotendTemp!.toFixed(0) }) }}
+      <div v-if="belowExtrudeTemp || belowRetractTemp" class="ex-cold-warning"
+           :title="$t('plugins.flexibleLayouts.extruder.coldWarningFull', { temp: hotendTemp!.toFixed(0) })">
+        <v-icon size="14" class="mr-1 flex-shrink-0">mdi-snowflake-alert</v-icon>
+        <span class="text-truncate">{{ $t("plugins.flexibleLayouts.extruder.coldWarning", { temp: hotendTemp!.toFixed(0) }) }}</span>
       </div>
       <div class="d-flex ga-1 mt-1">
         <v-btn size="small" variant="tonal" :color="belowExtrudeTemp ? 'warning' : (widget.color || 'primary')" class="flex-grow-1" :disabled="disabledNow"
@@ -205,8 +206,11 @@ async function move(dir: number): Promise<void> {
   padding: 2px 4px; border-radius: 3px; text-decoration: underline dotted;
 }
 .ex-unit-toggle:hover, .ex-unit-toggle:focus-visible { background: rgba(var(--v-theme-on-surface), 0.08); opacity: 1; }
+/* Single line, truncated with an ellipsis (full text is on the title tooltip) - this used to wrap
+   onto two lines, which was enough extra height to push the Extrude/Retract buttons out of view and
+   force a scrollbar on a widget sized before this warning existed. */
 .ex-cold-warning {
   display: flex; align-items: center; font-size: 0.68em; font-weight: 600;
-  color: rgb(var(--v-theme-warning)); margin-top: 4px;
+  color: rgb(var(--v-theme-warning)); margin-top: 4px; min-width: 0; overflow: hidden;
 }
 </style>

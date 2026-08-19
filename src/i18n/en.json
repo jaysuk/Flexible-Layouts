@@ -714,7 +714,8 @@
 		"atFeed": "≈ {feed} mm/min",
 		"filamentDiameter": "Filament Ø (mm)",
 		"unitToggleHint": "Click to switch between mm/min and mm/s",
-		"coldWarning": "Hotend is at {temp}°C — below the cold-extrude/retract threshold. RRF will refuse the move unless cold extrusion has been allowed (M302)."
+		"coldWarning": "Hotend at {temp}°C — below the cold-extrude threshold, RRF will refuse the move (M302).",
+		"coldWarningFull": "Hotend is at {temp}°C — below the cold-extrude/retract threshold. RRF will refuse the move unless cold extrusion has been allowed (M302)."
 	},
 	"wcs": {
 		"axes": "Axes",
