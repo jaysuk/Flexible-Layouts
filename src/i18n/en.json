@@ -1616,6 +1616,17 @@
 			"importedFile": "Imported - enter the passphrase to unlock.",
 			"importFileInvalid": "That file doesn't look like a Flexible Layouts credential export."
 		},
+		"migrate": {
+			"heading": "Import from standalone plugin",
+			"intro": "Credentials saved in the standalone Duet Config Backup plugin were found in this browser. Import them here so Flexible Layouts' built-in backup can use them too - this stays entirely inside the browser, nothing is sent anywhere, so it works even without HTTPS.",
+			"importButton": "Import from standalone plugin",
+			"confirmTitle": "Import credentials from the standalone plugin?",
+			"confirmBody": "This copies saved settings for: {destinations}. Anything already saved here for a destination the standalone plugin doesn't have will be left untouched.",
+			"imported": "Imported.",
+			"nothingFound": "The standalone plugin is installed, but no saved credentials were found for it in this browser.",
+			"sourceEncrypted": "The standalone plugin has its own encryption turned on, so its credentials can't be read directly here. Use its SD-card sync or file export instead, then import that file below - it already carries an encrypted bundle across.",
+			"unlockFirst": "Unlock your own credential store above first, so the imported values can actually be saved."
+		},
 		"nudge": {
 			"settingsHeading": "Automatic reminders",
 			"settingsIntro": "Show a one-click reminder when one of these happens - never an automatic upload or download, just a toast you can click to come straight here.",

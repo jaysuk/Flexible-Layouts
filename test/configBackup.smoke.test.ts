@@ -1,5 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { mountInDwc, setConnected } from "dwc-plugin-test-kit";
+
+// CloudPanel checks whether the standalone duet-config-backup-plugin is loaded (to offer a same-
+// browser credential import) - the test kit's stub for `@/plugins` doesn't export isPluginLoaded at
+// all (same gap sdBackup.history.test.ts hits for unregisterTheme), so extend it locally.
+vi.mock("@/plugins", async (importOriginal) => ({
+	...(await importOriginal<Record<string, unknown>>()),
+	isPluginLoaded: () => false,
+}));
 
 import ConfigBackupPage from "../src/configBackup/ConfigBackupPage.vue";
 import BackupCreatePanel from "../src/configBackup/BackupCreatePanel.vue";

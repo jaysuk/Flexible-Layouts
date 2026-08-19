@@ -3,6 +3,36 @@
 		<v-card-text>
 			<div class="text-caption text-medium-emphasis mb-3">{{ $t("plugins.flexibleLayouts.configBackup.cloud.configIntro") }}</div>
 
+			<!-- Import from the standalone plugin, same browser, no HTTPS needed -->
+			<v-card v-if="standalonePluginLoaded" variant="outlined" class="mb-4">
+				<v-card-text>
+					<div class="d-flex align-center ga-2 mb-2">
+						<v-icon size="18">mdi-database-import-outline</v-icon>
+						<span class="text-body-2 font-weight-medium">{{ $t("plugins.flexibleLayouts.configBackup.migrate.heading") }}</span>
+					</div>
+
+					<v-alert v-if="standaloneEncrypted" type="info" variant="tonal" density="compact">
+						{{ $t("plugins.flexibleLayouts.configBackup.migrate.sourceEncrypted") }}
+					</v-alert>
+					<div v-else-if="!migratableCreds" class="text-caption text-medium-emphasis">
+						{{ $t("plugins.flexibleLayouts.configBackup.migrate.nothingFound") }}
+					</div>
+					<template v-else>
+						<div class="text-caption text-medium-emphasis mb-2">{{ $t("plugins.flexibleLayouts.configBackup.migrate.intro") }}</div>
+						<v-alert v-if="encryptionEnabled && !sessionUnlocked" type="warning" variant="tonal" density="compact" class="mb-2">
+							{{ $t("plugins.flexibleLayouts.configBackup.migrate.unlockFirst") }}
+						</v-alert>
+						<v-btn size="small" variant="tonal" color="primary" prepend-icon="mdi-database-import-outline"
+							   :disabled="encryptionEnabled && !sessionUnlocked" :loading="migrateBusy" @click="onMigrateImport">
+							{{ $t("plugins.flexibleLayouts.configBackup.migrate.importButton") }}
+						</v-btn>
+					</template>
+					<v-alert v-if="migrateStatus" :type="migrateStatus.ok ? 'success' : 'error'" variant="tonal" density="compact" class="mt-2">
+						{{ migrateStatus.message }}
+					</v-alert>
+				</v-card-text>
+			</v-card>
+
 			<!-- Credential storage & encryption -->
 			<v-card variant="outlined" class="mb-4">
 				<v-card-text>
@@ -264,6 +294,7 @@ import { downloadBlob } from "dwc-plugin-runtime";
 import { useMachineStore } from "@/stores/machine";
 import i18n from "@/i18n";
 import { showConfirmDialog } from "@/composables/useConfirmDialog";
+import { isPluginLoaded } from "@/plugins";
 
 import { login as duetLoginCall, logout as duetLogoutCall } from "dwc-config-backup-core/destinations/duetCloud";
 import { isRepoPrivate } from "dwc-config-backup-core/destinations/github";
@@ -273,9 +304,9 @@ import { verifyConnection as webdavVerify } from "dwc-config-backup-core/destina
 import {
 	disableEncryption, DUET_BACKUP_WEB_URL, enableEncryption, exportEncryptedBundle, getAutoBackupNudgeSettings, getDropboxSettings,
 	getDuetCloudApiUrl, getDuetCloudFifoLimit, getDuetCloudSession, getGithubSettings, getGoogleDriveClientId,
-	getWebDavSettings, importEncryptedBundle, isEncryptionAvailable, isEncryptionEnabled, isSessionUnlocked,
-	lockSession, setAutoBackupNudgeSettings, setDropboxSettings, setDuetCloudFifoLimit,
-	setGithubSettings, setGoogleDriveClientId, setWebDavSettings, unlockSession,
+	getWebDavSettings, importEncryptedBundle, importPlaintextCredentials, isEncryptionAvailable, isEncryptionEnabled,
+	isNamespaceEncrypted, isSessionUnlocked, lockSession, readPlaintextCredentials, setAutoBackupNudgeSettings,
+	setDropboxSettings, setDuetCloudFifoLimit, setGithubSettings, setGoogleDriveClientId, setWebDavSettings, unlockSession,
 } from "dwc-config-backup-core";
 import type { DuetCloudSession } from "dwc-config-backup-core";
 import { loadCredentialsFromSd, parseCredentialBundle, writeCredentialsToSd } from "dwc-config-backup-core";
@@ -351,6 +382,57 @@ async function onDisableEncryption(): Promise<void> {
 	if (!ok) { return; }
 	await disableEncryption();
 	refreshTick.value++;
+}
+
+// --- Import from standalone plugin (same-browser, no HTTPS needed) ----------------------------------
+//
+// The standalone plugin and this built-in copy each bundle their OWN copy of dwc-config-backup-core
+// (FL builds as a single IIFE, no code splitting), so there's no live JS object to import from - the
+// only thing genuinely shared between the two plugins in this browser is window.localStorage itself,
+// read here by an explicit namespace string via credentialsMigrate.ts. This is the path that still
+// works on plain-HTTP Duets, where crypto.subtle (what the SD-card/file export needs) is unavailable.
+const STANDALONE_PLUGIN_ID = "DuetConfigBackup"; // duet-config-backup-plugin's plugin.json id
+const STANDALONE_NAMESPACE = "duetConfigBackup"; // that plugin's own configureHost({ storageNamespace })
+
+const standalonePluginLoaded = isPluginLoaded(STANDALONE_PLUGIN_ID);
+const standaloneEncrypted = computed(() => {
+	void refreshTick.value;
+	return standalonePluginLoaded && isNamespaceEncrypted(STANDALONE_NAMESPACE);
+});
+const migratableCreds = computed(() => {
+	void refreshTick.value;
+	return standalonePluginLoaded ? readPlaintextCredentials(STANDALONE_NAMESPACE) : null;
+});
+
+const migrateBusy = ref(false);
+const migrateStatus = ref<{ ok: boolean; message: string } | null>(null);
+
+async function onMigrateImport(): Promise<void> {
+	const creds = migratableCreds.value;
+	if (!creds) { return; }
+	const found = [
+		creds.duetSession && i18n.global.t("plugins.flexibleLayouts.configBackup.cloud.duetHeading"),
+		creds.github && i18n.global.t("plugins.flexibleLayouts.configBackup.github.heading"),
+		creds.dropbox && i18n.global.t("plugins.flexibleLayouts.configBackup.cloud.dropboxHeading"),
+		creds.webdav && i18n.global.t("plugins.flexibleLayouts.configBackup.cloud.webdavHeading"),
+		creds.googleDriveClientId && i18n.global.t("plugins.flexibleLayouts.configBackup.drive.heading"),
+	].filter((v): v is string => !!v);
+	const ok = await showConfirmDialog(
+		i18n.global.t("plugins.flexibleLayouts.configBackup.migrate.confirmTitle"),
+		i18n.global.t("plugins.flexibleLayouts.configBackup.migrate.confirmBody", { destinations: found.join(", ") }),
+		"mdi-database-import-outline",
+	);
+	if (!ok) { return; }
+	migrateBusy.value = true;
+	migrateStatus.value = null;
+	try {
+		importPlaintextCredentials(creds);
+		reseedDestinationFields();
+		refreshTick.value++;
+		migrateStatus.value = { ok: true, message: i18n.global.t("plugins.flexibleLayouts.configBackup.migrate.imported") };
+	} finally {
+		migrateBusy.value = false;
+	}
 }
 
 const sdSaving = ref(false);
@@ -557,17 +639,18 @@ async function onSaveWebdav(): Promise<void> {
 	}
 }
 
-// --- Re-seed the destination panels' form fields after an unlock ------------------------------------
+// --- Re-seed the destination panels' form fields after an unlock or an import --------------------------
 //
 // Every field above is a plain `ref(...)` seeded ONCE from storage at component setup (e.g.
 // `ref(githubSaved?.repo ?? "")`) - that's fine normally, but while encryption is on and locked, the
 // getters all returned null, so every field started blank. The panels themselves are `v-if`-hidden
 // while locked and reappear on unlock, but Vue doesn't re-run a ref's initialiser just because its
-// DOM subtree remounts - without this, unlocking would leave every field looking empty even though
-// the credentials are now genuinely available. Re-read everything from storage the moment the
-// session actually unlocks (mirrors what setup did on first mount).
-watch(sessionUnlocked, (unlocked) => {
-	if (!unlocked) { return; }
+// DOM subtree remounts - without this, unlocking (or a standalone-plugin credential import writing
+// straight to storage, bypassing every one of these refs) would leave fields looking empty/stale even
+// though the credentials are now genuinely available. Re-read everything from storage.
+function reseedDestinationFields(): void {
+	const duet = getDuetCloudSession();
+	if (duet) { duetSession.value = duet; }
 	const github = getGithubSettings();
 	if (github) {
 		githubRepo.value = github.repo;
@@ -585,5 +668,9 @@ watch(sessionUnlocked, (unlocked) => {
 		webdavUsername.value = webdav.username;
 		webdavPassword.value = webdav.password;
 	}
+}
+watch(sessionUnlocked, (unlocked) => {
+	if (!unlocked) { return; }
+	reseedDestinationFields();
 });
 </script>
