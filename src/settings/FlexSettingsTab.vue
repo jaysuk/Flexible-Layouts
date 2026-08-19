@@ -68,6 +68,10 @@
 					   :title="$t('plugins.flexibleLayouts.tlsSetup.openHelp')" @click="openTlsSetup">
 					{{ $t("plugins.flexibleLayouts.tlsSetup.title") }}
 				</v-btn>
+				<v-btn variant="tonal" prepend-icon="mdi-swap-horizontal"
+					   :title="$t('plugins.flexibleLayouts.canAddress.openHelp')" @click="openCanAddress">
+					{{ $t("plugins.flexibleLayouts.canAddress.title") }}
+				</v-btn>
 				<v-btn variant="tonal" prepend-icon="mdi-help-circle"
 					   :title="$t('plugins.flexibleLayouts.help.openHelp')" @click="dialogs.help = true">
 					{{ $t("plugins.flexibleLayouts.help.title") }}
@@ -284,6 +288,7 @@
 		<ProfilesDialog v-model="dialogs.profiles" />
 		<HelpDialog v-model="dialogs.help" />
 		<TlsSetupDialog v-model="dialogs.tlsSetup" />
+		<CanAddressChangeDialog v-model="dialogs.canAddress" />
 		<PasswordDialog />
 		<ResetConfirmDialog v-model="resetOpen" @confirmed="onResetConfirmed" />
 	</v-card>
@@ -325,6 +330,7 @@ import { MAINTENANCE_ROUTE_PATH } from "../model/maintenance/constants";
 import { VECTOR_IMPORT_ROUTE_PATH } from "../model/vectorImport/constants";
 import { getLastBackupAt } from "dwc-config-backup-core";
 import TlsSetupDialog from "../tlsSetup/TlsSetupDialog.vue";
+import CanAddressChangeDialog from "../canAddress/CanAddressChangeDialog.vue";
 
 const machineStore = useMachineStore();
 
@@ -436,6 +442,7 @@ const dialogs = reactive({
 	profiles: false,
 	help: false,
 	tlsSetup: false,
+	canAddress: false,
 });
 
 // Page management, theming, import/export and profiles all mutate the layout, so they sit behind
@@ -474,6 +481,15 @@ async function openTlsSetup(): Promise<void> {
 		return;
 	}
 	dialogs.tlsSetup = true;
+}
+
+// Changing a board's CAN address rewrites config.g/macros and reprograms live board hardware, so it
+// needs the same gate as TLS setup and maintenance (editConfig).
+async function openCanAddress(): Promise<void> {
+	if (!can("editConfig") && !(await requestAdmin())) {
+		return;
+	}
+	dialogs.canAddress = true;
 }
 
 // The Access section itself needs the same gate as the buttons above — reachable via ordinary

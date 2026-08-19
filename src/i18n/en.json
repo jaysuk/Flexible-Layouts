@@ -1624,6 +1624,33 @@
 			"overdueBody": "It's been {days} day(s) since your last backup."
 		}
 	},
+	"canAddress": {
+		"title": "Change board CAN address",
+		"openHelp": "Reprogram a CAN-connected expansion board's address, and update every gcode reference to the old address across config.g, your macros and your filaments to match.",
+		"intro": "Changes a CAN-connected expansion board's address (M952) and scans every file under 0:/sys, 0:/macros and 0:/filaments (none of these need a .g extension) for gcode that references the old address, so nothing is left pointing at a board that no longer answers there.",
+		"board": "Expansion board",
+		"noExpansionBoards": "No CAN-connected expansion boards were found on this machine - only the main board (address 0), which can't be re-addressed.",
+		"newAddress": "New CAN address",
+		"newAddressHelp": "1 to 125. The board keeps responding on its OLD address until it's restarted, which happens automatically once you apply.",
+		"machineBusy": "The machine is busy right now - wait until it's idle before changing a board's address.",
+		"errorNoBoard": "Choose a board.",
+		"errorRange": "Enter an address from 1 to 125.",
+		"errorSameAddress": "That's already this board's address.",
+		"errorInUse": "Another board on this machine already uses that address.",
+		"scanButton": "Scan for references",
+		"previewIntro": "Changing board {old} to address {new}. Review what will change before applying:",
+		"nothingFound": "No gcode files reference this board's address - nothing to update.",
+		"filesAffected": "{count} file(s) reference the old address:",
+		"lineCount": "{count} line(s)",
+		"lineNumber": "Line {n}",
+		"boardRestartNote": "This board will restart automatically once applied. A full restart of the whole machine is still recommended afterward, so the main board re-reads the corrected driver mapping from config.g.",
+		"confirmTitle": "Change CAN address and update {count} file(s)?",
+		"confirmBody": "This uploads the corrected file(s), then sends M952 to reprogram board {old} to address {new} and restarts it. The board will briefly go offline during the restart.",
+		"applyButton": "Apply",
+		"back": "Back",
+		"doneHeading": "CAN address changed.",
+		"doneBody": "The board is restarting under its new address. A full machine restart is recommended once you've confirmed it reconnected, so the main board picks up the corrected driver mapping."
+	},
 	"tlsSetup": {
 		"title": "TLS / HTTPS setup",
 		"openHelp": "Set up HTTPS (encrypted DWC) on this printer's network interface, per RepRapFirmware 3.7's new TLS support.",
