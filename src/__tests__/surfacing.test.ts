@@ -2,6 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import { generateSurfacingGCode, passCount, rowCount, type SurfacingParams } from "../util/surfacing";
 
+/** Kept in step with REQUIRED_NUMERIC_FIELDS in util/surfacing.ts - listed independently here so that
+ *  dropping a field from the guard makes this test fail rather than silently checking less. */
+const REQUIRED_FIELDS = [
+	"width", "height", "toolDiameter", "stepoverPercent", "depthPerPass", "totalDepth", "clearance", "feed",
+] as const;
+
 function params(overrides: Partial<SurfacingParams> = {}): SurfacingParams {
 	return {
 		width: 100, height: 50, toolDiameter: 6, stepoverPercent: 50,
@@ -84,6 +90,46 @@ describe("generateSurfacingGCode", () => {
 		for (const x of xMoves) {
 			expect(x).toBeGreaterThanOrEqual(-3.001);
 			expect(x).toBeLessThanOrEqual(103.001);
+		}
+	});
+
+	// An empty numeric field in the widget arrives here as NaN. `NaN.toFixed(3)` is the string "NaN",
+	// so before this guard the generator happily emitted `G1 XNaN` / `G1 ZNaN` - a program handed to a
+	// spindle with nonsense coordinates. Refusing at generate time is the only safe behaviour.
+	// M3 returns as soon as the command is accepted, not when the spindle is actually at speed, so
+	// without a dwell the first plunge happens while it is still spinning up - loading the tool far
+	// harder than the programmed feed assumes.
+	it("dwells after starting the spindle, before the first plunge", () => {
+		const { gcode } = generateSurfacingGCode(params({ spindleRpm: 18000 }));
+		const lines = gcode.split("\n");
+		const m3 = lines.findIndex((l) => l.startsWith("M3 "));
+		const dwell = lines.findIndex((l) => l.startsWith("G4 "));
+		const firstPlunge = lines.findIndex((l) => /^G1 Z-/.test(l));
+		expect(m3).toBeGreaterThanOrEqual(0);
+		expect(dwell).toBe(m3 + 1);
+		expect(firstPlunge).toBeGreaterThan(dwell);
+		expect(lines[dwell]).toBe("G4 S4");
+	});
+
+	it("emits no dwell when the program isn't driving the spindle, or when the dwell is set to 0", () => {
+		expect(generateSurfacingGCode(params({ spindleRpm: 0 })).gcode).not.toContain("G4 ");
+		expect(generateSurfacingGCode(params({ spindleRpm: 18000, spindleDwellSeconds: 0 })).gcode).not.toContain("G4 ");
+	});
+
+	it("refuses to emit a program containing a non-finite coordinate", () => {
+		expect(() => generateSurfacingGCode(params({ width: NaN }))).toThrow(/not a number/);
+		expect(() => generateSurfacingGCode(params({ totalDepth: NaN }))).toThrow(/not a number/);
+		expect(() => generateSurfacingGCode(params({ clearance: Infinity }))).toThrow(/not a number/);
+	});
+
+	// Every field is checked, not just the ones that reach a coordinate. A NaN totalDepth or
+	// depthPerPass used to be the nastiest case: it made passCount() return NaN, so `pass <= NaN` was
+	// false, the depth loop ran zero times, and the result was a perfectly well-formed program that
+	// silently cut NOTHING - no error, no NaN in the output to give it away.
+	it("refuses every required field individually, rather than silently emitting an empty program", () => {
+		for (const field of REQUIRED_FIELDS) {
+			expect(() => generateSurfacingGCode(params({ [field]: NaN })), `${field} was not rejected`)
+				.toThrow(/missing or not a number/);
 		}
 	});
 });
