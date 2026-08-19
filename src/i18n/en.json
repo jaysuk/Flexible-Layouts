@@ -842,7 +842,11 @@
 		"noFirmwareFileName": "This board does not report a firmware file name, so there is no way to know which file belongs to it.",
 		"notFound": "{release} does not contain a file this board asked for.",
 		"updateAvailable": "Firmware update available: {version} (running {running}).",
-		"viewUpdate": "View"
+		"viewUpdate": "View",
+		"confirmFilesTitle": "Confirm files to update",
+		"confirmFilesBody": "Untick anything you don't want touched - only the ticked files below will be sent.",
+		"confirmFilesNone": "Nothing ticked - nothing will be sent.",
+		"continue": "Continue"
 	},
 	"probe": {
 		"diameter": "Endmill Ø (mm)",

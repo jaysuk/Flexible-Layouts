@@ -82,15 +82,33 @@
 							{{ $t("plugins.flexibleLayouts.firmwareUpdate.foundFiles", { files: matchedFiles.map((f) => f.name).join(", ") }) }}
 						</div>
 						<v-btn v-if="matchedFiles.length" block class="mt-1 flex-shrink-0" color="warning" :loading="uploading"
-							   @click="downloadAndUpload(matchedFiles)">
+							   @click="openConfirmFetch">
 							{{ $t("plugins.flexibleLayouts.firmwareUpdate.fetchAndPrepare") }}
 						</v-btn>
 					</template>
 
-					<!-- Duet3D / DWC: release assets aren't directly downloadable by browser JS (CORS) -
-						 open the asset link for a normal download, then hand the downloaded file(s) back in.
-						 Identical flow for both sources; only the offered asset differs. -->
-					<template v-else-if="selectedRelease && (activeSource?.id === 'duet3d' || activeSource?.id === 'dwc')">
+					<!-- Duet3D: release assets aren't directly downloadable by browser JS (CORS) - every
+						 matched board file gets its own download link, then hand the downloaded file(s) back
+						 in together (DWC's own controller sorts out which board each belongs to). -->
+					<template v-else-if="selectedRelease && activeSource?.id === 'duet3d'">
+						<div v-if="findError" class="fuw-error text-caption mt-1 flex-shrink-0">{{ findError }}</div>
+						<template v-else-if="matchedFiles.length">
+							<v-btn v-for="f in matchedFiles" :key="f.name" block variant="tonal" class="mt-1 flex-shrink-0"
+								   :href="f.url" target="_blank" rel="noreferrer" prepend-icon="mdi-download">
+								{{ $t("plugins.flexibleLayouts.firmwareUpdate.downloadAsset", { name: f.name }) }}
+							</v-btn>
+							<div class="text-caption text-medium-emphasis mt-1">{{ $t("plugins.flexibleLayouts.firmwareUpdate.manualStepHelp") }}</div>
+							<v-file-input v-model="pickedFiles" density="compact" variant="outlined" hide-details multiple
+										  class="mt-1" :label="$t('plugins.flexibleLayouts.firmwareUpdate.pickFiles')" />
+							<v-btn v-if="pickedFilesArray.length" block class="mt-1 flex-shrink-0" color="warning" :loading="uploading"
+								   @click="openConfirmUpload">
+								{{ $t("plugins.flexibleLayouts.firmwareUpdate.prepare") }}
+							</v-btn>
+						</template>
+					</template>
+
+					<!-- DWC self-update: exactly one asset, no per-board matching involved. -->
+					<template v-else-if="selectedRelease && activeSource?.id === 'dwc'">
 						<div v-if="findError" class="fuw-error text-caption mt-1 flex-shrink-0">{{ findError }}</div>
 						<template v-else-if="suggestedAsset">
 							<v-btn block variant="tonal" class="mt-1 flex-shrink-0" :href="suggestedAsset.url" target="_blank" rel="noreferrer"
@@ -101,7 +119,7 @@
 							<v-file-input v-model="pickedFiles" density="compact" variant="outlined" hide-details multiple
 										  class="mt-1" :label="$t('plugins.flexibleLayouts.firmwareUpdate.pickFiles')" />
 							<v-btn v-if="pickedFilesArray.length" block class="mt-1 flex-shrink-0" color="warning" :loading="uploading"
-								   @click="uploadPicked">
+								   @click="openConfirmUpload">
 								{{ $t("plugins.flexibleLayouts.firmwareUpdate.prepare") }}
 							</v-btn>
 						</template>
@@ -109,6 +127,11 @@
 				</template>
 			</template>
 		</template>
+
+		<!-- Lets the operator untick any file they don't want touched before it's actually fetched/sent -
+			 neither DWC's own FirmwareUpdateDialog (an all-or-nothing yes/no) nor the raw matched-file
+			 list above offers that, and a mixed rig can easily match more boards than intended. -->
+		<FirmwareConfirmFilesDialog v-model="confirmFilesOpen" :files="pendingFiles" @confirm="confirmFilesProceed" />
 
 		<!-- DWC's own firmware dialogs (from DuetWebControl/components, DWC's externalised public
 			 component palette - see the script section's doc comment). -->
@@ -130,12 +153,13 @@ import { duet3dSource } from "../model/firmware/duet3dSource";
 import { dwcSource, selectDwcAsset } from "../model/firmware/dwcSource";
 import { gloomyandySource } from "../model/firmware/gloomyandySource";
 import {
-	boardsNeedingOtherSource, looksLikeGloomyandyFirmware, matchAllBoardFiles, matchesBoardFile,
+	boardsNeedingOtherSource, looksLikeGloomyandyFirmware, matchAllBoardFiles,
 	type FirmwareCandidateFile, type FirmwareRelease, type FirmwareSource,
 } from "../model/firmware/sources";
 import { evaluateFirmwareUpdate } from "../model/firmware/updateNotify";
 import { resolveOmPath } from "../util/omPath";
 import { WIDGET_PATCH_KEY } from "../util/widgetPatch";
+import FirmwareConfirmFilesDialog from "./FirmwareConfirmFilesDialog.vue";
 
 // Static imports, deliberately NOT dynamic import(): Rollup's `external` marking (build-plugin.js's
 // PLUGIN_GLOBALS/the @/composables regex) only rewrites STATIC import bindings to `window.DWC.*`
@@ -245,6 +269,10 @@ function onSourceChanged(): void {
 	selectedRelease.value = null;
 	matchedFiles.value = [];
 	suggestedAsset.value = null;
+	// Previously only the "Include betas" checkbox happened to call loadReleases() (via
+	// onChannelChanged) - switching source cleared the list but never refetched it, so the table
+	// looked empty until the operator toggled that checkbox for an unrelated reason.
+	void loadReleases();
 }
 
 function onChannelChanged(): void {
@@ -303,30 +331,29 @@ async function selectRelease(release: FirmwareRelease): Promise<void> {
 	try {
 		const files = await activeSource.value.listFiles(release);
 
-		if (activeSource.value.id === "gloomyandy") {
-			// gloomyandy's release tree has no combined bundle (unlike Duet3D's zip below), so every
-			// configured board (main AND every CAN-connected expansion/toolboard) needs its own file
-			// matched, not just the main one. In SBC mode this matches iapFileNameSBC instead of
-			// iapFileNameSD (gloomyandy's own SBC-specific IAP binaries); WiFi module firmware is only
-			// matched outside SBC mode, per the wiki's "standalone only" note on M997 S1.
-			const matched = matchAllBoardFiles(boards.value, files, { isSbc: isSbc.value, includeWifi: !isSbc.value });
-			if (!matched.some((f) => matchesBoardFile(board.firmwareFileName!, f.name))) {
-				findError.value = uiT("notFound", { release: release.tag });
-				return;
-			}
-			matchedFiles.value = matched;
-		} else {
-			// duet3d: prefer a loose asset matching the main image; fall back to a plausible combined
-			// bundle so the operator has SOMETHING to download - DWC's own planFiles() sorts out what's
-			// actually inside it once the file comes back in, the same as it would for a drag-and-drop.
-			const looseMain = files.find((f) => matchesBoardFile(board.firmwareFileName!, f.name));
-			suggestedAsset.value = looseMain
-				?? files.find((f) => /firmware/i.test(f.name) && /\.zip$/i.test(f.name) && !/duetwebcontrol/i.test(f.name))
-				?? null;
-			if (!suggestedAsset.value) {
-				findError.value = uiT("notFound", { release: release.tag });
-			}
+		// Every configured board (main AND every CAN-connected expansion/toolboard) gets its own file
+		// matched, not just the main one - both duet3d and gloomyandy ship one loose asset per board
+		// (confirmed live against a real Duet3D/RepRapFirmware release: Duet3Firmware_MB6HC.bin,
+		// _EXP3HC.bin, _TOOL1LC.bin etc. as separate assets, not bundled). This is what makes a mixed
+		// rig actually work - e.g. a gloomyandy-firmware mainboard with a genuine Duet3D CAN expansion
+		// board (or the reverse): switching source to the board's OWN family now finds and offers ITS
+		// file even though the main board doesn't match anything in that release at all. Previously
+		// this only ever looked at the main board, silently never offering the other board's update.
+		// In SBC mode this matches iapFileNameSBC instead of iapFileNameSD; WiFi module firmware is
+		// only matched outside SBC mode, per the wiki's "standalone only" note on M997 S1.
+		let matched = matchAllBoardFiles(boards.value, files, { isSbc: isSbc.value, includeWifi: !isSbc.value });
+		if (!matched.length && activeSource.value.id === "duet3d") {
+			// Defensive fallback for a release format Duet3D isn't currently using (no loose per-board
+			// assets, only a combined bundle) - DWC's own planFiles() sorts out what's actually inside
+			// it once the file comes back in, the same as it would for a drag-and-drop.
+			const bundle = files.find((f) => /firmware/i.test(f.name) && /\.zip$/i.test(f.name) && !/duetwebcontrol/i.test(f.name));
+			if (bundle) { matched = [bundle]; }
 		}
+		if (!matched.length) {
+			findError.value = uiT("notFound", { release: release.tag });
+			return;
+		}
+		matchedFiles.value = matched;
 	} catch (e) {
 		findError.value = (e as Error)?.message ?? String(e);
 	} finally {
@@ -416,6 +443,35 @@ async function viewAvailableUpdate(): Promise<void> {
 
 onMounted(() => { void checkForFirmwareUpdate(); });
 
+// --- Confirm-before-send, with per-file deselection --------------------------------------------
+// Neither DWC's own FirmwareUpdateDialog (a plain yes/no over a pre-built plan) nor the raw
+// matched-file list lets the operator drop a file they don't actually want touched - genuinely
+// useful now that a mixed rig can match more than one board's file at once. FirmwareConfirmFilesDialog
+// is a lightweight name-based checklist shown BEFORE the real fetch/upload call, not a replacement
+// for DWC's dialog (which still runs afterwards once files are actually handed to the controller).
+const confirmFilesOpen = ref(false);
+const confirmFilesKind = ref<"fetch" | "upload">("fetch");
+const pendingFiles = ref<Array<string>>([]);
+
+function openConfirmFetch(): void {
+	confirmFilesKind.value = "fetch";
+	pendingFiles.value = matchedFiles.value.map((f) => f.name);
+	confirmFilesOpen.value = true;
+}
+function openConfirmUpload(): void {
+	confirmFilesKind.value = "upload";
+	pendingFiles.value = pickedFilesArray.value.map((f) => f.name);
+	confirmFilesOpen.value = true;
+}
+function confirmFilesProceed(keptNames: Array<string>): void {
+	const keep = new Set(keptNames);
+	if (confirmFilesKind.value === "fetch") {
+		void downloadAndUpload(matchedFiles.value.filter((f) => keep.has(f.name)));
+	} else {
+		void uploadPicked(pickedFilesArray.value.filter((f) => keep.has(f.name)));
+	}
+}
+
 const uploading = ref(false);
 async function downloadAndUpload(files: Array<FirmwareCandidateFile>): Promise<void> {
 	uploading.value = true;
@@ -440,8 +496,7 @@ const pickedFilesArray = computed<Array<File>>(() => {
 	const v = pickedFiles.value;
 	return v ? (Array.isArray(v) ? v : [v]) : [];
 });
-async function uploadPicked(): Promise<void> {
-	const files = pickedFilesArray.value;
+async function uploadPicked(files: Array<File>): Promise<void> {
 	if (!files.length) { return; }
 	uploading.value = true;
 	try {
