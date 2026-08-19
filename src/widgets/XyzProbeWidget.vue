@@ -110,6 +110,7 @@ import {
 	type CornerId, type XyzProbeSettings,
 } from "../util/xyzProbe";
 import { unhomedAxes } from "../util/homedCheck";
+import { isProbeTriggered, type ProbeTriggerInfo } from "../util/probe";
 import { WIDGET_PATCH_KEY } from "../util/widgetPatch";
 import UnhomedWarning from "./UnhomedWarning.vue";
 
@@ -163,14 +164,11 @@ function settings(): XyzProbeSettings {
 }
 
 // Live probe reading, same object-model path as FL's own indicator example (sensors.probes[n].value[0]).
-const probeRawValue = computed(() => {
-	const probes = machineStore.model.sensors?.probes as Array<{ value?: Array<number> } | null> | undefined;
-	const p = probes?.[probeIndex.value];
-	return p?.value?.[0] ?? 0;
+const probe = computed<ProbeTriggerInfo | null>(() => {
+	const probes = machineStore.model.sensors?.probes as Array<ProbeTriggerInfo | null> | undefined;
+	return probes?.[probeIndex.value] ?? null;
 });
-// Same crude-but-field-tested threshold the reference plugin uses; there's no generic boolean
-// "triggered" field on Probe in the object model, only the raw analog value.
-const probeTriggered = computed(() => probeRawValue.value > 500);
+const probeTriggered = computed(() => isProbeTriggered(probe.value));
 
 // --- Macro deploy / restore ------------------------------------------------------------------------
 

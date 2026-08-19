@@ -54,7 +54,12 @@
 			<template v-if="widget.showProbes !== false">
 				<div v-for="p in probes" :key="'probe-' + p.index" class="mh-row">
 					<span class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.machineHealth.probe", { index: p.index }) }}</span>
-					<span class="mh-value">{{ p.value.join(", ") }}</span>
+					<span class="mh-value">
+						<template v-if="p.loadCellForce != null">
+							{{ fmt(p.loadCellForce) }} g <span class="mh-minmax">({{ p.value.join(", ") }})</span>
+						</template>
+						<template v-else>{{ p.value.join(", ") }}</template>
+					</span>
 				</div>
 			</template>
 
@@ -152,15 +157,21 @@ const interfaces = computed<Array<InterfaceHealth>>(() => {
 interface ProbeHealth {
 	index: number;
 	value: Array<number>;
+	/** Force in grams, for a load-cell probe (DWC 3.7.0-beta.3) - null for every other probe type,
+	 *  where value[0]'s raw counts are the only reading there is. */
+	loadCellForce: number | null;
 }
 
 const probes = computed<Array<ProbeHealth>>(() => {
-	const list = machineStore.model.sensors?.probes;
+	const list = machineStore.model.sensors?.probes as unknown as Array<{ value: Array<number>; loadCell?: { force?: number } | null } | null> | undefined;
 	if (!list) {
 		return [];
 	}
 	return Array.from(list)
-		.map((p, index) => (p ? { index, value: p.value } : null))
+		.map((p, index) => (p ? {
+			index, value: p.value,
+			loadCellForce: (p.loadCell && typeof p.loadCell.force === "number") ? p.loadCell.force : null,
+		} : null))
 		.filter((x): x is ProbeHealth => x !== null);
 });
 

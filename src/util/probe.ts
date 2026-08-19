@@ -52,3 +52,31 @@ export const DEFAULT_PROBE_COMMANDS: Record<ProbeOp, string> = {
  *  since it needs the target X/Y and is expected to end with a report-only G30 (S-1) so the reply can
  *  be read back, not a mesh/tool-affecting probe. */
 export const DEFAULT_BED_MESH_PROBE_COMMAND = 'M98 P"0:/macros/Probe/probe_point.g" X{x} Y{y}';
+
+/** Loose shape of `sensors.probes[n]` - only the fields this needs, matching the rest of this codebase's
+ *  convention of not importing DWC's typed object-model classes directly into widget code. */
+export interface ProbeTriggerInfo {
+	value?: Array<number>;
+	threshold?: number;
+	loadCell?: { force?: number } | null;
+}
+
+/**
+ * Whether a Z-probe currently reads as triggered.
+ *
+ * Load cell probes report force and threshold in grams while `value[0]` stays raw analog counts -
+ * comparing the wrong pair (as if both were the same unit) gives a meaningless result. This compares
+ * whichever pair actually shares a unit, and follows the threshold's sign: a negative threshold means
+ * the probe triggers when the value FALLS to it, not rises to it (RRF 3.7). Matches DWC's own
+ * StatusPanel.vue (`isProbeTriggered`), added in DWC 3.7.0-beta.3 - previously XyzProbeWidget hardcoded
+ * `value[0] > 500` for every probe type, which only ever happened to be right for a non-load-cell one.
+ */
+export function isProbeTriggered(probe: ProbeTriggerInfo | null | undefined): boolean {
+	if (!probe) { return false; }
+	const value = (probe.loadCell && typeof probe.loadCell.force === "number")
+		? probe.loadCell.force
+		: (probe.value && probe.value.length > 0) ? probe.value[0] : null;
+	if (value === null) { return false; }
+	const threshold = probe.threshold ?? 0;
+	return threshold >= 0 ? value >= threshold : value <= threshold;
+}

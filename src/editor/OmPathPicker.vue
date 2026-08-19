@@ -54,11 +54,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, onBeforeUnmount, ref, watch } from "vue";
 
 import { useMachineStore } from "@/stores/machine";
 
 import { buildOmPath, omChildren, resolveOmPath } from "../util/omPath";
+import { acquireVerboseQueries, releaseVerboseQueries } from "../model/verboseFields";
 
 const props = defineProps<{ modelValue: boolean; path?: string }>();
 const emit = defineEmits<{ "update:modelValue": [boolean]; select: [string] }>();
@@ -68,11 +69,21 @@ const machineStore = useMachineStore();
 const stack = ref<Array<string>>([]);
 const search = ref("");
 
+// Fields flagged "verbose" (see model/verboseFields.ts) are omitted from the model entirely unless
+// something asks for them - without this, they'd never appear in the tree to be picked in the first
+// place. Held only while the tree is actually visible, matching the built-in Object Model Browser's
+// own use of this same flag.
+let holdingVerboseQueries = false;
+
 // Seed the breadcrumb from an existing path when the dialog opens.
 watch(
 	() => props.modelValue,
 	(open) => {
 		if (open) {
+			if (!holdingVerboseQueries) {
+				acquireVerboseQueries();
+				holdingVerboseQueries = true;
+			}
 			search.value = "";
 			stack.value = (props.path ?? "")
 				.replace(/\[(\d+)\]/g, ".$1")
@@ -83,9 +94,18 @@ watch(
 			while (stack.value.length && !isContainer(resolveOmPath(machineStore.model, buildOmPath(stack.value)))) {
 				stack.value.pop();
 			}
+		} else if (holdingVerboseQueries) {
+			releaseVerboseQueries();
+			holdingVerboseQueries = false;
 		}
 	},
 );
+onBeforeUnmount(() => {
+	if (holdingVerboseQueries) {
+		releaseVerboseQueries();
+		holdingVerboseQueries = false;
+	}
+});
 
 const currentPath = computed(() => buildOmPath(stack.value));
 

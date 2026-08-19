@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildProbeCommand, DEFAULT_BED_MESH_PROBE_COMMAND, DEFAULT_PROBE_COMMANDS } from "../util/probe";
+import { buildProbeCommand, DEFAULT_BED_MESH_PROBE_COMMAND, DEFAULT_PROBE_COMMANDS, isProbeTriggered } from "../util/probe";
 
 describe("buildProbeCommand", () => {
 	it("substitutes {dia} and {corner} placeholders", () => {
@@ -39,5 +39,56 @@ describe("buildProbeCommand", () => {
 		expect(DEFAULT_BED_MESH_PROBE_COMMAND).toContain("{x}");
 		expect(DEFAULT_BED_MESH_PROBE_COMMAND).toContain("{y}");
 		expect(buildProbeCommand(DEFAULT_BED_MESH_PROBE_COMMAND, { x: 5, y: 5 })).toBe('M98 P"0:/macros/Probe/probe_point.g" X5 Y5');
+	});
+});
+
+describe("isProbeTriggered", () => {
+	it("returns false for a null/undefined probe", () => {
+		expect(isProbeTriggered(null)).toBe(false);
+		expect(isProbeTriggered(undefined)).toBe(false);
+	});
+
+	it("returns false when there's no value at all", () => {
+		expect(isProbeTriggered({ threshold: 500 })).toBe(false);
+		expect(isProbeTriggered({ value: [], threshold: 500 })).toBe(false);
+	});
+
+	describe("non-load-cell probe (compares raw value[0] against threshold)", () => {
+		it("is triggered once value[0] reaches a positive threshold", () => {
+			expect(isProbeTriggered({ value: [499], threshold: 500 })).toBe(false);
+			expect(isProbeTriggered({ value: [500], threshold: 500 })).toBe(true);
+			expect(isProbeTriggered({ value: [900], threshold: 500 })).toBe(true);
+		});
+
+		it("defaults a missing threshold to 0, matching the old hardcoded behaviour's spirit", () => {
+			expect(isProbeTriggered({ value: [0] })).toBe(true); // 0 >= 0
+			expect(isProbeTriggered({ value: [-1] })).toBe(false);
+		});
+	});
+
+	describe("negative threshold - probe triggers when the value FALLS to it (RRF 3.7)", () => {
+		it("is triggered once value[0] falls to or below the threshold", () => {
+			expect(isProbeTriggered({ value: [-400], threshold: -500 })).toBe(false);
+			expect(isProbeTriggered({ value: [-500], threshold: -500 })).toBe(true);
+			expect(isProbeTriggered({ value: [-900], threshold: -500 })).toBe(true);
+		});
+	});
+
+	describe("load-cell probe (compares force in grams against threshold, NOT value[0] in raw counts)", () => {
+		it("uses loadCell.force instead of the raw counts value", () => {
+			// value[0] alone would (wrongly) read as triggered against a 500-count-style threshold,
+			// but the load cell's actual force is nowhere near its own (much lower) gram threshold.
+			expect(isProbeTriggered({ value: [12000], threshold: 50, loadCell: { force: 10 } })).toBe(false);
+			expect(isProbeTriggered({ value: [12000], threshold: 50, loadCell: { force: 55 } })).toBe(true);
+		});
+
+		it("respects a negative gram threshold too", () => {
+			expect(isProbeTriggered({ threshold: -20, loadCell: { force: -25 } })).toBe(true);
+			expect(isProbeTriggered({ threshold: -20, loadCell: { force: -10 } })).toBe(false);
+		});
+
+		it("falls back to value[0] if loadCell is present but its force is missing", () => {
+			expect(isProbeTriggered({ value: [600], threshold: 500, loadCell: {} })).toBe(true);
+		});
 	});
 });

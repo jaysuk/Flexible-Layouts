@@ -69,10 +69,11 @@
 </template>
 
 <script setup lang="ts">
-import { provide } from "vue";
+import { computed, onBeforeUnmount, provide, watch } from "vue";
 
 import type { Widget } from "../model/document";
 import { WIDGET_PATCH_KEY } from "../util/widgetPatch";
+import { acquireVerboseQueries, pathNeedsVerboseQueries, releaseVerboseQueries } from "../model/verboseFields";
 import AlertWidget from "./AlertWidget.vue";
 import BuiltInPanelWidget from "./BuiltInPanelWidget.vue";
 import ChartWidget from "./ChartWidget.vue";
@@ -149,4 +150,25 @@ if (props.itemId !== undefined) {
 	const itemId = props.itemId;
 	provide(WIDGET_PATCH_KEY, (patch) => emit("patchWidget", itemId, patch));
 }
+
+// Not every Widget variant has an omPath (most don't), hence the duck-typed read - matches how
+// ValueWidget.vue itself reads props.widget.omPath.
+const omPath = computed(() => (props.widget as { omPath?: string }).omPath);
+let holdingVerboseQueries = false;
+watch(omPath, (path) => {
+	const needed = pathNeedsVerboseQueries(path);
+	if (needed && !holdingVerboseQueries) {
+		acquireVerboseQueries();
+		holdingVerboseQueries = true;
+	} else if (!needed && holdingVerboseQueries) {
+		releaseVerboseQueries();
+		holdingVerboseQueries = false;
+	}
+}, { immediate: true });
+onBeforeUnmount(() => {
+	if (holdingVerboseQueries) {
+		releaseVerboseQueries();
+		holdingVerboseQueries = false;
+	}
+});
 </script>
