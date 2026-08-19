@@ -82,7 +82,7 @@ export const FREEFORM_WIDGETS: ReadonlyArray<FreeformCatalogEntry> = [
 	{ type: "neopixel",   labelKey: "widgets.neopixel",   icon: "mdi-led-strip-variant",  defaultSize: { w: 4, h: 9 }, category: "controls" },
 
 	// Machine — printer/CNC specific
-	{ type: "extruder",   labelKey: "widgets.extruder",   icon: "mdi-printer-3d-nozzle",  defaultSize: { w: 4, h: 5 }, category: "machine" },
+	{ type: "extruder",   labelKey: "widgets.extruder",   icon: "mdi-printer-3d-nozzle",  defaultSize: { w: 4, h: 6 }, category: "machine" },
 	{ type: "fan",        labelKey: "widgets.fan",        icon: "mdi-fan",                defaultSize: { w: 4, h: 4 }, category: "machine" },
 	{ type: "heater",     labelKey: "widgets.heater",     icon: "mdi-radiator",           defaultSize: { w: 4, h: 4 }, category: "machine" },
 	{ type: "spindle",    labelKey: "widgets.spindle",    icon: "mdi-saw-blade",          defaultSize: { w: 4, h: 4 }, category: "machine" },
@@ -99,7 +99,7 @@ export const FREEFORM_WIDGETS: ReadonlyArray<FreeformCatalogEntry> = [
 	{ type: "preflight",  labelKey: "widgets.preflight",  icon: "mdi-clipboard-check-outline", defaultSize: { w: 6, h: 12 }, category: "machine" },
 	{ type: "toolpath",   labelKey: "widgets.toolpath",   icon: "mdi-map-marker-path",    defaultSize: { w: 7, h: 12 }, category: "machine" },
 	{ type: "firmwareUpdate", labelKey: "widgets.firmwareUpdate", icon: "mdi-chip", defaultSize: { w: 6, h: 12 }, category: "machine" },
-	{ type: "toolSelect", labelKey: "widgets.toolSelect", icon: "mdi-tools",              defaultSize: { w: 4, h: 3 }, category: "machine" },
+	{ type: "toolSelect", labelKey: "widgets.toolSelect", icon: "mdi-tools",              defaultSize: { w: 4, h: 4 }, category: "machine" },
 	{ type: "toolAlign",  labelKey: "widgets.toolAlign",  icon: "mdi-image-filter-center-focus", defaultSize: { w: 6, h: 12 }, category: "machine" },
 	{ type: "macros",     labelKey: "widgets.macros",     icon: "mdi-cog-play",           defaultSize: { w: 4, h: 5 }, category: "machine" },
 	{ type: "files",      labelKey: "widgets.files",      icon: "mdi-file-document-multiple", defaultSize: { w: 4, h: 6 }, category: "machine" },
