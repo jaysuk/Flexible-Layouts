@@ -65,6 +65,25 @@ describe("macros widget - reads the real, live macros directory", () => {
 		await flushPromises();
 		expect(w.text()).toContain("load");
 	});
+
+	// Regression test: RRF's own convention for user macros (as opposed to config/homing files) is NO
+	// extension at all - matching what DWC's own Macro panel (components/lists/MacroList.vue) lists,
+	// with zero extension filtering. A ".g"-only filter here silently hid an entire folder of
+	// conventionally-named macros, showing "empty" even though the files were really there.
+	it("lists macro files with no extension at all, not just ones ending in .g", async () => {
+		setConnected(true);
+		setFiles("0:/macros", [
+			{ name: "Preheat PLA", isDirectory: false },
+			{ name: "Load Filament", isDirectory: false },
+			{ name: "bed.g", isDirectory: false },
+		]);
+		const w = mount(createDefaultWidget("macros"));
+		await flushPromises();
+		expect(w.text()).toContain("Preheat PLA");
+		expect(w.text()).toContain("Load Filament");
+		expect(w.text()).toContain("bed");
+		expect(w.text()).not.toContain("plugins.flexibleLayouts.macros.none");
+	});
 });
 
 describe("extruder widget", () => {

@@ -9,7 +9,7 @@
  */
 
 /** Bump whenever the shape below changes incompatibly; add a migration in migrateDocument(). */
-export const DOCUMENT_SCHEMA_VERSION = 8;
+export const DOCUMENT_SCHEMA_VERSION = 9;
 
 /**
  * A widget is the thing that lives inside a grid cell.
@@ -1587,6 +1587,19 @@ const DOC_MIGRATIONS: Array<DocMigration> = [
 		}
 		if (legacy.type === "console") {
 			delete legacy.rows;
+		}
+	}) },
+	// v8 → v9: the macros widget's default `folder` used to be hard-coded to the literal string
+	// "0:/macros" (see createDefaultWidget's "macros" case) - any widget saved under that default now
+	// has that literal permanently baked in, which takes priority over the widget's own OM-aware
+	// fallback (machineStore.model.directories.macros) and so never benefits from it, even on a
+	// machine whose macros folder has since been moved via M505. Clearing exactly that one known-stale
+	// literal (never a folder a user deliberately typed themselves - only this exact string) lets the
+	// live fallback take over, matching what a freshly-created widget already gets.
+	{ to: 9, up: (doc) => forEachWidget(doc, (w) => {
+		const legacy = w as unknown as Record<string, unknown>;
+		if (legacy.type === "macros" && legacy.folder === "0:/macros") {
+			legacy.folder = "";
 		}
 	}) },
 ];

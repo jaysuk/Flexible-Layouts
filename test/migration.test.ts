@@ -219,4 +219,21 @@ describe("backfillWidgetDefaults", () => {
 		expect("showProgress" in widget).toBe(false); // no equivalent on the builtin panel
 		expect("color" in widget).toBe(false);
 	});
+
+	it("v8 -> v9: clears a macros widget's stale hard-coded '0:/macros' folder so the OM-aware fallback takes over", () => {
+		const doc = sampleDoc();
+		doc.schemaVersion = 8;
+		doc.pages["/"].items.push(
+			{ i: "m1", x: 0, y: 8, w: 4, h: 4, widget: { type: "macros", folder: "0:/macros", columns: 2 } as unknown as Widget },
+			// A deliberately-typed custom folder must survive untouched - only the exact old default clears.
+			{ i: "m2", x: 4, y: 8, w: 4, h: 4, widget: { type: "macros", folder: "0:/macros/Filament", columns: 2 } as unknown as Widget },
+		);
+		const out = migrateDocument(doc);
+		expect(out.schemaVersion).toBe(DOCUMENT_SCHEMA_VERSION);
+
+		const w1 = out.pages["/"].items.find((it) => it.i === "m1")!.widget as unknown as Record<string, unknown>;
+		expect(w1.folder).toBe("");
+		const w2 = out.pages["/"].items.find((it) => it.i === "m2")!.widget as unknown as Record<string, unknown>;
+		expect(w2.folder).toBe("0:/macros/Filament");
+	});
 });

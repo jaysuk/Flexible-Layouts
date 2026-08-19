@@ -41,7 +41,11 @@ async function load(): Promise<void> {
   loading.value = true;
   try {
     const list = await machineStore.getFileList(folder.value);
-    files.value = list.filter((f) => !f.isDirectory && /\.g$/i.test(f.name)).map((f) => f.name).sort();
+    // No extension filter - RRF's own macro convention (and DWC's own macro browser,
+    // components/lists/MacroList.vue) is that user macros typically have NO extension at all (e.g.
+    // "Preheat PLA", "Load Filament"), unlike config/homing files which end in .g. Requiring ".g"
+    // here silently hid every conventionally-named macro folder, showing "empty" despite real files.
+    files.value = list.filter((f) => !f.isDirectory).map((f) => f.name).sort();
   } catch (e) {
     files.value = [];
   } finally {
