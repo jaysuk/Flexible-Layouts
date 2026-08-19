@@ -509,18 +509,14 @@ export type Widget =
 	}
 	| {
 		/**
-		 * Lightweight top-down 2D toolpath view of a parsed G-code file (see model/gcode/parse.ts) and
-		 * run-from-line - not a DWC-viewer replacement, an interaction aid (click to pick a resume
-		 * point) plus a real feature gap: DWC has no run-from-line anywhere (a `grep M26` across its
-		 * own src turns up nothing). Shows the live cut/uncut boundary from job.filePosition.
+		 * Lightweight top-down 2D toolpath view of a parsed G-code file (see model/gcode/parse.ts) - not
+		 * a DWC-viewer replacement, an interaction aid (click a vertex to see its coordinates). Shows
+		 * the live cut/uncut boundary from job.filePosition.
 		 */
 		type: "toolpath";
 		label?: string;
 		color?: string;
 		defaultFile?: string;
-		/** Work-coordinate Z height moved to (at the resume XY) before M26/M24 - always a safe retract
-		 *  height the operator sets, never the file's own cutting Z. */
-		safeZ?: number;
 	}
 	| {
 		/**
@@ -1100,7 +1096,7 @@ export function createDefaultWidget(type: WidgetType): Widget {
 				names: [], showCopy: true, showRotation: true,
 			};
 		case "toolpath":
-			return { type: "toolpath", label: "Toolpath", color: "primary", defaultFile: "", safeZ: 10 };
+			return { type: "toolpath", label: "Toolpath", color: "primary", defaultFile: "" };
 		case "firmwareUpdate":
 			return { type: "firmwareUpdate", label: "Firmware update", color: "primary" };
 		case "preflight":

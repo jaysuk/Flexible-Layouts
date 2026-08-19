@@ -976,8 +976,7 @@
 						<v-col cols="4"><ColorSelect v-model="draft.color" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.color')" /></v-col>
 					</v-row>
 					<v-row dense class="mt-1">
-						<v-col cols="8"><v-text-field persistent-placeholder v-model="draft.defaultFile" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.toolpath.file')" placeholder="0:/gcodes/part.gcode" /></v-col>
-						<v-col cols="4"><v-text-field persistent-placeholder v-model.number="draft.safeZ" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.toolpath.safeZ')" /></v-col>
+						<v-col cols="12"><v-text-field persistent-placeholder v-model="draft.defaultFile" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.toolpath.file')" placeholder="0:/gcodes/part.gcode" /></v-col>
 					</v-row>
 				</template>
 

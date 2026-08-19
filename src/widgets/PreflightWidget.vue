@@ -6,9 +6,13 @@
 			<v-text-field v-model="filePath" density="compact" variant="outlined" hide-details
 						  class="flex-grow-1" :label="$t('plugins.flexibleLayouts.preflight.file')"
 						  placeholder="0:/gcodes/part.gcode" @change="patch?.({ defaultFile: filePath })" />
+			<v-btn icon="mdi-file-find-outline" size="small" variant="tonal" density="comfortable"
+				   :title="$t('plugins.flexibleLayouts.filePicker.title')" @click="pickerOpen = true" />
 			<v-btn size="small" :color="widget.color || 'primary'" :loading="checking" :disabled="!filePath"
 				   @click="runCheck">{{ $t("plugins.flexibleLayouts.preflight.check") }}</v-btn>
 		</div>
+
+		<GcodeFilePickerDialog v-model="pickerOpen" @select="onFileSelected" />
 
 		<div v-if="loadError" class="pfw-error mt-1 flex-shrink-0">{{ loadError }}</div>
 
@@ -65,6 +69,7 @@ import { type CheckLevel, type PreflightCheck, type PreflightMachineState, runPr
 import { resolveOmPath } from "../util/omPath";
 import { getToolTable, setToolTable, type ToolTableEntry, type ToolType } from "../model/toolTable";
 import { WIDGET_PATCH_KEY } from "../util/widgetPatch";
+import GcodeFilePickerDialog from "./GcodeFilePickerDialog.vue";
 
 const props = defineProps<{ widget: Extract<Widget, { type: "preflight" }> }>();
 const machineStore = useMachineStore();
@@ -72,6 +77,11 @@ const uiStore = useUiStore();
 const patch = inject(WIDGET_PATCH_KEY, null);
 
 const filePath = ref(props.widget.defaultFile || "");
+const pickerOpen = ref(false);
+function onFileSelected(path: string): void {
+	filePath.value = path;
+	patch?.({ defaultFile: path });
+}
 const rapidRate = ref(props.widget.rapidRate ?? 3000);
 const checking = ref(false);
 const loadError = ref("");

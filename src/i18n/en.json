@@ -807,14 +807,7 @@
 		"load": "Load",
 		"loadFailed": "Could not load this file: {error}",
 		"noFile": "Load a file to see its toolpath.",
-		"selected": "Selected: X{x} Y{y} Z{z}",
-		"resumeFromHere": "Resume from here…",
-		"settingsTitle": "Settings",
-		"safeZ": "Safe Z (work coords, mm)",
-		"safeZHelp": "Height the machine lifts to (at the resume point's X/Y) before seeking the file - never the file's own cutting depth.",
-		"confirmTitle": "Resume mid-file?",
-		"safetyNote": "This restarts a cutting job partway through. Check the spindle state and that the machine has clearance to move to the safe height and resume position shown below before confirming.",
-		"resume": "Resume"
+		"selected": "Selected: X{x} Y{y} Z{z}"
 	},
 	"firmwareUpdate": {
 		"noBoard": "The controller has not said what board it is - connect first.",
@@ -960,6 +953,10 @@
 		"filesTab": "Files",
 		"thumbnails": "Show thumbnails",
 		"none": "No files or folders here."
+	},
+	"filePicker": {
+		"title": "Choose a G-code file",
+		"empty": "No G-code files or folders here."
 	},
 	"gaugeCluster": {
 		"gauges": "Gauges"

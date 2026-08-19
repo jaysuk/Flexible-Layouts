@@ -7,10 +7,14 @@
 			<v-text-field v-model="filePath" density="compact" variant="outlined" hide-details
 						  class="flex-grow-1" :label="$t('plugins.flexibleLayouts.toolpath.file')"
 						  placeholder="0:/gcodes/part.gcode" @change="patch?.({ defaultFile: filePath })" />
+			<v-btn icon="mdi-file-find-outline" size="small" variant="tonal" density="comfortable"
+				   :title="$t('plugins.flexibleLayouts.filePicker.title')" @click="pickerOpen = true" />
 			<v-btn size="small" :color="widget.color || 'primary'" :loading="loading" :disabled="!filePath" @click="load">
 				{{ $t("plugins.flexibleLayouts.toolpath.load") }}
 			</v-btn>
 		</div>
+
+		<GcodeFilePickerDialog v-model="pickerOpen" @select="onFileSelected" />
 		<div v-if="loadError" class="tpw-error mt-1 flex-shrink-0">{{ loadError }}</div>
 
 		<div class="tpw-canvas-wrap flex-grow-1 mt-2">
@@ -23,39 +27,6 @@
 		<div v-if="selectedVertex" class="tpw-selected text-caption mt-1 flex-shrink-0">
 			{{ $t("plugins.flexibleLayouts.toolpath.selected", { x: selectedVertex.x.toFixed(2), y: selectedVertex.y.toFixed(2), z: selectedVertex.z.toFixed(2) }) }}
 		</div>
-
-		<v-btn block class="mt-1 flex-shrink-0" color="warning" prepend-icon="mdi-play-protected-content"
-			   :disabled="!selectedVertex" @click="openResumeConfirm">
-			{{ $t("plugins.flexibleLayouts.toolpath.resumeFromHere") }}
-		</v-btn>
-
-		<v-expansion-panels variant="accordion" class="tpw-panels flex-shrink-0">
-			<v-expansion-panel :title="$t('plugins.flexibleLayouts.toolpath.settingsTitle')">
-				<v-expansion-panel-text>
-					<v-text-field v-model.number="safeZ" type="number" density="compact" variant="outlined" hide-details
-								  :label="$t('plugins.flexibleLayouts.toolpath.safeZ')" @change="patch?.({ safeZ })" />
-					<div class="text-caption text-medium-emphasis mt-2">{{ $t("plugins.flexibleLayouts.toolpath.safeZHelp") }}</div>
-				</v-expansion-panel-text>
-			</v-expansion-panel>
-		</v-expansion-panels>
-
-		<v-dialog v-model="resumeConfirmOpen" max-width="520">
-			<v-card>
-				<v-card-title>{{ $t("plugins.flexibleLayouts.toolpath.confirmTitle") }}</v-card-title>
-				<v-card-text>
-					<v-alert type="warning" variant="tonal" density="compact" class="mb-3">
-						{{ $t("plugins.flexibleLayouts.toolpath.safetyNote") }}
-					</v-alert>
-					<UnhomedWarning :axes="unhomedNow" class="mb-3" />
-					<pre class="tpw-pre">{{ preambleText }}</pre>
-				</v-card-text>
-				<v-card-actions>
-					<v-spacer />
-					<v-btn variant="text" @click="resumeConfirmOpen = false">{{ $t("generic.cancel") }}</v-btn>
-					<v-btn color="warning" :loading="resuming" @click="runResume">{{ $t("plugins.flexibleLayouts.toolpath.resume") }}</v-btn>
-				</v-card-actions>
-			</v-card>
-		</v-dialog>
 	</div>
 </template>
 
@@ -69,12 +40,11 @@ import { LogLevel, useUiStore } from "@/stores/ui";
 import type { Widget } from "../model/document";
 import { type ParseResult, type ParsedVertex } from "../model/gcode/parse";
 import { parseGcodeAsync } from "../model/gcode/parseClient";
-import { modalStateAt } from "../model/gcode/modalState";
-import { buildResumePreamble } from "../model/gcode/runFromLine";
 import { resolveOmPath } from "../util/omPath";
 import { resolveColor } from "../util/color";
 import { unhomedAxes } from "../util/homedCheck";
 import { WIDGET_PATCH_KEY } from "../util/widgetPatch";
+import GcodeFilePickerDialog from "./GcodeFilePickerDialog.vue";
 import UnhomedWarning from "./UnhomedWarning.vue";
 
 const props = defineProps<{ widget: Extract<Widget, { type: "toolpath" }> }>();
@@ -89,11 +59,15 @@ function jobFileName(): string {
 }
 
 const filePath = ref(widget.defaultFile || jobFileName());
-const safeZ = ref(widget.safeZ ?? 10);
+const pickerOpen = ref(false);
+function onFileSelected(path: string): void {
+	filePath.value = path;
+	patch?.({ defaultFile: path });
+	void load();
+}
 const unhomedNow = computed(() => unhomedAxes(machineStore.model, ["X", "Y", "Z"]));
 const loading = ref(false);
 const loadError = ref("");
-const fileText = ref("");
 const parseResult = ref<ParseResult | null>(null);
 
 async function load(): Promise<void> {
@@ -103,7 +77,6 @@ async function load(): Promise<void> {
 	selectedIndex.value = null;
 	try {
 		const text = await machineStore.download({ filename: filePath.value, type: "text" }, true, false, false, false) as string;
-		fileText.value = text;
 		parseResult.value = await parseGcodeAsync(text);
 		await nextTick();
 		draw();
@@ -235,37 +208,6 @@ onMounted(() => {
 	}
 });
 onBeforeUnmount(() => resizeObserver?.disconnect());
-
-// --- Run-from-line ----------------------------------------------------------------------------------------
-const resumeConfirmOpen = ref(false);
-const resuming = ref(false);
-
-const preambleText = computed(() => {
-	if (!selectedVertex.value || !fileText.value) { return ""; }
-	const offset = selectedVertex.value.offset;
-	const st = modalStateAt(fileText.value, offset);
-	const currentToolRaw = resolveOmPath(machineStore.model, "state.currentTool");
-	const currentTool = typeof currentToolRaw === "number" ? currentToolRaw : null;
-	return buildResumePreamble(st, { offset, safeZ: safeZ.value, currentTool });
-});
-
-function openResumeConfirm(): void {
-	if (!selectedVertex.value) { return; }
-	resumeConfirmOpen.value = true;
-}
-
-async function runResume(): Promise<void> {
-	if (!preambleText.value) { return; }
-	resuming.value = true;
-	try {
-		await machineStore.sendCode(preambleText.value, false, false);
-	} catch (e) {
-		uiStore.makeNotification(LogLevel.error, i18n.global.t("plugins.flexibleLayouts.toolpath.title"), (e as Error)?.message ?? String(e));
-	} finally {
-		resuming.value = false;
-		resumeConfirmOpen.value = false;
-	}
-}
 </script>
 
 <style scoped>
@@ -276,6 +218,4 @@ async function runResume(): Promise<void> {
 .tpw-canvas { width: 100%; height: 100%; display: block; cursor: crosshair; }
 .tpw-placeholder { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
 .tpw-selected { font-variant-numeric: tabular-nums; opacity: 0.85; }
-.tpw-panels { max-height: 35%; overflow-y: auto; }
-.tpw-pre { white-space: pre-wrap; font-size: 0.78rem; background: rgba(var(--v-theme-on-surface), 0.05); padding: 8px; border-radius: 4px; }
 </style>

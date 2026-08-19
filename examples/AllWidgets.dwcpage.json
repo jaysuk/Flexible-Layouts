@@ -475,8 +475,7 @@
           "type": "toolpath",
           "label": "Toolpath",
           "color": "primary",
-          "defaultFile": "",
-          "safeZ": 10
+          "defaultFile": ""
         },
         "title": "toolpath"
       },
