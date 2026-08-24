@@ -36,6 +36,13 @@ multiple switchable interfaces, and share it all as a file.
 - **Smart behaviour** — per-widget object-model **conditions** (recolour / hide / disable), **value
   formatting** (units, on/off, value→text maps), **colours**, **font size & family**, and
   **scale-to-fit**.
+- **CNC & machine tools** — bed mesh (view/edit/re-probe a heightmap), bed tramming, a **WCS table**
+  (edit all six work offsets at once), a built-in **XYZ corner probe** with no macros to write, raw
+  **probe routines** (tool-length, XY skew, bore/boss centring, edge-finding), a **surfacing wizard**,
+  camera-based **tool alignment**, **preflight checks** (bounds/homing/tool sanity on a G-code file
+  before you run it), a live **toolpath viewer**, **machine health** + **maintenance tracking**
+  (usage hours, tool changes, job counts), and **firmware update** browsing across mixed board rigs.
+  See [docs/widgets.md](docs/widgets.md) for the full list.
 - **Shapes & nestling** — give command buttons non-rectangular shapes that react only within the
   shape, drop them into a **free-mode group** (drag / resize / rotate / overlap with z-order), and use
   **Arrange…** to lay them out in a ring or hex grid. Ready-made **presets** (e.g. a Hex Pad) get you

@@ -49,6 +49,7 @@ ready-made jog dial, the **CNC / Octopus jog** widget above is usually the bette
 | **Status indicator** | A coloured dot + label/icon chosen by the first matching rule against an OM value. At-a-glance machine state. | value path, states (operator/value → colour/label/icon), defaults |
 | **Alert banner** | A banner shown **only while** an OM condition holds (filament out, fault, door open…). Visible in edit mode for setup. | condition (path/operator/value), severity, message, icon |
 | **Webcam / snapshot** | An image or stream, optionally refreshed on a timer, click-to-enlarge. | URL, refresh ms (0 = stream), fit, click-to-enlarge |
+| **Job thumbnail** | Shows the running job's (or a chosen file's) slicer-embedded thumbnail image. | source (job/file), file path, fit, title |
 | **Macro grid** | A button per `.g` file in a macros folder; runs `M98 P"…"`. | folder, columns, colour |
 | **Mini console** | Send a command and see the last few replies, without leaving the page. | replies kept, placeholder |
 | **Heater control** | Compact tile: live current/active/state + target presets and off (command-templated). | heater path, set/off commands, presets, colour |
@@ -61,7 +62,14 @@ ready-made jog dial, the **CNC / Octopus jog** widget above is usually the bette
 |--------|--------------|-------------|
 | **Extruder** | Extrude / retract by a chosen amount + feedrate (`M83` + `G1 E…`), optional tool select. | amounts, feedrate, tool |
 | **Work offsets (CNC)** | Select **G54–G59.3**, show each axis's work (and machine) position, **zero a single axis or all** in the active WCS (`G10 L20`), and **go to work XY zero** (`G0 X0 Y0`, Z left alone). | axes, show-machine, go-to button, precision, colour |
+| **WCS table (CNC)** | All six WCS offsets (**G54–G59.3**) per axis in one table, edited inline (`G10 L2`), with work-rotation (`G68`/`G69`) and copy-offsets-between-WCS. | axes shown, precision, show copy, show rotation, colour |
 | **Touch probe (CNC)** | Buttons for **Z / X / Y / corner / centre** probing; each runs a **configurable command/macro** (defaults call your `…/macros/Probe/*.g`) with `{dia}` / `{corner}` placeholders from the on-panel endmill-Ø and corner inputs, behind a confirm. Drives *your* vetted probe routines — geometry is machine-specific. | operations, endmill Ø, per-op command templates, confirm, colour |
+| **Bed mesh** | Load, edit and (re-)probe a heightmap CSV as a colour-coded grid — save/discard, full re-probe, or edit/re-probe a single cell. | heightmap file, probe command, probe index, confirm-before-probe, label |
+| **Bed tram** | Runs a bed-tramming/auto-calibration command (`G32` by default) and shows the mean/deviation result. | command, confirm-before-run, label, colour |
+| **XYZ probe** | Touch-probes a corner or single axis against a reference plate (`G38.2`-based); deploys its own macros to the SD card on first use — no macro-writing required. | endmill Ø, corner, plate width/height/thickness, X/Y offset, feedrate, search margin, probe index, macro folder, confirm |
+| **Probe routines** | Raw-touch-probe routines beyond a single axis: tool-length offset, XY skew/rotation, bore/boss centre-finding, and single-edge work-offset — built from probes assigned to roles. | mode, feed fast/slow, search distance, backoff, probe role assignments |
+| **Surfacing wizard (CNC)** | Generates and runs a facing/surfacing G-code program from area, tool and pass parameters. | width/height, tool Ø, stepover %, depth per pass, total depth, clearance, feed, direction, spindle RPM, confirm |
+| **Tool alignment** | Camera-crosshair alignment: jog each tool onto a fixed camera position, capture XY(+Z) per tool, then compute and apply `G10` offsets relative to a reference tool. | camera URL/overlay, reference tool, enable Z, jog step/feed, camera/start/finish/save commands, invert offsets |
 | **Tool selector** | A button per tool (`T<n>`); active tool highlighted. | label, colour |
 | **Fan slider** | Single-fan slider with live % + RPM (`M106 P<n> S…`). | fan #, colour |
 | **Job control** | Pause / resume / cancel (`M25`/`M24`/`M0`) with progress. | show progress, colour |
@@ -71,6 +79,11 @@ ready-made jog dial, the **CNC / Octopus jog** widget above is usually the bette
 | **Message box (M291)** | Surfaces a firmware message box inline and acknowledges it (`M292`) — OK/Cancel, choices, or value input. | — |
 | **Profile switcher** | Switch the active FL layout profile from the page. | dropdown vs buttons |
 | **Theme toggle** | Flip the DWC light/dark theme. | switch vs button |
+| **Preflight checks** | Loads a G-code file and runs static sanity checks against it — travel bounds, unhomed axes, rapid rates, unknown tool references. | default file, rapid rate, tool table |
+| **Toolpath** | Loads a G-code file and draws its 2D XY toolpath, colouring already-cut vs remaining moves live against the running job's file position. | default file, colour |
+| **Machine health** | Read-only tile of board voltages / MCU temp, free RAM, uptime, network interfaces and probe readings, plus a button for a full `M122` diagnostics dump. | title, which sections shown (power/RAM/uptime/network/probes) |
+| **Maintenance** | Summary tile of tracked usage — print/spindle hours, filament used, tool changes, job counts, power-on hours — with a link through to the full Maintenance page. | label, colour |
+| **Firmware update** | Browses firmware releases (Duet3D / gloomyandy fork / DWC) matched per board, then hands files to DWC's own upload flow (or triggers an SBC `M997 S2` package update). | source, include prereleases, DSF update feed |
 
 ## More display widgets
 
@@ -104,3 +117,13 @@ that **recolour**, **hide** or **disable** the widget. Each rule is an OM path, 
 
 While editing, mini widgets (command buttons, read-outs) can be pinned into the **top app bar** for
 always-visible controls; the bar's colour, title and logo are set in **Theme & colours**.
+
+Four widgets are purpose-built for the header, though — like any other widget — they can also be
+dropped onto an ordinary page grid instead:
+
+| Widget | What it does |
+|--------|--------------|
+| **G-code entry (top bar)** | Pins DWC's own G-code entry box. |
+| **Edit-mode button (top bar)** | Pins the shell's Edit/Done button — the way in and out of edit mode itself. |
+| **Upload button (top bar)** | Pins DWC's own file/job upload button. |
+| **Access-level chip (top bar)** | Shows the current access level (Observer/Operator/Admin); click to log in or lock back down. Only appears once the [password lock](usage.md#password-lock) is enabled. |
