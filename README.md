@@ -66,6 +66,9 @@ was made with a newer Flexible Layouts than you have installed).
   Telnet encrypted from the printer itself): checks your board/firmware can do it, walks you through
   generating a certificate, uploads it, enables TLS, and patches `config.g` so it survives a reboot.
   See [docs/tls-setup.md](docs/tls-setup.md).
+- **Cut from drawing** — turn an SVG/DXF outline into a G-code profile cut: load a file, pick which
+  paths to cut and which side of the line, set depth/passes/tabs, preview the toolpath, then run it or
+  download the file. See [docs/vector-import.md](docs/vector-import.md).
 
 See **[docs/usage.md](docs/usage.md)** for a full tour and **[docs/widgets.md](docs/widgets.md)** for
 the widget reference.
