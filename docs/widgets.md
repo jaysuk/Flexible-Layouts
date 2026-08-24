@@ -22,9 +22,9 @@ Add widgets with **Add widget** while editing. Every widget can additionally be 
 | **Slider** | Sends a command template (`{value}`) as you drag, and optionally tracks a live OM value. Fan %, speed/flow factor, brightness, RPM… | live value path (+scale/offset), min/max/step, command, unit, send-while-dragging, colour |
 | **Toggle / switch** | Stateful on/off bound to an OM value, sending separate on/off commands. ATX power (`M80`/`M81`), pins (`M42`), a `global` bool… | state path, on/off commands, switch vs button, colour |
 | **Stepper (+/−)** | Buttons that nudge a value by a step. Relative sends `±step` each press; absolute sends the new total. Babystep, target temp, factors… | mode, live value path, step/min/max, decimals, command, unit, colour |
-| **Value read-out** | Shows one object-model value as a number, label or gauge. | OM path, display mode, unit, precision, gauge bounds, scale/offset, on/off text, value→text map |
+| **Value read-out** | Shows one object-model value as a number, label or gauge. | OM path, display mode, unit, precision, gauge bounds, scale/offset, on/off text, value→text map, label position |
 | **Live chart** | Plots one or more OM values over time, with CSV download. | series (OM paths), window seconds, interval, Y bounds, axis titles |
-| **Text / image** | A heading, paragraph, image (by URL) or spacer. | variant, content, alignment, colour |
+| **Text / image** | A heading, paragraph, image (by URL or loaded from the machine's SD card) or spacer. | variant, content, image source (URL/SD card), alignment, colour |
 | **LED strip (NeoPixel)** | Control NeoPixel/DotStar strips via `M150`: colour picker, master brightness, all-off, and optional per-LED painting (pick a colour, click pips to paint them). RGBW strips get a white channel. | which strip (first detected / choose / fixed), LED count, per-LED painting on/off, editable count on/off, colour |
 | **Globals editor** | View and edit RRF `global.*` variables inline — booleans toggle live, numbers/strings/arrays edit + Set. | show all vs a chosen list of variables, filter box, allow-edit (read-only) |
 | **Web page** | Embeds an external page / local web service in an iframe. | URL |
@@ -47,13 +47,13 @@ ready-made jog dial, the **CNC / Octopus jog** widget above is usually the bette
 |--------|--------------|-------------|
 | **Progress bar** | Horizontal bar for an OM fraction (value, or value ÷ a max path). Print progress, heater-to-target, etc. | value path, max path, min/max/scale, show %, colour |
 | **Status indicator** | A coloured dot + label/icon chosen by the first matching rule against an OM value. At-a-glance machine state. | value path, states (operator/value → colour/label/icon), defaults |
-| **Alert banner** | A banner shown **only while** an OM condition holds (filament out, fault, door open…). Visible in edit mode for setup. | condition (path/operator/value), severity, message, icon |
+| **Alert banner** | A banner shown **only while** an OM condition holds (filament out, fault, door open…). Visible in edit mode for setup. | condition (path/operator/value), severity (each with its own default icon), message, icon override |
 | **Webcam / snapshot** | An image or stream, optionally refreshed on a timer, click-to-enlarge. | URL, refresh ms (0 = stream), fit, click-to-enlarge |
-| **Job thumbnail** | Shows the running job's (or a chosen file's) slicer-embedded thumbnail image. | source (job/file), file path, fit, title |
+| **Job thumbnail** | Shows the running job's (or a chosen file's) slicer-embedded thumbnail image. | source (job/file), file path (with a file picker), fit, title |
 | **Macro grid** | A button per `.g` file in a macros folder; runs `M98 P"…"`. | folder, columns, colour |
 | **Mini console** | Send a command and see the last few replies, without leaving the page. | replies kept, placeholder |
 | **Heater control** | Compact tile: live current/active/state + target presets and off (command-templated). | heater path, set/off commands, presets, colour |
-| **Clock / timer** | Wall clock, uptime, print time, or time-left. | mode, 12/24h |
+| **Clock / timer** | Wall clock, uptime, print time, or time-left. | mode, 12/24h, label position |
 | **Value table** | A tidy label → value table for several OM paths in one tile. | rows (label/path/unit/decimals) |
 
 ## Machine control widgets
@@ -89,11 +89,11 @@ ready-made jog dial, the **CNC / Octopus jog** widget above is usually the bette
 
 | Widget | What it does | Key options |
 |--------|--------------|-------------|
-| **Gauge cluster** | Several radial gauges in one tile. | gauges (label/path/min/max/unit/colour) |
-| **Indicator grid** | Grid of truthiness-driven status icons (endstops, sensors, flags). | items (label/path/on+off colour/icon), columns |
+| **Gauge cluster** | Several gauges (circular or linear bar) in one tile. | gauges (label/path/min/max/unit/colour), style (circular/linear), label position |
+| **Indicator grid** | Grid of status icons driven by truthiness or an explicit comparison (equals, greater/less than, contains…) against an OM value. | items (label/path/on+off colour/icon, optional operator + comparison value), columns |
 | **Sparkline** | Tiny multi-series trend line sampled from the OM. | series (path/colour), window, interval |
-| **Note (Markdown)** | Formatted text/instructions from a minimal Markdown subset. | content |
-| **Image hotspots** | An image with clickable regions that each send a command (machine schematic, etc.). | image URL, regions (x/y/w/h %, command, label) |
+| **Note (Markdown)** | Formatted text/instructions from a minimal Markdown subset. Editable in place (a small pencil button) without entering page-edit mode. | content |
+| **Image hotspots** | An image with clickable regions that each send a command (machine schematic, etc.) — drag/resize regions directly on the image preview, and give a region a non-rectangular shape (circle, star, diamond…) so only that shape is clickable. | image URL, regions (x/y/w/h %, command, label, optional shape) |
 | **HTTP / REST value** | Polls an HTTP endpoint and shows the response (optionally a JSON field). | URL, poll ms, JSON path, prefix/suffix |
 | **Console log** | Live tail of console messages and command replies (via the plugin event bus). | replies kept |
 

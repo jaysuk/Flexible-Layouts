@@ -1,5 +1,5 @@
 <template>
-  <div class="ck-root fill-height d-flex flex-column align-center justify-center">
+  <div class="ck-root fill-height d-flex align-center justify-center" :class="labelClass">
     <span v-if="widget.label" class="ck-label text-truncate">{{ widget.label }}</span>
     <span class="ck-value">{{ display }}</span>
   </div>
@@ -10,11 +10,15 @@ import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 
 import { useMachineStore } from "@/stores/machine";
 
+import { labelFlexClass } from "../composables/useLabelPosition";
 import type { Widget } from "../model/document";
 import { resolveOmPath } from "../util/omPath";
 
 const props = defineProps<{ widget: Extract<Widget, { type: "clock" }>; disabled?: boolean }>();
 const machineStore = useMachineStore();
+
+// "top" matches how Clock rendered before labelPosition existed (label first, above the value).
+const labelClass = computed(() => labelFlexClass(props.widget.labelPosition, "top"));
 
 const now = ref(Date.now());
 let timer: ReturnType<typeof setInterval> | null = null;

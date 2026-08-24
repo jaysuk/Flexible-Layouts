@@ -16,11 +16,15 @@ import { computed } from "vue";
 import { useMachineStore } from "@/stores/machine";
 
 import type { Widget } from "../model/document";
+import { evaluateRule } from "../util/conditions";
 import { resolveOmPath } from "../util/omPath";
 
 const props = defineProps<{ widget: Extract<Widget, { type: "indicators" }>; disabled?: boolean }>();
 const machineStore = useMachineStore();
 
+// Original behaviour, kept as the default for any item with no operator set (including every
+// item saved before comparison operators existed) - never removed, so existing indicators keep
+// behaving exactly as they always have.
 function truthy(v: unknown): boolean {
   if (typeof v === "boolean") return v;
   if (typeof v === "number") return v > 0;
@@ -29,7 +33,9 @@ function truthy(v: unknown): boolean {
 }
 const items = computed(() =>
   (props.widget.items ?? []).map((it) => {
-    const on = truthy(resolveOmPath(machineStore.model, it.omPath));
+    const on = it.operator
+      ? evaluateRule(machineStore.model, { omPath: it.omPath, operator: it.operator, value: it.value })
+      : truthy(resolveOmPath(machineStore.model, it.omPath));
     return {
       label: it.label || it.omPath,
       color: on ? (it.trueColor || "success") : (it.falseColor || "grey"),

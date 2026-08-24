@@ -8,11 +8,13 @@
 		</template>
 
 		<template v-else-if="widget.display === 'gauge'">
-			<v-progress-circular :model-value="gaugePct" :size="76" :width="9"
-								 :color="effectiveColor || 'primary'">
-				<span class="text-body-2">{{ formatted }}</span>
-			</v-progress-circular>
-			<div v-if="widget.label" class="text-caption text-medium-emphasis mt-1">{{ widget.label }}</div>
+			<div class="d-flex align-center justify-center ga-1" :class="labelClass">
+				<div v-if="widget.label" class="text-caption text-medium-emphasis">{{ widget.label }}</div>
+				<v-progress-circular :model-value="gaugePct" :size="76" :width="9"
+									 :color="effectiveColor || 'primary'">
+					<span class="text-body-2">{{ formatted }}</span>
+				</v-progress-circular>
+			</div>
 		</template>
 
 		<template v-else-if="widget.display === 'label'">
@@ -23,10 +25,12 @@
 		</template>
 
 		<template v-else>
-			<div class="font-weight-medium" :style="[valueStyle, { fontSize: '2em', lineHeight: 1.1 }]">
-				{{ formatted }}<span style="font-size: 0.6em">{{ unitSuffix }}</span>
+			<div class="d-flex align-center justify-center ga-1" :class="labelClass">
+				<div v-if="widget.label" class="text-medium-emphasis" style="font-size: 0.8em">{{ widget.label }}</div>
+				<div class="font-weight-medium" :style="[valueStyle, { fontSize: '2em', lineHeight: 1.1 }]">
+					{{ formatted }}<span style="font-size: 0.6em">{{ unitSuffix }}</span>
+				</div>
 			</div>
-			<div v-if="widget.label" class="text-medium-emphasis" style="font-size: 0.8em">{{ widget.label }}</div>
 		</template>
 	</div>
 </template>
@@ -36,6 +40,7 @@ import { computed } from "vue";
 
 import { useMachineStore } from "@/stores/machine";
 
+import { labelFlexClass } from "../composables/useLabelPosition";
 import type { Widget } from "../model/document";
 import { resolveColor } from "../util/color";
 import { evalMathExpr } from "../util/mathExpr";
@@ -46,6 +51,11 @@ const props = defineProps<{ widget: Extract<Widget, { type: "value" }>; override
 const machineStore = useMachineStore();
 
 const effectiveColor = computed(() => props.overrideColor || props.widget.color);
+
+// "bottom" matches how gauge/number mode rendered before labelPosition existed (value/gauge first,
+// label after) - see useLabelPosition's own doc comment for why the label element must come FIRST
+// in the template regardless of the resolved position.
+const labelClass = computed(() => labelFlexClass(props.widget.labelPosition, "bottom"));
 
 // Reactive: machineStore.model is a Pinia-tracked proxy, so re-resolving the path inside a
 // computed re-runs whenever the underlying field changes.

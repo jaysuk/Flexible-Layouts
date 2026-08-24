@@ -65,6 +65,9 @@ export type Widget =
 		/** Object-model path, e.g. `heat.heaters[0].current` or `move.axes[2].machinePosition`. */
 		omPath: string;
 		label?: string;
+		/** Where the label sits relative to the value/gauge. Unset = "bottom" (today's layout);
+		 *  not used by display === "label", which already places its label inline to the left. */
+		labelPosition?: "top" | "bottom" | "left" | "right";
 		display: "number" | "label" | "gauge";
 		unit?: string;
 		precision?: number;
@@ -89,10 +92,15 @@ export type Widget =
 	| {
 		type: "label";
 		variant: "text" | "heading" | "image" | "spacer";
-		/** Text content, or image URL when variant === "image". */
+		/** Text content, or image URL when variant === "image" && imageSource !== "sd". */
 		content?: string;
 		align?: "start" | "center" | "end";
 		color?: string;
+		/** variant === "image" only. Unset/"url" = today's behaviour (content is used as an <img> src
+		 *  directly); "sd" loads imagePath from the machine's SD card (same imageSource convention as
+		 *  PageLayout.background, see below), fetched and shown as an object URL. */
+		imageSource?: "url" | "sd";
+		imagePath?: string;
 	}
 	| {
 		/** A reusable custom panel: a titled container holding its own mini-grid of widgets. */
@@ -468,6 +476,8 @@ export type Widget =
 		/** Clock / uptime / print-time readout. */
 		type: "clock";
 		label?: string;
+		/** Where the label sits relative to the value. Unset = "top" (today's layout). */
+		labelPosition?: "top" | "bottom" | "left" | "right";
 		mode?: "time" | "uptime" | "printTime" | "timeLeft";
 		/** 12- or 24-hour for mode "time". */
 		format?: "24" | "12";
@@ -770,20 +780,41 @@ export type Widget =
 		title?: string;
 		/** Decimal places for every gauge's value (default 0). */
 		precision?: number;
+		/** Where each gauge's label sits relative to it. Unset = "bottom" (today's layout). */
+		labelPosition?: "top" | "bottom" | "left" | "right";
+		/** Unset = "circular" (today's only style). */
+		variant?: "circular" | "linear";
 		gauges?: Array<{ label?: string; omPath: string; min?: number; max?: number; unit?: string; color?: string }>;
 	}
 	| {
-		/** Grid of truthiness-driven status icons (endstops, sensors, flags…). */
+		/** Grid of status icons (endstops, sensors, flags…), on/off per item. */
 		type: "indicators";
 		title?: string;
 		columns?: number;
-		items?: Array<{ label?: string; omPath: string; trueColor?: string; falseColor?: string; trueIcon?: string; falseIcon?: string }>;
+		items?: Array<{
+			label?: string;
+			omPath: string;
+			/** Unset = truthy/falsy (item's original behaviour, before comparison operators existed). */
+			operator?: ConditionOperator;
+			/** Compared against the live value (ignored for truthy/falsy/unset). */
+			value?: string | number;
+			trueColor?: string;
+			falseColor?: string;
+			trueIcon?: string;
+			falseIcon?: string;
+		}>;
 	}
 	| {
 		/** Image with clickable command regions (machine schematic, etc.). */
 		type: "hotspot";
 		url?: string;
-		regions?: Array<{ x: number; y: number; w: number; h: number; command?: string; label?: string }>;
+		regions?: Array<{
+			x: number; y: number; w: number; h: number; command?: string; label?: string;
+			/** Unset/"rect" = today's plain rectangular click region. Any other kind renders the
+			 *  region as an inline SVG shape (same ButtonShape used by codeButton) instead, clickable
+			 *  only inside the shape itself. */
+			shape?: ButtonShape;
+		}>;
 	}
 	| {
 		/** Formatted note (minimal Markdown). */
@@ -1031,13 +1062,15 @@ export function createDefaultWidget(type: WidgetType): Widget {
 				defaultIcon: "mdi-help",
 			};
 		case "alert":
+			// No fixed `icon` - Vuetify's own v-alert already picks an icon per `severity` (its `type`
+			// prop) when icon is left unset. A fixed default here would permanently defeat that and
+			// show the same icon regardless of severity, exactly like themeToggle's old fixed label did.
 			return {
 				type: "alert",
 				omPath: "",
 				operator: "truthy",
 				severity: "warning",
 				message: "Alert",
-				icon: "mdi-alert",
 			};
 		case "webcam":
 			return { type: "webcam", url: "", refreshMs: 1000, fit: "contain", fullscreen: true };
@@ -1180,7 +1213,10 @@ export function createDefaultWidget(type: WidgetType): Widget {
 		case "profileSwitch":
 			return { type: "profileSwitch", label: "Profile", variant: "select" };
 		case "themeToggle":
-			return { type: "themeToggle", label: "Dark", variant: "switch" };
+			// No fixed `label` - ThemeToggleWidget falls back to a Light/Dark caption that tracks the
+			// current theme itself when label is unset. A fixed default here would permanently defeat
+			// that dynamic fallback, showing "Dark" forever regardless of the actual theme.
+			return { type: "themeToggle", variant: "switch" };
 		case "codeInput":
 			return { type: "codeInput" };
 		case "editModeToggle":

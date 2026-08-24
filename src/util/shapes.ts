@@ -3,8 +3,10 @@
  *
  * Provides shapePath() for rendering arbitrary shapes as SVG path strings,
  * plus ringLayout() / hexLayout() for arranging items in radial or hex grids.
- * Consumed by OctopusJogWidget and shaped CommandButtonWidget.
+ * Consumed by OctopusJogWidget and shaped CommandButtonWidget/HotspotWidget.
  */
+
+import type { ButtonShape } from "../model/document";
 
 export interface Box { w: number; h: number }
 
@@ -87,6 +89,56 @@ export type ShapeParams =
 	| DiamondParams | TrapezoidParams | CustomPtsParams | PathParams;
 
 export type ShapeKind = ShapeParams["kind"];
+
+/** Convert a document.ts ButtonShape descriptor (optional, per-kind params) to the required-params
+ *  ShapeParams shapePath() needs, applying the same sensible per-kind defaults everywhere a
+ *  ButtonShape is rendered (CommandButtonWidget, HotspotWidget's shaped regions). */
+export function buttonShapeToParams(s: ButtonShape): ShapeParams {
+	switch (s.kind) {
+		case "rect":
+		case "rounded":
+			return { kind: "rect", rx: s.rx ?? (s.kind === "rounded" ? 8 : 0) };
+		case "pill":
+			return { kind: "pill" };
+		case "circle":
+			return { kind: "circle" };
+		case "ellipse":
+			return { kind: "ellipse" };
+		case "polygon":
+			return { kind: "polygon", sides: s.sides ?? 6, rotation: s.shapeRotation ?? 0 };
+		case "star":
+			return { kind: "star", points: s.points ?? 5, innerRatio: s.innerRatio ?? 0.4, rotation: s.shapeRotation ?? 0 };
+		case "wedge":
+			return {
+				kind: "wedge",
+				startAngle: s.startAngle ?? 0,
+				sweepAngle: s.sweepAngle ?? 90,
+				innerRadius: s.innerRadius ?? 0.3,
+				outerRadius: s.outerRadius ?? 1.0,
+			};
+		case "chevron":
+			return { kind: "chevron", direction: s.direction ?? "right", indent: s.indent ?? 0.3 };
+		case "arrow":
+			return { kind: "arrow", direction: s.direction ?? "right", headRatio: s.headRatio ?? 0.4 };
+		case "diamond":
+			return { kind: "diamond" };
+		case "trapezoid":
+			return { kind: "trapezoid", topRatio: s.topRatio ?? 0.6 };
+		case "polygonPoints":
+			return { kind: "polygonPoints", points: s.customPoints ?? [] };
+		case "path":
+			return { kind: "path", d: s.d ?? "" };
+	}
+}
+
+/** Whether a shape kind must keep its aspect ratio (round/regular shapes) rather than stretch to
+ *  fill a non-square box (rect/pill/ellipse/directional shapes, which are meant to fill the cell).
+ *  Takes ButtonShape's own kind union (a superset of ShapeKind - it also has "rounded") since every
+ *  caller has a ButtonShape on hand, not a already-converted ShapeParams. */
+export function shapePreservesAspect(kind: ButtonShape["kind"]): boolean {
+	return kind === "circle" || kind === "polygon" || kind === "star" || kind === "wedge"
+		|| kind === "polygonPoints" || kind === "path";
+}
 
 // ---------------------------------------------------------------------------
 // Main entry point

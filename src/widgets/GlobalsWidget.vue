@@ -135,4 +135,8 @@ function setBool(name: string, value: boolean): void {
 .gl-ro { flex: 1 1 6rem; text-align: right; font-family: monospace; font-size: 0.8em; opacity: 0.8; }
 .gl-field { flex: 1 1 6rem; max-width: 12rem; }
 .gl-switch { flex: 0 0 auto; }
+/* Gives the switch's ripple room to expand within the widget's own box before it would otherwise
+   hit the grid item's ancestor overflow:hidden and get visibly clipped - same fix, same reason, as
+   ToggleWidget's .tg-switch-pad-end. */
+.gl-switch :deep(.v-selection-control) { padding-right: 6px; }
 </style>

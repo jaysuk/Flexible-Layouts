@@ -77,9 +77,9 @@ import i18n from "@/i18n";
 import { useMachineStore } from "@/stores/machine";
 import { LogLevel, useUiStore } from "@/stores/ui";
 
-import type { ButtonShape, Widget } from "../model/document";
+import type { Widget } from "../model/document";
 import { resolveColor } from "../util/color";
-import { shapePath, type ShapeParams } from "../util/shapes";
+import { buttonShapeToParams, shapePath, shapePreservesAspect } from "../util/shapes";
 
 const props = defineProps<{
 	widget: Extract<Widget, { type: "codeButton" }>;
@@ -120,9 +120,7 @@ const SVG_H = 100;
 // skewed polygons; box-filling shapes (rect, pill, ellipse, directional) are meant to fill the cell.
 const preserveAspect = computed(() => {
 	const k = props.widget.shape?.kind;
-	return (k === "circle" || k === "polygon" || k === "star" || k === "wedge" || k === "polygonPoints" || k === "path")
-		? "xMidYMid meet"
-		: "none";
+	return k && shapePreservesAspect(k) ? "xMidYMid meet" : "none";
 });
 
 // Where to place the label/icon, in viewBox percent. Most shapes are centred on the box; a wedge's
@@ -145,49 +143,10 @@ const contentStyle = computed<Record<string, string>>(() => ({
 	maxWidth: "100%",
 }));
 
-/** Convert a ButtonShape descriptor to a ShapeParams object for shapePath(). */
-function toShapeParams(s: ButtonShape): ShapeParams {
-	switch (s.kind) {
-		case "rect":
-		case "rounded":
-			return { kind: "rect", rx: s.rx ?? (s.kind === "rounded" ? 8 : 0) };
-		case "pill":
-			return { kind: "pill" };
-		case "circle":
-			return { kind: "circle" };
-		case "ellipse":
-			return { kind: "ellipse" };
-		case "polygon":
-			return { kind: "polygon", sides: s.sides ?? 6, rotation: s.shapeRotation ?? 0 };
-		case "star":
-			return { kind: "star", points: s.points ?? 5, innerRatio: s.innerRatio ?? 0.4, rotation: s.shapeRotation ?? 0 };
-		case "wedge":
-			return {
-				kind: "wedge",
-				startAngle:  s.startAngle ?? 0,
-				sweepAngle:  s.sweepAngle ?? 90,
-				innerRadius: s.innerRadius ?? 0.3,
-				outerRadius: s.outerRadius ?? 1.0,
-			};
-		case "chevron":
-			return { kind: "chevron", direction: s.direction ?? "right", indent: s.indent ?? 0.3 };
-		case "arrow":
-			return { kind: "arrow", direction: s.direction ?? "right", headRatio: s.headRatio ?? 0.4 };
-		case "diamond":
-			return { kind: "diamond" };
-		case "trapezoid":
-			return { kind: "trapezoid", topRatio: s.topRatio ?? 0.6 };
-		case "polygonPoints":
-			return { kind: "polygonPoints", points: s.customPoints ?? [] };
-		case "path":
-			return { kind: "path", d: s.d ?? "" };
-	}
-}
-
 const shapedPathD = computed(() => {
 	const s = props.widget.shape;
 	if (!s) { return ""; }
-	return shapePath(toShapeParams(s), { w: SVG_W, h: SVG_H });
+	return shapePath(buttonShapeToParams(s), { w: SVG_W, h: SVG_H });
 });
 
 /** Resolve the fill colour for the shape. */

@@ -137,6 +137,9 @@
 								  hide-details :label="$t('plugins.flexibleLayouts.properties.label')" />
 					<v-select persistent-placeholder v-model="draft.display" :items="displayOptions" class="mb-2" density="compact"
 							  variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.display')" />
+					<v-select v-if="draft.display !== 'label'" persistent-placeholder v-model="draft.labelPosition"
+							  :items="labelPositionOptions" class="mb-2" density="compact" variant="outlined" hide-details
+							  :label="$t('plugins.flexibleLayouts.properties.labelPosition')" />
 					<v-row dense>
 						<v-col cols="6">
 							<v-text-field persistent-placeholder v-model="draft.unit" density="compact" variant="outlined" hide-details
@@ -221,9 +224,29 @@
 								v-model="draft.content" class="mb-2" density="compact" variant="outlined"
 								hide-details rows="2" auto-grow
 								:label="$t('plugins.flexibleLayouts.properties.text')" />
-					<v-text-field persistent-placeholder v-else-if="draft.variant === 'image'" v-model="draft.content" class="mb-2"
-								  density="compact" variant="outlined" hide-details
-								  :label="$t('plugins.flexibleLayouts.properties.imageUrl')" />
+					<template v-else-if="draft.variant === 'image'">
+						<v-btn-toggle :model-value="draft.imageSource ?? 'url'" density="compact" variant="outlined" divided
+									  mandatory class="mb-2 d-flex" @update:model-value="onLabelImageSourceChange">
+							<v-btn value="url" size="small" class="flex-grow-1" prepend-icon="mdi-web">
+								{{ $t("plugins.flexibleLayouts.background.sourceUrl") }}
+							</v-btn>
+							<v-btn value="sd" size="small" class="flex-grow-1" prepend-icon="mdi-sd">
+								{{ $t("plugins.flexibleLayouts.background.sourceSd") }}
+							</v-btn>
+						</v-btn-toggle>
+						<v-text-field persistent-placeholder v-if="(draft.imageSource ?? 'url') === 'url'" v-model="draft.content"
+									  class="mb-2" density="compact" variant="outlined" hide-details
+									  :label="$t('plugins.flexibleLayouts.properties.imageUrl')" />
+						<div v-else class="d-flex ga-1 align-center mb-2">
+							<v-text-field :model-value="draft.imagePath" class="flex-grow-1" density="compact" variant="outlined"
+										  hide-details readonly :label="$t('plugins.flexibleLayouts.properties.imagePath')"
+										  :placeholder="$t('plugins.flexibleLayouts.sdImage.none')" />
+							<v-btn size="small" variant="tonal" prepend-icon="mdi-folder-image" @click="labelImagePickerOpen = true">
+								{{ $t("plugins.flexibleLayouts.sdImage.choose") }}
+							</v-btn>
+						</div>
+						<SdImagePicker v-model="labelImagePickerOpen" @pick="onLabelImagePicked" />
+					</template>
 					<v-select persistent-placeholder v-if="draft.variant !== 'spacer'" v-model="draft.align" :items="alignOptions"
 							  class="mb-2" density="compact" variant="outlined" hide-details
 							  :label="$t('plugins.flexibleLayouts.properties.align')" />
@@ -760,6 +783,7 @@
 				<!-- Clock -->
 				<template v-else-if="draft.type === 'clock'">
 					<v-text-field persistent-placeholder v-model="draft.label" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" />
+					<v-select persistent-placeholder v-model="draft.labelPosition" :items="labelPositionOptions" class="mb-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.labelPosition')" />
 					<v-row dense>
 						<v-col cols="6"><v-select persistent-placeholder v-model="draft.mode" :items="clockModeOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.clock.mode')" /></v-col>
 						<v-col cols="6"><v-select persistent-placeholder v-if="draft.mode === 'time'" v-model="draft.format" :items="clockFormatOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.clock.format')" /></v-col>
@@ -773,7 +797,11 @@
 						<v-col cols="6"><v-select persistent-placeholder v-model="draft.source" :items="thumbnailSourceOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.thumbnail.source')" /></v-col>
 						<v-col cols="6"><v-select persistent-placeholder v-model="draft.fit" :items="thumbnailFitOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.thumbnail.fit')" /></v-col>
 					</v-row>
-					<v-text-field persistent-placeholder v-if="draft.source === 'file'" v-model="draft.path" class="mt-2" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.thumbnail.path')" placeholder="0:/gcodes/benchy.gcode" />
+					<div v-if="draft.source === 'file'" class="d-flex ga-1 align-center mt-2">
+						<v-text-field persistent-placeholder v-model="draft.path" class="flex-grow-1" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.thumbnail.path')" placeholder="0:/gcodes/benchy.gcode" />
+						<v-btn icon="mdi-file-find-outline" size="small" variant="tonal" density="comfortable" :title="$t('plugins.flexibleLayouts.filePicker.title')" @click="thumbnailPickerOpen = true" />
+					</div>
+					<GcodeFilePickerDialog v-model="thumbnailPickerOpen" @select="onThumbnailFileSelected" />
 				</template>
 
 				<!-- Multi-value table -->
@@ -1064,6 +1092,10 @@
 							<template #append-inner><HelpTip :text="$t('plugins.flexibleLayouts.properties.precisionHelp')" /></template>
 						</v-text-field></v-col>
 					</v-row>
+					<v-row dense class="mb-2">
+						<v-col cols="6"><v-select persistent-placeholder v-model="draft.variant" :items="gaugeVariantOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.gaugeCluster.style')" /></v-col>
+						<v-col cols="6"><v-select persistent-placeholder v-model="draft.labelPosition" :items="labelPositionOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.labelPosition')" /></v-col>
+					</v-row>
 					<div class="d-flex align-center mb-1">
 						<span class="text-title-small">{{ $t("plugins.flexibleLayouts.gaugeCluster.gauges") }}</span>
 						<v-spacer />
@@ -1109,6 +1141,17 @@
 							<v-text-field persistent-placeholder v-model="it.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" style="max-width:8rem" />
 							<OmPathField v-model="it.omPath" class="flex-grow-1" :label="$t('plugins.flexibleLayouts.conditions.omPath')" />
 							<v-btn icon="mdi-delete" size="small" variant="text" color="error" @click="draft.items.splice(i, 1)" />
+						</div>
+						<div class="d-flex ga-2 mt-2">
+							<v-select persistent-placeholder v-model="it.operator" :items="operatorOptions" clearable density="compact"
+									  variant="outlined" hide-details style="max-width: 170px"
+									  :label="$t('plugins.flexibleLayouts.conditions.operator')" />
+							<v-text-field persistent-placeholder v-if="it.operator && needsValue(it.operator)" v-model="it.value" density="compact"
+										  variant="outlined" hide-details
+										  :label="$t('plugins.flexibleLayouts.conditions.value')" />
+						</div>
+						<div class="text-caption text-medium-emphasis mt-1">
+							{{ $t("plugins.flexibleLayouts.indicators.operatorHint") }}
 						</div>
 						<div class="d-flex ga-2 mt-2">
 							<ColorSelect v-model="it.trueColor" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.indicators.onColor')" />
@@ -1179,6 +1222,7 @@
 						<v-btn size="x-small" variant="tonal" prepend-icon="mdi-plus" @click="addRegion">{{ $t("plugins.flexibleLayouts.conditions.add") }}</v-btn>
 					</div>
 					<div class="text-caption text-medium-emphasis mb-2">{{ $t("plugins.flexibleLayouts.hotspot.hint") }}</div>
+					<HotspotRegionEditor v-if="draft.regions.length" :url="draft.url" :regions="draft.regions" class="mb-3" />
 					<v-sheet v-for="(r, i) in draft.regions" :key="i" border rounded class="pa-2 mb-2">
 						<div class="d-flex ga-2">
 							<v-text-field persistent-placeholder v-model="r.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" style="max-width:8rem" />
@@ -1190,6 +1234,10 @@
 							<v-text-field persistent-placeholder v-model.number="r.y" type="number" density="compact" variant="outlined" hide-details label="Y%" style="max-width:5rem" />
 							<v-text-field persistent-placeholder v-model.number="r.w" type="number" density="compact" variant="outlined" hide-details label="W%" style="max-width:5rem" />
 							<v-text-field persistent-placeholder v-model.number="r.h" type="number" density="compact" variant="outlined" hide-details label="H%" style="max-width:5rem" />
+							<v-select persistent-placeholder :model-value="r.shape?.kind ?? 'rect'" :items="shapeKindOptions"
+									  density="compact" variant="outlined" hide-details class="flex-grow-1"
+									  :label="$t('plugins.flexibleLayouts.shape.kind')"
+									  @update:model-value="(v) => setRegionShapeKind(r, v)" />
 						</div>
 					</v-sheet>
 				</template>
@@ -1423,8 +1471,11 @@ import { defaultLockForWidget } from "../util/printLock";
 import { defaultChromeForWidget } from "../util/panelChrome";
 import { describeWidget } from "../widgets/registry";
 import ColorSelect from "./ColorSelect.vue";
+import HotspotRegionEditor from "./HotspotRegionEditor.vue";
 import IconPicker from "./IconPicker.vue";
 import OmPathField from "./OmPathField.vue";
+import SdImagePicker from "./SdImagePicker.vue";
+import GcodeFilePickerDialog from "../widgets/GcodeFilePickerDialog.vue";
 import WidgetView from "../widgets/WidgetView.vue";
 
 const props = defineProps<{ modelValue: boolean; item: GridItemModel | null }>();
@@ -1439,6 +1490,27 @@ const machineStore = useMachineStore();
 // is cast back to Widget on save. Re-cloned every time the dialog opens.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const draft = ref<any>(null);
+
+// Job thumbnail's "file" source path - same picker component ToolpathWidget/PreflightWidget use
+// inline in the live widget, opened from here instead since Thumbnail's own path field lives in
+// this dialog, not on the widget itself.
+const thumbnailPickerOpen = ref(false);
+function onThumbnailFileSelected(path: string): void {
+	if (draft.value) draft.value.path = path;
+}
+
+// Label widget's "sd" image source - same SdImagePicker + imageSource convention already used by
+// PageLayout.background (FlexPage.vue), just scoped to one widget's fields instead of the page's.
+const labelImagePickerOpen = ref(false);
+function onLabelImageSourceChange(v: "url" | "sd"): void {
+	if (draft.value) { draft.value.imageSource = v; }
+}
+function onLabelImagePicked(path: string): void {
+	if (draft.value) {
+		draft.value.imagePath = path;
+		draft.value.imageSource = "sd";
+	}
+}
 
 // Config schema a plugin published for an embedded widget (dwc-plugin-runtime widget-config registry).
 // When present, the properties dialog renders the shared schema-driven form so the user can configure
@@ -1856,6 +1928,12 @@ function addRegion(): void {
 	if (draft.value?.type === "hotspot") { (draft.value.regions ??= []).push({ x: 10, y: 10, w: 20, h: 20, command: "", label: "" }); }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function setRegionShapeKind(r: any, kind: string): void {
+	if (kind === "rect") { delete r.shape; }
+	else { r.shape = { kind }; }
+}
+
 const droCoordOptions = computed(() => [
 	{ title: t("dro.work"), value: "work" },
 	{ title: t("dro.machine"), value: "machine" },
@@ -1894,6 +1972,18 @@ const iconPositionOptions = computed(() => [
 	{ title: t("properties.iconPosLeft"), value: "left" },
 	{ title: t("properties.iconPosRight"), value: "right" },
 	{ title: t("properties.iconPosBottom"), value: "bottom" },
+]);
+
+const labelPositionOptions = computed(() => [
+	{ title: t("properties.labelPosTop"), value: "top" },
+	{ title: t("properties.labelPosLeft"), value: "left" },
+	{ title: t("properties.labelPosRight"), value: "right" },
+	{ title: t("properties.labelPosBottom"), value: "bottom" },
+]);
+
+const gaugeVariantOptions = computed(() => [
+	{ title: t("gaugeCluster.variantCircular"), value: "circular" },
+	{ title: t("gaugeCluster.variantLinear"), value: "linear" },
 ]);
 
 const actionOptions = computed(() => [
