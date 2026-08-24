@@ -438,7 +438,13 @@ function applyEdgeOffset(): void {
 .prw-root { min-height: 0; }
 .prw-frozen { opacity: 0.5; pointer-events: none; }
 .prw-label { font-size: 0.8em; font-weight: 600; opacity: 0.85; }
-.prw-body { min-height: 0; overflow-y: auto; }
+/* Outlined fields float their label up onto the border, so a field sitting at the very top of a
+   SCROLLABLE box has that label clipped by the box's own top edge - "Tool number" lost its top half.
+   Every one of the four tabs starts with an outlined field or select, so the headroom belongs here on
+   the shared body. Same fix, same reason, as SurfacingWidget's .srf-fields.
+   .prw-panels deliberately does NOT need this: it starts with an expansion-panel title bar, and its
+   fields sit inside panel content that brings its own padding. */
+.prw-body { min-height: 0; overflow-y: auto; padding-top: 10px; }
 .prw-panels { max-height: 40%; overflow-y: auto; }
 .prw-pre { white-space: pre-wrap; font-size: 0.78rem; background: rgba(var(--v-theme-on-surface), 0.05); padding: 8px; border-radius: 4px; }
 .prw-bore-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; max-width: 220px; }
