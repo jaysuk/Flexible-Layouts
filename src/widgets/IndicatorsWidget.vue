@@ -39,7 +39,7 @@ const items = computed(() =>
     return {
       label: it.label || it.omPath,
       color: on ? (it.trueColor || "success") : (it.falseColor || "grey"),
-      icon: on ? (it.trueIcon || "mdi-circle") : (it.falseIcon || "mdi-circle-outline"),
+      icon: "mdi-circle",
     };
   }),
 );

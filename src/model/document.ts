@@ -1185,7 +1185,7 @@ export function createDefaultWidget(type: WidgetType): Widget {
 				title: "Sensors",
 				columns: 2,
 				items: [
-					{ label: "Z probe", omPath: "sensors.probes[0].value[0]", trueColor: "success", falseColor: "grey", trueIcon: "mdi-circle", falseIcon: "mdi-circle-outline" },
+					{ label: "Z probe", omPath: "sensors.probes[0].value[0]", trueColor: "success", falseColor: "grey", trueIcon: "mdi-circle", falseIcon: "mdi-circle" },
 				],
 			};
 		case "hotspot":

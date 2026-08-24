@@ -14,8 +14,9 @@ describe("Indicators comparison operators", () => {
 		const w = mountInDwc(WidgetView, {
 			props: { widget: indicatorsWidget([{ label: "Probe", omPath: "sensors.probes[0].value[0]" }]) },
 		});
-		// 0 is falsy -> off (grey/outline), matching truthy()'s number > 0 rule.
-		expect(w.html()).toContain("mdi-circle-outline");
+		// 0 is falsy -> off (grey), matching truthy()'s number > 0 rule. Both on/off render a solid
+		// dot; colour is what distinguishes the states (see IndicatorsWidget.vue).
+		expect(w.html()).toContain("text-grey");
 	});
 
 	it("with an operator set, compares against `value` instead of using plain truthy/falsy", () => {
@@ -30,6 +31,6 @@ describe("Indicators comparison operators", () => {
 		// 0 is falsy, but operator "eq" 0 matches -> on, proving the operator path is actually used
 		// instead of falling through to truthy().
 		expect(w.html()).toContain("mdi-circle");
-		expect(w.html()).not.toContain("mdi-circle-outline");
+		expect(w.html()).not.toContain("text-grey");
 	});
 });

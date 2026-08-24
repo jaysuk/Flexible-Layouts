@@ -1919,7 +1919,7 @@ function addGauge(): void {
 	if (draft.value?.type === "gaugeCluster") { (draft.value.gauges ??= []).push({ label: "", omPath: "", min: 0, max: 100, unit: "", color: "primary" }); }
 }
 function addIndicator(): void {
-	if (draft.value?.type === "indicators") { (draft.value.items ??= []).push({ label: "", omPath: "", trueColor: "success", falseColor: "grey", trueIcon: "mdi-circle", falseIcon: "mdi-circle-outline" }); }
+	if (draft.value?.type === "indicators") { (draft.value.items ??= []).push({ label: "", omPath: "", trueColor: "success", falseColor: "grey", trueIcon: "mdi-circle", falseIcon: "mdi-circle" }); }
 }
 function addSparkSeries(): void {
 	if (draft.value?.type === "sparkline") { (draft.value.series ??= []).push({ omPath: "", color: "primary" }); }
