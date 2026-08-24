@@ -19,6 +19,14 @@ const OWNER = "jaysuk";
 const REPO = "Flexible-Layouts";
 const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000; // re-check at most once a day on load
 
+// DuetWebControl's build-plugin-pkg now also produces "<id>-<ver>-srcmap.zip" (debug sourcemaps,
+// "held back from the archive" per its own build script) alongside the real installable
+// "<id>-<ver>.zip", and the release workflow's `FlexibleLayouts-*.zip` glob uploads both as release
+// assets. checkForUpdate()'s default asset pattern (any `*.zip`) can't tell them apart and would
+// grab whichever one GitHub happens to list first - excluding "-srcmap.zip" here pins it to the
+// real plugin package regardless of asset order.
+export const PLUGIN_ASSET_PATTERN = new RegExp(`^${PLUGIN_MANIFEST_ID}-(?!.*-srcmap\\.zip$)[^/]+\\.zip$`, "i");
+
 const LS_ENABLED = "flexibleLayouts.updateCheck.enabled";
 const LS_LAST = "flexibleLayouts.updateCheck.lastCheck";
 const LS_DISMISSED = "flexibleLayouts.updateCheck.dismissed";
@@ -122,7 +130,7 @@ export async function runUpdateCheck(opts: { force?: boolean; notify?: boolean }
 
 	checking.value = true;
 	try {
-		const result = await checkForUpdate({ owner: OWNER, repo: REPO, currentVersion: currentVersion() });
+		const result = await checkForUpdate({ owner: OWNER, repo: REPO, currentVersion: currentVersion(), assetPattern: PLUGIN_ASSET_PATTERN });
 		updateState.value = result;
 		localStorage.setItem(LS_LAST, String(Date.now()));
 		try { localStorage.setItem(LS_RESULT, JSON.stringify(result)); } catch { /* storage full/disabled */ }
