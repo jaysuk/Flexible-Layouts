@@ -23,5 +23,14 @@ export default dwcVitestConfig({
 	// Coverage ratchet: floors set just below the current numbers so coverage can only go up — CI's
 	// `test:coverage` fails if a change drops below them. Raise as you add tests. Only enforced under
 	// `--coverage`; plain `npm test` stays ungated/fast.
-	test: { coverage: { thresholds: { statements: 40, branches: 32, functions: 25, lines: 42 } } },
+	// `reporter` here fully replaces the kit's default list (see dwcVitestConfig), so it must repeat
+	// "text"/"text-summary"/"html" alongside the addition: "json-summary" writes a machine-readable
+	// coverage/coverage-summary.json so per-file numbers can be tracked instead of re-read off the
+	// console each time.
+	test: {
+		coverage: {
+			reporter: ["text", "text-summary", "html", "json-summary"],
+			thresholds: { statements: 40, branches: 32, functions: 25, lines: 42 },
+		},
+	},
 });
