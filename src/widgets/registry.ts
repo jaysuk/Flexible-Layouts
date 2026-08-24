@@ -323,3 +323,13 @@ export function describeWidget(widget: Widget): { title: string; icon: string } 
 	// undefined — the edit-mode tile header reads .title and would otherwise crash the whole page).
 	return { title: (widget as { type?: string }).type || "Widget", icon: "mdi-help-box-outline" };
 }
+
+/** Real grid footprint for a widget, looked up from the same catalog entries the palette itself
+ *  uses to place a freshly-added widget. Used to render live previews (What's New showcase cards)
+ *  at their true on-page size before scaling down to fit a small frame. */
+export function defaultSizeForWidget(widget: Widget): { w: number; h: number } {
+	if (widget.type === "builtinPanel") {
+		return findPanelEntry(widget.component)?.defaultSize ?? { w: 6, h: 8 };
+	}
+	return FREEFORM_WIDGETS.find((e) => e.type === widget.type)?.defaultSize ?? { w: 4, h: 6 };
+}

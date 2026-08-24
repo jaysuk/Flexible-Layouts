@@ -83,6 +83,7 @@ import { computed, ref } from "vue";
 
 import i18n from "@/i18n";
 
+import { previewTransform } from "../composables/useWidgetPreviewFrame";
 import { createDefaultWidget, type GridItemModel, type Widget } from "../model/document";
 import { parsePanelFile } from "../model/io";
 import { type EmbeddableComponentInfo, type EmbeddablePage, listEmbeddableComponents, listEmbeddablePages } from "../model/pluginPages";
@@ -217,22 +218,11 @@ const allItems = computed<Array<PaletteItem>>(() => {
 	return items;
 });
 
-// Render the preview at the widget's real grid footprint (≈ a 12-col grid at ~90px/col, 30px rows)
-// then scale it uniformly to fit the preview frame — so widgets look like they would on the page
-// rather than being crammed into a narrow box and wrapping oddly. FRAME_* track the CSS frame size.
-const FRAME_W = 236;
-const FRAME_H = 204;
+// Preview frame size in px - matches the .palette-preview-frame CSS below. Scaling math itself is
+// shared with the What's New dialog's widget showcase cards via useWidgetPreviewFrame.
+const FRAME = { w: 236, h: 204 };
 function previewStyle(size: { w: number; h: number }) {
-	const footW = Math.min(Math.max(size.w * 90, 160), 900);
-	const footH = Math.min(Math.max(size.h * 30, 80), 640);
-	const scale = Math.min(FRAME_W / footW, FRAME_H / footH, 1);
-	// Stage is absolutely centred in the frame; translate(-50%,-50%) centres its own box, scale shrinks
-	// it. Being out of flow, its (large) footprint can never push the fixed-width pane around.
-	return {
-		width: `${footW}px`,
-		height: `${footH}px`,
-		transform: `translate(-50%, -50%) scale(${scale})`,
-	};
+	return previewTransform(size, FRAME);
 }
 
 const query = computed(() => (search.value ?? "").trim().toLowerCase());
