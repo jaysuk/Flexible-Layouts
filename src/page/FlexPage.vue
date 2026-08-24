@@ -840,9 +840,21 @@ function onAutoHeight(id: string, h: number): void {
 	layout.value = layout.value.map((it, i) => (i === idx ? { ...it, h } : it));
 }
 
-/** Next free row at the bottom of the grid, so new panels stack rather than overlap. */
-function nextY(): number {
-	return layout.value.reduce((max, it) => Math.max(max, it.y + it.h), 0);
+// Find the first free slot (scanning top→bottom, left→right) a panel of the given size fits into
+// without overlapping any existing panel - so a new/duplicated/imported panel drops into gaps beside
+// shorter panels instead of always stacking below the tallest one. Same scan order as repack().
+function findFreeSlot(w: number, h: number): { x: number; y: number; w: number } {
+	const cols = grid.value.cols;
+	const clampedW = Math.min(w, cols);
+	const overlaps = (x: number, y: number): boolean =>
+		layout.value.some((p) => x < p.x + p.w && x + clampedW > p.x && y < p.y + p.h && y + h > p.y);
+	for (let y = 0; ; y++) {
+		for (let x = 0; x + clampedW <= cols; x++) {
+			if (!overlaps(x, y)) {
+				return { x, y, w: clampedW };
+			}
+		}
+	}
 }
 
 // Place the given items into the first free slot (scanning top→bottom, left→right), preserving each
@@ -883,11 +895,12 @@ function packAll(): void {
 }
 
 function addWidget(payload: { widget: Widget; size: { w: number; h: number }; configure: boolean }) {
+	const slot = findFreeSlot(payload.size.w, payload.size.h);
 	const item: GridItemModel = {
 		i: newItemId(),
-		x: 0,
-		y: nextY(),
-		w: payload.size.w,
+		x: slot.x,
+		y: slot.y,
+		w: slot.w,
 		h: payload.size.h,
 		widget: payload.widget,
 	};
@@ -901,8 +914,9 @@ function addWidget(payload: { widget: Widget; size: { w: number; h: number }; co
 }
 
 function addItem(item: GridItemModel) {
-	// Imported panel: drop it at the bottom of the grid, keeping its size/config.
-	layout.value = [...layout.value, { ...item, x: 0, y: nextY() }];
+	// Imported panel: drop it into the first free slot, keeping its size/config.
+	const slot = findFreeSlot(item.w, item.h);
+	layout.value = [...layout.value, { ...item, x: slot.x, y: slot.y, w: slot.w }];
 	persist();
 	commit();
 }
@@ -932,7 +946,8 @@ function duplicateItem(id: string) {
 	if (!item) {
 		return;
 	}
-	const copy = { ...reidItem(item), x: 0, y: nextY() };
+	const slot = findFreeSlot(item.w, item.h);
+	const copy = { ...reidItem(item), x: slot.x, y: slot.y, w: slot.w };
 	layout.value = [...layout.value, copy];
 	persist();
 	commit();
