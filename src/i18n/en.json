@@ -1404,7 +1404,11 @@
 			"notConfigured": "{destination} isn't configured yet. Set it up in the \"Cloud backup configuration\" tab first.",
 			"lastBackupNever": "No backup yet.",
 			"lastBackupToday": "Last backup: today.",
-			"lastBackupDaysAgo": "Last backup: {count} day(s) ago."
+			"lastBackupDaysAgo": "Last backup: {count} day(s) ago.",
+			"exclusionsHeading": "Redaction exclusions ({count})",
+			"exclusionsHelp": "Names you've told the scanner to leave alone - e.g. a macro variable that only looks like a password. Applies to every backup and every destination, not just one.",
+			"exclusionsEmpty": "No names excluded. Redacted rows in a backup's result have an \"Exclude\" button if the scanner matched them by name.",
+			"exclusionsRemove": "Remove \"{name}\" from the exclusion list"
 		},
 		"redaction": {
 			"summaryRedacted": "{count} sensitive value(s) redacted across {files} file(s)",
@@ -1413,7 +1417,14 @@
 			"collapse": "Hide details",
 			"columnFile": "File",
 			"columnLabel": "What",
-			"redactedChip": "redacted"
+			"redactedChip": "redacted",
+			"excludeAction": "Exclude",
+			"excludeConfirmTitle": "Exclude \"{name}\" from redaction?",
+			"excludeConfirmBody": "Future backups will no longer treat \"{name}\" as a password or secret. This won't change backups you've already made — run the backup again to apply it.",
+			"excludeConfirmStrongWarning": "\"{name}\" looks like it could be a real credential name. Only exclude it if you're sure this specific field never holds an actual secret.",
+			"excludeConfirmStrongCheckbox": "I'm sure — this isn't a real secret",
+			"excludeConfirmButton": "Exclude",
+			"excludeToast": "Excluded \"{name}\" from redaction. Run the backup again to apply it."
 		},
 		"restore": {
 			"sourceHeading": "Choose a backup",
