@@ -199,6 +199,7 @@
 		"variantSpacer": "Spacer",
 		"text": "Text",
 		"imageUrl": "Image URL",
+		"imagePath": "Image (SD card)",
 		"align": "Alignment",
 		"alignStart": "Left",
 		"alignCenter": "Centre",
@@ -236,6 +237,11 @@
 		"iconPosLeft": "Left of text",
 		"iconPosRight": "Right of text",
 		"iconPosBottom": "Below text",
+		"labelPosition": "Label position",
+		"labelPosTop": "Above value",
+		"labelPosLeft": "Left of value",
+		"labelPosRight": "Right of value",
+		"labelPosBottom": "Below value",
 		"widgetType": "Widget type",
 		"debounce": "Debounce (ignore rapid re-presses)",
 		"debounceHint": "Ignore repeat presses within this many milliseconds. 0 = off.",
@@ -960,25 +966,32 @@
 		"empty": "No G-code files or folders here."
 	},
 	"gaugeCluster": {
-		"gauges": "Gauges"
+		"gauges": "Gauges",
+		"style": "Gauge style",
+		"variantCircular": "Circular",
+		"variantLinear": "Linear bar"
 	},
 	"indicators": {
 		"items": "Indicators",
 		"onColor": "On colour",
-		"offColor": "Off colour"
+		"offColor": "Off colour",
+		"operatorHint": "Leave the operator blank to use the item’s original on/off rule (a truthy live value counts as on)."
 	},
 	"sparkline": {
 		"series": "Series"
 	},
 	"note": {
 		"content": "Content (Markdown)",
-		"hint": "Supports headings, **bold**, *italic*, `code`, lists and [links](url)."
+		"hint": "Supports headings, **bold**, *italic*, `code`, lists and [links](url).",
+		"edit": "Edit note",
+		"save": "Save note"
 	},
 	"hotspot": {
 		"url": "Image URL",
 		"regions": "Clickable regions",
-		"hint": "Positions are percentages of the image. Outlines show while editing.",
-		"unset": "Set an image URL to place clickable regions."
+		"hint": "Positions are percentages of the image. Outlines show while editing. Drag a region to move it, or its corner handle to resize.",
+		"unset": "Set an image URL to place clickable regions.",
+		"editorNeedsUrl": "Set an image URL above to drag and resize regions here."
 	},
 	"http": {
 		"url": "Endpoint URL",
@@ -1060,7 +1073,8 @@
 	},
 	"whatsNew": {
 		"title": "What's new in Flexible Layouts",
-		"close": "Close"
+		"close": "Close",
+		"newWidgetsHeading": "New widgets in this release"
 	},
 	"maintenance": {
 		"navCaption": "Maintenance",
@@ -1373,6 +1387,15 @@
 			"redactHelpOff": "Backup contains WiFi credentials and passwords in clear. Restores completely with no manual steps.",
 			"redactHelpOn": "Secrets are replaced with placeholders. A restore will ask you to supply or skip them.",
 			"objectModelHelp": "The object model dump is always privacy-scrubbed (network identity, board serials) regardless of this switch - it's diagnostic context, never restored to a machine.",
+			"encryptSwitch": "Password-protect this backup",
+			"encryptHelp": "The whole backup is locked with a password you choose - open it with 7-Zip or similar (not Windows' built-in extractor). This is a different protection to redaction: redaction hides specific secret values but leaves the rest readable; encryption locks everything, but on GitHub it means individual files can no longer be diffed there - only the password-protected zip is pushed.",
+			"encryptPasswordTitle": "Set a backup password",
+			"encryptPasswordBody": "You'll need this password to restore this backup later. If you forget it, this backup cannot be recovered.",
+			"encryptPasswordLabel": "Password",
+			"encryptPasswordConfirmLabel": "Confirm password",
+			"encryptPasswordMismatch": "Passwords don't match.",
+			"encryptPasswordRemember": "Remember for the rest of this session",
+			"encryptPasswordConfirmButton": "Set password",
 			"destinationHeading": "Where to save it",
 			"destinationLocal": "Download to this PC (.zip)",
 			"destinationDuet": "Duet backup service",
@@ -1433,6 +1456,10 @@
 			"sourceDrop": "or drop a backup ZIP here",
 			"sourceCloud": "From cloud backups",
 			"invalidArchive": "This doesn't look like a Flexible Layouts config backup.",
+			"decryptPasswordTitle": "This backup is password-protected",
+			"decryptPasswordLabel": "Password",
+			"decryptPasswordWrong": "Incorrect password - try again.",
+			"decryptPasswordButton": "Unlock",
 			"treeHeading": "Choose what to restore",
 			"treeSelectAll": "Select all",
 			"treeSelectNone": "Select none",

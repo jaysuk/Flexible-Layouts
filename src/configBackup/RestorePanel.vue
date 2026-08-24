@@ -234,11 +234,33 @@
 				<MachineDiffDialog v-if="diff" v-model="diffOpen" :diff="diff" :backup-hostname="archive.manifest.machine.hostname" />
 			</template>
 		</v-card-text>
+
+		<v-dialog v-model="decryptDialog.open" max-width="480" persistent>
+			<v-card>
+				<v-card-title>{{ $t("plugins.flexibleLayouts.configBackup.restore.decryptPasswordTitle") }}</v-card-title>
+				<v-card-text>
+					<v-text-field v-model="decryptDialog.password" type="password"
+								  :label="$t('plugins.flexibleLayouts.configBackup.restore.decryptPasswordLabel')"
+								  density="compact" variant="outlined" hide-details autofocus
+								  @keyup.enter="submitDecryptPassword" />
+					<div v-if="decryptDialog.error" class="text-caption text-error mt-2">
+						{{ $t("plugins.flexibleLayouts.configBackup.restore.decryptPasswordWrong") }}
+					</div>
+				</v-card-text>
+				<v-card-actions>
+					<v-spacer />
+					<v-btn variant="text" @click="cancelDecryptPassword">{{ $t("plugins.flexibleLayouts.configBackup.common.cancel") }}</v-btn>
+					<v-btn variant="text" color="primary" :loading="decryptDialog.busy" :disabled="!decryptDialog.password" @click="submitDecryptPassword">
+						{{ $t("plugins.flexibleLayouts.configBackup.restore.decryptPasswordButton") }}
+					</v-btn>
+				</v-card-actions>
+			</v-card>
+		</v-dialog>
 	</v-card>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, reactive, ref, watch } from "vue";
 
 import { downloadBlob } from "dwc-plugin-runtime";
 
@@ -247,6 +269,7 @@ import { useMachineStore } from "@/stores/machine";
 import i18n from "@/i18n";
 
 import { buildArchive, computeMachineKey, readArchive } from "dwc-config-backup-core";
+import { decryptArchiveBlob, DecryptError, isEncryptedArchiveBlob } from "dwc-config-backup-core";
 import { collectAll, walkDirectory } from "dwc-config-backup-core";
 import { defaultMachineIO } from "../model/configBackup/machineIO";
 import { BACKUP_DIR_KINDS, DEFAULT_MAX_FILE_BYTES, DIR_FOLDER } from "dwc-config-backup-core";
@@ -549,11 +572,62 @@ watch(sourceMode, (mode) => {
 	if (mode === "webdav" && isCloudSourceConfigured("webdav") && webdavMachines.value.length === 0) { void refreshWebdavMachines(); }
 });
 
+// --- Encrypted backups (ENCRYPTED-BACKUPS-PLAN.md §6 Phase 2) -------------------------------------
+//
+// Single insertion point: every restore source (local file, every cloud destination's "restore"
+// action) already funnels through loadFile() below, so this is the only place a password prompt is
+// needed - no per-destination wiring.
+
+interface DecryptDialogState { open: boolean; password: string; error: boolean; busy: boolean; resolve: ((blob: Blob | null) => void) | null }
+const decryptDialog = reactive<DecryptDialogState>({ open: false, password: "", error: false, busy: false, resolve: null });
+let pendingEncryptedBlob: Blob | null = null;
+
+function askDecryptPassword(blob: Blob): Promise<Blob | null> {
+	return new Promise((resolve) => {
+		pendingEncryptedBlob = blob;
+		decryptDialog.password = "";
+		decryptDialog.error = false;
+		decryptDialog.busy = false;
+		decryptDialog.open = true;
+		decryptDialog.resolve = (result) => { decryptDialog.open = false; decryptDialog.resolve = null; resolve(result); };
+	});
+}
+async function submitDecryptPassword(): Promise<void> {
+	if (!decryptDialog.password || decryptDialog.busy || !pendingEncryptedBlob) { return; }
+	decryptDialog.busy = true;
+	decryptDialog.error = false;
+	try {
+		const blob = await decryptArchiveBlob(pendingEncryptedBlob, decryptDialog.password);
+		decryptDialog.resolve?.(blob);
+	} catch (e) {
+		// decryptArchiveBlob's own contract: always DecryptError on failure, wrong password or
+		// otherwise (its own doc comment explains why the two aren't distinguished) - stay open,
+		// let the user retry, rather than bailing out to the generic "invalid archive" error.
+		if (e instanceof DecryptError) {
+			decryptDialog.error = true;
+			decryptDialog.password = "";
+		} else {
+			decryptDialog.resolve?.(null);
+		}
+	} finally {
+		decryptDialog.busy = false;
+	}
+}
+function cancelDecryptPassword(): void {
+	decryptDialog.resolve?.(null);
+}
+
 function pickFile(): void { fileInput.value?.click(); }
 async function loadFile(file: File): Promise<void> {
 	loadError.value = null;
 	try {
-		const parsed = await readArchive(file);
+		let source: Blob = file;
+		if (await isEncryptedArchiveBlob(file)) {
+			const decrypted = await askDecryptPassword(file);
+			if (!decrypted) { return; } // cancelled - no error, the user just backed out
+			source = decrypted;
+		}
+		const parsed = await readArchive(source);
 		// readArchive tolerantly reconstructs a manifest by walking files/** even when manifest.json is
 		// missing, so an empty file list is the actual signal that this wasn't a recognisable backup.
 		if (parsed.manifest.files.length === 0) {
@@ -616,6 +690,10 @@ async function onQuickBackup(): Promise<void> {
 		const directories = buildLiveDirectories(model);
 		const scope = { system: true, macros: true, filaments: true, objectModel: true, diagnostics: true };
 		const collected = await collectAll(io, { scope, maxFileBytes: DEFAULT_MAX_FILE_BYTES, directories, model, boards: identity.boards });
+		// Deliberately never encrypted (ENCRYPTED-BACKUPS-PLAN.md §5.8), regardless of the "local"
+		// destination's remembered encrypt preference: this is a one-click safety net taken mid-restore,
+		// and a password dialog here would interrupt a restore already in progress for an unrelated
+		// action. It's always a local download anyway, so "leaves the machine unencrypted" doesn't apply.
 		const built = await buildArchive(collected, {
 			redact: getRedactPreference("local"), scope, machine: identity, directories,
 			pluginVersion: installedVersion(), dwcVersion: runningDwcVersion(),

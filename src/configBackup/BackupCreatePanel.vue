@@ -28,6 +28,15 @@
 					: $t("plugins.flexibleLayouts.configBackup.create.redactHelpOff") }}
 			</v-alert>
 
+			<div class="d-flex align-center ga-2 mb-1">
+				<v-switch v-model="encrypt" density="compact" hide-details color="warning" />
+				<span class="text-body-2">{{ $t("plugins.flexibleLayouts.configBackup.create.encryptSwitch") }}</span>
+				<HelpTip :text="$t('plugins.flexibleLayouts.configBackup.create.encryptHelp')" />
+			</div>
+			<v-alert type="info" variant="tonal" density="compact" class="mb-3">
+				{{ $t("plugins.flexibleLayouts.configBackup.create.encryptHelp") }}
+			</v-alert>
+
 			<v-divider class="mb-3" />
 
 			<div class="text-title-small mb-2">{{ $t("plugins.flexibleLayouts.configBackup.create.destinationHeading") }}</div>
@@ -138,6 +147,35 @@
 			</v-card>
 		</v-dialog>
 
+		<v-dialog v-model="passwordDialog.open" max-width="480" persistent>
+			<v-card>
+				<v-card-title>{{ $t("plugins.flexibleLayouts.configBackup.create.encryptPasswordTitle") }}</v-card-title>
+				<v-card-text>
+					<p class="text-body-2 mb-3">{{ $t("plugins.flexibleLayouts.configBackup.create.encryptPasswordBody") }}</p>
+					<v-text-field v-model="passwordDialog.password" type="password"
+								  :label="$t('plugins.flexibleLayouts.configBackup.create.encryptPasswordLabel')"
+								  density="compact" variant="outlined" hide-details class="mb-3" autofocus />
+					<v-text-field v-model="passwordDialog.confirm" type="password"
+								  :label="$t('plugins.flexibleLayouts.configBackup.create.encryptPasswordConfirmLabel')"
+								  density="compact" variant="outlined" hide-details class="mb-2"
+								  @keyup.enter="confirmPasswordDialog" />
+					<div v-if="passwordDialog.password && passwordDialog.confirm && passwordDialog.password !== passwordDialog.confirm"
+						 class="text-caption text-error mb-2">
+						{{ $t("plugins.flexibleLayouts.configBackup.create.encryptPasswordMismatch") }}
+					</div>
+					<v-checkbox v-model="passwordDialog.remember" density="compact" hide-details
+								:label="$t('plugins.flexibleLayouts.configBackup.create.encryptPasswordRemember')" />
+				</v-card-text>
+				<v-card-actions>
+					<v-spacer />
+					<v-btn variant="text" @click="cancelPasswordDialog">{{ $t("plugins.flexibleLayouts.configBackup.common.cancel") }}</v-btn>
+					<v-btn variant="text" color="primary" :disabled="!passwordDialogValid" @click="confirmPasswordDialog">
+						{{ $t("plugins.flexibleLayouts.configBackup.create.encryptPasswordConfirmButton") }}
+					</v-btn>
+				</v-card-actions>
+			</v-card>
+		</v-dialog>
+
 		<v-snackbar v-model="toast.open" :timeout="4000">{{ toast.text }}</v-snackbar>
 	</v-card>
 </template>
@@ -159,9 +197,9 @@ import type { BackupProgressStage, RedactionEntry } from "dwc-config-backup-core
 import type { BackupDestinationId } from "dwc-config-backup-core";
 import {
 	addBackedUpMachineKey, addRedactionExclusion, getDropboxSettings, getDuetCloudApiUrl, getDuetCloudFifoLimit,
-	getDuetCloudSession, getGithubSettings, getGoogleDriveClientId, getLastBackupAt, getRedactionExclusions,
-	getRedactPreference, getWebDavSettings, hasAcknowledgedUnredacted, removeRedactionExclusion,
-	setAcknowledgedUnredacted, setLastBackupAt, setRedactPreference,
+	getDuetCloudSession, getEncryptPreference, getGithubSettings, getGoogleDriveClientId, getLastBackupAt,
+	getRedactionExclusions, getRedactPreference, getWebDavSettings, hasAcknowledgedUnredacted, removeRedactionExclusion,
+	setAcknowledgedUnredacted, setEncryptPreference, setLastBackupAt, setRedactPreference,
 } from "dwc-config-backup-core";
 import { buildLiveDirectories, buildMachineIdentity, defaultMachineFolder } from "dwc-config-backup-core";
 import { downloadArchive, backupFilename } from "dwc-config-backup-core/destinations/localZip";
@@ -192,6 +230,10 @@ const destination = ref<BackupDestinationId>("local");
 const redact = ref(getRedactPreference(destination.value));
 watch(destination, (d) => { redact.value = getRedactPreference(d); });
 watch(redact, (v) => setRedactPreference(destination.value, v));
+
+const encrypt = ref(getEncryptPreference(destination.value));
+watch(destination, (d) => { encrypt.value = getEncryptPreference(d); });
+watch(encrypt, (v) => setEncryptPreference(destination.value, v));
 
 const DESTINATION_IDS: Array<BackupDestinationId> = ["local", "duet", "github", "drive", "dropbox", "webdav"];
 const DESTINATION_LABEL_KEYS: Record<BackupDestinationId, string> = {
@@ -286,13 +328,45 @@ function askPublicRepoConfirm(): Promise<boolean> {
 	});
 }
 
+// --- Backup encryption password (ENCRYPTED-BACKUPS-PLAN.md §5.2) ---------------------------------
+//
+// Typed fresh per backup by default - a backup is a historical artifact (one taken today must still
+// open in 6 months even if the "current" password has since changed), so this deliberately does NOT
+// reuse the credential-store's persistent session-unlock model. `rememberedPassword` is the one
+// narrow exception: in-memory only, never localStorage, cleared on reload - purely a convenience for
+// taking several backups in one sitting.
+
+const rememberedPassword = ref<string | null>(null);
+
+interface PasswordDialogState { open: boolean; password: string; confirm: string; remember: boolean; resolve: ((password: string | null) => void) | null }
+const passwordDialog = reactive<PasswordDialogState>({ open: false, password: "", confirm: "", remember: false, resolve: null });
+const passwordDialogValid = computed(() => passwordDialog.password.length > 0 && passwordDialog.password === passwordDialog.confirm);
+
+function askEncryptPassword(): Promise<string | null> {
+	return new Promise((resolve) => {
+		passwordDialog.password = "";
+		passwordDialog.confirm = "";
+		passwordDialog.remember = false;
+		passwordDialog.open = true;
+		passwordDialog.resolve = (password) => { passwordDialog.open = false; passwordDialog.resolve = null; resolve(password); };
+	});
+}
+function confirmPasswordDialog(): void {
+	if (!passwordDialogValid.value) { return; }
+	if (passwordDialog.remember) { rememberedPassword.value = passwordDialog.password; }
+	passwordDialog.resolve?.(passwordDialog.password);
+}
+function cancelPasswordDialog(): void {
+	passwordDialog.resolve?.(null);
+}
+
 function formatSize(bytes: number): string {
 	if (bytes < 1024) { return `${bytes} B`; }
 	if (bytes < 1024 * 1024) { return `${(bytes / 1024).toFixed(1)} KB`; }
 	return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
-// --- Redaction exclusions (dwc-config-backup-core's REDACTION-EXCLUSIONS-PLAN.md §6.2) -----------
+// --- Redaction exclusions (REDACTION-EXCLUSIONS-PLAN.md §6.2) -------------------------------------
 //
 // No in-place re-scan (plan §6.2 option (b), recommended): `collected` is a local inside onCreate()
 // and is gone by the time this list is on screen, and a redacted `result` has no recoverable
@@ -317,6 +391,14 @@ async function onCreate(): Promise<void> {
 	result.value = null;
 	busy.value = true;
 	try {
+		// Ask for the encryption password FIRST, before the (potentially slow) collection/build work -
+		// better to interrupt the user upfront than after they've waited through the whole process.
+		let encryptPassword: string | undefined;
+		if (encrypt.value) {
+			encryptPassword = rememberedPassword.value ?? (await askEncryptPassword()) ?? undefined;
+			if (encryptPassword == null) { busy.value = false; return; } // cancelled
+		}
+
 		const io = defaultMachineIO();
 		const model = machineStore.model as unknown;
 		const identity = buildMachineIdentity(model);
@@ -330,14 +412,18 @@ async function onCreate(): Promise<void> {
 		const pluginVersion = installedVersion();
 		const dwcVersion = runningDwcVersion();
 
-		// Same source for both calls below (REDACTION-EXCLUSIONS-PLAN.md §6.2 step 3, in
-		// dwc-config-backup-core) - the dry-run preview and the real archive must agree on what's
-		// excluded, or the preview could promise a redaction the real backup then skips (or vice versa).
+		// Same source for both calls below (REDACTION-EXCLUSIONS-PLAN.md §6.2 step 3) - the dry-run
+		// preview and the real archive must agree on what's excluded, or the preview could promise a
+		// redaction the real backup then skips (or vice versa).
 		const excludedNames = new Set(getRedactionExclusions());
 
 		let useRedact = redact.value;
-		if (!useRedact && destination.value !== "local" && !hasAcknowledgedUnredacted(destination.value)) {
+		// An encrypted backup already satisfies "nothing leaves in the clear" (ENCRYPTED-BACKUPS-PLAN.md
+		// §3) - skip the unredacted-content warning entirely when encryption is on, same as it's
+		// already skipped for "redact" being on.
+		if (!useRedact && !encrypt.value && destination.value !== "local" && !hasAcknowledgedUnredacted(destination.value)) {
 			// Dry-run scan so the warning can name exactly what's in the backup, regardless of the switch.
+			// Never encrypted - this blob is thrown away, only its redaction list is used.
 			const dryRun = await buildArchive(collected, { redact: false, scope, machine: identity, directories, pluginVersion, dwcVersion, excludedNames });
 			if (dryRun.redactions.entries.length > 0) {
 				const choice = await askUnredacted(dryRun.redactions.entries);
@@ -347,7 +433,10 @@ async function onCreate(): Promise<void> {
 			}
 		}
 
-		const built = await buildArchive(collected, { redact: useRedact, scope, machine: identity, directories, pluginVersion, dwcVersion, excludedNames });
+		const built = await buildArchive(collected, {
+			redact: useRedact, scope, machine: identity, directories, pluginVersion, dwcVersion, excludedNames,
+			encrypt: encryptPassword ? { password: encryptPassword } : undefined,
+		});
 		result.value = built;
 
 		if (destination.value === "local") {
@@ -355,7 +444,7 @@ async function onCreate(): Promise<void> {
 		} else if (destination.value === "duet") {
 			await sendToDuetCloud(built, identity);
 		} else if (destination.value === "github") {
-			await sendToGithub(built, identity, useRedact);
+			await sendToGithub(built, identity, useRedact, built.encrypted);
 		} else if (destination.value === "drive") {
 			await sendToDrive(built, identity);
 		} else if (destination.value === "dropbox") {
@@ -384,27 +473,37 @@ async function sendToDuetCloud(built: Awaited<ReturnType<typeof buildArchive>>, 
 	await pruneToLimit(apiUrl, machineKey, getDuetCloudFifoLimit());
 }
 
-async function sendToGithub(built: Awaited<ReturnType<typeof buildArchive>>, identity: ReturnType<typeof buildMachineIdentity>, isRedacted: boolean): Promise<void> {
+async function sendToGithub(
+	built: Awaited<ReturnType<typeof buildArchive>>, identity: ReturnType<typeof buildMachineIdentity>,
+	isRedacted: boolean, isEncrypted: boolean,
+): Promise<void> {
 	const settings = getGithubSettings();
 	if (!settings) { throw new Error(i18n.global.t("plugins.flexibleLayouts.configBackup.create.notConfigured", { destination: destinationLabel.value })); }
-	if (!isRedacted) {
+	if (!isRedacted && !isEncrypted) {
 		const priv = await isRepoPrivate(settings.token, settings.repo);
 		if (priv === false) {
 			const ok = await askPublicRepoConfirm();
 			if (!ok) { return; }
 		}
 	}
-	const files = built.manifest.files.map((f) => ({
+	// ENCRYPTED-BACKUPS-PLAN.md §3/§5.7: the expanded per-file push exists so config.g diffs across
+	// backups in GitHub's own UI - reading it back requires `built.blob` to be the plain archive.
+	// When encrypted, `built.blob` is the password-protected outer zip (not readable without the
+	// password, and not meant to be - see the plan for why encrypting the expanded files too would
+	// defeat their entire purpose), so GitHub gets treated like every other destination: only the zip.
+	const files = isEncrypted ? [] : built.manifest.files.map((f) => ({
 		path: f.path.replace(/^files\//, ""),
 		content: f.binary ? "" : "", // filled from archive text below
 		binary: f.binary,
 	}));
 	// Pull the actual text back out of the freshly-built zip via a re-read - buildArchive doesn't
 	// keep a Map of contents by design (it streams straight into JSZip), so re-parse the blob once.
-	const parsed = await readArchive(built.blob);
-	for (const f of files) {
-		const full = `files/${f.path}`;
-		f.content = parsed.textFiles.get(full) ?? "";
+	if (!isEncrypted) {
+		const parsed = await readArchive(built.blob);
+		for (const f of files) {
+			const full = `files/${f.path}`;
+			f.content = parsed.textFiles.get(full) ?? "";
+		}
 	}
 	// GitHub keys backups by a human-readable folder path, not the hardware GUID Duet Cloud uses - so
 	// two machines that happen to share a hostname would collide in the same folder without a
