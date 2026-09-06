@@ -66,17 +66,34 @@ function getWorker(): Worker | null {
 
 /** Parse G-code off the main thread when possible; synchronously (blocking) otherwise. */
 export function parseGcodeAsync(text: string): Promise<ParseResult> {
+	// Callers get their text from `machineStore.download(..., type: "text")` and cast it `as string`,
+	// so a backend that answers with no body hands us `undefined` and the parser dies deep inside on
+	// a `.length` read. Reject with something the caller can actually display instead.
+	if (typeof text !== "string") {
+		return Promise.reject(new Error("G-code file could not be read (empty response)"));
+	}
 	const w = getWorker();
 	if (!w) {
 		return Promise.resolve(parseGcode(text));
 	}
 	const id = nextId++;
-	return new Promise((resolve) => {
+	return new Promise((resolve, reject) => {
 		pending.set(id, {
 			resolve,
 			// A worker-side failure still has a synchronous fallback available - use it rather than
 			// surfacing the rejection, so a bad worker asset degrades to "slower", not "broken".
-			reject: () => resolve(parseGcode(text)),
+			// The retry MUST be guarded: when the worker failed because `text` itself is bad (e.g.
+			// undefined, which makes parseGcode throw "Cannot read properties of undefined"), running
+			// the identical parse again here throws the identical error - and this runs inside the
+			// worker's own `onmessage`, so the throw escaped as an uncaught error AND left this
+			// promise permanently unsettled, hanging every caller that awaited it forever.
+			reject: () => {
+				try {
+					resolve(parseGcode(text));
+				} catch (e) {
+					reject(e instanceof Error ? e : new Error(String(e)));
+				}
+			},
 		});
 		w.postMessage({ id, text });
 	});
