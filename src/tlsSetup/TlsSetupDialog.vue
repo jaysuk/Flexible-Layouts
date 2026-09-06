@@ -61,40 +61,19 @@
 					<v-divider class="my-3" />
 					<div class="text-body-2 mb-1">{{ $t("plugins.flexibleLayouts.tlsSetup.generateWindowsToolIntro") }}</div>
 					<div class="text-caption text-medium-emphasis mb-2">{{ $t("plugins.flexibleLayouts.tlsSetup.generateWindowsToolNote") }}</div>
-					<v-btn size="small" variant="tonal" prepend-icon="mdi-download" @click="onDownloadArgsFile">
-						{{ $t("plugins.flexibleLayouts.tlsSetup.downloadArgsButton") }}
-					</v-btn>
-
-					<template v-if="secureContextAvailable">
-						<v-divider class="my-3" />
-						<div class="text-body-2 mb-2">{{ $t("plugins.flexibleLayouts.tlsSetup.generateInBrowserIntro") }}</div>
-						<div class="d-flex align-center ga-2 flex-wrap">
-							<v-btn size="small" variant="tonal" prepend-icon="mdi-flash-outline" :loading="generatingInBrowser" @click="onGenerateInBrowser">
-								{{ $t("plugins.flexibleLayouts.tlsSetup.generateInBrowserButton") }}
-							</v-btn>
-							<v-chip v-if="generatedInBrowser" size="small" color="success" variant="tonal">
-								{{ $t("plugins.flexibleLayouts.tlsSetup.generateInBrowserDone") }}
-							</v-chip>
-						</div>
-						<div v-if="generatedInBrowser" class="d-flex ga-2 mt-2">
-							<v-btn size="small" variant="text" prepend-icon="mdi-download" @click="onDownloadGenerated('key')">
-								{{ $t("plugins.flexibleLayouts.tlsSetup.downloadKeyButton") }}
-							</v-btn>
-							<v-btn size="small" variant="text" prepend-icon="mdi-download" @click="onDownloadGenerated('cert')">
-								{{ $t("plugins.flexibleLayouts.tlsSetup.downloadCertButton") }}
-							</v-btn>
-						</div>
-						<v-alert v-if="generateInBrowserError" type="error" variant="tonal" density="compact" class="mt-2">
-							{{ generateInBrowserError }}
-						</v-alert>
-					</template>
+					<div class="d-flex ga-2 flex-wrap">
+						<v-btn size="small" variant="tonal" prepend-icon="mdi-github" :href="TLS_CERT_GENERATOR_URL" target="_blank" rel="noopener">
+							{{ $t("plugins.flexibleLayouts.tlsSetup.generateWindowsToolLink") }}
+						</v-btn>
+						<v-btn size="small" variant="tonal" prepend-icon="mdi-download" @click="onDownloadArgsFile">
+							{{ $t("plugins.flexibleLayouts.tlsSetup.downloadArgsButton") }}
+						</v-btn>
+					</div>
 
 					<div class="d-flex ga-2 mt-4">
 						<v-btn variant="tonal" @click="step = 'capability'">{{ $t("plugins.flexibleLayouts.shell.back") }}</v-btn>
 						<v-btn color="primary" @click="step = 'upload'">
-							{{ generatedInBrowser
-								? $t("plugins.flexibleLayouts.tlsSetup.continueButton")
-								: $t("plugins.flexibleLayouts.tlsSetup.generatedButton") }}
+							{{ $t("plugins.flexibleLayouts.tlsSetup.generatedButton") }}
 						</v-btn>
 					</div>
 				</template>
@@ -243,12 +222,12 @@ import { assessTlsCapabilities, getMainboardFirmwareName, isStm32PortBoard } fro
 import type { InterfaceCapability } from "../model/tlsSetup/capability";
 import { checkCertificatePem, checkPrivateKeyPem } from "../model/tlsSetup/certFiles";
 import type { PemCheckReason } from "../model/tlsSetup/certFiles";
-import { generateSelfSignedCert, isSecureContextAvailable } from "../model/tlsSetup/certGenerate";
 import { parseCertExpiry } from "../model/tlsSetup/certExpiry";
 import { interpretTlsReply } from "../model/tlsSetup/commandReplies";
 import type { TlsReplyReason } from "../model/tlsSetup/commandReplies";
 import { patchM552ForTls, patchM586ForTls } from "../model/tlsSetup/configGPatch";
-import { CONFIG_G_PATH, TLS_CERT_SD_PATH, TLS_KEY_SD_PATH, TLS_PROTOCOLS } from "../model/tlsSetup/constants";
+import { CONFIG_G_PATH, TLS_CERT_GENERATOR_URL, TLS_CERT_SD_PATH, TLS_KEY_SD_PATH, TLS_PROTOCOLS } from "../model/tlsSetup/constants";
+import { deployTlsEnableInterfaceMacro, TLS_ENABLE_INTERFACE_PATH } from "../model/tlsSetup/interfaceMacro";
 import { getCertReminderSettings, setCertExpiryDate, setCertReminderSettings } from "../model/tlsSetup/storage";
 import { defaultMachineIO } from "../model/configBackup/machineIO";
 
@@ -315,36 +294,6 @@ function onDownloadArgsFile(): void {
 	downloadBlob("duet-cert-args.json", new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }), "application/json");
 }
 
-// Optional fast path: only usable in a secure context (crypto.subtle needs HTTPS/localhost) - the same
-// restriction that already gates the optional credential encryption feature elsewhere in this plugin.
-// Most Duets are plain HTTP, so the guided openssl walkthrough above remains the primary path; this is
-// a bonus for the minority who happen to be on HTTPS/localhost already.
-const secureContextAvailable = isSecureContextAvailable();
-const generatingInBrowser = ref(false);
-const generatedInBrowser = ref(false);
-const generateInBrowserError = ref<string | null>(null);
-async function onGenerateInBrowser(): Promise<void> {
-	generatingInBrowser.value = true;
-	generateInBrowserError.value = null;
-	try {
-		const generated = await generateSelfSignedCert({ hostname: hostname.value, ip: selectedInterface.value?.actualIP, validityDays: certValidityDays.value || 3650 });
-		keyText.value = generated.keyPem;
-		certText.value = generated.certPem;
-		keyFile.value = null;
-		certFile.value = null;
-		generatedInBrowser.value = true;
-	} catch (e) {
-		generateInBrowserError.value = e instanceof Error ? e.message : String(e);
-	} finally {
-		generatingInBrowser.value = false;
-	}
-}
-function onDownloadGenerated(which: "key" | "cert"): void {
-	const text = which === "key" ? keyText.value : certText.value;
-	if (!text) { return; }
-	downloadBlob(which === "key" ? "server.key" : "server.crt", new Blob([text], { type: "text/plain" }), "text/plain");
-}
-
 // --- Step 3: upload cert/key --------------------------------------------------------------------------
 
 const keyInput = ref<HTMLInputElement | null>(null);
@@ -356,8 +305,8 @@ const certText = ref<string | null>(null);
 const keyCheck = computed(() => (keyText.value != null ? checkPrivateKeyPem(keyText.value) : null));
 const certCheck = computed(() => (certText.value != null ? checkCertificatePem(certText.value) : null));
 const canUpload = computed(() => keyCheck.value?.ok === true && certCheck.value?.ok === true);
-const keyFileLabel = computed(() => keyFile.value?.name ?? (generatedInBrowser.value && keyText.value ? i18n.global.t("plugins.flexibleLayouts.tlsSetup.generatedInBrowserLabel") : i18n.global.t("plugins.flexibleLayouts.tlsSetup.noFileChosen")));
-const certFileLabel = computed(() => certFile.value?.name ?? (generatedInBrowser.value && certText.value ? i18n.global.t("plugins.flexibleLayouts.tlsSetup.generatedInBrowserLabel") : i18n.global.t("plugins.flexibleLayouts.tlsSetup.noFileChosen")));
+const keyFileLabel = computed(() => keyFile.value?.name ?? i18n.global.t("plugins.flexibleLayouts.tlsSetup.noFileChosen"));
+const certFileLabel = computed(() => certFile.value?.name ?? i18n.global.t("plugins.flexibleLayouts.tlsSetup.noFileChosen"));
 
 const PEM_REASON_KEYS: Record<PemCheckReason, string> = {
 	"not-pem": "plugins.flexibleLayouts.tlsSetup.pemReason.notPem",
@@ -373,14 +322,12 @@ async function onKeyFileSelected(ev: Event): Promise<void> {
 	if (!file) { return; }
 	keyFile.value = file;
 	keyText.value = await file.text();
-	generatedInBrowser.value = false;
 }
 async function onCertFileSelected(ev: Event): Promise<void> {
 	const file = (ev.target as HTMLInputElement).files?.[0];
 	if (!file) { return; }
 	certFile.value = file;
 	certText.value = await file.text();
-	generatedInBrowser.value = false;
 }
 
 const uploading = ref(false);
@@ -428,16 +375,31 @@ async function onEnableInterface(): Promise<void> {
 	interfaceEnableResult.value = null;
 	try {
 		const io = defaultMachineIO();
-		// Always do a full stop/start cycle before enabling, on every interface - RRF's HTTPS setup.md:
-		// a native Ethernet MAC needs it because "the LwIP TLS heap is sized at Start() time and a full
-		// Stop/Start cycle is needed to resize it"; WiFi's own cert-ROTATION guidance (as opposed to its
-		// more general "just re-issue M552 T1 S1" note for other state changes) says the same thing -
-		// disable, then re-enable - and this step always follows a fresh upload, i.e. it's rotation every
-		// time through this wizard. Expected to interrupt the connection if DWC itself is on this
-		// interface - the S0 step's own reply may never arrive before the interface drops, so it isn't checked.
-		try { await io.sendCode("M552 S0"); } catch { /* interface is expected to drop here */ }
-		await new Promise((resolve) => setTimeout(resolve, 2000));
-		const reply = await io.sendCode("M552 T1 S1");
+		// Deploy the full stop/start cycle (M552 S0, a short settle delay, then M552 T1 S1) as ONE macro
+		// up front - RRF's HTTPS setup.md: a native Ethernet MAC needs the cycle because "the LwIP TLS
+		// heap is sized at Start() time and a full Stop/Start cycle is needed to resize it"; WiFi's own
+		// cert-ROTATION guidance (as opposed to its more general "just re-issue M552 T1 S1" note for
+		// other state changes) says the same thing - disable, then re-enable - and this step always
+		// follows a fresh upload, i.e. it's rotation every time through this wizard. See
+		// interfaceMacro.ts's doc comment for why the whole cycle has to be M98'd as one macro rather
+		// than sent as separate live commands.
+		if (!(await deployTlsEnableInterfaceMacro(io))) {
+			interfaceEnableResult.value = { ok: false, message: i18n.global.t("plugins.flexibleLayouts.tlsSetup.macroDeployFailed") };
+			return;
+		}
+		// The M552 S0 partway through the macro is expected to drop this very connection before its
+		// reply arrives - if so, give the interface a moment to fully restart, then ask again. By then
+		// the macro has already completed (S0, the 500ms settle delay, and T1 S1 all run to completion
+		// regardless of what happens to this connection), so the retry's reply reflects the outcome
+		// without repeating the cycle - unless RRF genuinely never finished it, in which case a second
+		// full cycle is the correct thing to attempt anyway.
+		let reply: string;
+		try {
+			reply = await io.sendCode(`M98 P"${TLS_ENABLE_INTERFACE_PATH}"`);
+		} catch {
+			await new Promise((resolve) => setTimeout(resolve, 2000));
+			reply = await io.sendCode(`M98 P"${TLS_ENABLE_INTERFACE_PATH}"`);
+		}
 		const outcome = interpretTlsReply(reply);
 		interfaceEnableResult.value = outcome.ok
 			? { ok: true, message: i18n.global.t("plugins.flexibleLayouts.tlsSetup.interfaceEnabled") }
@@ -467,6 +429,10 @@ async function onEnableProtocols(): Promise<void> {
 		for (const p of protocolChoices.value) {
 			if (!p.enabled) { p.result = null; continue; }
 			try {
+				// Confirmed on real hardware: `M586 P<n> S1 T1` on its own takes the plain (non-TLS)
+				// listener for that protocol offline - both the plain and the TLS-enabled line need to be
+				// (re-)issued for HTTP and HTTPS (or FTP/FTPS, Telnet/TelnetS) to both be live at once.
+				await io.sendCode(`M586 P${p.value} S1`);
 				const reply = await io.sendCode(`M586 P${p.value} S1 T1 R${p.port}`);
 				const outcome = interpretTlsReply(reply);
 				p.result = outcome.ok
@@ -509,7 +475,7 @@ const patchPlan = computed(() => {
 	if (m552.changed) { changes.push(...m552.changes); }
 	for (const p of protocolChoices.value) {
 		if (p.enabled && p.result?.ok) {
-			const m586 = patchM586ForTls(text, p.value);
+			const m586 = patchM586ForTls(text, p.value, p.port);
 			text = m586.text;
 			if (m586.changed) { changes.push(...m586.changes); }
 		}

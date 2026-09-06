@@ -47,35 +47,50 @@ describe("patchM552ForTls", () => {
 });
 
 describe("patchM586ForTls", () => {
-	it("adds T1 to an existing M586 P0 line", () => {
-		const result = patchM586ForTls("M552 S1 T1\nM586 P0 S1\n", 0);
+	// Regression coverage for a real bug: this used to add T1 onto whatever M586 line already existed
+	// for the protocol, which silently took plain HTTP offline the moment HTTPS was enabled - confirmed
+	// on real hardware. It must now always ADD a separate TLS line, never convert the plain one.
+	it("adds a separate TLS line, leaving an existing plain M586 P0 line untouched", () => {
+		const result = patchM586ForTls("M552 S1 T1\nM586 P0 S1\n", 0, 443);
 		expect(result.changed).toBe(true);
-		expect(result.text).toBe("M552 S1 T1\nM586 P0 S1 T1\n");
+		expect(result.text).toBe("M552 S1 T1\nM586 P0 S1\nM586 P0 S1 T1 R443\n");
 	});
 
 	it("does not touch an M586 line for a different protocol", () => {
-		const result = patchM586ForTls("M552 S1 T1\nM586 P1 S1\n", 0);
+		const result = patchM586ForTls("M552 S1 T1\nM586 P1 S1\n", 0, 443);
 		expect(result.changed).toBe(true);
 		expect(result.text).toContain("M586 P1 S1\n"); // untouched
-		expect(result.text).toContain("M586 P0 S1 T1"); // newly appended
+		expect(result.text).toContain("M586 P0 S1 T1 R443"); // newly appended
 	});
 
-	it("appends a new line right after M552 when no line exists for that protocol", () => {
-		const result = patchM586ForTls("M552 S1 T1\nM98 P\"config-override.g\"\n", 0);
+	it("adds BOTH a plain and a TLS line right after M552 when no line exists for that protocol at all", () => {
+		const result = patchM586ForTls("M552 S1 T1\nM98 P\"config-override.g\"\n", 0, 443);
 		expect(result.changed).toBe(true);
-		expect(result.text).toBe("M552 S1 T1\nM586 P0 S1 T1\nM98 P\"config-override.g\"\n");
+		expect(result.text).toBe("M552 S1 T1\nM586 P0 S1\nM586 P0 S1 T1 R443\nM98 P\"config-override.g\"\n");
 	});
 
-	it("is a no-op when T1 is already set for that protocol", () => {
-		const original = "M552 S1 T1\nM586 P0 S1 T1\n";
-		const result = patchM586ForTls(original, 0);
+	it("is a no-op when both a plain and a TLS line already exist for that protocol", () => {
+		const original = "M552 S1 T1\nM586 P0 S1\nM586 P0 S1 T1 R443\n";
+		const result = patchM586ForTls(original, 0, 443);
 		expect(result.changed).toBe(false);
 		expect(result.text).toBe(original);
 	});
 
-	it("appends at the end when there's no M552 line either", () => {
-		const result = patchM586ForTls("M111 S0\n", 2);
+	it("adds only the plain line when a TLS line already exists but no plain one does", () => {
+		const result = patchM586ForTls("M552 S1 T1\nM586 P0 S1 T1 R443\n", 0, 443);
 		expect(result.changed).toBe(true);
-		expect(result.text).toBe("M111 S0\nM586 P2 S1 T1\n");
+		// Anchored after the existing TLS line (grouped with its sibling), not reordered before it.
+		expect(result.text).toBe("M552 S1 T1\nM586 P0 S1 T1 R443\nM586 P0 S1\n");
+	});
+
+	it("uses the given TLS port in the appended line", () => {
+		const result = patchM586ForTls("M552 S1 T1\n", 0, 8443);
+		expect(result.text).toContain("M586 P0 S1 T1 R8443");
+	});
+
+	it("appends both at the end when there's no M552 line either", () => {
+		const result = patchM586ForTls("M111 S0\n", 2, 992);
+		expect(result.changed).toBe(true);
+		expect(result.text).toBe("M111 S0\nM586 P2 S1\nM586 P2 S1 T1 R992\n");
 	});
 });

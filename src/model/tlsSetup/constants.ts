@@ -4,6 +4,10 @@ export const TLS_CERT_SD_PATH = "0:/sys/server.crt";
 
 export const CONFIG_G_PATH = "0:/sys/config.g";
 
+/** Standalone Windows tool referenced by generateWindowsToolIntro/-Note below - generates the same
+ *  key/cert pair as the openssl commands shown alongside it, for users without openssl on PATH. */
+export const TLS_CERT_GENERATOR_URL = "https://github.com/jaysuk/duet-tls-cert-generator";
+
 export interface TlsProtocolDef {
 	value: 0 | 1 | 2;
 	code: string;
