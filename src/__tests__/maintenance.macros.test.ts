@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
 	deployMaintenanceMacros, extractMaintenanceMacroVersion, MAINTENANCE_DAEMON_FILE, MAINTENANCE_DAEMON_MACRO,
 	MAINTENANCE_FLUSH_FILE, MAINTENANCE_FLUSH_MACRO, MAINTENANCE_MACRO_FOLDER, MAINTENANCE_MACRO_SET_VERSION,
-	MAINTENANCE_MACROS, MAINTENANCE_STATE_PATH, maintenanceMacrosMissing, maintenanceMacrosOutdated,
-	seedMaintenanceState,
+	MAINTENANCE_MACROS, MAINTENANCE_MAX_TRACKED_AXES, MAINTENANCE_MAX_TRACKED_FANS, MAINTENANCE_MAX_TRACKED_HEATERS,
+	MAINTENANCE_STATE_PATH, maintenanceMacrosMissing, maintenanceMacrosOutdated, seedMaintenanceState,
 } from "../model/maintenance/macros";
 
 // A fake card: in-memory path->text map, plus per-op failure switches and a sent-code log - mirrors
@@ -169,6 +169,121 @@ describe("macro bodies", () => {
 			expect(MAINTENANCE_FLUSH_MACRO).toContain(`set global.${g} = " ^ global.${g}`);
 		}
 	});
+
+	// --- v8: per-axis travel / per-fan / per-heater tracking. All three are FIXED-SIZE arrays (see
+	// MAINTENANCE_MAX_TRACKED_* in macros.ts) seeded as a plain literal - never built with a loop -
+	// specifically to avoid the more failure-prone "build an array dynamically" RRF meta-gcode shape.
+	it("seeds each v8 array as a fixed-length literal of the declared capacity, behind its own guard", () => {
+		const cases: Array<[string, number, string]> = [
+			["flMaintAxisMm", MAINTENANCE_MAX_TRACKED_AXES, "0"],
+			["flMaintLastAxisPos", MAINTENANCE_MAX_TRACKED_AXES, "0"],
+			["flMaintLastAxisHomed", MAINTENANCE_MAX_TRACKED_AXES, "false"],
+			["flMaintFanSec", MAINTENANCE_MAX_TRACKED_FANS, "0"],
+			["flMaintHeaterSec", MAINTENANCE_MAX_TRACKED_HEATERS, "0"],
+			["flMaintHeaterFullSec", MAINTENANCE_MAX_TRACKED_HEATERS, "0"],
+		];
+		for (const [g, len, fill] of cases) {
+			const literal = `{${Array(len).fill(fill).join(",")}}`;
+			expect(MAINTENANCE_DAEMON_MACRO, g).toMatch(new RegExp(`if !exists\\(global\\.${g}\\)\\r?\\n\\tglobal ${g} = `));
+			expect(MAINTENANCE_DAEMON_MACRO, g).toContain(`global ${g} = ${literal}`);
+		}
+	});
+
+	it("guards axis/fan/heater tracking with a capacity check so an exotic machine that exceeds it is skipped, not indexed out of bounds", () => {
+		expect(MAINTENANCE_DAEMON_MACRO).toContain(`if #move.axes <= ${MAINTENANCE_MAX_TRACKED_AXES}`);
+		expect(MAINTENANCE_DAEMON_MACRO).toContain(`if #fans <= ${MAINTENANCE_MAX_TRACKED_FANS}`);
+		expect(MAINTENANCE_DAEMON_MACRO).toContain(`if #heat.heaters <= ${MAINTENANCE_MAX_TRACKED_HEATERS}`);
+	});
+
+	it("only accumulates axis travel once an axis was ALREADY homed on the previous poll (homing grace period)", () => {
+		expect(MAINTENANCE_DAEMON_MACRO).toMatch(/if var\.axisHomed\r?\n\s*if var\.axisWasHomed/);
+		// The homed flag itself updates every poll regardless, outside the "was homed" branch - so a
+		// freshly-homed axis captures its baseline position this poll and starts diffing next poll.
+		expect(MAINTENANCE_DAEMON_MACRO).toContain("set global.flMaintLastAxisHomed[iterations] = var.axisHomed");
+	});
+
+	it("bounds an axis-position delta to the axis's own min-max range before trusting it (catches a WCS/offset jump)", () => {
+		expect(MAINTENANCE_DAEMON_MACRO).toMatch(/var axisRange = move\.axes\[iterations\]\.max - move\.axes\[iterations\]\.min/);
+		expect(MAINTENANCE_DAEMON_MACRO).toMatch(/if var\.axisDelta <= var\.axisRange/);
+	});
+
+	it("uses abs() on the axis delta, not a signed subtraction, since travel accumulates regardless of direction", () => {
+		expect(MAINTENANCE_DAEMON_MACRO).toContain("var axisDelta = abs(move.axes[iterations].machinePosition - global.flMaintLastAxisPos[iterations])");
+	});
+
+	it("null-guards fans[] and heat.heaters[] before reading a field - both arrays can have unconfigured (null) slots", () => {
+		expect(MAINTENANCE_DAEMON_MACRO).toMatch(/if fans\[iterations\] != null && fans\[iterations\]\.actualValue > 0/);
+		expect(MAINTENANCE_DAEMON_MACRO).toMatch(/if heat\.heaters\[iterations\] != null && heat\.heaters\[iterations\]\.state != "off"/);
+	});
+
+	it("treats a heater as full-load at 95% average duty, tracked as a separate counter from plain on-time", () => {
+		expect(MAINTENANCE_DAEMON_MACRO).toMatch(/if heat\.heaters\[iterations\]\.avgPwm >= 0\.95/);
+		expect(MAINTENANCE_DAEMON_MACRO).toContain("global.flMaintHeaterFullSec[iterations] = global.flMaintHeaterFullSec[iterations] + var.dt");
+	});
+
+	it("the flush macro persists all four v8 arrays by manually building the {a,b,c} literal via a loop, not an array-to-string conversion", () => {
+		for (const g of ["flMaintAxisMm", "flMaintFanSec", "flMaintHeaterSec", "flMaintHeaterFullSec"]) {
+			expect(MAINTENANCE_FLUSH_MACRO, g).toContain(`if !exists(global.${g})`);
+			expect(MAINTENANCE_FLUSH_MACRO, g).toMatch(new RegExp(`while iterations < #global\\.${g}`));
+			// The written value is a `var` the loop built (ending in "Text"), never the raw global
+			// itself concatenated directly - that would rely on an unverified array->string format.
+			expect(MAINTENANCE_FLUSH_MACRO, g).toMatch(new RegExp(`global ${g} = " \\^ var\\.\\w+Text`));
+			expect(MAINTENANCE_FLUSH_MACRO, g).not.toMatch(new RegExp(`global ${g} = " \\^ global\\.${g}\\b`));
+		}
+	});
+
+	it("each v8 array gets its own uniquely-named loop-builder variable, so redeclaring one `var` twice never happens", () => {
+		const varNames = [...MAINTENANCE_FLUSH_MACRO.matchAll(/var (\w+) = "\{"/g)].map((m) => m[1]);
+		expect(varNames.length).toBe(4);
+		expect(new Set(varNames).size).toBe(varNames.length); // all unique
+	});
+
+	// --- v10: the v8 axis/fan/heater loops are opt-in, each gated behind its OWN independent flag
+	// (flMaintTrackAxes/flMaintTrackFans/flMaintTrackHeaters) - v9 briefly gated all three behind one
+	// shared flMaintTrackDetail flag, which forced a user who only wanted (say) heater on-time to also
+	// pay for axis/fan polling to get it.
+	it("carries version 10", () => {
+		expect(MAINTENANCE_MACRO_SET_VERSION).toBe(10);
+	});
+
+	it("seeds each of the three tracking flags to false behind its own exists-guard", () => {
+		for (const g of ["flMaintTrackAxes", "flMaintTrackFans", "flMaintTrackHeaters"]) {
+			expect(MAINTENANCE_DAEMON_MACRO, g).toMatch(new RegExp(`if !exists\\(global\\.${g}\\)\\r?\\n\\tglobal ${g} = false`));
+		}
+	});
+
+	it("gates each of the three tracking blocks behind its OWN flag, not one shared flag", () => {
+		const axisGuard = MAINTENANCE_DAEMON_MACRO.indexOf("if global.flMaintTrackAxes");
+		const fanGuard = MAINTENANCE_DAEMON_MACRO.indexOf("if global.flMaintTrackFans");
+		const heaterGuard = MAINTENANCE_DAEMON_MACRO.indexOf("if global.flMaintTrackHeaters");
+		const axisCheck = MAINTENANCE_DAEMON_MACRO.indexOf(`if #move.axes <= ${MAINTENANCE_MAX_TRACKED_AXES}`);
+		const fanCheck = MAINTENANCE_DAEMON_MACRO.indexOf(`if #fans <= ${MAINTENANCE_MAX_TRACKED_FANS}`);
+		const heaterCheck = MAINTENANCE_DAEMON_MACRO.indexOf(`if #heat.heaters <= ${MAINTENANCE_MAX_TRACKED_HEATERS}`);
+		for (const guard of [axisGuard, fanGuard, heaterGuard]) { expect(guard).toBeGreaterThan(-1); }
+		// each check immediately follows ITS OWN guard, one line (one tab) below it - not some other
+		// block's guard, and not still inside a now-removed outer shared guard.
+		expect(axisCheck).toBeGreaterThan(axisGuard);
+		expect(axisCheck).toBeLessThan(fanGuard);
+		expect(fanCheck).toBeGreaterThan(fanGuard);
+		expect(fanCheck).toBeLessThan(heaterGuard);
+		expect(heaterCheck).toBeGreaterThan(heaterGuard);
+		for (const check of [axisCheck, fanCheck, heaterCheck]) {
+			expect(MAINTENANCE_DAEMON_MACRO.slice(check - 1, check)).toBe("\t");
+		}
+	});
+
+	it("no longer has a single combined flMaintTrackDetail flag", () => {
+		expect(MAINTENANCE_DAEMON_MACRO).not.toContain("flMaintTrackDetail");
+		expect(MAINTENANCE_FLUSH_MACRO).not.toContain("flMaintTrackDetail");
+	});
+
+	it("the flush macro persists each of the three tracking flags via if-exists/else-set, alongside flMaintEnabled", () => {
+		for (const g of ["flMaintTrackAxes", "flMaintTrackFans", "flMaintTrackHeaters"]) {
+			expect(MAINTENANCE_FLUSH_MACRO, g).toContain(`if !exists(global.${g})`);
+			expect(MAINTENANCE_FLUSH_MACRO, g).toContain(`global ${g} = " ^ global.${g}`);
+			expect(MAINTENANCE_FLUSH_MACRO, g).toContain(`set global.${g} = " ^ global.${g}`);
+		}
+	});
 });
 
 describe("extractMaintenanceMacroVersion", () => {
@@ -301,6 +416,35 @@ describe("seedMaintenanceState", () => {
 		expect(content).toContain("flMaintEnabled = false");
 	});
 
+	// --- v10: three independent tracking flags (each defaults OFF, unlike flMaintEnabled which
+	// defaults ON) - see MaintenanceTrackingFlags's doc comment for why they're one object param.
+	it("defaults all three tracking flags to false when the tracking param is omitted", async () => {
+		const io = fakeIO();
+		await seedMaintenanceState(io, 0, 0);
+		const content = io.files.get(MAINTENANCE_STATE_PATH) ?? "";
+		expect(content).toContain("flMaintTrackAxes = false");
+		expect(content).toContain("flMaintTrackFans = false");
+		expect(content).toContain("flMaintTrackHeaters = false");
+	});
+
+	it("writes only the explicitly-enabled tracking flags as true, leaving the rest false", async () => {
+		const io = fakeIO();
+		await seedMaintenanceState(io, 0, 0, {}, true, { fans: true });
+		const content = io.files.get(MAINTENANCE_STATE_PATH) ?? "";
+		expect(content).toContain("flMaintTrackAxes = false");
+		expect(content).toContain("flMaintTrackFans = true");
+		expect(content).toContain("flMaintTrackHeaters = false");
+	});
+
+	it("writes all three tracking flags as true when all are explicitly enabled", async () => {
+		const io = fakeIO();
+		await seedMaintenanceState(io, 0, 0, {}, true, { axes: true, fans: true, heaters: true });
+		const content = io.files.get(MAINTENANCE_STATE_PATH) ?? "";
+		expect(content).toContain("flMaintTrackAxes = true");
+		expect(content).toContain("flMaintTrackFans = true");
+		expect(content).toContain("flMaintTrackHeaters = true");
+	});
+
 	it("reports failure (not a throw) if the upload fails", async () => {
 		const io = fakeIO();
 		io.fail.upload = true;
@@ -311,5 +455,41 @@ describe("seedMaintenanceState", () => {
 		const io = fakeIO();
 		io.fail.sendCode = true;
 		await expect(seedMaintenanceState(io, 0, 0)).resolves.toBe(false);
+	});
+
+	// --- v8 array counters ---------------------------------------------------------------------
+	it("defaults the v8 arrays to all-zero literals of the fixed capacity when extra is omitted", async () => {
+		const io = fakeIO();
+		await seedMaintenanceState(io, 0, 0);
+		const content = io.files.get(MAINTENANCE_STATE_PATH) ?? "";
+		const zeroAxis = `{${Array(MAINTENANCE_MAX_TRACKED_AXES).fill(0).join(",")}}`;
+		const zeroFan = `{${Array(MAINTENANCE_MAX_TRACKED_FANS).fill(0).join(",")}}`;
+		const zeroHeater = `{${Array(MAINTENANCE_MAX_TRACKED_HEATERS).fill(0).join(",")}}`;
+		expect(content).toContain(`flMaintAxisMm = ${zeroAxis}`);
+		expect(content).toContain(`flMaintFanSec = ${zeroFan}`);
+		expect(content).toContain(`flMaintHeaterSec = ${zeroHeater}`);
+		expect(content).toContain(`flMaintHeaterFullSec = ${zeroHeater}`);
+	});
+
+	it("preserves already-accumulated v8 array values when re-run with explicit extra values", async () => {
+		const io = fakeIO();
+		await seedMaintenanceState(io, 0, 0, { axisMm: [100, 200], fanSec: [10], heaterSec: [5, 6], heaterFullSec: [1, 2] });
+		const content = io.files.get(MAINTENANCE_STATE_PATH) ?? "";
+		// Padded to the fixed capacity - a live array shorter than the tracking capacity (e.g. only 2
+		// axes reported) must not shrink the persisted array, or the next poll's fixed-length indexing
+		// in the daemon macro would go out of bounds.
+		const expectAxis = `{100,200,${Array(MAINTENANCE_MAX_TRACKED_AXES - 2).fill(0).join(",")}}`;
+		expect(content).toContain(`flMaintAxisMm = ${expectAxis}`);
+		expect(content).toContain(`flMaintFanSec = {10,${Array(MAINTENANCE_MAX_TRACKED_FANS - 1).fill(0).join(",")}}`);
+		expect(content).toContain(`flMaintHeaterSec = {5,6,${Array(MAINTENANCE_MAX_TRACKED_HEATERS - 2).fill(0).join(",")}}`);
+		expect(content).toContain(`flMaintHeaterFullSec = {1,2,${Array(MAINTENANCE_MAX_TRACKED_HEATERS - 2).fill(0).join(",")}}`);
+	});
+
+	it("truncates a live array longer than the fixed tracking capacity rather than writing an oversized literal", async () => {
+		const io = fakeIO();
+		const tooLong = Array(MAINTENANCE_MAX_TRACKED_AXES + 5).fill(1);
+		await seedMaintenanceState(io, 0, 0, { axisMm: tooLong });
+		const content = io.files.get(MAINTENANCE_STATE_PATH) ?? "";
+		expect(content).toContain(`flMaintAxisMm = {${Array(MAINTENANCE_MAX_TRACKED_AXES).fill(1).join(",")}}`);
 	});
 });

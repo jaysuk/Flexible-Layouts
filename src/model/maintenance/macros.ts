@@ -3,10 +3,12 @@
  * correct whenever DWC happens to reconnect, not just for the time it was watching. Originally
  * spindle-on-hours only (CNC/laser); extended to also cover FFF machines (print hours, filament used,
  * tool-change count), then further extended with power-on time and a filament-runout/jam/slippage
- * count (both machine-type-agnostic) - see the doc comments on each accumulator below for why each
- * needs the same careful treatment spindle-hours already had, not a naive running read of a live OM
- * value. Job-start counting does NOT live here - it's derived by re-parsing RRF's own SD event log
- * (see eventLog.ts), the same source finished/cancelled counts already came from.
+ * count (both machine-type-agnostic), then again with per-axis travel distance, per-fan runtime and
+ * per-heater on-time/full-load time (v8, also machine-type-agnostic) - see the doc comments on each
+ * accumulator below for why each needs the same careful treatment spindle-hours already had, not a
+ * naive running read of a live OM value. Job-start counting does NOT live here - it's derived by
+ * re-parsing RRF's own SD event log (see eventLog.ts), the same source finished/cancelled counts
+ * already came from.
  *
  * RRF's `global.xxx` variables are RAM-only (confirmed against RRF source - no flash/SD backing), so a
  * counter needs its own persistence: `maintenance-daemon.g` accumulates into `global.flMaint*` every
@@ -61,8 +63,38 @@ export const MAINTENANCE_STATE_PATH = "0:/sys/flexible-layouts.maintenance-state
  *  seedMaintenanceState - these are incremented by start.g/stop.g/cancel.g (see jobTrackingPatch.ts),
  *  not by anything in this file, replacing the old approach of pattern-matching "started"/"finished"/
  *  "cancelled" text in RRF's WARN-level event log (eventLog.ts), which had no way to scope "started" to
- *  actually being about a print - any warn-level line merely containing that word counted. */
-export const MAINTENANCE_MACRO_SET_VERSION = 7;
+ *  actually being about a print - any warn-level line merely containing that word counted. v8: added
+ *  per-axis travel distance (flMaintAxisMm), per-fan runtime (flMaintFanSec) and per-heater on-time /
+ *  full-load time (flMaintHeaterSec / flMaintHeaterFullSec) - all FIXED-SIZE arrays (see
+ *  MAINTENANCE_MAX_TRACKED_* below), never dynamically resized, so seeding them is a plain array
+ *  literal rather than a build-with-a-loop - deliberately the lowest-risk array shape available in
+ *  RRF meta-gcode. Axis tracking has a homing grace period (an axis's reported position jumps
+ *  arbitrarily during a homing move, which would otherwise register as bogus travel) and a sanity
+ *  bound (skip a delta bigger than the axis's own min-max range, which catches a WCS/offset jump).
+ *  v9: gated the v8 axis/fan/heater loops behind a new flMaintTrackDetail flag, OFF by default -
+ *  they were previously unconditional (always running once flMaintEnabled was on), with no way to
+ *  keep the base counters (spindle/print/filament/etc.) while skipping the extra per-axis/fan/heater
+ *  overhead specifically. v10: split that one flMaintTrackDetail flag into three independent ones -
+ *  flMaintTrackAxes, flMaintTrackFans, flMaintTrackHeaters - each gating only its own loop, so a user
+ *  who only cares about (say) heater on-time isn't forced to also pay for axis-travel and fan-runtime
+ *  polling to get it, and vice versa. All three still default to false. */
+export const MAINTENANCE_MACRO_SET_VERSION = 10;
+
+/** Fixed capacities for the per-axis/fan/heater arrays below. Real machines never come close to these
+ *  (even an exotic multi-gantry toolchanger has well under 12 axes) - the caps exist only so the
+ *  arrays can be seeded as a plain literal instead of built with a loop (see the v8 note above), and
+ *  each tracking block is skipped outright (not a hard error) on the vanishingly unlikely machine
+ *  that exceeds its cap, via the `#move.axes <= ...` style guards below. Keep all three in sync with
+ *  {@link zeroArrayLiteral}'s call sites and with seedMaintenanceState's padding logic if ever changed. */
+export const MAINTENANCE_MAX_TRACKED_AXES = 12;
+export const MAINTENANCE_MAX_TRACKED_FANS = 12;
+export const MAINTENANCE_MAX_TRACKED_HEATERS = 12;
+
+/** A `{0,0,0,...}` (or `{false,false,...}`) RRF array literal of exactly `length` elements - used to
+ *  seed the fixed-size tracking arrays so the element count can never drift from a hand-typed literal. */
+function zeroArrayLiteral(length: number, value: "0" | "false" = "0"): string {
+	return `{${Array(length).fill(value).join(",")}}`;
+}
 
 const VERSION_MARKER_RE = /;\s*FL-MAINTENANCE-MACRO-VERSION:\s*(\d+)/;
 
@@ -78,7 +110,8 @@ function macroHeader(title: string): string {
 ;
 ; This file is yours to customize. Just leave the global.flMaint* variables alone - they're what
 ; Flexible Layouts reads back to compute spindle-on hours, print hours, filament used, tool changes,
-; power-on time and filament-error counts.
+; power-on time, filament-error counts, per-axis travel distance, per-fan runtime and per-heater
+; on-time/full-load time.
 
 `;
 }
@@ -119,6 +152,32 @@ if !exists(global.flMaintPowerOnSec)
 ; to be in one when tracking was set up.
 if !exists(global.flMaintLastFilamentStatus) && #sensors.filamentMonitors > 0
 	global flMaintLastFilamentStatus = sensors.filamentMonitors[0].status
+; Per-axis/fan/heater tracking (v8) - fixed-size arrays, see MAINTENANCE_MAX_TRACKED_* above. Each is
+; its own guard for the same reason as every other seed variable above. flMaintLastAxisPos/
+; flMaintLastAxisHomed are pure poll-to-poll comparison state (like flMaintLastExtruderPos), not part
+; of the reported totals - re-seeding them fresh on every "first sight" is correct.
+if !exists(global.flMaintAxisMm)
+	global flMaintAxisMm = ${zeroArrayLiteral(MAINTENANCE_MAX_TRACKED_AXES)}
+if !exists(global.flMaintLastAxisPos)
+	global flMaintLastAxisPos = ${zeroArrayLiteral(MAINTENANCE_MAX_TRACKED_AXES)}
+if !exists(global.flMaintLastAxisHomed)
+	global flMaintLastAxisHomed = ${zeroArrayLiteral(MAINTENANCE_MAX_TRACKED_AXES, "false")}
+if !exists(global.flMaintFanSec)
+	global flMaintFanSec = ${zeroArrayLiteral(MAINTENANCE_MAX_TRACKED_FANS)}
+if !exists(global.flMaintHeaterSec)
+	global flMaintHeaterSec = ${zeroArrayLiteral(MAINTENANCE_MAX_TRACKED_HEATERS)}
+if !exists(global.flMaintHeaterFullSec)
+	global flMaintHeaterFullSec = ${zeroArrayLiteral(MAINTENANCE_MAX_TRACKED_HEATERS)}
+; Gates the three loops below - OFF by default (unlike flMaintEnabled itself, which defaults on), and
+; INDEPENDENTLY of each other (v10) - each is its own switch, separate from the master pause/resume and
+; from one another, in the setup dialog and next to its own data on the Maintenance page, since it's
+; real extra controller overhead most users won't look at the detail for.
+if !exists(global.flMaintTrackAxes)
+	global flMaintTrackAxes = false
+if !exists(global.flMaintTrackFans)
+	global flMaintTrackFans = false
+if !exists(global.flMaintTrackHeaters)
+	global flMaintTrackHeaters = false
 
 var dt = state.upTime - global.flMaintLastPollTime
 ; state.upTime resets to 0 on reboot - without this clamp, a reboot between two polls would show as
@@ -188,10 +247,77 @@ if #sensors.filamentMonitors > 0
 		set global.flMaintFilamentErrors = global.flMaintFilamentErrors + 1
 	set global.flMaintLastFilamentStatus = var.fmStatus
 
+; Per-axis/fan/heater detail tracking - each block independently gated (v10), OFF by default (see the
+; seed comment above): each is its own extra array loop every poll, real if modest controller overhead
+; for detail most users won't look at, so each is opt-in on its own rather than always-on like
+; everything above, and none of the three forces paying for the other two.
+if global.flMaintTrackAxes
+	; Per-axis travel distance (v8). Guarded by the fixed array capacity so an exotic machine with more
+	; axes than we provision for is simply skipped, not a hard indexing error. Two defences against
+	; bogus readings: a homing move teleports the reported position (skip the poll a HOMED axis just
+	; became homed on - only start diffing from the NEXT poll), and a delta bigger than the axis's own
+	; min-max range is dropped outright (catches a workspace-offset jump rather than real travel).
+	if #move.axes <= ${MAINTENANCE_MAX_TRACKED_AXES}
+		while iterations < #move.axes
+			var axisHomed = move.axes[iterations].homed
+			var axisWasHomed = global.flMaintLastAxisHomed[iterations]
+			if var.axisHomed
+				if var.axisWasHomed
+					var axisDelta = abs(move.axes[iterations].machinePosition - global.flMaintLastAxisPos[iterations])
+					var axisRange = move.axes[iterations].max - move.axes[iterations].min
+					if var.axisDelta <= var.axisRange
+						set global.flMaintAxisMm[iterations] = global.flMaintAxisMm[iterations] + var.axisDelta
+				set global.flMaintLastAxisPos[iterations] = move.axes[iterations].machinePosition
+			set global.flMaintLastAxisHomed[iterations] = var.axisHomed
+
+if global.flMaintTrackFans
+	; Per-fan runtime (v8). fans[] can have null entries for an unconfigured slot (same as
+	; heaters/tools), hence the null guard - reading a field on a null array element is a hard RRF error.
+	if #fans <= ${MAINTENANCE_MAX_TRACKED_FANS}
+		while iterations < #fans
+			if fans[iterations] != null && fans[iterations].actualValue > 0
+				set global.flMaintFanSec[iterations] = global.flMaintFanSec[iterations] + var.dt
+
+if global.flMaintTrackHeaters
+	; Per-heater on-time and full-load time (v8, machine-type-agnostic - a bed/chamber heater on an FFF
+	; machine and a heated element on any other machine both count). "On" is state != "off" (covers
+	; both "active" and "standby", matching what an operator would consider "the heater is doing
+	; something"), not "avgPwm > 0" (a heater can report a positive average duty over its polling
+	; window while at "off" moments within it). "Full load" tracks avgPwm >= 0.95 as a proxy for
+	; sustained thermal stress.
+	if #heat.heaters <= ${MAINTENANCE_MAX_TRACKED_HEATERS}
+		while iterations < #heat.heaters
+			if heat.heaters[iterations] != null && heat.heaters[iterations].state != "off"
+				set global.flMaintHeaterSec[iterations] = global.flMaintHeaterSec[iterations] + var.dt
+				if heat.heaters[iterations].avgPwm >= 0.95
+					set global.flMaintHeaterFullSec[iterations] = global.flMaintHeaterFullSec[iterations] + var.dt
+
 if global.flMaintUnflushedSec >= 600
 	M98 P"${MAINTENANCE_MACRO_FOLDER}/${MAINTENANCE_FLUSH_FILE}"
 	set global.flMaintUnflushedSec = 0
 `;
+
+/** Builds the meta-gcode lines that persist one FIXED-SIZE array-valued global to the flush file. The
+ *  `{a,b,c,...}` literal text is built manually, one live element at a time via a loop + string
+ *  concatenation, rather than relying on any built-in array-to-string conversion - that conversion's
+ *  exact output format isn't verified against real firmware, and any silent mismatch there (e.g. no
+ *  surrounding braces) would produce a state file RRF can't reload, losing every tracked total the
+ *  same way the v5 "endif" bug did (see the version-history comment above). `varName` only needs to
+ *  be unique within the flush macro - each array gets its own so redeclaring one `var` twice (an RRF
+ *  error) never happens. */
+function flushArrayGlobal(globalName: string, varName: string): string {
+	return `var ${varName} = "{"
+while iterations < #global.${globalName}
+	if iterations > 0
+		set var.${varName} = var.${varName} ^ ","
+	set var.${varName} = var.${varName} ^ global.${globalName}[iterations]
+set var.${varName} = var.${varName} ^ "}"
+echo >>"${MAINTENANCE_STATE_PATH}" "if !exists(global.${globalName})"
+echo >>"${MAINTENANCE_STATE_PATH}" "  global ${globalName} = " ^ var.${varName}
+echo >>"${MAINTENANCE_STATE_PATH}" "else"
+echo >>"${MAINTENANCE_STATE_PATH}" "  set global.${globalName} = " ^ var.${varName}
+`;
+}
 
 /** Writes the accumulated counters to a small persistent-globals file (the Duet3D wiki's documented
  *  pattern for surviving a reboot, since global.* itself doesn't) - restored by config.g at boot. */
@@ -240,7 +366,19 @@ echo >>"${MAINTENANCE_STATE_PATH}" "if !exists(global.flMaintEnabled)"
 echo >>"${MAINTENANCE_STATE_PATH}" "  global flMaintEnabled = " ^ global.flMaintEnabled
 echo >>"${MAINTENANCE_STATE_PATH}" "else"
 echo >>"${MAINTENANCE_STATE_PATH}" "  set global.flMaintEnabled = " ^ global.flMaintEnabled
-`;
+echo >>"${MAINTENANCE_STATE_PATH}" "if !exists(global.flMaintTrackAxes)"
+echo >>"${MAINTENANCE_STATE_PATH}" "  global flMaintTrackAxes = " ^ global.flMaintTrackAxes
+echo >>"${MAINTENANCE_STATE_PATH}" "else"
+echo >>"${MAINTENANCE_STATE_PATH}" "  set global.flMaintTrackAxes = " ^ global.flMaintTrackAxes
+echo >>"${MAINTENANCE_STATE_PATH}" "if !exists(global.flMaintTrackFans)"
+echo >>"${MAINTENANCE_STATE_PATH}" "  global flMaintTrackFans = " ^ global.flMaintTrackFans
+echo >>"${MAINTENANCE_STATE_PATH}" "else"
+echo >>"${MAINTENANCE_STATE_PATH}" "  set global.flMaintTrackFans = " ^ global.flMaintTrackFans
+echo >>"${MAINTENANCE_STATE_PATH}" "if !exists(global.flMaintTrackHeaters)"
+echo >>"${MAINTENANCE_STATE_PATH}" "  global flMaintTrackHeaters = " ^ global.flMaintTrackHeaters
+echo >>"${MAINTENANCE_STATE_PATH}" "else"
+echo >>"${MAINTENANCE_STATE_PATH}" "  set global.flMaintTrackHeaters = " ^ global.flMaintTrackHeaters
+${flushArrayGlobal("flMaintAxisMm", "axisMmText")}${flushArrayGlobal("flMaintFanSec", "fanSecText")}${flushArrayGlobal("flMaintHeaterSec", "heaterSecText")}${flushArrayGlobal("flMaintHeaterFullSec", "heaterFullSecText")}`;
 
 export const MAINTENANCE_MACROS: Record<string, string> = {
 	[MAINTENANCE_DAEMON_FILE]: MAINTENANCE_DAEMON_MACRO,
@@ -290,6 +428,35 @@ export interface MaintenanceExtraCounters {
 	jobsStarted?: number;
 	jobsFinished?: number;
 	jobsCancelled?: number;
+	/** Per-axis accumulated travel (mm), in `move.axes[]` order. Padded/truncated to
+	 *  {@link MAINTENANCE_MAX_TRACKED_AXES} - see {@link toFixedArrayLiteral}. */
+	axisMm?: Array<number>;
+	/** Per-fan runtime (seconds), in `fans[]` order. */
+	fanSec?: Array<number>;
+	/** Per-heater on-time (seconds), in `heat.heaters[]` order. */
+	heaterSec?: Array<number>;
+	/** Per-heater full-load (avgPwm >= 0.95) time (seconds), in `heat.heaters[]` order. */
+	heaterFullSec?: Array<number>;
+}
+
+/** Which of the three independent detail-tracking loops (v10) are on. Each defaults to false when
+ *  omitted, same as `enabled`'s own default - a bag of three, rather than three more positional
+ *  parameters on {@link seedMaintenanceState}, since they're always read/passed together as a group by
+ *  every caller (the setup dialog, and the Maintenance page's own per-category toggles). */
+export interface MaintenanceTrackingFlags {
+	axes?: boolean;
+	fans?: boolean;
+	heaters?: boolean;
+}
+
+/** A `{a,b,c,...}` RRF array literal of exactly `length` elements, built straight from JS (no RRF
+ *  string-conversion risk here, unlike flushArrayGlobal() above - this runs in the browser, not on the
+ *  controller). Missing values default to 0; anything beyond `length` is dropped - keeps the written
+ *  array the same fixed size the daemon macro always expects, even if the caller hands back a live OM
+ *  array of some other length (e.g. read before this machine's macros were ever redeployed to v8). */
+function toFixedArrayLiteral(values: Array<number> | undefined, length: number): string {
+	const padded = Array.from({ length }, (_, i) => values?.[i] ?? 0);
+	return `{${padded.join(",")}}`;
 }
 
 /** Writes the persisted-state file directly (setup, or re-running setup to change the tracked
@@ -299,16 +466,23 @@ export interface MaintenanceExtraCounters {
  *  pattern as the flush macro (not a bare `global x = ...`) because this can run again later in the
  *  same boot session, after the daemon macro has already declared these globals once - re-declaring
  *  an existing global with the bare `global` keyword is an error in RRF, only `set global.x = ...` is
- *  safe on an already-existing one. `spindleSeconds`/`extra`/`enabled` let re-running setup preserve
- *  already-accumulated totals and the current pause state rather than resetting them. */
+ *  safe on an already-existing one. `spindleSeconds`/`extra`/`enabled`/`tracking` let re-running setup
+ *  preserve already-accumulated totals and the current pause/detail-tracking state rather than
+ *  resetting them. `tracking` is a separate parameter (not folded into `extra`) for the same reason
+ *  `enabled` is - these are feature ON/OFF flags, not accumulated counter values. */
 export async function seedMaintenanceState(
 	io: Pick<MachineIO, "upload" | "sendCode">, spindleIndex: number, spindleSeconds = 0, extra: MaintenanceExtraCounters = {},
-	enabled = true,
+	enabled = true, tracking: MaintenanceTrackingFlags = {},
 ): Promise<boolean> {
 	const {
 		printSeconds = 0, filamentMm = 0, toolChanges = 0, powerOnSeconds = 0, filamentErrors = 0,
-		jobsStarted = 0, jobsFinished = 0, jobsCancelled = 0,
+		jobsStarted = 0, jobsFinished = 0, jobsCancelled = 0, axisMm, fanSec, heaterSec, heaterFullSec,
 	} = extra;
+	const { axes: trackAxes = false, fans: trackFans = false, heaters: trackHeaters = false } = tracking;
+	const axisMmLiteral = toFixedArrayLiteral(axisMm, MAINTENANCE_MAX_TRACKED_AXES);
+	const fanSecLiteral = toFixedArrayLiteral(fanSec, MAINTENANCE_MAX_TRACKED_FANS);
+	const heaterSecLiteral = toFixedArrayLiteral(heaterSec, MAINTENANCE_MAX_TRACKED_HEATERS);
+	const heaterFullSecLiteral = toFixedArrayLiteral(heaterFullSec, MAINTENANCE_MAX_TRACKED_HEATERS);
 	const content = `; Auto-generated by Flexible Layouts - do not edit by hand
 if !exists(global.flMaintSpindleIndex)
 	global flMaintSpindleIndex = ${spindleIndex}
@@ -354,6 +528,34 @@ if !exists(global.flMaintEnabled)
 	global flMaintEnabled = ${enabled}
 else
 	set global.flMaintEnabled = ${enabled}
+if !exists(global.flMaintTrackAxes)
+	global flMaintTrackAxes = ${trackAxes}
+else
+	set global.flMaintTrackAxes = ${trackAxes}
+if !exists(global.flMaintTrackFans)
+	global flMaintTrackFans = ${trackFans}
+else
+	set global.flMaintTrackFans = ${trackFans}
+if !exists(global.flMaintTrackHeaters)
+	global flMaintTrackHeaters = ${trackHeaters}
+else
+	set global.flMaintTrackHeaters = ${trackHeaters}
+if !exists(global.flMaintAxisMm)
+	global flMaintAxisMm = ${axisMmLiteral}
+else
+	set global.flMaintAxisMm = ${axisMmLiteral}
+if !exists(global.flMaintFanSec)
+	global flMaintFanSec = ${fanSecLiteral}
+else
+	set global.flMaintFanSec = ${fanSecLiteral}
+if !exists(global.flMaintHeaterSec)
+	global flMaintHeaterSec = ${heaterSecLiteral}
+else
+	set global.flMaintHeaterSec = ${heaterSecLiteral}
+if !exists(global.flMaintHeaterFullSec)
+	global flMaintHeaterFullSec = ${heaterFullSecLiteral}
+else
+	set global.flMaintHeaterFullSec = ${heaterFullSecLiteral}
 `;
 	try {
 		await io.upload(MAINTENANCE_STATE_PATH, new Blob([content], { type: "text/plain" }));

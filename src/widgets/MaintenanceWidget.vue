@@ -40,11 +40,23 @@
 				<span class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.maintenance.filamentErrors") }}</span>
 				<span class="mnt-value">{{ filamentErrorsDisplay }}</span>
 			</div>
+			<!-- Summed across every tracked axis, not a per-axis breakdown - this tile is too small for
+				 a multi-row table per axis/fan/heater; that detail lives on the full Maintenance page. -->
+			<div v-if="totalAxisTravelDisplay" class="mnt-row">
+				<span class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.maintenance.totalAxisTravel") }}</span>
+				<span class="mnt-value">{{ totalAxisTravelDisplay }}</span>
+			</div>
 		</div>
 
-		<v-btn size="small" variant="tonal" :color="widget.color || 'primary'" class="flex-shrink-0" prepend-icon="mdi-open-in-new" @click="open">
-			{{ $t("plugins.flexibleLayouts.maintenance.title") }}
-		</v-btn>
+		<div class="d-flex align-center ga-2 flex-shrink-0">
+			<v-btn size="small" variant="tonal" :color="widget.color || 'primary'" class="flex-grow-1" prepend-icon="mdi-open-in-new" @click="open">
+				{{ $t("plugins.flexibleLayouts.maintenance.title") }}
+			</v-btn>
+			<!-- Item H: a single count badge, not per-rule detail - that lives on the full page. -->
+			<v-chip v-if="dueCount > 0" size="small" color="warning" variant="flat" :title="$t('plugins.flexibleLayouts.maintenance.remindersTitle')">
+				{{ dueCount }}
+			</v-chip>
+		</div>
 	</div>
 </template>
 
@@ -57,7 +69,10 @@ import { useMachineStore } from "@/stores/machine";
 import type { Widget } from "../model/document";
 import { defaultMachineIO } from "../model/configBackup/machineIO";
 import { MAINTENANCE_ROUTE_PATH } from "../model/maintenance/constants";
+import { baselineForCounter, mostRecentEntryForCounter, OM_PATH_FOR_COUNTER, readMaintenanceLog, secondsSince } from "../model/maintenance/log";
 import { maintenanceMacrosMissing, maintenanceMacrosOutdated } from "../model/maintenance/macros";
+import { computeDueStatus } from "../model/reminders/dueStatus";
+import { getIntervalRules } from "../model/reminders/storage";
 import { resolveOmPath } from "../util/omPath";
 
 defineProps<{ widget: Extract<Widget, { type: "maintenanceWidget" }> }>();
@@ -86,6 +101,13 @@ const liveFilamentMm = computed(() => liveNumber("global.flMaintFilamentMm"));
 const liveToolChanges = computed(() => liveNumber("global.flMaintToolChanges"));
 const livePowerOnSeconds = computed(() => liveNumber("global.flMaintPowerOnSec"));
 const liveFilamentErrors = computed(() => liveNumber("global.flMaintFilamentErrors"));
+// Summed rather than per-axis (see the template comment) - null (not 0) when the array itself isn't
+// there yet (e.g. tracking configured before the v8 macro update), same "show a dash, not a lie"
+// convention liveNumber already uses for every other figure on this widget.
+const totalAxisTravelMm = computed(() => {
+	const v = resolveOmPath(machineStore.model, "global.flMaintAxisMm");
+	return Array.isArray(v) ? v.reduce((sum: number, n) => sum + (typeof n === "number" ? n : 0), 0) : null;
+});
 const jobCounts = computed(() => ({
 	started: liveNumber("global.flMaintJobsStarted") ?? 0,
 	finished: liveNumber("global.flMaintJobsFinished") ?? 0,
@@ -98,12 +120,29 @@ const filamentUsedDisplay = computed(() => (liveFilamentMm.value != null ? (live
 const toolChangesDisplay = computed(() => (liveToolChanges.value != null ? String(liveToolChanges.value) : "—"));
 const powerOnHoursDisplay = computed(() => (livePowerOnSeconds.value != null ? (livePowerOnSeconds.value / 3600).toFixed(1) : "—"));
 const filamentErrorsDisplay = computed(() => (liveFilamentErrors.value != null ? String(liveFilamentErrors.value) : "—"));
+const totalAxisTravelDisplay = computed(() => (totalAxisTravelMm.value != null ? (totalAxisTravelMm.value / 1000).toFixed(1) + " m" : ""));
+
+// --- Item H: due-reminder count -------------------------------------------------------------------
+const dueCount = ref(0);
+async function refreshDueCount(): Promise<void> {
+	const rules = getIntervalRules().filter((r) => r.enabled);
+	if (!rules.length) { dueCount.value = 0; return; }
+	const log = await readMaintenanceLog();
+	dueCount.value = rules.filter((rule) => {
+		const live = liveNumber(OM_PATH_FOR_COUNTER[rule.counter]);
+		const entry = mostRecentEntryForCounter(log, rule.counter);
+		const baseline = entry ? baselineForCounter(entry, rule.counter) : null;
+		const status = computeDueStatus(secondsSince(live, baseline), rule.intervalValue);
+		return status === "dueSoon" || status === "overdue";
+	}).length;
+}
 
 onMounted(async () => {
 	if (!machineStore.isConnected) { return; }
 	const io = defaultMachineIO();
 	const missing = await maintenanceMacrosMissing(io);
 	trackingConfigured.value = !missing && !(await maintenanceMacrosOutdated(io));
+	void refreshDueCount();
 });
 
 function open(): void {

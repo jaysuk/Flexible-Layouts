@@ -29,6 +29,7 @@ import { VECTOR_IMPORT_ROUTE_PATH } from "./model/vectorImport/constants";
 import { activateFlLayout } from "./model/layoutState";
 import { installEscapeGuard, uninstallEscapeGuard } from "./model/access";
 import { installAutoBackupNudges, uninstallAutoBackupNudges } from "./model/configBackup/autoBackupNudges";
+import { installMaintenanceReminderNudge, uninstallMaintenanceReminderNudge } from "./model/reminders/nudge";
 import { installCertExpiryNudge, uninstallCertExpiryNudge } from "./model/tlsSetup/certExpiryNudge";
 import { installErrorCapture } from "dwc-plugin-runtime";
 import { migrateGlobalHides, registerExistingCustomPages } from "./model/pageManager";
@@ -114,6 +115,9 @@ installAutoBackupNudges();
 // TLS certificate expiry reminder - see certExpiryNudge.ts.
 installCertExpiryNudge();
 
+// Maintenance service-interval reminders (grease/replace/etc. every N hours) - see reminders/nudge.ts.
+installMaintenanceReminderNudge();
+
 // Clean up app-lifetime resources when this plugin is stopped. The escape-guard watcher and the
 // error-capture listeners aren't tied to any component, so without this they would leak (and stack a
 // duplicate on the next load). Uses DWC's shared event bus (window.DWC.Events) added in 3.7.0-alpha.4.
@@ -123,6 +127,7 @@ function onPluginUnloaded(id: string): void {
 		uninstallErrorCapture();
 		uninstallAutoBackupNudges();
 		uninstallCertExpiryNudge();
+		uninstallMaintenanceReminderNudge();
 		Events.off("dwcPluginUnloaded", onPluginUnloaded);
 	}
 }

@@ -74,6 +74,19 @@
 					<v-checkbox v-if="!eventLoggingEnabled" v-model="enableEventLogging" density="compact" hide-details
 								:label="$t('plugins.flexibleLayouts.maintenance.enableEventLoggingOption')" class="mb-2" />
 
+					<!-- Each independently OFF by default (see macros.ts's v10 note) - real, if modest,
+						 extra controller overhead most users won't look at every category of. Each
+						 defaults to whatever the machine already has configured when re-running setup,
+						 not back to off, so re-running setup for an unrelated reason (e.g. changing the
+						 tracked spindle) can't silently disable one that was already on. -->
+					<div class="text-caption text-medium-emphasis mb-1">{{ $t("plugins.flexibleLayouts.maintenance.trackDetailGroupLabel") }}</div>
+					<v-checkbox v-model="trackAxesEnabled" density="compact" hide-details
+								:label="$t('plugins.flexibleLayouts.maintenance.trackAxesOption')" class="mb-1" />
+					<v-checkbox v-model="trackFansEnabled" density="compact" hide-details
+								:label="$t('plugins.flexibleLayouts.maintenance.trackFansOption')" class="mb-1" />
+					<v-checkbox v-model="trackHeatersEnabled" density="compact" hide-details
+								:label="$t('plugins.flexibleLayouts.maintenance.trackHeatersOption')" class="mb-2" />
+
 					<template v-if="plannedChanges.length > 0">
 						<div class="text-caption text-medium-emphasis mb-1">{{ $t("plugins.flexibleLayouts.maintenance.plannedChanges") }}</div>
 						<ul class="text-caption mb-3">
@@ -157,6 +170,12 @@ const daemonText = ref<string | null>(null); // null = file doesn't exist yet (d
 const macrosMissing = ref(true);
 const macrosOutdated = ref(false);
 const enableEventLogging = ref(true);
+// Detail-tracking (v10) - three INDEPENDENT flags, each defaulting OFF, but re-running setup should
+// reflect whatever the machine already has for each (set below in loadState()), not silently reset any
+// of them back to off.
+const trackAxesEnabled = ref(false);
+const trackFansEnabled = ref(false);
+const trackHeatersEnabled = ref(false);
 const tpostPlans = ref<Array<TpostPatchPlan>>([]);
 const jobPlans = ref<Array<JobMacroPlan>>([]);
 
@@ -177,6 +196,9 @@ async function loadState(): Promise<void> {
 		macrosOutdated.value = macrosMissing.value ? false : await maintenanceMacrosOutdated(io);
 		tpostPlans.value = await planTpostPatches(io);
 		jobPlans.value = await planJobTrackingPatches(io);
+		trackAxesEnabled.value = resolveOmPath(machineStore.model, "global.flMaintTrackAxes") === true;
+		trackFansEnabled.value = resolveOmPath(machineStore.model, "global.flMaintTrackFans") === true;
+		trackHeatersEnabled.value = resolveOmPath(machineStore.model, "global.flMaintTrackHeaters") === true;
 	} finally {
 		loading.value = false;
 	}
@@ -268,6 +290,15 @@ async function onApply(): Promise<void> {
 			const v = resolveOmPath(machineStore.model, path);
 			return typeof v === "number" ? v : 0;
 		};
+		// The v8 per-axis/fan/heater arrays need the same "preserve on re-run" treatment as every
+		// scalar counter above - seedMaintenanceState rewrites the whole file, so any live array not
+		// re-supplied here would be reset to zero, silently discarding accumulated axis-distance/
+		// fan/heater time. Absent (e.g. a machine last flushed before v8) resolves to undefined, which
+		// seedMaintenanceState's own toFixedArrayLiteral() already defaults to zeros - not a footgun.
+		const numArrOm = (path: string): Array<number> | undefined => {
+			const v = resolveOmPath(machineStore.model, path);
+			return Array.isArray(v) ? v.map((n) => (typeof n === "number" ? n : 0)) : undefined;
+		};
 		const enabledOm = resolveOmPath(machineStore.model, "global.flMaintEnabled");
 		const seeded = await seedMaintenanceState(io, spindleIndex.value, numOm("global.flMaintSpindleSec"), {
 			printSeconds: numOm("global.flMaintPrintSec"),
@@ -278,7 +309,13 @@ async function onApply(): Promise<void> {
 			jobsStarted: numOm("global.flMaintJobsStarted"),
 			jobsFinished: numOm("global.flMaintJobsFinished"),
 			jobsCancelled: numOm("global.flMaintJobsCancelled"),
-		}, typeof enabledOm === "boolean" ? enabledOm : true);
+			axisMm: numArrOm("global.flMaintAxisMm"),
+			fanSec: numArrOm("global.flMaintFanSec"),
+			heaterSec: numArrOm("global.flMaintHeaterSec"),
+			heaterFullSec: numArrOm("global.flMaintHeaterFullSec"),
+		}, typeof enabledOm === "boolean" ? enabledOm : true, {
+			axes: trackAxesEnabled.value, fans: trackFansEnabled.value, heaters: trackHeatersEnabled.value,
+		});
 		if (!seeded) { throw new Error("Could not write the maintenance state file to the SD card."); }
 
 		step.value = "done";
