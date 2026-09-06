@@ -22,8 +22,8 @@
 			<div v-if="editMode" class="fl-header-resizer" @pointerdown.stop="onResizePointerDown($event, item)" />
 		</div>
 
-		<WidgetPalette v-model="paletteOpen" @add="onAddWidget" @add-item="onAddItem" />
-		<PropertiesDialog v-model="propertiesOpen" :item="editingItem" @save="onSaveProperties" />
+		<WidgetPalette v-if="paletteMounted" v-model="paletteOpen" @add="onAddWidget" @add-item="onAddItem" />
+		<PropertiesDialog v-if="propertiesMounted" v-model="propertiesOpen" :item="editingItem" @save="onSaveProperties" />
 	</div>
 </template>
 
@@ -46,6 +46,7 @@ import { effectiveLockForItem, isPrintingStatus } from "../util/printLock";
 import WidgetView from "../widgets/WidgetView.vue";
 import WidgetPalette from "../editor/WidgetPalette.vue";
 import PropertiesDialog from "../editor/PropertiesDialog.vue";
+import { useLazyDialog } from "../composables/useLazyDialog";
 
 const props = defineProps<{ hideTypes?: Array<Widget["type"]> }>();
 
@@ -186,6 +187,7 @@ onBeforeUnmount(() => {
 
 // ── Add / remove / configure ──────────────────────────────────────────────────
 const paletteOpen = ref(false);
+const paletteMounted = useLazyDialog(paletteOpen);
 
 function placeNew(): { x: number; y: number; w: number; h: number } {
 	const w = 20;
@@ -215,6 +217,7 @@ function removeItem(item: GridItemModel): void {
 }
 
 const propertiesOpen = ref(false);
+const propertiesMounted = useLazyDialog(propertiesOpen);
 const editingId = ref<string | null>(null);
 const editingItem = ref<GridItemModel | null>(null);
 function openProperties(id: string): void {

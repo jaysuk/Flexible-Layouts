@@ -9,7 +9,7 @@
  * Buffers are keyed by object-model path and trimmed to the largest window any chart needs for that
  * path; each ChartWidget slices the shared buffer down to its own window for display.
  */
-import { ref } from "vue";
+import { computed, ref } from "vue";
 
 import { useMachineStore } from "@/stores/machine";
 
@@ -40,8 +40,15 @@ export function getChartSamples(omPath: string, windowMs: number): Array<ChartSa
 	return i ? buf.slice(i) : buf.slice();
 }
 
+// collect() walks every widget on every page, and tick() calls it on every sample - so on a large
+// layout this was a full document walk (plus a fresh Map and result object) several times a second,
+// forever, even when no chart widget exists at all. The walk only needs redoing when the document
+// actually changes, so cache it against a cheap reactive read: touching `documentRef.value` inside a
+// computed makes Vue re-run this only when the document is mutated.
+const collected = computed<{ paths: Map<string, number>; interval: number }>(() => walkForCharts());
+
 /** Walk the active layout: which OM paths to sample (→ largest window) and the fastest interval. */
-function collect(): { paths: Map<string, number>; interval: number } {
+function walkForCharts(): { paths: Map<string, number>; interval: number } {
 	const paths = new Map<string, number>();
 	let interval = 1000;
 	forEachWidget(useLayoutStore().document.value, (w) => {
@@ -60,7 +67,7 @@ function collect(): { paths: Map<string, number>; interval: number } {
 }
 
 function tick(): void {
-	const { paths, interval } = collect();
+	const { paths, interval } = collected.value;
 	const machineStore = useMachineStore();
 
 	if (machineStore.isConnected) {
@@ -103,7 +110,7 @@ export function startChartSampler(): void {
 	if (timer) {
 		return;
 	}
-	currentInterval = collect().interval;
+	currentInterval = collected.value.interval;
 	tick();
 	timer = setInterval(tick, currentInterval);
 }

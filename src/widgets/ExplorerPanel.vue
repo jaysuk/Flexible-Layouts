@@ -20,10 +20,18 @@
 		</v-toolbar>
 
 		<v-window v-model="activeTab" :touch="false" class="exp-window flex-grow-1">
-			<v-window-item v-for="tab in tabs" :key="tab.id" :value="tab.id" eager>
+			<!-- No `eager`: it forced every tab to render up front, so each open file held a live Monaco
+				 instance simultaneously. Monaco is by far the heaviest thing this panel can mount
+				 (~3.8 MB of chunk plus per-instance model/DOM), so they are mounted on demand instead. -->
+			<v-window-item v-for="tab in tabs" :key="tab.id" :value="tab.id">
 				<!-- Editor tab: Monaco loads/saves the file itself. -->
-				<component :is="monacoEditor" v-if="tab.kind === 'editor' && tab.filename"
-						   :filename="tab.filename" @dirty="tab.dirty = $event" />
+				<template v-if="tab.kind === 'editor' && tab.filename">
+					<!-- Only the ACTIVE editor stays mounted, so N open files no longer mean N live
+						 editors. A tab with unsaved edits is deliberately kept mounted even when
+						 inactive - unmounting it would throw those edits away. -->
+					<component :is="monacoEditor" v-if="tab.id === activeTab || tab.dirty"
+							   :filename="tab.filename" @dirty="tab.dirty = $event" />
+				</template>
 				<!-- Browser tab: file-click opens the file in a new editor tab (not the page). -->
 				<component :is="fileList" v-else v-model:directory="tab.directory" :options="optionsFor(tab)"
 						   root-directory="0:/" root-label="0:/"

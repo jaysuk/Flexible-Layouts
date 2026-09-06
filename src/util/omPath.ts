@@ -6,16 +6,36 @@
  * segment so callers can show a placeholder rather than throwing. Kept dependency-free and pure so
  * it can be wrapped in a computed for reactive read-outs.
  */
-export function resolveOmPath(root: unknown, path: string): unknown {
-	if (!path) {
-		return undefined;
+// Splitting a path allocates a replaced string plus three arrays (split/map/filter). This runs for
+// every widget's every path on every object-model update - several times a second, forever - and the
+// paths themselves come from saved config, so the same handful of strings are re-parsed endlessly.
+// Cache the segment arrays instead; the cap keeps a pathological layout from growing this unbounded.
+const SEGMENT_CACHE_LIMIT = 512;
+const segmentCache = new Map<string, ReadonlyArray<string>>();
+
+function segmentsFor(path: string): ReadonlyArray<string> {
+	const cached = segmentCache.get(path);
+	if (cached) {
+		return cached;
 	}
 	// Normalise `a[0].b` -> `a.0.b`, then split on dots.
-	const segments = path
+	const segments: ReadonlyArray<string> = path
 		.replace(/\[(\d+)\]/g, ".$1")
 		.split(".")
 		.map((s) => s.trim())
 		.filter((s) => s.length > 0);
+	if (segmentCache.size >= SEGMENT_CACHE_LIMIT) {
+		segmentCache.clear();
+	}
+	segmentCache.set(path, segments);
+	return segments;
+}
+
+export function resolveOmPath(root: unknown, path: string): unknown {
+	if (!path) {
+		return undefined;
+	}
+	const segments = segmentsFor(path);
 
 	let current: unknown = root;
 	for (const seg of segments) {

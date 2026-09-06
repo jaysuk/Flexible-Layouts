@@ -99,8 +99,8 @@
 			</v-card-actions>
 		</v-card>
 
-		<WidgetPalette v-model="paletteOpen" @add="addWidget" @add-item="addItem" />
-		<PropertiesDialog v-model="propertiesOpen" :item="editingItem" @save="saveProperties" />
+		<WidgetPalette v-if="paletteMounted" v-model="paletteOpen" @add="addWidget" @add-item="addItem" />
+		<PropertiesDialog v-if="propertiesMounted" v-model="propertiesOpen" :item="editingItem" @save="saveProperties" />
 
 		<!-- Auto-arrange dialog (free mode): lay all children out in a ring or hex tiling -->
 		<v-dialog v-model="arrangeOpen" max-width="420">
@@ -161,6 +161,7 @@ import FlexGrid from "../page/FlexGrid.vue";
 import WidgetView from "../widgets/WidgetView.vue";
 import WidgetPalette from "./WidgetPalette.vue";
 import PropertiesDialog from "./PropertiesDialog.vue";
+import { useLazyDialog } from "../composables/useLazyDialog";
 
 type GroupWidget = Extract<Widget, { type: "group" }>;
 
@@ -169,6 +170,7 @@ const emit = defineEmits<{ "update:modelValue": [boolean]; save: [GroupWidget] }
 
 const draft = ref<GroupWidget | null>(null);
 const paletteOpen = ref(false);
+const paletteMounted = useLazyDialog(paletteOpen);
 const freeCanvasRef = ref<HTMLElement | null>(null);
 
 // Free-mode drag/resize/rotate/z-order is shared with the top-bar header editor - see
@@ -282,6 +284,7 @@ function toggleChildLock(id: string) {
 }
 
 const propertiesOpen = ref(false);
+const propertiesMounted = useLazyDialog(propertiesOpen);
 const editingId = ref<string | null>(null);
 const editingItem = ref<GridItemModel | null>(null);
 

@@ -179,9 +179,9 @@
 			</v-container>
 		</template>
 
-		<WidgetPalette v-model="paletteOpen" @add="addWidget" @add-item="addItem" />
-		<PropertiesDialog v-model="propertiesOpen" :item="editingItem" @save="saveProperties" />
-		<GroupEditor v-model="groupEditorOpen" :group="editingGroup" @save="saveGroup" />
+		<WidgetPalette v-if="paletteMounted" v-model="paletteOpen" @add="addWidget" @add-item="addItem" />
+		<PropertiesDialog v-if="propertiesMounted" v-model="propertiesOpen" :item="editingItem" @save="saveProperties" />
+		<GroupEditor v-if="groupEditorMounted" v-model="groupEditorOpen" :group="editingGroup" @save="saveGroup" />
 
 		<!-- Reset-to-default: choose which breakpoint(s) to clear -->
 		<v-dialog v-model="resetDialogOpen" max-width="440">
@@ -307,7 +307,8 @@ import ColorSelect from "../editor/ColorSelect.vue";
 import SdImagePicker from "../editor/SdImagePicker.vue";
 import { resolveColor } from "../util/color";
 import { hexLayout, ringLayout } from "../util/shapes";
-import { useMachineStore } from "@/stores/machine";
+import { useMachineStore } from "@/stores/machine";
+import { useLazyDialog } from "../composables/useLazyDialog";
 
 const props = defineProps<{
 	/** Document key for this page - a route path (`/`, `/Console`) or a custom-page id. */
@@ -322,6 +323,7 @@ const props = defineProps<{
 
 const store = useLayoutStore();
 const paletteOpen = ref(false);
+const paletteMounted = useLazyDialog(paletteOpen);
 
 // #region Page background
 const machineStore = useMachineStore();
@@ -507,7 +509,11 @@ watch(editMode, (on) => { if (on) { editingBp.value = currentBp.value; } });
 // Undo/redo state must be declared BEFORE load() runs: the immediate watch below calls load() ->
 // resetHistory() during setup, so `lastSnapshot` & the stacks have to be initialised by then
 // (otherwise a temporal-dead-zone ReferenceError throws and the whole page renders blank).
-const MAX_HISTORY = 60;
+// Each entry is a full JSON snapshot of the page's layout, so the cap is a direct memory cost: on a
+// large page a snapshot runs to tens of KB, and the stack is per-page (every page you edit keeps its
+// own). 60 deep was far more undo than anyone reaches for and could hold several MB of strings alive
+// for the rest of the session; 20 keeps undo comfortably useful at a third of the cost.
+const MAX_HISTORY = 20;
 const undoStack = ref<Array<string>>([]);
 const redoStack = ref<Array<string>>([]);
 let lastSnapshot = "[]";
@@ -968,6 +974,7 @@ function exportPanelById(id: string) {
 
 // #region Per-widget properties editing
 const propertiesOpen = ref(false);
+const propertiesMounted = useLazyDialog(propertiesOpen);
 const editingId = ref<string | null>(null);
 const editingItem = ref<GridItemModel | null>(null);
 
@@ -1010,6 +1017,7 @@ function patchWidget(id: string, patch: Record<string, unknown>) {
 
 // #region Group (custom panel) contents editing
 const groupEditorOpen = ref(false);
+const groupEditorMounted = useLazyDialog(groupEditorOpen);
 const groupId = ref<string | null>(null);
 const editingGroup = ref<Extract<Widget, { type: "group" }> | null>(null);
 

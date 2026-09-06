@@ -212,90 +212,102 @@ export interface LayoutStore {
 	setPageBackground: (pageId: string, kind: PageLayout["kind"], background: PageLayout["background"]) => void;
 }
 
-export function useLayoutStore(): LayoutStore {
-	const document = computed<LayoutDocument>(() => liveDocument());
+// The store is a stateless facade over the reactive settings document, so it is built ONCE at module
+// scope rather than per call. It used to allocate a fresh `computed` plus a closure per method on
+// every `useLayoutStore()` call - and it is called from hot paths (chartSampler's tick, several
+// widget render paths, pageManager), so that was a steady stream of short-lived garbage for no
+// benefit. The `computed` is lazy, so declaring it here does not touch Pinia before it is ready.
+const documentRef = computed<LayoutDocument>(() => liveDocument());
 
-	function getPage(pageId: string): PageLayout | undefined {
-		return liveDocument().pages[pageId];
+function getPage(pageId: string): PageLayout | undefined {
+	return liveDocument().pages[pageId];
+}
+
+function ensurePage(pageId: string, kind: PageLayout["kind"]): PageLayout {
+	const doc = liveDocument();
+	if (!doc.pages[pageId]) {
+		doc.pages[pageId] = createEmptyPage(kind);
 	}
+	return doc.pages[pageId];
+}
 
-	function ensurePage(pageId: string, kind: PageLayout["kind"]): PageLayout {
-		const doc = liveDocument();
-		if (!doc.pages[pageId]) {
-			doc.pages[pageId] = createEmptyPage(kind);
+function getItems(pageId: string): Array<GridItemModel> {
+	return liveDocument().pages[pageId]?.items ?? [];
+}
+
+function setItems(pageId: string, items: Array<GridItemModel>, kind: PageLayout["kind"] = "custom"): void {
+	ensurePage(pageId, kind).items = items;
+}
+
+/** Effective items for a breakpoint (with fallback to larger layouts). */
+function getItemsForBp(pageId: string, bp: Breakpoint): Array<GridItemModel> {
+	const page = liveDocument().pages[pageId];
+	return page ? resolveBreakpointItems(page, bp) : [];
+}
+
+/** Write items for a specific breakpoint (`lg` = base, `md`/`sm` = variant overrides). */
+function setItemsForBp(pageId: string, items: Array<GridItemModel>, kind: PageLayout["kind"], bp: Breakpoint): void {
+	const page = ensurePage(pageId, kind);
+	if (bp === "lg") {
+		page.items = items;
+	} else {
+		if (!page.variants) {
+			page.variants = {};
 		}
-		return doc.pages[pageId];
+		page.variants[bp] = items;
 	}
+}
 
-	function getItems(pageId: string): Array<GridItemModel> {
-		return liveDocument().pages[pageId]?.items ?? [];
+function hasLayout(pageId: string): boolean {
+	const page = liveDocument().pages[pageId];
+	return !!page && page.items.length > 0;
+}
+
+function resetPage(pageId: string): void {
+	delete liveDocument().pages[pageId];
+}
+
+/**
+ * Clear all layout content of a page (every breakpoint's widgets, background, grid) so it reverts
+ * to its default - the stock fallback for a built-in page, or empty for a custom page. Nav
+ * metadata (title/icon/category/hidden/condition) is kept so custom pages keep their menu entry.
+ */
+function clearPageLayout(pageId: string): void {
+	const page = liveDocument().pages[pageId];
+	if (!page) {
+		return;
 	}
+	page.items = [];
+	delete page.variants;
+	delete page.background;
+	page.grid = { cols: 12, rowHeight: 30 };
+}
 
-	function setItems(pageId: string, items: Array<GridItemModel>, kind: PageLayout["kind"] = "custom"): void {
-		ensurePage(pageId, kind).items = items;
+/** Clear just one breakpoint's widgets: `lg` empties the base; `md`/`sm` drop the override
+ *  (reverting to inheriting the larger layout). */
+function clearBreakpoint(pageId: string, bp: Breakpoint): void {
+	const page = liveDocument().pages[pageId];
+	if (!page) {
+		return;
 	}
-
-	/** Effective items for a breakpoint (with fallback to larger layouts). */
-	function getItemsForBp(pageId: string, bp: Breakpoint): Array<GridItemModel> {
-		const page = liveDocument().pages[pageId];
-		return page ? resolveBreakpointItems(page, bp) : [];
-	}
-
-	/** Write items for a specific breakpoint (`lg` = base, `md`/`sm` = variant overrides). */
-	function setItemsForBp(pageId: string, items: Array<GridItemModel>, kind: PageLayout["kind"], bp: Breakpoint): void {
-		const page = ensurePage(pageId, kind);
-		if (bp === "lg") {
-			page.items = items;
-		} else {
-			if (!page.variants) {
-				page.variants = {};
-			}
-			page.variants[bp] = items;
-		}
-	}
-
-	function hasLayout(pageId: string): boolean {
-		const page = liveDocument().pages[pageId];
-		return !!page && page.items.length > 0;
-	}
-
-	function resetPage(pageId: string): void {
-		delete liveDocument().pages[pageId];
-	}
-
-	/**
-	 * Clear all layout content of a page (every breakpoint's widgets, background, grid) so it reverts
-	 * to its default - the stock fallback for a built-in page, or empty for a custom page. Nav
-	 * metadata (title/icon/category/hidden/condition) is kept so custom pages keep their menu entry.
-	 */
-	function clearPageLayout(pageId: string): void {
-		const page = liveDocument().pages[pageId];
-		if (!page) {
-			return;
-		}
+	if (bp === "lg") {
 		page.items = [];
-		delete page.variants;
-		delete page.background;
-		page.grid = { cols: 12, rowHeight: 30 };
+	} else if (page.variants) {
+		delete page.variants[bp];
 	}
+}
 
-	/** Clear just one breakpoint's widgets: `lg` empties the base; `md`/`sm` drop the override
-	 *  (reverting to inheriting the larger layout). */
-	function clearBreakpoint(pageId: string, bp: Breakpoint): void {
-		const page = liveDocument().pages[pageId];
-		if (!page) {
-			return;
-		}
-		if (bp === "lg") {
-			page.items = [];
-		} else if (page.variants) {
-			delete page.variants[bp];
-		}
-	}
+function setPageBackground(pageId: string, kind: PageLayout["kind"], background: PageLayout["background"]): void {
+	ensurePage(pageId, kind).background = background;
+}
 
-	function setPageBackground(pageId: string, kind: PageLayout["kind"], background: PageLayout["background"]): void {
-		ensurePage(pageId, kind).background = background;
-	}
+const LAYOUT_STORE: LayoutStore = {
+	document: documentRef, getPage, ensurePage, getItems, setItems, getItemsForBp, setItemsForBp,
+	hasLayout, resetPage, clearPageLayout, clearBreakpoint, setPageBackground,
+};
 
-	return { document, getPage, ensurePage, getItems, setItems, getItemsForBp, setItemsForBp, hasLayout, resetPage, clearPageLayout, clearBreakpoint, setPageBackground };
+/** The layout store. Returns the shared singleton above - safe to call from anywhere, including
+ *  per-tick code, without allocating. */
+export function useLayoutStore(): LayoutStore {
+	return LAYOUT_STORE;
 }
