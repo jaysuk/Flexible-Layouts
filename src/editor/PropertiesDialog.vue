@@ -1491,6 +1491,13 @@ const machineStore = useMachineStore();
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const draft = ref<any>(null);
 
+// Declared here (not down near showInputModifier, where it's also used) because the immediate-fired
+// watch below reads it synchronously as part of THIS component's very first setup() run whenever the
+// dialog is lazy-mounted already open (see useLazyDialog.ts) - a `const` declared later in the script
+// is still in the temporal dead zone at that point, which crashed every "add widget" with "Cannot
+// access 'MODIFIER_TYPES' before initialization" once PropertiesDialog stopped being eagerly mounted.
+const MODIFIER_TYPES = new Set(["input"]);
+
 // Job thumbnail's "file" source path - same picker component ToolpathWidget/PreflightWidget use
 // inline in the live widget, opened from here instead since Thumbnail's own path field lives in
 // this dialog, not on the widget itself.
@@ -1747,8 +1754,8 @@ function addMapping() {
 }
 
 // Only the free-entry Input box offers the modifier — slider/stepper already expose scale/offset for
-// their tracked value, so a second transform there would just be confusing.
-const MODIFIER_TYPES = new Set(["input"]);
+// their tracked value, so a second transform there would just be confusing. (MODIFIER_TYPES itself is
+// declared up near `draft` - see the comment there for why.)
 const showInputModifier = computed(() => !!draft.value && MODIFIER_TYPES.has(draft.value.type));
 function addInputMap() {
 	if (draft.value) {
