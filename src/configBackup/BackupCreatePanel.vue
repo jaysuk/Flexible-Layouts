@@ -180,6 +180,8 @@
 		</v-dialog>
 
 		<v-snackbar v-model="toast.open" :timeout="4000">{{ toast.text }}</v-snackbar>
+
+		<GoogleDriveSignInDialog />
 	</v-card>
 </template>
 
@@ -201,6 +203,7 @@ import { collectForBackup, runBackup } from "../model/configBackup/runBackup";
 import type { BuiltArchive, RunBackupConfig } from "../model/configBackup/runBackup";
 import { DESTINATION_IDS, DESTINATION_LABEL_KEYS } from "../model/configBackup/constants";
 import RedactionSummary from "./RedactionSummary.vue";
+import GoogleDriveSignInDialog from "./GoogleDriveSignInDialog.vue";
 
 const scope = reactive({ system: true, macros: true, filaments: true, objectModel: true, diagnostics: true });
 const scopeValid = computed(() => Object.values(scope).some(Boolean));

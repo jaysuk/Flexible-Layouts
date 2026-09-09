@@ -54,12 +54,12 @@ import { uploadBackup as dropboxUploadBackup } from "dwc-config-backup-core/dest
 import { uploadBackup as webdavUploadBackup } from "dwc-config-backup-core/destinations/webdav";
 
 import { useMachineStore } from "@/stores/machine";
-import { LogLevel, useUiStore } from "@/stores/ui";
 import i18n from "@/i18n";
 
 import { PLUGIN_MANIFEST_ID } from "../constants";
 import { defaultMachineIO } from "./machineIO";
 import { DESTINATION_LABEL_KEYS } from "./constants";
+import { openDriveSignInPrompt, updateDriveSignInStatus } from "../../composables/useDriveSignInPrompt";
 
 export type BuiltArchive = Awaited<ReturnType<typeof buildArchive>>;
 type MachineIdentity = ReturnType<typeof buildMachineIdentity>;
@@ -276,16 +276,11 @@ async function sendToGithub(
 	return null;
 }
 
-/** Bare-minimum, functional (not yet the polished dialog GOOGLE-DRIVE-DEVICE-FLOW-PLAN.md's own §5.2
- * envisions - that's Drive's own Phase 2/3, not part of this refactor) implementation of the device
- * flow's inherent "show a code, wait for out-of-band action elsewhere" UX: opens the verification page
- * automatically and surfaces the code via a toast (the same `uiStore.log` mechanism the nudge system
- * already uses), rather than blocking on a real Vue dialog component that doesn't exist yet. Still
- * correct - same requestDeviceCode/pollDeviceToken contract any future dialog would use - just not
- * pretty. Kept as its own inline, blocking async function (not modelled as `runBackup`'s `needsInput`)
- * for the same reason the old GIS `signIn()` was: a manual click is itself a user gesture, and the
- * future scheduler (SCHEDULED-BACKUPS-PLAN.md §4.2) excludes "drive" from unattended eligibility
- * entirely at the call-site level, so it never reaches this function in the first place. */
+/** Functional implementation of the device flow's inherent "show a code, wait for out-of-band action
+ * elsewhere" UX. Kept as its own inline, blocking async function (not modelled as `runBackup`'s
+ * `needsInput`) for the same reason the old GIS `signIn()` was: a manual click is itself a user
+ * gesture, and the future scheduler (SCHEDULED-BACKUPS-PLAN.md §4.2) excludes "drive" from unattended
+ * eligibility entirely at the call-site level, so it never reaches this function in the first place. */
 async function sendToDrive(built: BuiltArchive, identity: MachineIdentity): Promise<void> {
 	const settings = getGoogleDriveSettings();
 	if (!settings) {
@@ -298,15 +293,16 @@ async function sendToDrive(built: BuiltArchive, identity: MachineIdentity): Prom
 	await driveUploadBackup(token, machineFolder, backupFilename(identity.hostname), built.blob);
 }
 
+/** Surfaces the code via the persistent GoogleDriveSignInDialog.vue (useDriveSignInPrompt.ts), not a
+ * toast - a real user-reported bug in an earlier version of this function used `uiStore.log()`, which
+ * auto-dismisses; a user who switched tabs to enter the code at Google's page came back to find it
+ * already gone. The dialog stays open until the user clicks its own button - see the composable's doc
+ * comment for the full reasoning. Dismissing the dialog only hides it; this poll loop keeps running
+ * regardless (mirrors the old inline flow's blocking `await`, which had no "cancel" either). */
 async function signInWithDeviceFlow(clientId: string, clientSecret: string): Promise<string> {
-	const uiStore = useUiStore();
 	const code = await requestDeviceCode(clientId);
 	window.open(code.verificationUrl, "_blank", "noopener");
-	uiStore.log(
-		LogLevel.info,
-		i18n.global.t("plugins.flexibleLayouts.configBackup.drive.signInTitle"),
-		i18n.global.t("plugins.flexibleLayouts.configBackup.drive.signInBody", { code: code.userCode, url: code.verificationUrl }),
-	);
+	openDriveSignInPrompt(code.userCode, code.verificationUrl);
 
 	let intervalMs = Math.max(code.pollIntervalSeconds, 1) * 1000;
 	const deadline = Date.now() + code.expiresInSeconds * 1000;
@@ -314,15 +310,24 @@ async function signInWithDeviceFlow(clientId: string, clientSecret: string): Pro
 		await new Promise((resolve) => setTimeout(resolve, intervalMs));
 		const outcome = await pollDeviceToken(clientId, clientSecret, code.deviceCode);
 		switch (outcome.status) {
-			case "authorized": return outcome.accessToken;
+			case "authorized":
+				updateDriveSignInStatus("authorized");
+				return outcome.accessToken;
 			case "pending": continue;
 			// Google calls this out explicitly - a fixed retry ignores the instruction and can escalate.
 			case "slowDown": intervalMs += 5000; continue;
-			case "denied": throw new Error(i18n.global.t("plugins.flexibleLayouts.configBackup.drive.signInDenied"));
-			case "expired": throw new Error(i18n.global.t("plugins.flexibleLayouts.configBackup.drive.signInExpired"));
-			case "error": throw new Error(outcome.message);
+			case "denied":
+				updateDriveSignInStatus("denied");
+				throw new Error(i18n.global.t("plugins.flexibleLayouts.configBackup.drive.signInDenied"));
+			case "expired":
+				updateDriveSignInStatus("expired");
+				throw new Error(i18n.global.t("plugins.flexibleLayouts.configBackup.drive.signInExpired"));
+			case "error":
+				updateDriveSignInStatus("error", outcome.message);
+				throw new Error(outcome.message);
 		}
 	}
+	updateDriveSignInStatus("expired");
 	throw new Error(i18n.global.t("plugins.flexibleLayouts.configBackup.drive.signInExpired"));
 }
 
