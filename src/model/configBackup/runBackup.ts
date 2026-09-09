@@ -42,18 +42,19 @@
 import {
 	buildArchive, buildLiveDirectories, buildMachineIdentity, collectAll, DEFAULT_MAX_FILE_BYTES,
 	defaultMachineFolder, getDropboxSettings, getDuetCloudApiUrl, getDuetCloudFifoLimit, getGithubSettings,
-	getGoogleDriveClientId, getRedactionExclusions, getWebDavSettings, hasAcknowledgedUnredacted, readArchive,
+	getGoogleDriveSettings, getRedactionExclusions, getWebDavSettings, hasAcknowledgedUnredacted, readArchive,
 	setLastBackupAt, setLastBackupAttempt, addBackedUpMachineKey,
 } from "dwc-config-backup-core";
 import type { BackupDestinationId, BackupProgressCallback, BackupScope, RedactionEntry } from "dwc-config-backup-core";
 import { downloadArchive, backupFilename } from "dwc-config-backup-core/destinations/localZip";
 import { isRepoPrivate, pushBackup } from "dwc-config-backup-core/destinations/github";
-import { isOriginSupported, signIn, uploadBackup as driveUploadBackup } from "dwc-config-backup-core/destinations/googleDrive";
+import { requestDeviceCode, pollDeviceToken, uploadBackup as driveUploadBackup } from "dwc-config-backup-core/destinations/googleDrive";
 import { preflightSize, pruneToLimit, uploadBackup as duetUploadBackup } from "dwc-config-backup-core/destinations/duetCloud";
 import { uploadBackup as dropboxUploadBackup } from "dwc-config-backup-core/destinations/dropbox";
 import { uploadBackup as webdavUploadBackup } from "dwc-config-backup-core/destinations/webdav";
 
 import { useMachineStore } from "@/stores/machine";
+import { LogLevel, useUiStore } from "@/stores/ui";
 import i18n from "@/i18n";
 
 import { PLUGIN_MANIFEST_ID } from "../constants";
@@ -275,16 +276,54 @@ async function sendToGithub(
 	return null;
 }
 
+/** Bare-minimum, functional (not yet the polished dialog GOOGLE-DRIVE-DEVICE-FLOW-PLAN.md's own §5.2
+ * envisions - that's Drive's own Phase 2/3, not part of this refactor) implementation of the device
+ * flow's inherent "show a code, wait for out-of-band action elsewhere" UX: opens the verification page
+ * automatically and surfaces the code via a toast (the same `uiStore.log` mechanism the nudge system
+ * already uses), rather than blocking on a real Vue dialog component that doesn't exist yet. Still
+ * correct - same requestDeviceCode/pollDeviceToken contract any future dialog would use - just not
+ * pretty. Kept as its own inline, blocking async function (not modelled as `runBackup`'s `needsInput`)
+ * for the same reason the old GIS `signIn()` was: a manual click is itself a user gesture, and the
+ * future scheduler (SCHEDULED-BACKUPS-PLAN.md §4.2) excludes "drive" from unattended eligibility
+ * entirely at the call-site level, so it never reaches this function in the first place. */
 async function sendToDrive(built: BuiltArchive, identity: MachineIdentity): Promise<void> {
-	const clientId = getGoogleDriveClientId();
-	if (!isOriginSupported() || !clientId) {
+	const settings = getGoogleDriveSettings();
+	if (!settings) {
 		throw new Error(i18n.global.t("plugins.flexibleLayouts.configBackup.create.notConfigured", { destination: destinationLabel("drive") }));
 	}
-	const token = await signIn(clientId);
+	const token = await signInWithDeviceFlow(settings.clientId, settings.clientSecret);
 	// Drive folders are found-or-created by this exact name, same hostname-only collision risk as
 	// Dropbox/WebDAV - see the comment on GitHub's machineFolder above.
 	const machineFolder = defaultMachineFolder(identity.hostname, built.manifest.machine.machineKey);
 	await driveUploadBackup(token, machineFolder, backupFilename(identity.hostname), built.blob);
+}
+
+async function signInWithDeviceFlow(clientId: string, clientSecret: string): Promise<string> {
+	const uiStore = useUiStore();
+	const code = await requestDeviceCode(clientId);
+	window.open(code.verificationUrl, "_blank", "noopener");
+	uiStore.log(
+		LogLevel.info,
+		i18n.global.t("plugins.flexibleLayouts.configBackup.drive.signInTitle"),
+		i18n.global.t("plugins.flexibleLayouts.configBackup.drive.signInBody", { code: code.userCode, url: code.verificationUrl }),
+	);
+
+	let intervalMs = Math.max(code.pollIntervalSeconds, 1) * 1000;
+	const deadline = Date.now() + code.expiresInSeconds * 1000;
+	while (Date.now() < deadline) {
+		await new Promise((resolve) => setTimeout(resolve, intervalMs));
+		const outcome = await pollDeviceToken(clientId, clientSecret, code.deviceCode);
+		switch (outcome.status) {
+			case "authorized": return outcome.accessToken;
+			case "pending": continue;
+			// Google calls this out explicitly - a fixed retry ignores the instruction and can escalate.
+			case "slowDown": intervalMs += 5000; continue;
+			case "denied": throw new Error(i18n.global.t("plugins.flexibleLayouts.configBackup.drive.signInDenied"));
+			case "expired": throw new Error(i18n.global.t("plugins.flexibleLayouts.configBackup.drive.signInExpired"));
+			case "error": throw new Error(outcome.message);
+		}
+	}
+	throw new Error(i18n.global.t("plugins.flexibleLayouts.configBackup.drive.signInExpired"));
 }
 
 async function sendToDropbox(built: BuiltArchive, identity: MachineIdentity): Promise<void> {

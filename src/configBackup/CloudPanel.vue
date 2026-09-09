@@ -226,18 +226,16 @@
 								{{ $t("plugins.flexibleLayouts.configBackup.cloud.setupInstructions") }}
 							</v-btn>
 						</div>
-						<v-alert v-if="!driveOriginOk" type="warning" variant="tonal" density="compact" class="mb-3">
-							{{ $t("plugins.flexibleLayouts.configBackup.drive.unavailableBody") }}
+						<v-text-field v-model="driveClientId" :label="$t('plugins.flexibleLayouts.configBackup.drive.clientIdLabel')"
+									  density="compact" variant="outlined" hide-details class="mb-2" />
+						<div class="text-caption text-medium-emphasis mb-2">{{ $t("plugins.flexibleLayouts.configBackup.drive.clientIdHelp") }}</div>
+						<v-text-field v-model="driveClientSecret" :label="$t('plugins.flexibleLayouts.configBackup.drive.clientSecretLabel')" type="password"
+									  density="compact" variant="outlined" hide-details class="mb-2" />
+						<div class="text-caption text-medium-emphasis mb-2">{{ $t("plugins.flexibleLayouts.configBackup.drive.clientSecretHelp") }}</div>
+						<v-btn color="primary" @click="onSaveDrive">{{ $t("plugins.flexibleLayouts.configBackup.cloud.saveButton") }}</v-btn>
+						<v-alert v-if="driveSaved" type="success" variant="tonal" density="compact" class="mt-3">
+							{{ $t("plugins.flexibleLayouts.configBackup.cloud.saved") }}
 						</v-alert>
-						<template v-else>
-							<v-text-field v-model="driveClientId" :label="$t('plugins.flexibleLayouts.configBackup.drive.clientIdLabel')"
-										  density="compact" variant="outlined" hide-details class="mb-2" />
-							<div class="text-caption text-medium-emphasis mb-2">{{ $t("plugins.flexibleLayouts.configBackup.drive.clientIdHelp") }}</div>
-							<v-btn color="primary" @click="onSaveDrive">{{ $t("plugins.flexibleLayouts.configBackup.cloud.saveButton") }}</v-btn>
-							<v-alert v-if="driveSaved" type="success" variant="tonal" density="compact" class="mt-3">
-								{{ $t("plugins.flexibleLayouts.configBackup.cloud.saved") }}
-							</v-alert>
-						</template>
 					</v-expansion-panel-text>
 				</v-expansion-panel>
 
@@ -329,15 +327,14 @@ import { isPluginLoaded } from "@/plugins";
 
 import { login as duetLoginCall, logout as duetLogoutCall } from "dwc-config-backup-core/destinations/duetCloud";
 import { isRepoPrivate } from "dwc-config-backup-core/destinations/github";
-import { isOriginSupported } from "dwc-config-backup-core/destinations/googleDrive";
 import { verifyToken as dropboxVerify } from "dwc-config-backup-core/destinations/dropbox";
 import { verifyConnection as webdavVerify } from "dwc-config-backup-core/destinations/webdav";
 import {
 	disableEncryption, DUET_BACKUP_WEB_URL, enableEncryption, exportEncryptedBundle, getAutoBackupNudgeSettings, getDropboxSettings,
-	getDuetCloudApiUrl, getDuetCloudFifoLimit, getDuetCloudSession, getGithubSettings, getGoogleDriveClientId,
+	getDuetCloudApiUrl, getDuetCloudFifoLimit, getDuetCloudSession, getGithubSettings, getGoogleDriveSettings,
 	getWebDavSettings, importEncryptedBundle, importPlaintextCredentials, isEncryptionAvailable, isEncryptionEnabled,
 	isNamespaceEncrypted, isSessionUnlocked, lockSession, readPlaintextCredentials, setAutoBackupNudgeSettings,
-	setDropboxSettings, setDuetCloudFifoLimit, setGithubSettings, setGoogleDriveClientId, setWebDavSettings, unlockSession,
+	setDropboxSettings, setDuetCloudFifoLimit, setGithubSettings, setGoogleDriveSettings, setWebDavSettings, unlockSession,
 } from "dwc-config-backup-core";
 import type { DuetCloudSession } from "dwc-config-backup-core";
 import { loadCredentialsFromSd, parseCredentialBundle, writeCredentialsToSd } from "dwc-config-backup-core";
@@ -446,7 +443,7 @@ async function onMigrateImport(): Promise<void> {
 		creds.github && i18n.global.t("plugins.flexibleLayouts.configBackup.github.heading"),
 		creds.dropbox && i18n.global.t("plugins.flexibleLayouts.configBackup.cloud.dropboxHeading"),
 		creds.webdav && i18n.global.t("plugins.flexibleLayouts.configBackup.cloud.webdavHeading"),
-		creds.googleDriveClientId && i18n.global.t("plugins.flexibleLayouts.configBackup.drive.heading"),
+		creds.googleDrive && i18n.global.t("plugins.flexibleLayouts.configBackup.drive.heading"),
 	].filter((v): v is string => !!v);
 	const ok = await showConfirmDialog(
 		i18n.global.t("plugins.flexibleLayouts.configBackup.migrate.confirmTitle"),
@@ -615,12 +612,12 @@ async function onSaveGithub(): Promise<void> {
 
 // --- Google Drive ------------------------------------------------------------------------------------
 
-const driveClientId = ref(getGoogleDriveClientId() ?? "");
-const driveConfigured = computed(() => getGoogleDriveClientId() != null);
-const driveOriginOk = isOriginSupported();
+const driveClientId = ref(getGoogleDriveSettings()?.clientId ?? "");
+const driveClientSecret = ref(getGoogleDriveSettings()?.clientSecret ?? "");
+const driveConfigured = computed(() => getGoogleDriveSettings() != null);
 const driveSaved = ref(false);
 function onSaveDrive(): void {
-	setGoogleDriveClientId(driveClientId.value);
+	setGoogleDriveSettings({ clientId: driveClientId.value, clientSecret: driveClientSecret.value });
 	driveSaved.value = true;
 }
 
@@ -689,8 +686,8 @@ function reseedDestinationFields(): void {
 		githubToken.value = github.token;
 		githubMachineName.value = github.machineName ?? "";
 	}
-	const drive = getGoogleDriveClientId();
-	if (drive != null) { driveClientId.value = drive; }
+	const drive = getGoogleDriveSettings();
+	if (drive != null) { driveClientId.value = drive.clientId; driveClientSecret.value = drive.clientSecret; }
 	const dropbox = getDropboxSettings();
 	if (dropbox) { dropboxToken.value = dropbox.token; }
 	const webdav = getWebDavSettings();

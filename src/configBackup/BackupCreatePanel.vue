@@ -190,12 +190,11 @@ import { HelpTip } from "dwc-plugin-runtime";
 
 import i18n from "@/i18n";
 
-import { isOriginSupported } from "dwc-config-backup-core/destinations/googleDrive";
 import type { BackupProgressStage, RedactionEntry } from "dwc-config-backup-core";
 import type { BackupDestinationId } from "dwc-config-backup-core";
 import {
 	addRedactionExclusion, getDropboxSettings, getDuetCloudSession, getEncryptPreference, getGithubSettings,
-	getGoogleDriveClientId, getLastBackupAt, getLastBackupAttempt, getRedactionExclusions, getRedactPreference,
+	getGoogleDriveSettings, getLastBackupAt, getLastBackupAttempt, getRedactionExclusions, getRedactPreference,
 	getWebDavSettings, removeRedactionExclusion, setAcknowledgedUnredacted, setEncryptPreference, setRedactPreference,
 } from "dwc-config-backup-core";
 import { collectForBackup, runBackup } from "../model/configBackup/runBackup";
@@ -226,7 +225,7 @@ function isDestinationConfigured(id: BackupDestinationId): boolean {
 		// (a session) is what actually reflects the user having done anything here.
 		case "duet": return getDuetCloudSession() != null;
 		case "github": return getGithubSettings() != null;
-		case "drive": return isOriginSupported() && getGoogleDriveClientId() != null;
+		case "drive": return getGoogleDriveSettings() != null;
 		case "dropbox": return getDropboxSettings() != null;
 		case "webdav": return getWebDavSettings() != null;
 		default: return false;

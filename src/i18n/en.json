@@ -1633,11 +1633,15 @@
 		},
 		"drive": {
 			"heading": "Google Drive",
-			"unavailableTitle": "Unavailable on this connection",
-			"unavailableBody": "Google requires the page to be loaded over HTTPS (or localhost) to sign in, and this DuetWebControl is loaded over plain HTTP. This isn't something Flexible Layouts can work around. Use an HTTPS reverse proxy in front of your Duet, or download the backup locally and upload it to Drive yourself.",
 			"clientIdLabel": "Google OAuth client ID",
-			"clientIdHelp": "Create your own in the Google Cloud console (Drive API enabled, Web application, this exact origin authorised). See the docs for step-by-step instructions.",
+			"clientIdHelp": "Create your own in the Google Cloud console (Drive API enabled, client type \"TVs and Limited Input devices\" - not \"Web application\", which the device sign-in flow below cannot use). See the docs for step-by-step instructions.",
+			"clientSecretLabel": "Google OAuth client secret",
+			"clientSecretHelp": "From the same OAuth client as the ID above. Not treated as a secret by Google for this client type - it ships inside this plugin like any other installed-app client secret.",
 			"signInButton": "Sign in with Google",
+			"signInTitle": "Sign in to Google Drive",
+			"signInBody": "Go to {url} and enter code: {code} (opened automatically in a new tab). Waiting for you to finish there…",
+			"signInDenied": "Google sign-in was declined.",
+			"signInExpired": "The Google sign-in code expired before it was used - try again.",
 			"uploadButton": "Upload to Drive",
 			"uploading": "Uploading…",
 			"uploaded": "Uploaded to Drive."
