@@ -339,6 +339,7 @@ import {
 import type { DuetCloudSession } from "dwc-config-backup-core";
 import { loadCredentialsFromSd, parseCredentialBundle, writeCredentialsToSd } from "dwc-config-backup-core";
 import { defaultMachineIO } from "../model/configBackup/machineIO";
+import { resolveDriveRefreshTokenOnSave } from "../model/configBackup/googleDriveAuth";
 import { buildMachineIdentity } from "dwc-config-backup-core";
 import PassphraseDialog from "./PassphraseDialog.vue";
 
@@ -617,7 +618,10 @@ const driveClientSecret = ref(getGoogleDriveSettings()?.clientSecret ?? "");
 const driveConfigured = computed(() => getGoogleDriveSettings() != null);
 const driveSaved = ref(false);
 function onSaveDrive(): void {
-	setGoogleDriveSettings({ clientId: driveClientId.value, clientSecret: driveClientSecret.value });
+	// See resolveDriveRefreshTokenOnSave's own doc comment: preserves an already-stored refresh token
+	// when the client ID/secret are unchanged, rather than silently discarding it on every re-save.
+	const refreshToken = resolveDriveRefreshTokenOnSave(getGoogleDriveSettings(), driveClientId.value, driveClientSecret.value);
+	setGoogleDriveSettings({ clientId: driveClientId.value, clientSecret: driveClientSecret.value, refreshToken });
 	driveSaved.value = true;
 }
 

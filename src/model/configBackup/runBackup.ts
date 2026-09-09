@@ -42,13 +42,13 @@
 import {
 	buildArchive, buildLiveDirectories, buildMachineIdentity, collectAll, DEFAULT_MAX_FILE_BYTES,
 	defaultMachineFolder, getDropboxSettings, getDuetCloudApiUrl, getDuetCloudFifoLimit, getGithubSettings,
-	getGoogleDriveSettings, getRedactionExclusions, getWebDavSettings, hasAcknowledgedUnredacted, readArchive,
+	getRedactionExclusions, getWebDavSettings, hasAcknowledgedUnredacted, readArchive,
 	setLastBackupAt, setLastBackupAttempt, addBackedUpMachineKey,
 } from "dwc-config-backup-core";
 import type { BackupDestinationId, BackupProgressCallback, BackupScope, RedactionEntry } from "dwc-config-backup-core";
 import { downloadArchive, backupFilename } from "dwc-config-backup-core/destinations/localZip";
 import { isRepoPrivate, pushBackup } from "dwc-config-backup-core/destinations/github";
-import { requestDeviceCode, pollDeviceToken, uploadBackup as driveUploadBackup } from "dwc-config-backup-core/destinations/googleDrive";
+import { uploadBackup as driveUploadBackup } from "dwc-config-backup-core/destinations/googleDrive";
 import { preflightSize, pruneToLimit, uploadBackup as duetUploadBackup } from "dwc-config-backup-core/destinations/duetCloud";
 import { uploadBackup as dropboxUploadBackup } from "dwc-config-backup-core/destinations/dropbox";
 import { uploadBackup as webdavUploadBackup } from "dwc-config-backup-core/destinations/webdav";
@@ -59,7 +59,7 @@ import i18n from "@/i18n";
 import { PLUGIN_MANIFEST_ID } from "../constants";
 import { defaultMachineIO } from "./machineIO";
 import { DESTINATION_LABEL_KEYS } from "./constants";
-import { openDriveSignInPrompt, updateDriveSignInStatus } from "../../composables/useDriveSignInPrompt";
+import { getGoogleDriveAccessToken } from "./googleDriveAuth";
 
 export type BuiltArchive = Awaited<ReturnType<typeof buildArchive>>;
 type MachineIdentity = ReturnType<typeof buildMachineIdentity>;
@@ -276,59 +276,18 @@ async function sendToGithub(
 	return null;
 }
 
-/** Functional implementation of the device flow's inherent "show a code, wait for out-of-band action
- * elsewhere" UX. Kept as its own inline, blocking async function (not modelled as `runBackup`'s
- * `needsInput`) for the same reason the old GIS `signIn()` was: a manual click is itself a user
- * gesture, and the future scheduler (SCHEDULED-BACKUPS-PLAN.md §4.2) excludes "drive" from unattended
- * eligibility entirely at the call-site level, so it never reaches this function in the first place. */
+/** `getGoogleDriveAccessToken()` (googleDriveAuth.ts) handles the cached-token / refresh-token / full
+ * device-flow ladder - by the time this returns, sign-in (if it was even needed at all) is already
+ * done. Kept as its own inline, blocking async function (not modelled as `runBackup`'s `needsInput`)
+ * for the same reason the old GIS `signIn()` was: a manual click is itself a user gesture, and the
+ * future scheduler (SCHEDULED-BACKUPS-PLAN.md §4.2) excludes "drive" from unattended eligibility
+ * entirely at the call-site level, so it never reaches this function in the first place. */
 async function sendToDrive(built: BuiltArchive, identity: MachineIdentity): Promise<void> {
-	const settings = getGoogleDriveSettings();
-	if (!settings) {
-		throw new Error(i18n.global.t("plugins.flexibleLayouts.configBackup.create.notConfigured", { destination: destinationLabel("drive") }));
-	}
-	const token = await signInWithDeviceFlow(settings.clientId, settings.clientSecret);
+	const token = await getGoogleDriveAccessToken();
 	// Drive folders are found-or-created by this exact name, same hostname-only collision risk as
 	// Dropbox/WebDAV - see the comment on GitHub's machineFolder above.
 	const machineFolder = defaultMachineFolder(identity.hostname, built.manifest.machine.machineKey);
 	await driveUploadBackup(token, machineFolder, backupFilename(identity.hostname), built.blob);
-}
-
-/** Surfaces the code via the persistent GoogleDriveSignInDialog.vue (useDriveSignInPrompt.ts), not a
- * toast - a real user-reported bug in an earlier version of this function used `uiStore.log()`, which
- * auto-dismisses; a user who switched tabs to enter the code at Google's page came back to find it
- * already gone. The dialog stays open until the user clicks its own button - see the composable's doc
- * comment for the full reasoning. Dismissing the dialog only hides it; this poll loop keeps running
- * regardless (mirrors the old inline flow's blocking `await`, which had no "cancel" either). */
-async function signInWithDeviceFlow(clientId: string, clientSecret: string): Promise<string> {
-	const code = await requestDeviceCode(clientId);
-	window.open(code.verificationUrl, "_blank", "noopener");
-	openDriveSignInPrompt(code.userCode, code.verificationUrl);
-
-	let intervalMs = Math.max(code.pollIntervalSeconds, 1) * 1000;
-	const deadline = Date.now() + code.expiresInSeconds * 1000;
-	while (Date.now() < deadline) {
-		await new Promise((resolve) => setTimeout(resolve, intervalMs));
-		const outcome = await pollDeviceToken(clientId, clientSecret, code.deviceCode);
-		switch (outcome.status) {
-			case "authorized":
-				updateDriveSignInStatus("authorized");
-				return outcome.accessToken;
-			case "pending": continue;
-			// Google calls this out explicitly - a fixed retry ignores the instruction and can escalate.
-			case "slowDown": intervalMs += 5000; continue;
-			case "denied":
-				updateDriveSignInStatus("denied");
-				throw new Error(i18n.global.t("plugins.flexibleLayouts.configBackup.drive.signInDenied"));
-			case "expired":
-				updateDriveSignInStatus("expired");
-				throw new Error(i18n.global.t("plugins.flexibleLayouts.configBackup.drive.signInExpired"));
-			case "error":
-				updateDriveSignInStatus("error", outcome.message);
-				throw new Error(outcome.message);
-		}
-	}
-	updateDriveSignInStatus("expired");
-	throw new Error(i18n.global.t("plugins.flexibleLayouts.configBackup.drive.signInExpired"));
 }
 
 async function sendToDropbox(built: BuiltArchive, identity: MachineIdentity): Promise<void> {

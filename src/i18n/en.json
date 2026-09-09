@@ -1643,9 +1643,12 @@
 			"signInWaiting": "Waiting for you to finish there…",
 			"signInSuccess": "Signed in - continuing the backup.",
 			"signInOk": "OK",
+			"signInCancel": "Cancel",
+			"signInCancelled": "Google sign-in was cancelled.",
 			"signInDenied": "Google sign-in was declined.",
 			"signInExpired": "The Google sign-in code expired before it was used - try again.",
 			"signInGenericError": "Google sign-in failed.",
+			"signInWaitingStage": "Waiting for Google sign-in…",
 			"uploadButton": "Upload to Drive",
 			"uploading": "Uploading…",
 			"uploaded": "Uploaded to Drive."

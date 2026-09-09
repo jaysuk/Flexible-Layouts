@@ -67,7 +67,7 @@
 			</v-btn>
 			<div v-if="!scopeValid" class="text-caption text-error mt-1">{{ $t("plugins.flexibleLayouts.configBackup.create.noScopeSelected") }}</div>
 
-			<v-progress-linear v-if="busy" :model-value="progressPct" class="mt-3" />
+			<v-progress-linear v-if="busy" :indeterminate="waitingForDriveSignIn" :model-value="progressPct" class="mt-3" />
 			<div v-if="busy" class="text-caption text-medium-emphasis mt-1">{{ stageLabel }}</div>
 
 			<v-alert v-if="error" type="error" variant="tonal" density="compact" class="mt-3">{{ error }}</v-alert>
@@ -202,6 +202,7 @@ import {
 import { collectForBackup, runBackup } from "../model/configBackup/runBackup";
 import type { BuiltArchive, RunBackupConfig } from "../model/configBackup/runBackup";
 import { DESTINATION_IDS, DESTINATION_LABEL_KEYS } from "../model/configBackup/constants";
+import { useDriveSignInPromptState } from "../composables/useDriveSignInPrompt";
 import RedactionSummary from "./RedactionSummary.vue";
 import GoogleDriveSignInDialog from "./GoogleDriveSignInDialog.vue";
 
@@ -293,7 +294,18 @@ const STAGE_KEYS: Record<BackupProgressStage, string> = {
 	diagnostics: "plugins.flexibleLayouts.configBackup.create.stageDiagnostics",
 	packaging: "plugins.flexibleLayouts.configBackup.create.stagePackaging",
 };
-const stageLabel = computed(() => (stage.value ? i18n.global.t(STAGE_KEYS[stage.value]) : ""));
+// Real reported bug: `stage`/`stageDone`/`stageTotal` only ever get updated by collectForBackup's OWN
+// progress callback, which stops firing once collection finishes - so a Drive backup waiting on the
+// user to complete sign-in (which can take a while, or never happen at all) left this stuck showing
+// whatever the LAST collection stage was ("Packaging archive…") indefinitely, with no indication
+// anything was actually waiting on the user. Overrides the stale label/bar with a live one while the
+// sign-in prompt is open, reusing useDriveSignInPromptState() (already the source of truth for whether
+// a sign-in is in progress) rather than adding a second, parallel "waiting" flag to keep in sync.
+const waitingForDriveSignIn = computed(() => useDriveSignInPromptState().open);
+const stageLabel = computed(() => {
+	if (waitingForDriveSignIn.value) { return i18n.global.t("plugins.flexibleLayouts.configBackup.drive.signInWaitingStage"); }
+	return stage.value ? i18n.global.t(STAGE_KEYS[stage.value]) : "";
+});
 
 interface UnredactedDialogState { open: boolean; count: number; entries: Array<RedactionEntry>; resolve: ((choice: "redact" | "send" | "cancel") => void) | null }
 const unredactedDialog = reactive<UnredactedDialogState>({ open: false, count: 0, entries: [], resolve: null });

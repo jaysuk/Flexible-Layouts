@@ -1,16 +1,20 @@
 import { flushPromises } from "@vue/test-utils";
 import { mountInDwc } from "dwc-plugin-test-kit";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
 	closeDriveSignInPrompt, openDriveSignInPrompt, resetForTests, updateDriveSignInStatus,
 } from "../composables/useDriveSignInPrompt";
 import GoogleDriveSignInDialog from "../configBackup/GoogleDriveSignInDialog.vue";
 
-// Regression coverage for a real reported bug: the device-code prompt used to be a DWC toast
-// (uiStore.log()), which auto-dismisses - a user who switched tabs to enter the code at Google's
-// verification page came back to find it already gone. It must now be a persistent dialog, closed
-// ONLY by the user clicking its own button - never on any kind of timer.
+// Regression coverage for two real reported bugs:
+// 1. The device-code prompt used to be a DWC toast (uiStore.log()), which auto-dismisses - a user who
+//    switched tabs to enter the code at Google's verification page came back to find it already gone.
+//    It must now be a persistent dialog, closed ONLY by the user clicking its own button - never on any
+//    kind of timer.
+// 2. If the user never completed sign-in, the backup used to sit "at packaging archive" indefinitely
+//    with no way out (Google's own device-code expiry is ~30 minutes). There must be a real Cancel
+//    action while still waiting, distinct from the terminal-state OK that just dismisses.
 
 afterEach(() => {
 	resetForTests();
@@ -29,7 +33,7 @@ describe("GoogleDriveSignInDialog", () => {
 	});
 
 	it("shows the code and verification link once opened, and stays open with no timeout prop set", async () => {
-		openDriveSignInPrompt("ABCD-1234", "https://www.google.com/device");
+		openDriveSignInPrompt("ABCD-1234", "https://www.google.com/device", () => {});
 		const w = mountDialog();
 		await flushPromises();
 		expect(w.text()).toContain("ABCD-1234");
@@ -41,7 +45,7 @@ describe("GoogleDriveSignInDialog", () => {
 	});
 
 	it("does NOT close itself when the underlying status changes - only the user's own click does", async () => {
-		openDriveSignInPrompt("ABCD-1234", "https://www.google.com/device");
+		openDriveSignInPrompt("ABCD-1234", "https://www.google.com/device", () => {});
 		const w = mountDialog();
 		await flushPromises();
 		updateDriveSignInStatus("authorized");
@@ -54,7 +58,7 @@ describe("GoogleDriveSignInDialog", () => {
 	});
 
 	it("shows the denied/expired/error states distinctly", async () => {
-		openDriveSignInPrompt("ABCD-1234", "https://www.google.com/device");
+		openDriveSignInPrompt("ABCD-1234", "https://www.google.com/device", () => {});
 		const w = mountDialog();
 		updateDriveSignInStatus("denied");
 		await flushPromises();
@@ -69,19 +73,37 @@ describe("GoogleDriveSignInDialog", () => {
 		expect(w.text()).toContain("Something specific went wrong.");
 	});
 
-	it("closes only when the OK button is clicked", async () => {
-		openDriveSignInPrompt("ABCD-1234", "https://www.google.com/device");
+	it("shows a Cancel button (not OK) while still waiting, and clicking it invokes the registered cancel handler AND closes", async () => {
+		const onCancel = vi.fn();
+		openDriveSignInPrompt("ABCD-1234", "https://www.google.com/device", onCancel);
 		const w = mountDialog();
 		await flushPromises();
-		expect(w.find(".v-overlay--active").exists()).toBe(true);
+		expect(w.text()).toContain("signInCancel");
+		expect(w.text()).not.toContain("signInOk");
 
-		await w.find("button").trigger("click"); // the dialog's only button
+		await w.find("button").trigger("click");
 		await flushPromises();
+		expect(onCancel).toHaveBeenCalledTimes(1);
+		expect(w.find(".v-overlay--active").exists()).toBe(false); // the real fix - a way out, not stuck forever
+	});
+
+	it("shows an OK button (not Cancel) once resolved, and clicking it does NOT invoke the cancel handler", async () => {
+		const onCancel = vi.fn();
+		openDriveSignInPrompt("ABCD-1234", "https://www.google.com/device", onCancel);
+		const w = mountDialog();
+		updateDriveSignInStatus("authorized");
+		await flushPromises();
+		expect(w.text()).toContain("signInOk");
+		expect(w.text()).not.toContain("signInCancel");
+
+		await w.find("button").trigger("click");
+		await flushPromises();
+		expect(onCancel).not.toHaveBeenCalled();
 		expect(w.find(".v-overlay--active").exists()).toBe(false);
 	});
 
 	it("closeDriveSignInPrompt is the only way state.open goes false (sanity on the composable itself)", () => {
-		openDriveSignInPrompt("code", "https://example.com");
+		openDriveSignInPrompt("code", "https://example.com", () => {});
 		closeDriveSignInPrompt();
 		const w = mountDialog();
 		expect(w.find(".v-overlay--active").exists()).toBe(false);

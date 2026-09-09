@@ -28,7 +28,14 @@
 			</v-card-text>
 			<v-card-actions>
 				<v-spacer />
-				<v-btn color="primary" @click="closeDriveSignInPrompt">{{ $t("plugins.flexibleLayouts.configBackup.drive.signInOk") }}</v-btn>
+				<!-- Still waiting: a REAL cancel that stops the poll loop, not just a dismiss - the actual
+					 bug report this fixes ("sits at packaging archive forever, no timeout"). Once resolved
+					 (success or a terminal error), the operation is already over, so the same button just
+					 acknowledges it. -->
+				<v-btn v-if="state.status === 'waiting'" variant="text" @click="cancelDriveSignIn">
+					{{ $t("plugins.flexibleLayouts.configBackup.drive.signInCancel") }}
+				</v-btn>
+				<v-btn v-else color="primary" @click="closeDriveSignInPrompt">{{ $t("plugins.flexibleLayouts.configBackup.drive.signInOk") }}</v-btn>
 			</v-card-actions>
 		</v-card>
 	</v-dialog>
@@ -39,7 +46,7 @@ import { computed } from "vue";
 
 import i18n from "@/i18n";
 
-import { closeDriveSignInPrompt, useDriveSignInPromptState } from "../composables/useDriveSignInPrompt";
+import { cancelDriveSignIn, closeDriveSignInPrompt, useDriveSignInPromptState } from "../composables/useDriveSignInPrompt";
 
 // Purely for testability, per this repo's v-dialog convention - Vuetify teleports to <body> by default,
 // which Vue Test Utils' wrapper can't see otherwise.

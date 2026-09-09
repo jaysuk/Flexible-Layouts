@@ -72,6 +72,18 @@
 					</template>
 				</template>
 
+				<template v-else-if="sourceMode === 'drive'">
+					<MachineList :machines="driveMachineItems" :loading="driveLoadingMachines" :selected="driveSelectedMachine"
+								 :this-machine-key="thisHostname" @select="selectDriveMachine" />
+					<template v-if="driveSelectedMachine">
+						<v-divider class="my-3" />
+						<CloudBackupBrowser :items="driveItems" :loading="driveLoadingBackups"
+											 @download="onDriveDownload" @restore="onDriveRestore" @delete="onDriveDelete" />
+					</template>
+					<v-alert v-if="driveError" type="error" variant="tonal" density="compact" class="mt-3">{{ driveError }}</v-alert>
+					<GoogleDriveSignInDialog />
+				</template>
+
 				<template v-else-if="sourceMode === 'webdav'">
 					<MachineList :machines="webdavMachineItems" :loading="webdavLoadingMachines" :selected="webdavSelectedMachine"
 								 :this-machine-key="thisHostname" @select="selectWebdavMachine" />
@@ -299,9 +311,13 @@ import {
 	deleteBackup as webdavDelete, downloadBackup as webdavDownload, listBackups as webdavListBackups, listMachineFolders as webdavListMachines,
 } from "dwc-config-backup-core/destinations/webdav";
 import {
+	deleteBackup as driveDelete, downloadBackup as driveDownload, listBackups as driveListBackups, listMachineFolders as driveListMachines,
+} from "dwc-config-backup-core/destinations/googleDrive";
+import {
 	addBackedUpMachineKey, getDropboxSettings, getDuetCloudApiUrl, getDuetCloudSession, getGithubSettings,
-	getRedactPreference, getWebDavSettings, setLastBackupAt,
+	getGoogleDriveSettings, getRedactPreference, getWebDavSettings, setLastBackupAt,
 } from "dwc-config-backup-core";
+import { getGoogleDriveAccessToken } from "../model/configBackup/googleDriveAuth";
 import BackupFileTree from "./BackupFileTree.vue";
 import RedactionRepairStep from "./RedactionRepairStep.vue";
 import MachineDiffDialog from "./MachineDiffDialog.vue";
@@ -309,6 +325,7 @@ import MachineList from "./MachineList.vue";
 import type { MachineListItem } from "./MachineList.vue";
 import CloudBackupBrowser from "./CloudBackupBrowser.vue";
 import type { BackupBrowserItem } from "./CloudBackupBrowser.vue";
+import GoogleDriveSignInDialog from "./GoogleDriveSignInDialog.vue";
 
 const machineStore = useMachineStore();
 const identity = buildMachineIdentity(machineStore.model as unknown);
@@ -341,15 +358,16 @@ const props = defineProps<{ active?: boolean }>();
 const refreshTick = ref(0);
 watch(() => props.active, (active) => { if (active) { refreshTick.value++; } });
 
-type CloudSourceId = "duet" | "github" | "dropbox" | "webdav";
+type CloudSourceId = "duet" | "github" | "dropbox" | "webdav" | "drive";
 const sourceMode = ref<"local" | CloudSourceId>("local");
 
-const CLOUD_SOURCE_IDS: Array<CloudSourceId> = ["duet", "github", "dropbox", "webdav"];
+const CLOUD_SOURCE_IDS: Array<CloudSourceId> = ["duet", "github", "dropbox", "webdav", "drive"];
 const CLOUD_SOURCE_LABEL_KEYS: Record<CloudSourceId, string> = {
 	duet: "plugins.flexibleLayouts.configBackup.cloud.duetHeading",
 	github: "plugins.flexibleLayouts.configBackup.github.heading",
 	dropbox: "plugins.flexibleLayouts.configBackup.cloud.dropboxHeading",
 	webdav: "plugins.flexibleLayouts.configBackup.cloud.webdavHeading",
+	drive: "plugins.flexibleLayouts.configBackup.drive.heading",
 };
 function isCloudSourceConfigured(id: CloudSourceId): boolean {
 	switch (id) {
@@ -359,6 +377,7 @@ function isCloudSourceConfigured(id: CloudSourceId): boolean {
 		case "github": return getGithubSettings() != null;
 		case "dropbox": return getDropboxSettings() != null;
 		case "webdav": return getWebDavSettings() != null;
+		case "drive": return getGoogleDriveSettings() != null;
 		default: return false;
 	}
 }
@@ -575,12 +594,68 @@ async function onWebdavDelete(path: string): Promise<void> {
 	await selectWebdavMachine(webdavSelectedMachine.value);
 }
 
+// Google Drive - unlike every destination above, list/download/delete all need a live access token
+// (getGoogleDriveAccessToken(), shared with BackupCreatePanel's upload path - see googleDriveAuth.ts),
+// not a static stored credential, so each of these can trigger the same device-flow sign-in prompt as
+// a backup would. driveError surfaces a failed/cancelled sign-in the same way duetError already does.
+const driveMachines = ref<Array<string>>([]);
+const driveLoadingMachines = ref(false);
+const driveSelectedMachine = ref<string | null>(null);
+const driveBackups = ref<Array<{ fileId: string; name: string; size: number; modifiedTime: string }>>([]);
+const driveLoadingBackups = ref(false);
+const driveError = ref<string | null>(null);
+const driveItems = computed<Array<BackupBrowserItem>>(() => driveBackups.value.map((b) => ({ key: b.fileId, label: b.name, sublabel: formatDate(b.modifiedTime) })));
+const driveMachineItems = computed<Array<MachineListItem>>(() => driveMachines.value.map((name) => ({ key: name, label: name })));
+async function refreshDriveMachines(): Promise<void> {
+	driveLoadingMachines.value = true;
+	driveError.value = null;
+	try {
+		const token = await getGoogleDriveAccessToken();
+		driveMachines.value = await driveListMachines(token);
+	} catch (e) {
+		driveError.value = e instanceof Error ? e.message : String(e);
+	} finally {
+		driveLoadingMachines.value = false;
+	}
+}
+async function selectDriveMachine(hostname: string): Promise<void> {
+	driveSelectedMachine.value = hostname;
+	driveLoadingBackups.value = true;
+	driveError.value = null;
+	try {
+		const token = await getGoogleDriveAccessToken();
+		driveBackups.value = await driveListBackups(token, hostname);
+	} catch (e) {
+		driveError.value = e instanceof Error ? e.message : String(e);
+	} finally {
+		driveLoadingBackups.value = false;
+	}
+}
+async function onDriveDownload(fileId: string): Promise<void> {
+	const token = await getGoogleDriveAccessToken();
+	const blob = await driveDownload(token, fileId);
+	const entry = driveBackups.value.find((b) => b.fileId === fileId);
+	downloadBlob(entry?.name ?? "backup.zip", blob, "application/zip");
+}
+async function onDriveRestore(fileId: string): Promise<void> {
+	const token = await getGoogleDriveAccessToken();
+	await loadFile(new File([await driveDownload(token, fileId)], "backup.zip"));
+}
+async function onDriveDelete(fileId: string): Promise<void> {
+	if (!driveSelectedMachine.value) { return; }
+	if (!(await confirmDelete())) { return; }
+	const token = await getGoogleDriveAccessToken();
+	await driveDelete(token, fileId);
+	await selectDriveMachine(driveSelectedMachine.value);
+}
+
 // Lazily fetch the machine list the first time each cloud source is selected.
 watch(sourceMode, (mode) => {
 	if (mode === "duet" && isCloudSourceConfigured("duet") && duetMachines.value.length === 0) { void refreshDuetMachines(); }
 	if (mode === "github" && isCloudSourceConfigured("github") && githubMachines.value.length === 0) { void refreshGithubMachines(); }
 	if (mode === "dropbox" && isCloudSourceConfigured("dropbox") && dropboxMachines.value.length === 0) { void refreshDropboxMachines(); }
 	if (mode === "webdav" && isCloudSourceConfigured("webdav") && webdavMachines.value.length === 0) { void refreshWebdavMachines(); }
+	if (mode === "drive" && isCloudSourceConfigured("drive") && driveMachines.value.length === 0) { void refreshDriveMachines(); }
 });
 
 // --- Encrypted backups (ENCRYPTED-BACKUPS-PLAN.md §6 Phase 2) -------------------------------------
