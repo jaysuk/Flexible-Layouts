@@ -274,7 +274,7 @@ import { collectAll, walkDirectory } from "dwc-config-backup-core";
 import { defaultMachineIO } from "../model/configBackup/machineIO";
 import { BACKUP_DIR_KINDS, DEFAULT_MAX_FILE_BYTES, DIR_FOLDER } from "dwc-config-backup-core";
 import type { BackupDirKind } from "dwc-config-backup-core";
-import { downloadArchive } from "dwc-config-backup-core/destinations/localZip";
+import { backupFilename, downloadArchive } from "dwc-config-backup-core/destinations/localZip";
 import { PLUGIN_MANIFEST_ID } from "../model/constants";
 import { findRedactions, applyRepairsToFile } from "dwc-config-backup-core";
 import type { RedactionSite } from "dwc-config-backup-core";
@@ -408,7 +408,12 @@ async function selectDuetMachine(guid: string): Promise<void> {
 }
 async function onDuetDownload(id: string): Promise<void> {
 	const blob = await duetDownload(getDuetCloudApiUrl(), Number(id));
-	downloadBlob(`backup-${id}.zip`, blob, "application/zip");
+	// Use the backup's OWN recorded hostname/timestamp (not "now") so the downloaded file's name
+	// reflects when that backup was actually taken - matches the shared DuetBackup-config-... naming
+	// convention every other destination's download already uses.
+	const entry = duetBackups.value.find((b) => String(b.id) === id);
+	const name = entry ? backupFilename(entry.machineHostname, new Date(entry.timestamp)) : `backup-${id}.zip`;
+	downloadBlob(name, blob, "application/zip");
 }
 async function onDuetRestore(id: string): Promise<void> {
 	await loadFile(new File([await duetDownload(getDuetCloudApiUrl(), Number(id))], "backup.zip"));
@@ -460,7 +465,13 @@ async function onGithubDownload(sha: string): Promise<void> {
 	const saved = getGithubSettings();
 	if (!saved || !githubSelectedMachine.value) { return; }
 	const blob = await downloadBackupAtCommit(saved.token, saved.repo, githubSelectedMachine.value, sha);
-	downloadBlob(`backup-${githubSelectedMachine.value}-${sha.slice(0, 7)}.zip`, blob, "application/zip");
+	// Use the commit's OWN date (not "now"), same reasoning as onDuetDownload above. Falls back to the
+	// short sha if the commit had no usable date at all (empty string from listBackupHistory).
+	const commitDate = githubHistory.value.find((r) => r.sha === sha)?.date;
+	const name = commitDate
+		? backupFilename(githubSelectedMachine.value, new Date(commitDate))
+		: `backup-${githubSelectedMachine.value}-${sha.slice(0, 7)}.zip`;
+	downloadBlob(name, blob, "application/zip");
 }
 async function onGithubRestore(sha: string): Promise<void> {
 	const saved = getGithubSettings();
