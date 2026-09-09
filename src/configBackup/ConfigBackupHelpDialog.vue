@@ -67,22 +67,25 @@
 
 				<p class="mb-1" data-help-section="drive"><strong>Google Drive</strong></p>
 				<ol class="mb-2 ps-4">
-					<li>Needs DWC loaded over <strong>HTTPS</strong> (or <code>localhost</code>) — this is a Google
-						requirement, not something the plugin can work around on a plain-HTTP printer. Skip this one
-						if that's you; see Dropbox/WebDAV below instead.</li>
 					<li>In the
 						<a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">Google Cloud Console credentials page</a>,
 						create (or pick) a project and enable the <strong>Google Drive API</strong> for it.</li>
 					<li>Configure the <strong>OAuth consent screen</strong> if prompted (External is fine for
-						personal use).</li>
+						personal use; add the <code>drive.file</code> scope. If the app stays in
+						<strong>Testing</strong> status, add your own Google account as a test user under
+						<strong>Audience</strong>/<strong>Test users</strong> — otherwise sign-in will refuse you.)</li>
 					<li><strong>Create credentials → OAuth client ID</strong>, application type
-						<strong>Web application</strong>, and add this DWC's exact origin (e.g.
-						<code>https://your-duet.local</code>) under <strong>Authorized JavaScript origins</strong>.</li>
-					<li>Copy the generated <strong>Client ID</strong> and paste it into <strong>Google OAuth
-						client ID</strong> in the Google Drive section here, then click <strong>Save</strong>.</li>
+						<strong>TVs and Limited Input devices</strong> — <em>not</em> "Web application". This is
+						what lets sign-in work from any Duet regardless of hostname or HTTPS; there's no origin
+						or redirect URI to fill in for this type, which is the point.</li>
+					<li>Copy both the generated <strong>Client ID</strong> <em>and</em> <strong>Client
+						secret</strong> and paste them into the matching fields in the Google Drive section
+						here, then click <strong>Save</strong>.</li>
 				</ol>
-				<p class="text-caption text-medium-emphasis mb-2">Uses the <code>drive.file</code> scope only, so
-					the plugin can only ever see files it created itself, never your other Drive files.</p>
+				<p class="text-caption text-medium-emphasis mb-2">When you back up to Drive, a short code and a
+					Google sign-in page open automatically — approve it there (on this device or any other) and
+					the upload continues once you do. Uses the <code>drive.file</code> scope only, so the plugin
+					can only ever see files it created itself, never your other Drive files.</p>
 
 				<p class="mb-1" data-help-section="dropbox"><strong>Dropbox</strong></p>
 				<p class="text-caption text-medium-emphasis mb-2">
