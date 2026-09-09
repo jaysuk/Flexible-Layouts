@@ -2,6 +2,9 @@
 	<v-card flat>
 		<v-card-text>
 			<div class="text-caption text-medium-emphasis mb-3">{{ lastBackupText }}</div>
+			<v-alert v-if="lastAttemptFailedText" type="error" variant="tonal" density="compact" class="mb-3">
+				{{ lastAttemptFailedText }}
+			</v-alert>
 
 			<div class="text-title-small mb-2">{{ $t("plugins.flexibleLayouts.configBackup.create.scopeHeading") }}</div>
 			<div class="d-flex flex-wrap ga-3 mb-3">
@@ -185,43 +188,20 @@ import { computed, reactive, ref, watch } from "vue";
 
 import { HelpTip } from "dwc-plugin-runtime";
 
-import { useMachineStore } from "@/stores/machine";
 import i18n from "@/i18n";
 
-import { buildArchive, readArchive } from "dwc-config-backup-core";
-import { collectAll } from "dwc-config-backup-core";
-import { defaultMachineIO } from "../model/configBackup/machineIO";
-import { DEFAULT_MAX_FILE_BYTES } from "dwc-config-backup-core";
-import { PLUGIN_MANIFEST_ID } from "../model/constants";
+import { isOriginSupported } from "dwc-config-backup-core/destinations/googleDrive";
 import type { BackupProgressStage, RedactionEntry } from "dwc-config-backup-core";
 import type { BackupDestinationId } from "dwc-config-backup-core";
 import {
-	addBackedUpMachineKey, addRedactionExclusion, getDropboxSettings, getDuetCloudApiUrl, getDuetCloudFifoLimit,
-	getDuetCloudSession, getEncryptPreference, getGithubSettings, getGoogleDriveClientId, getLastBackupAt,
-	getRedactionExclusions, getRedactPreference, getWebDavSettings, hasAcknowledgedUnredacted, removeRedactionExclusion,
-	setAcknowledgedUnredacted, setEncryptPreference, setLastBackupAt, setRedactPreference,
+	addRedactionExclusion, getDropboxSettings, getDuetCloudSession, getEncryptPreference, getGithubSettings,
+	getGoogleDriveClientId, getLastBackupAt, getLastBackupAttempt, getRedactionExclusions, getRedactPreference,
+	getWebDavSettings, removeRedactionExclusion, setAcknowledgedUnredacted, setEncryptPreference, setRedactPreference,
 } from "dwc-config-backup-core";
-import { buildLiveDirectories, buildMachineIdentity, defaultMachineFolder } from "dwc-config-backup-core";
-import { downloadArchive, backupFilename } from "dwc-config-backup-core/destinations/localZip";
-import { isRepoPrivate, pushBackup } from "dwc-config-backup-core/destinations/github";
-import { isOriginSupported, signIn, uploadBackup as driveUploadBackup } from "dwc-config-backup-core/destinations/googleDrive";
-import { preflightSize, pruneToLimit, uploadBackup as duetUploadBackup } from "dwc-config-backup-core/destinations/duetCloud";
-import { uploadBackup as dropboxUploadBackup } from "dwc-config-backup-core/destinations/dropbox";
-import { uploadBackup as webdavUploadBackup } from "dwc-config-backup-core/destinations/webdav";
+import { collectForBackup, runBackup } from "../model/configBackup/runBackup";
+import type { BuiltArchive, RunBackupConfig } from "../model/configBackup/runBackup";
+import { DESTINATION_IDS, DESTINATION_LABEL_KEYS } from "../model/configBackup/constants";
 import RedactionSummary from "./RedactionSummary.vue";
-
-const machineStore = useMachineStore();
-
-/** The INSTALLED plugin version (authoritative), same source as the diagnostics report elsewhere in
- * this plugin - falls back to "unknown" outside a real DWC (e.g. under vitest). */
-function installedVersion(): string {
-	const plugins = (machineStore.model as { plugins?: Map<string, { version?: string; dwcVersion?: string }> }).plugins;
-	const record = plugins?.get(PLUGIN_MANIFEST_ID);
-	return record?.version ?? "unknown";
-}
-function runningDwcVersion(): string {
-	try { return (globalThis as { DWC?: { version?: string } }).DWC?.version ?? "unknown"; } catch { return "unknown"; }
-}
 
 const scope = reactive({ system: true, macros: true, filaments: true, objectModel: true, diagnostics: true });
 const scopeValid = computed(() => Object.values(scope).some(Boolean));
@@ -235,15 +215,6 @@ const encrypt = ref(getEncryptPreference(destination.value));
 watch(destination, (d) => { encrypt.value = getEncryptPreference(d); });
 watch(encrypt, (v) => setEncryptPreference(destination.value, v));
 
-const DESTINATION_IDS: Array<BackupDestinationId> = ["local", "duet", "github", "drive", "dropbox", "webdav"];
-const DESTINATION_LABEL_KEYS: Record<BackupDestinationId, string> = {
-	local: "plugins.flexibleLayouts.configBackup.create.destinationLocal",
-	duet: "plugins.flexibleLayouts.configBackup.create.destinationDuet",
-	github: "plugins.flexibleLayouts.configBackup.create.destinationGithub",
-	drive: "plugins.flexibleLayouts.configBackup.create.destinationDrive",
-	dropbox: "plugins.flexibleLayouts.configBackup.create.destinationDropbox",
-	webdav: "plugins.flexibleLayouts.configBackup.create.destinationWebdav",
-};
 const destinationLabel = computed(() => i18n.global.t(DESTINATION_LABEL_KEYS[destination.value]));
 
 /** Whether a destination has its credentials saved (configured in the "Cloud backup configuration"
@@ -289,12 +260,28 @@ const lastBackupText = computed(() => {
 		: i18n.global.t("plugins.flexibleLayouts.configBackup.create.lastBackupDaysAgo", { count: days });
 });
 
+// SCHEDULED-BACKUPS-PLAN.md §4.4 item 2: a persistent "last attempt failed" state, not just a
+// transient toast - so a failure is still discoverable after the fact, not only visible to someone
+// watching the screen at the moment it happened. Only shown when the LAST attempt was a failure; a
+// successful last attempt is already covered by `lastBackupText` above, and repeating it here would
+// just be noise.
+const lastAttemptFailedText = computed(() => {
+	void refreshTick.value;
+	const attempt = getLastBackupAttempt();
+	if (!attempt || attempt.ok) { return null; }
+	const destinationText = i18n.global.t(DESTINATION_LABEL_KEYS[attempt.destination]);
+	const days = Math.floor((Date.now() - new Date(attempt.at).getTime()) / (24 * 60 * 60 * 1000));
+	return days <= 0
+		? i18n.global.t("plugins.flexibleLayouts.configBackup.create.lastAttemptFailedToday", { destination: destinationText, message: attempt.message ?? "" })
+		: i18n.global.t("plugins.flexibleLayouts.configBackup.create.lastAttemptFailedDaysAgo", { count: days, destination: destinationText, message: attempt.message ?? "" });
+});
+
 const busy = ref(false);
 const stage = ref<BackupProgressStage | null>(null);
 const stageDone = ref(0);
 const stageTotal = ref(1);
 const error = ref<string | null>(null);
-const result = ref<Awaited<ReturnType<typeof buildArchive>> | null>(null);
+const result = ref<BuiltArchive | null>(null);
 
 const progressPct = computed(() => (stageTotal.value > 0 ? (stageDone.value / stageTotal.value) * 100 : 0));
 const STAGE_KEYS: Record<BackupProgressStage, string> = {
@@ -386,6 +373,14 @@ function onRemoveExclusion(name: string): void {
 	exclusions.value = getRedactionExclusions();
 }
 
+/**
+ * Orchestrates the headless `collectForBackup()`/`runBackup()` pair (SCHEDULED-BACKUPS-PLAN.md §4.1)
+ * exactly the way the pre-refactor inline `onCreate()` did: ask for the encryption password up front
+ * (before the slow collection work), collect once, then resolve whichever dialog `runBackup` says it
+ * needs - re-calling it with the answer folded in - until it either succeeds or fails for real. Each
+ * dialog resolution re-uses the SAME `collected` data from the one `collectForBackup()` call, so no
+ * dialog firing ever causes a second, slower walk of the printer's filesystem.
+ */
 async function onCreate(): Promise<void> {
 	error.value = null;
 	result.value = null;
@@ -396,158 +391,48 @@ async function onCreate(): Promise<void> {
 		let encryptPassword: string | undefined;
 		if (encrypt.value) {
 			encryptPassword = rememberedPassword.value ?? (await askEncryptPassword()) ?? undefined;
-			if (encryptPassword == null) { busy.value = false; return; } // cancelled
+			if (encryptPassword == null) { return; } // cancelled
 		}
 
-		const io = defaultMachineIO();
-		const model = machineStore.model as unknown;
-		const identity = buildMachineIdentity(model);
-		const directories = buildLiveDirectories(model);
-
-		const collected = await collectAll(io, {
-			scope, maxFileBytes: DEFAULT_MAX_FILE_BYTES, directories, model, boards: identity.boards,
-			onProgress: (s, done, total) => { stage.value = s; stageDone.value = done; stageTotal.value = Math.max(total, 1); },
+		const prepared = await collectForBackup(scope, (s, done, total) => {
+			stage.value = s; stageDone.value = done; stageTotal.value = Math.max(total, 1);
 		});
 
-		const pluginVersion = installedVersion();
-		const dwcVersion = runningDwcVersion();
+		let config: RunBackupConfig = {
+			destination: destination.value, scope, redact: redact.value, encrypt: encrypt.value, encryptPassword,
+		};
 
-		// Same source for both calls below (REDACTION-EXCLUSIONS-PLAN.md §6.2 step 3) - the dry-run
-		// preview and the real archive must agree on what's excluded, or the preview could promise a
-		// redaction the real backup then skips (or vice versa).
-		const excludedNames = new Set(getRedactionExclusions());
-
-		let useRedact = redact.value;
-		// An encrypted backup already satisfies "nothing leaves in the clear" (ENCRYPTED-BACKUPS-PLAN.md
-		// §3) - skip the unredacted-content warning entirely when encryption is on, same as it's
-		// already skipped for "redact" being on.
-		if (!useRedact && !encrypt.value && destination.value !== "local" && !hasAcknowledgedUnredacted(destination.value)) {
-			// Dry-run scan so the warning can name exactly what's in the backup, regardless of the switch.
-			// Never encrypted - this blob is thrown away, only its redaction list is used.
-			const dryRun = await buildArchive(collected, { redact: false, scope, machine: identity, directories, pluginVersion, dwcVersion, excludedNames });
-			if (dryRun.redactions.entries.length > 0) {
-				const choice = await askUnredacted(dryRun.redactions.entries);
-				if (choice === "cancel") { busy.value = false; return; }
-				if (choice === "redact") { useRedact = true; }
+		let res = await runBackup(prepared, config);
+		while (!res.ok && res.reason === "needsInput") {
+			if (res.needsInputKind === "encryptPassword") {
+				// Shouldn't happen on this path (the password is already resolved above), but handle it
+				// rather than looping forever if it ever does.
+				const password = await askEncryptPassword();
+				if (password == null) { return; } // cancelled
+				config = { ...config, encryptPassword: password };
+			} else if (res.needsInputKind === "unredacted") {
+				const choice = await askUnredacted(res.unredactedEntries ?? []);
+				if (choice === "cancel") { return; }
+				if (choice === "redact") { config = { ...config, redact: true }; }
 				if (choice === "send") { setAcknowledgedUnredacted(destination.value); }
+			} else if (res.needsInputKind === "publicRepo") {
+				const ok = await askPublicRepoConfirm();
+				if (!ok) { return; }
+				config = { ...config, publicRepoConfirmed: true };
 			}
+			res = await runBackup(prepared, config);
 		}
 
-		const built = await buildArchive(collected, {
-			redact: useRedact, scope, machine: identity, directories, pluginVersion, dwcVersion, excludedNames,
-			encrypt: encryptPassword ? { password: encryptPassword } : undefined,
-		});
-		result.value = built;
-
-		if (destination.value === "local") {
-			downloadArchive(built.blob, identity.hostname);
-		} else if (destination.value === "duet") {
-			await sendToDuetCloud(built, identity);
-		} else if (destination.value === "github") {
-			await sendToGithub(built, identity, useRedact, built.encrypted);
-		} else if (destination.value === "drive") {
-			await sendToDrive(built, identity);
-		} else if (destination.value === "dropbox") {
-			await sendToDropbox(built, identity);
-		} else if (destination.value === "webdav") {
-			await sendToWebdav(built, identity);
+		if (!res.ok) {
+			error.value = res.message;
+			return;
 		}
-		setLastBackupAt(new Date().toISOString());
-		addBackedUpMachineKey(built.manifest.machine.machineKey);
+		result.value = res.built;
 	} catch (e) {
 		error.value = e instanceof Error ? e.message : String(e);
 	} finally {
 		busy.value = false;
 		stage.value = null;
 	}
-}
-
-async function sendToDuetCloud(built: Awaited<ReturnType<typeof buildArchive>>, identity: ReturnType<typeof buildMachineIdentity>): Promise<void> {
-	const apiUrl = getDuetCloudApiUrl();
-	const preflight = preflightSize(built.blob);
-	if (!preflight.ok) {
-		throw new Error(`This backup is ${(preflight.size / (1024 * 1024)).toFixed(2)} MB, over the 2 MB limit for the cloud service. Try dropping the object model dump or M122 diagnostics, or download it locally instead.`);
-	}
-	const machineKey = built.manifest.machine.machineKey;
-	await duetUploadBackup(apiUrl, built.blob, { machine: built.manifest.machine.firmware.electronics, hostname: identity.hostname, guid: machineKey });
-	await pruneToLimit(apiUrl, machineKey, getDuetCloudFifoLimit());
-}
-
-async function sendToGithub(
-	built: Awaited<ReturnType<typeof buildArchive>>, identity: ReturnType<typeof buildMachineIdentity>,
-	isRedacted: boolean, isEncrypted: boolean,
-): Promise<void> {
-	const settings = getGithubSettings();
-	if (!settings) { throw new Error(i18n.global.t("plugins.flexibleLayouts.configBackup.create.notConfigured", { destination: destinationLabel.value })); }
-	if (!isRedacted && !isEncrypted) {
-		const priv = await isRepoPrivate(settings.token, settings.repo);
-		if (priv === false) {
-			const ok = await askPublicRepoConfirm();
-			if (!ok) { return; }
-		}
-	}
-	// ENCRYPTED-BACKUPS-PLAN.md §3/§5.7: the expanded per-file push exists so config.g diffs across
-	// backups in GitHub's own UI - reading it back requires `built.blob` to be the plain archive.
-	// When encrypted, `built.blob` is the password-protected outer zip (not readable without the
-	// password, and not meant to be - see the plan for why encrypting the expanded files too would
-	// defeat their entire purpose), so GitHub gets treated like every other destination: only the zip.
-	const files = isEncrypted ? [] : built.manifest.files.map((f) => ({
-		path: f.path.replace(/^files\//, ""),
-		content: f.binary ? "" : "", // filled from archive text below
-		binary: f.binary,
-	}));
-	// Pull the actual text back out of the freshly-built zip via a re-read - buildArchive doesn't
-	// keep a Map of contents by design (it streams straight into JSZip), so re-parse the blob once.
-	if (!isEncrypted) {
-		const parsed = await readArchive(built.blob);
-		for (const f of files) {
-			const full = `files/${f.path}`;
-			f.content = parsed.textFiles.get(full) ?? "";
-		}
-	}
-	// GitHub keys backups by a human-readable folder path, not the hardware GUID Duet Cloud uses - so
-	// two machines that happen to share a hostname would collide in the same folder without a
-	// disambiguator. An explicit "Machine name" override is used verbatim (the user picked it on
-	// purpose); otherwise default to hostname + a short hash of the real machine key.
-	const machineFolder = settings.machineName || defaultMachineFolder(identity.hostname, built.manifest.machine.machineKey);
-	await pushBackup({
-		token: settings.token, repo: settings.repo, branch: settings.branch || "main",
-		machineFolder, files,
-		// Stable filename (not timestamped): each push OVERWRITES this one blob rather than
-		// accumulating a new zip per backup. Git still keeps every past version reachable via commit
-		// history - the Configuration tab's GitHub "backup history" browser lists exactly this, via
-		// `GET /repos/{repo}/commits?path=machines/<name>/backup.zip` (destinations/github.ts's
-		// listBackupHistory), one entry per past backup, and restores any of them.
-		zip: { path: "backup.zip", blob: built.blob },
-		message: `Config backup ${settings.machineName || identity.hostname} ${built.manifest.createdAt}`,
-	});
-}
-
-async function sendToDrive(built: Awaited<ReturnType<typeof buildArchive>>, identity: ReturnType<typeof buildMachineIdentity>): Promise<void> {
-	const clientId = getGoogleDriveClientId();
-	if (!isOriginSupported() || !clientId) {
-		throw new Error(i18n.global.t("plugins.flexibleLayouts.configBackup.create.notConfigured", { destination: destinationLabel.value }));
-	}
-	const token = await signIn(clientId);
-	// Drive folders are found-or-created by this exact name, same hostname-only collision risk as
-	// Dropbox/WebDAV - see the comment on GitHub's machineFolder above.
-	const machineFolder = defaultMachineFolder(identity.hostname, built.manifest.machine.machineKey);
-	await driveUploadBackup(token, machineFolder, backupFilename(identity.hostname), built.blob);
-}
-
-async function sendToDropbox(built: Awaited<ReturnType<typeof buildArchive>>, identity: ReturnType<typeof buildMachineIdentity>): Promise<void> {
-	const settings = getDropboxSettings();
-	if (!settings) { throw new Error(i18n.global.t("plugins.flexibleLayouts.configBackup.create.notConfigured", { destination: destinationLabel.value })); }
-	// Dropbox has no manual-override field (unlike GitHub), so it always gets the disambiguated
-	// default - see the comment on GitHub's machineFolder above.
-	const machineFolder = defaultMachineFolder(identity.hostname, built.manifest.machine.machineKey);
-	await dropboxUploadBackup(settings.token, machineFolder, backupFilename(identity.hostname), built.blob);
-}
-
-async function sendToWebdav(built: Awaited<ReturnType<typeof buildArchive>>, identity: ReturnType<typeof buildMachineIdentity>): Promise<void> {
-	const settings = getWebDavSettings();
-	if (!settings) { throw new Error(i18n.global.t("plugins.flexibleLayouts.configBackup.create.notConfigured", { destination: destinationLabel.value })); }
-	const machineFolder = defaultMachineFolder(identity.hostname, built.manifest.machine.machineKey);
-	await webdavUploadBackup(settings.url, settings.username, settings.password, machineFolder, backupFilename(identity.hostname), built.blob);
 }
 </script>

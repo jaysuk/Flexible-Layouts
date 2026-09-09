@@ -1466,6 +1466,8 @@
 			"lastBackupNever": "No backup yet.",
 			"lastBackupToday": "Last backup: today.",
 			"lastBackupDaysAgo": "Last backup: {count} day(s) ago.",
+			"lastAttemptFailedToday": "Last backup attempt failed today - {destination}: {message}",
+			"lastAttemptFailedDaysAgo": "Last backup attempt failed {count} day(s) ago - {destination}: {message}",
 			"exclusionsHeading": "Redaction exclusions ({count})",
 			"exclusionsHelp": "Names you've told the scanner to leave alone - e.g. a macro variable that only looks like a password. Applies to every backup and every destination, not just one.",
 			"exclusionsEmpty": "No names excluded. Redacted rows in a backup's result have an \"Exclude\" button if the scanner matched them by name.",
