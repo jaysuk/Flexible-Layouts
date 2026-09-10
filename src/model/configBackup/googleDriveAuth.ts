@@ -8,10 +8,15 @@
  *      within the same page load with zero network round trips.
  *   2. A stored refresh token, silently exchanged for a new access token - Google's device flow ALWAYS
  *      issues one (confirmed in Google's own docs), so this is what actually delivers "sign in once,
- *      not every time" across page reloads, for as long as the refresh token itself stays valid
- *      (months, typically - see GoogleDriveSignInDialog's setup help for the one Console step needed
- *      to avoid Testing-mode's 7-day refresh-token cap).
+ *      not every time" across page reloads, for as long as the refresh token itself stays valid.
  *   3. The full interactive device flow - only reached when neither of the above works.
+ *
+ * **How long tier 2 lasts.** While the Google Cloud app is in "Testing" status - which is where a
+ * home user's app realistically stays, since publishing requires a homepage and privacy policy on a
+ * Search-Console-verified domain - Google hard-expires the refresh token **7 days after consent**.
+ * That clock runs from the consent itself and is NOT reset by using the token, so tier 2 cannot
+ * extend it: the only thing that starts a new 7 days is a fresh trip through tier 3. That is exactly
+ * what `reconnectGoogleDrive()` below is for, and why it deliberately skips tiers 1 and 2.
  *
  * Real bug fixed here (not present in the very first version of this flow): every backup used to
  * re-run the full device flow from scratch, even seconds after a previous one succeeded, because
@@ -50,15 +55,35 @@ function cacheToken(token: string, expiresInSeconds: number): void {
 	cachedAccessToken = { token, expiresAt: Date.now() + Math.max(expiresInSeconds - 60, 30) * 1000 };
 }
 
-/** The one entry point both the Create and Restore tabs use. Throws with a translated message if Drive
- *  isn't configured at all, if the user cancels/declines/times out, or on a genuine Google error. */
-export async function getGoogleDriveAccessToken(): Promise<string> {
+function requireSettings(): GoogleDriveSettings {
 	const settings = getGoogleDriveSettings();
 	if (!settings) {
 		throw new Error(i18n.global.t("plugins.flexibleLayouts.configBackup.create.notConfigured", {
 			destination: i18n.global.t("plugins.flexibleLayouts.configBackup.drive.heading"),
 		}));
 	}
+	return settings;
+}
+
+/** Tier 3: the full interactive device flow, plus storing what it returns. Shared by the normal
+ *  ladder below and by `reconnectGoogleDrive`, so both persist the new refresh token identically. */
+async function runDeviceFlowAndStore(settings: GoogleDriveSettings): Promise<string> {
+	const authorized = await signInWithDeviceFlow(settings.clientId, settings.clientSecret);
+	cacheToken(authorized.accessToken, authorized.expiresInSeconds);
+	// Always re-fetch settings rather than reusing the `settings` passed in - sign-in can take a long
+	// time (the user may be away for minutes), and a client-ID/secret edit saved via CloudPanel in the
+	// meantime must not be clobbered by writing back a stale copy of those two fields.
+	const current = getGoogleDriveSettings();
+	if (current) {
+		setGoogleDriveSettings({ ...current, refreshToken: authorized.refreshToken });
+	}
+	return authorized.accessToken;
+}
+
+/** The one entry point both the Create and Restore tabs use. Throws with a translated message if Drive
+ *  isn't configured at all, if the user cancels/declines/times out, or on a genuine Google error. */
+export async function getGoogleDriveAccessToken(): Promise<string> {
+	const settings = requireSettings();
 
 	if (cachedAccessToken && Date.now() < cachedAccessToken.expiresAt) {
 		return cachedAccessToken.token;
@@ -74,16 +99,21 @@ export async function getGoogleDriveAccessToken(): Promise<string> {
 		// etc.) - fall through to a full re-sign-in rather than treating this as fatal.
 	}
 
-	const authorized = await signInWithDeviceFlow(settings.clientId, settings.clientSecret);
-	cacheToken(authorized.accessToken, authorized.expiresInSeconds);
-	// Always re-fetch settings rather than reusing the `settings` closed over above - sign-in can take
-	// a long time (the user may be away for minutes), and a client-ID/secret edit saved via CloudPanel
-	// in the meantime must not be clobbered by writing back a stale copy of those two fields.
-	const current = getGoogleDriveSettings();
-	if (current) {
-		setGoogleDriveSettings({ ...current, refreshToken: authorized.refreshToken });
-	}
-	return authorized.accessToken;
+	return runDeviceFlowAndStore(settings);
+}
+
+/**
+ * What the "Reconnect Google Drive" button calls. Deliberately NOT `getGoogleDriveAccessToken()`:
+ * that would hand back the cached token, or silently renew via the existing refresh token, and report
+ * success without starting a new consent - so a user reconnecting *before* Testing-mode's 7-day cap
+ * bites would be told "Connected." and still be locked out on day 8. Only a fresh trip through the
+ * device flow restarts that clock, so this always runs one, and drops the cached access token first
+ * so nothing downstream keeps using the pre-reconsent token.
+ */
+export async function reconnectGoogleDrive(): Promise<string> {
+	const settings = requireSettings();
+	cachedAccessToken = null;
+	return runDeviceFlowAndStore(settings);
 }
 
 async function signInWithDeviceFlow(clientId: string, clientSecret: string): Promise<{ accessToken: string; refreshToken: string; expiresInSeconds: number }> {

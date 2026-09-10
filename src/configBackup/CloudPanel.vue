@@ -374,7 +374,7 @@ import type { BackupDestinationId, DuetCloudSession } from "dwc-config-backup-co
 import { loadCredentialsFromSd, parseCredentialBundle, writeCredentialsToSd } from "dwc-config-backup-core";
 import { defaultMachineIO } from "../model/configBackup/machineIO";
 import { DESTINATION_IDS, DESTINATION_LABEL_KEYS } from "../model/configBackup/constants";
-import { getGoogleDriveAccessToken, resolveDriveRefreshTokenOnSave } from "../model/configBackup/googleDriveAuth";
+import { reconnectGoogleDrive, resolveDriveRefreshTokenOnSave } from "../model/configBackup/googleDriveAuth";
 import GoogleDriveSignInDialog from "./GoogleDriveSignInDialog.vue";
 import { buildMachineIdentity } from "dwc-config-backup-core";
 import PassphraseDialog from "./PassphraseDialog.vue";
@@ -693,10 +693,10 @@ function onSaveDrive(): void {
 }
 
 // "Reconnect" - runs the sign-in flow on demand from here, rather than leaving it to interrupt a
-// backup. Especially useful in Testing-status Google apps, where the refresh token hard-expires after
-// 7 days (see the Drive help): the user can clear the device-code prompt at their own convenience.
-// `getGoogleDriveAccessToken()` does the whole cached-token -> refresh-token -> device-flow ladder, so
-// a still-valid stored token just confirms "connected" silently; only a lapsed one shows the dialog.
+// backup. Especially useful in Testing-status Google apps, where the refresh token hard-expires 7 days
+// after CONSENT (see the Drive help): the user can get the device-code prompt out of the way at their
+// own convenience. It always runs a full device flow, because only a fresh consent restarts that 7-day
+// clock - renewing from the existing refresh token would not, however "connected" it looks.
 const driveConnectTick = ref(0);
 const driveReconnecting = ref(false);
 const driveReconnectStatus = ref<{ ok: boolean; message: string } | null>(null);
@@ -708,7 +708,11 @@ async function onReconnectDrive(): Promise<void> {
 	driveReconnecting.value = true;
 	driveReconnectStatus.value = null;
 	try {
-		await getGoogleDriveAccessToken();
+		// reconnectGoogleDrive(), NOT getGoogleDriveAccessToken() - the latter would return the cached
+		// token or silently renew from the stored refresh token and report success WITHOUT starting a
+		// new consent, so clicking this before the 7-day cap bit would have been a no-op that claimed
+		// otherwise. See googleDriveAuth.ts for why only a fresh device flow restarts that clock.
+		await reconnectGoogleDrive();
 		driveReconnectStatus.value = { ok: true, message: i18n.global.t("plugins.flexibleLayouts.configBackup.drive.reconnectOk") };
 	} catch (e) {
 		driveReconnectStatus.value = { ok: false, message: e instanceof Error ? e.message : String(e) };

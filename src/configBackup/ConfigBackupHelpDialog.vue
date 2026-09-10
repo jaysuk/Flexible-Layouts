@@ -86,6 +86,14 @@
 					Google sign-in page open automatically — approve it there (on this device or any other) and
 					the upload continues once you do. Uses the <code>drive.file</code> scope only, so the plugin
 					can only ever see files it created itself, never your other Drive files.</p>
+				<p class="text-caption text-medium-emphasis mb-2"><strong>Expect to sign in again every 7
+					days.</strong> While the app sits in <strong>Testing</strong> status, Google expires the
+					stored sign-in 7 days after you approve it — and that clock runs from the approval itself,
+					so using Drive in the meantime doesn't extend it. (Removing the limit means publishing the
+					app, which Google gates behind a homepage and privacy policy on a domain you've verified in
+					Search Console — not realistic for a printer on your own network.) Use <strong>Reconnect
+					Google Drive</strong> in the Google Drive section to start a fresh 7 days whenever it suits
+					you, rather than being interrupted part-way through a backup.</p>
 
 				<p class="mb-1" data-help-section="dropbox"><strong>Dropbox</strong></p>
 				<p class="text-caption text-medium-emphasis mb-2">

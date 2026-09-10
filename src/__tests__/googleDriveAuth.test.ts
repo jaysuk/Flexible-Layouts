@@ -22,7 +22,9 @@ const { requestDeviceCode, pollDeviceToken, refreshAccessToken } = vi.hoisted(()
 }));
 vi.mock("dwc-config-backup-core/destinations/googleDrive", () => ({ requestDeviceCode, pollDeviceToken, refreshAccessToken }));
 
-import { getGoogleDriveAccessToken, resetForTests, resolveDriveRefreshTokenOnSave } from "../model/configBackup/googleDriveAuth";
+import {
+	getGoogleDriveAccessToken, reconnectGoogleDrive, resetForTests, resolveDriveRefreshTokenOnSave,
+} from "../model/configBackup/googleDriveAuth";
 import { resetForTests as resetPromptForTests } from "../composables/useDriveSignInPrompt";
 
 const SETTINGS = { clientId: "client-id", clientSecret: "client-secret" };
@@ -125,6 +127,51 @@ describe("getGoogleDriveAccessToken", () => {
 // to write {clientId, clientSecret} unconditionally, silently dropping an already-stored refresh token
 // on every re-save - so a user who was already signed in and just reopened Settings to check their
 // client ID lost it for no reason.
+// The "Reconnect Google Drive" button. Testing-status Google apps hard-expire the refresh token 7 days
+// after CONSENT - a clock that using the token does NOT extend - so the only thing that buys another 7
+// days is a fresh device flow. This function therefore has to skip the two cheap tiers that
+// getGoogleDriveAccessToken() would happily short-circuit on.
+describe("reconnectGoogleDrive", () => {
+	it("runs a full device flow even when a valid refresh token is stored", async () => {
+		getGoogleDriveSettings.mockReturnValue({ ...SETTINGS, refreshToken: "still-valid" });
+		requestDeviceCode.mockResolvedValue(DEVICE_CODE);
+		pollDeviceToken.mockResolvedValue({ status: "authorized", accessToken: "fresh", refreshToken: "new-refresh", expiresInSeconds: 3600 });
+
+		await expect(reconnectGoogleDrive()).resolves.toBe("fresh");
+		expect(requestDeviceCode).toHaveBeenCalledTimes(1);
+		expect(refreshAccessToken).not.toHaveBeenCalled(); // the whole point - no silent renewal
+		expect(setGoogleDriveSettings).toHaveBeenCalledWith(expect.objectContaining({ refreshToken: "new-refresh" }));
+	});
+
+	it("runs a full device flow even when an unexpired access token is already cached", async () => {
+		requestDeviceCode.mockResolvedValue(DEVICE_CODE);
+		pollDeviceToken.mockResolvedValue({ status: "authorized", accessToken: "first", refreshToken: "r1", expiresInSeconds: 3600 });
+		await getGoogleDriveAccessToken();                       // populates the in-memory cache
+		expect(await getGoogleDriveAccessToken()).toBe("first"); // proves it IS cached
+		expect(requestDeviceCode).toHaveBeenCalledTimes(1);
+
+		pollDeviceToken.mockResolvedValue({ status: "authorized", accessToken: "second", refreshToken: "r2", expiresInSeconds: 3600 });
+		await expect(reconnectGoogleDrive()).resolves.toBe("second");
+		expect(requestDeviceCode).toHaveBeenCalledTimes(2);
+	});
+
+	it("replaces the cached token, so later callers get the post-reconsent one", async () => {
+		requestDeviceCode.mockResolvedValue(DEVICE_CODE);
+		pollDeviceToken.mockResolvedValue({ status: "authorized", accessToken: "first", refreshToken: "r1", expiresInSeconds: 3600 });
+		await getGoogleDriveAccessToken();
+
+		pollDeviceToken.mockResolvedValue({ status: "authorized", accessToken: "second", refreshToken: "r2", expiresInSeconds: 3600 });
+		await reconnectGoogleDrive();
+		expect(await getGoogleDriveAccessToken()).toBe("second");
+	});
+
+	it("throws (without starting a device flow) when Drive isn't configured", async () => {
+		getGoogleDriveSettings.mockReturnValue(null);
+		await expect(reconnectGoogleDrive()).rejects.toThrow();
+		expect(requestDeviceCode).not.toHaveBeenCalled();
+	});
+});
+
 describe("resolveDriveRefreshTokenOnSave", () => {
 	it("preserves the existing refresh token when the client ID and secret are unchanged", () => {
 		const existing = { clientId: "id", clientSecret: "secret", refreshToken: "refresh-1" };
