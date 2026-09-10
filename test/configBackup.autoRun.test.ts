@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { flushPromises } from "@vue/test-utils";
 import { dwc, loadObjectModel, setConnected, setModel } from "dwc-plugin-test-kit";
 import {
-	configureHost, getBackupFailureStreak, getLastBackupAttempt, resetForTests, resetHostConfigForTests,
+	addBackedUpMachineKey, configureHost, getBackupFailureStreak, getLastBackupAttempt, resetForTests, resetHostConfigForTests,
 	setAutoBackupNudgeSettings, setEncryptPreference, setLastBackupAt, setLastBackupAttempt,
 } from "dwc-config-backup-core";
 
@@ -167,5 +167,62 @@ describe("auto-run trigger - when it fires", () => {
 		expect(attempt?.destination).toBe("dropbox");
 		expect(attempt?.message).toContain("machine unreachable");
 		expect(notificationTitles()).toContain(T("autoRun.failedTitle"));
+	});
+});
+
+// A tab left open past the due date should still act on the next reconnect (machine reboot, WiFi
+// blip, laptop waking) rather than waiting for a manual page reload - but a flapping connection must
+// not re-trigger a backup every few seconds.
+describe("auto-run trigger - re-checks on reconnect, rate-limited", () => {
+	beforeEach(() => {
+		vi.useFakeTimers({ toFake: ["Date"] });
+		setAutoBackupNudgeSettings({ configSaved: true, overdue: true, overdueDays: 7, newMachine: false, autoRun: true, autoRunDestination: "dropbox" });
+		makeOverdue();
+	});
+	afterEach(() => vi.useRealTimers());
+
+	async function reconnect() {
+		setConnected(false);
+		await flushPromises();
+		setConnected(true);
+		await flushPromises();
+	}
+
+	it("does NOT re-run on a quick reconnect flap (inside the cooldown)", async () => {
+		installAutoBackupNudges();
+		setConnected(true);
+		await flushPromises();
+		expect(runBackup).toHaveBeenCalledTimes(1);
+
+		vi.setSystemTime(Date.now() + 5 * 60 * 1000); // 5 minutes later
+		await reconnect();
+		expect(runBackup).toHaveBeenCalledTimes(1); // still just the one
+	});
+
+	it("re-runs on a reconnect once the cooldown has elapsed and it's still overdue", async () => {
+		runBackup.mockResolvedValue({ ok: false, reason: "failed", message: "token expired" }); // stays overdue
+		installAutoBackupNudges();
+		setConnected(true);
+		await flushPromises();
+		expect(runBackup).toHaveBeenCalledTimes(1);
+
+		vi.setSystemTime(Date.now() + 61 * 60 * 1000); // just over an hour later
+		await reconnect();
+		expect(runBackup).toHaveBeenCalledTimes(2);
+	});
+
+	it("does not fire the one-time new-machine nudge again on a reconnect", async () => {
+		setAutoBackupNudgeSettings({ configSaved: true, overdue: true, overdueDays: 7, newMachine: true, autoRun: false, autoRunDestination: "dropbox" });
+		// Make this machine look unseen: some OTHER machine has a backup on record.
+		addBackedUpMachineKey("some-other-machine");
+		installAutoBackupNudges();
+		setConnected(true);
+		await flushPromises();
+		expect(notificationTitles()).toContain(NUDGE("newMachineTitle")); // fired on the first connect
+
+		vi.setSystemTime(Date.now() + 2 * 60 * 60 * 1000);
+		dwc.notifications.length = 0;
+		await reconnect();
+		expect(notificationTitles()).not.toContain(NUDGE("newMachineTitle")); // but not again
 	});
 });

@@ -11,9 +11,16 @@
  * **opportunistic auto-run** (SCHEDULED-BACKUPS-PLAN.md §4.3): when the user has explicitly enabled it
  * AND the machine is idle AND a backup is overdue AND the chosen destination can complete with zero
  * prompts (§4.2), `checkOnConnect` runs a real backup via the headless `runBackup()` pipeline. It's
- * still opportunistic, not scheduled: it can only ever happen at the moment DWC connects, while a tab
- * is open. `autoRun` defaults to false, so nothing about the plain-nudge behaviour changes for anyone
- * who doesn't turn it on.
+ * still opportunistic, not scheduled: it can only ever happen while a DWC tab is open. `autoRun`
+ * defaults to false, so nothing about the plain-nudge behaviour changes for anyone who doesn't turn
+ * it on.
+ *
+ * The connection watch fires on the first connect of a page load AND on every later reconnect (a WiFi
+ * blip, a machine reboot, a laptop waking from sleep) - so a tab left open past the due date still
+ * acts, rather than waiting for a manual page reload. The new-machine nudge stays first-connect-only;
+ * the overdue response (nudge or auto-run) re-evaluates on reconnect, but no more than once per
+ * `OVERDUE_RECHECK_COOLDOWN_MS` so a flapping connection can't spam a toast or kick off a backup on
+ * every flap.
  *
  * Firmware-update-starting was investigated (machineStore.boardBeingUpdated flips the instant M997 is
  * issued) but deliberately left out - a plugin can only observe that reactively, not gate/block DWC's
@@ -46,12 +53,21 @@ const AUTO_RUN_ELIGIBLE_DESTINATIONS: ReadonlySet<BackupDestinationId> = new Set
 /** The full scope an automatic backup takes - everything, matching the Create tab's defaults. */
 const AUTO_RUN_SCOPE: BackupScope = { system: true, macros: true, filaments: true, objectModel: true, diagnostics: true };
 
+/** Shortest gap between two overdue re-checks. A reconnect inside this window is treated as a flap and
+ * ignored; outside it, the overdue nudge / auto-run re-evaluates. One hour is well below any sane
+ * overdue threshold (a day at the very least) yet far above reconnect-flap rates. */
+const OVERDUE_RECHECK_COOLDOWN_MS = 60 * 60 * 1000;
+
 let fileUploadedHandler: FileUploadedHandler | null = null;
 let stopConnectWatch: (() => void) | null = null;
 let lastConfigSaveNudgeAt = 0;
-let checkedThisSession = false;
-/** Guards against a second overlapping auto-run if `checkOnConnect` somehow re-entered before the
- * first (async) run resolved - belt-and-braces on top of `checkedThisSession`. */
+/** Set once the first connect of this page load has been handled - gates the one-time new-machine
+ * nudge. The overdue response is gated by `lastOverdueCheckAt` instead, so it can re-fire on a later
+ * reconnect. */
+let firstConnectHandled = false;
+let lastOverdueCheckAt = 0;
+/** Guards against a second overlapping auto-run if `checkOnConnect` re-entered before the first
+ * (async) run resolved. */
 let autoRunInFlight = false;
 
 function t(key: string, params?: Record<string, unknown>): string {
@@ -158,34 +174,45 @@ export function installAutoBackupNudges(): void {
 	}
 
 	function checkOnConnect(): void {
-		if (!machineStore.isConnected || checkedThisSession) { return; }
-		checkedThisSession = true;
-		const settings = getAutoBackupNudgeSettings();
-		const identity = buildMachineIdentity(machineStore.model as unknown);
-		const machineKey = computeMachineKey(identity);
-		const knownKeys = new Set(getBackedUpMachineKeys());
+		if (!machineStore.isConnected) { return; }
 
-		if (settings.newMachine && isUnseenMachine(machineKey, knownKeys)) {
-			uiStore.log(
-				LogLevel.info,
-				i18n.global.t("plugins.flexibleLayouts.configBackup.nudge.newMachineTitle"),
-				i18n.global.t("plugins.flexibleLayouts.configBackup.nudge.newMachineBody"),
-				CONFIG_BACKUP_ROUTE_PATH,
-			);
-			return; // one nudge per connect is enough - don't also fire "overdue" straight after
+		const isReconnect = firstConnectHandled;
+		// A reconnect too soon after the last overdue check is a flap - ignore it entirely (the
+		// new-machine nudge below is first-connect-only anyway, so nothing is skipped that matters).
+		if (isReconnect && Date.now() - lastOverdueCheckAt < OVERDUE_RECHECK_COOLDOWN_MS) { return; }
+		firstConnectHandled = true;
+		lastOverdueCheckAt = Date.now();
+
+		const settings = getAutoBackupNudgeSettings();
+
+		// New-machine nudge: only on the first connect of a page load (it's a one-time "you've never
+		// backed this printer up" prompt, not something to repeat on every reconnect).
+		if (!isReconnect) {
+			const identity = buildMachineIdentity(machineStore.model as unknown);
+			const machineKey = computeMachineKey(identity);
+			const knownKeys = new Set(getBackedUpMachineKeys());
+			if (settings.newMachine && isUnseenMachine(machineKey, knownKeys)) {
+				uiStore.log(
+					LogLevel.info,
+					i18n.global.t("plugins.flexibleLayouts.configBackup.nudge.newMachineTitle"),
+					i18n.global.t("plugins.flexibleLayouts.configBackup.nudge.newMachineBody"),
+					CONFIG_BACKUP_ROUTE_PATH,
+				);
+				return; // one nudge per connect is enough - don't also fire "overdue" straight after
+			}
 		}
 
-		const overdue = isBackupOverdue(getLastBackupAt(), settings.overdueDays);
+		if (!isBackupOverdue(getLastBackupAt(), settings.overdueDays)) { return; }
 
 		// Opportunistic auto-run (§4.3): only when the user opted in, the destination can run unattended,
-		// a backup is actually overdue, AND the machine is strictly idle (§4.3 step 3 - never start
-		// walking the filesystem mid-print). If the machine is busy we fall through to the plain nudge.
-		if (settings.autoRun && overdue && autoRunDestinationEligible(settings.autoRunDestination) && isMachineIdle(machineStatus())) {
+		// and the machine is strictly idle (§4.3 step 3 - never start walking the filesystem mid-print).
+		// If the machine is busy we fall through to the plain nudge.
+		if (settings.autoRun && autoRunDestinationEligible(settings.autoRunDestination) && isMachineIdle(machineStatus())) {
 			void runAutomaticBackup(settings.autoRunDestination);
 			return;
 		}
 
-		if (settings.overdue && overdue) {
+		if (settings.overdue) {
 			uiStore.log(
 				LogLevel.info,
 				i18n.global.t("plugins.flexibleLayouts.configBackup.nudge.overdueTitle"),
@@ -194,13 +221,16 @@ export function installAutoBackupNudges(): void {
 			);
 		}
 	}
+	// Fires on the first connect and on every later reconnect - the cooldown inside checkOnConnect,
+	// not this watch, is what stops a flap storm re-triggering things.
 	stopConnectWatch = watch(() => machineStore.isConnected, (connected) => { if (connected) { checkOnConnect(); } }, { immediate: true });
 }
 
 export function uninstallAutoBackupNudges(): void {
 	if (fileUploadedHandler) { Events.off("fileUploaded", fileUploadedHandler as never); fileUploadedHandler = null; }
 	if (stopConnectWatch) { stopConnectWatch(); stopConnectWatch = null; }
-	checkedThisSession = false;
+	firstConnectHandled = false;
+	lastOverdueCheckAt = 0;
 	lastConfigSaveNudgeAt = 0;
 	autoRunInFlight = false;
 }
