@@ -1649,6 +1649,11 @@
 			"signInExpired": "The Google sign-in code expired before it was used - try again.",
 			"signInGenericError": "Google sign-in failed.",
 			"signInWaitingStage": "Waiting for Google sign-in…",
+			"reconnectSignedIn": "Signed in to Google Drive. If your Google app is still in \"Testing\" mode this lapses every 7 days — reconnect here when it does, rather than mid-backup.",
+			"reconnectNotYet": "Not signed in yet — you'll be prompted with a code the first time you back up. Or do it now:",
+			"reconnectButton": "Reconnect Google Drive",
+			"signInNowButton": "Sign in to Google Drive now",
+			"reconnectOk": "Connected to Google Drive.",
 			"uploadButton": "Upload to Drive",
 			"uploading": "Uploading…",
 			"uploaded": "Uploaded to Drive."

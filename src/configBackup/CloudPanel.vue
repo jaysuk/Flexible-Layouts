@@ -236,6 +236,23 @@
 						<v-alert v-if="driveSaved" type="success" variant="tonal" density="compact" class="mt-3">
 							{{ $t("plugins.flexibleLayouts.configBackup.cloud.saved") }}
 						</v-alert>
+
+						<template v-if="driveConfigured">
+							<v-divider class="my-3" />
+							<div class="text-caption text-medium-emphasis mb-2">
+								{{ driveSignedIn
+									? $t("plugins.flexibleLayouts.configBackup.drive.reconnectSignedIn")
+									: $t("plugins.flexibleLayouts.configBackup.drive.reconnectNotYet") }}
+							</div>
+							<v-btn size="small" variant="tonal" prepend-icon="mdi-google" :loading="driveReconnecting" @click="onReconnectDrive">
+								{{ driveSignedIn
+									? $t("plugins.flexibleLayouts.configBackup.drive.reconnectButton")
+									: $t("plugins.flexibleLayouts.configBackup.drive.signInNowButton") }}
+							</v-btn>
+							<v-alert v-if="driveReconnectStatus" :type="driveReconnectStatus.ok ? 'success' : 'error'" variant="tonal" density="compact" class="mt-3">
+								{{ driveReconnectStatus.message }}
+							</v-alert>
+						</template>
 					</v-expansion-panel-text>
 				</v-expansion-panel>
 
@@ -306,6 +323,7 @@
 
 		<PassphraseDialog v-model="setDialogOpen" mode="set" :loading="setBusy" :error="setError" @submit="onSetPassphrase" />
 		<PassphraseDialog v-model="unlockDialogOpen" mode="unlock" :loading="unlockBusy" :error="unlockError" @submit="onUnlockSubmit" />
+		<GoogleDriveSignInDialog />
 	</v-card>
 </template>
 
@@ -339,7 +357,8 @@ import {
 import type { DuetCloudSession } from "dwc-config-backup-core";
 import { loadCredentialsFromSd, parseCredentialBundle, writeCredentialsToSd } from "dwc-config-backup-core";
 import { defaultMachineIO } from "../model/configBackup/machineIO";
-import { resolveDriveRefreshTokenOnSave } from "../model/configBackup/googleDriveAuth";
+import { getGoogleDriveAccessToken, resolveDriveRefreshTokenOnSave } from "../model/configBackup/googleDriveAuth";
+import GoogleDriveSignInDialog from "./GoogleDriveSignInDialog.vue";
 import { buildMachineIdentity } from "dwc-config-backup-core";
 import PassphraseDialog from "./PassphraseDialog.vue";
 
@@ -623,6 +642,33 @@ function onSaveDrive(): void {
 	const refreshToken = resolveDriveRefreshTokenOnSave(getGoogleDriveSettings(), driveClientId.value, driveClientSecret.value);
 	setGoogleDriveSettings({ clientId: driveClientId.value, clientSecret: driveClientSecret.value, refreshToken });
 	driveSaved.value = true;
+	driveConnectTick.value++;
+}
+
+// "Reconnect" - runs the sign-in flow on demand from here, rather than leaving it to interrupt a
+// backup. Especially useful in Testing-status Google apps, where the refresh token hard-expires after
+// 7 days (see the Drive help): the user can clear the device-code prompt at their own convenience.
+// `getGoogleDriveAccessToken()` does the whole cached-token -> refresh-token -> device-flow ladder, so
+// a still-valid stored token just confirms "connected" silently; only a lapsed one shows the dialog.
+const driveConnectTick = ref(0);
+const driveReconnecting = ref(false);
+const driveReconnectStatus = ref<{ ok: boolean; message: string } | null>(null);
+const driveSignedIn = computed(() => {
+	void driveConnectTick.value; // re-read localStorage after a save/reconnect
+	return getGoogleDriveSettings()?.refreshToken != null;
+});
+async function onReconnectDrive(): Promise<void> {
+	driveReconnecting.value = true;
+	driveReconnectStatus.value = null;
+	try {
+		await getGoogleDriveAccessToken();
+		driveReconnectStatus.value = { ok: true, message: i18n.global.t("plugins.flexibleLayouts.configBackup.drive.reconnectOk") };
+	} catch (e) {
+		driveReconnectStatus.value = { ok: false, message: e instanceof Error ? e.message : String(e) };
+	} finally {
+		driveReconnecting.value = false;
+		driveConnectTick.value++;
+	}
 }
 
 // --- Dropbox -------------------------------------------------------------------------------------------
