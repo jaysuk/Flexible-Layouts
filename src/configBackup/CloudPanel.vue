@@ -124,6 +124,22 @@
 					<v-text-field v-if="nudgeOverdue" v-model.number="nudgeOverdueDays" type="number" min="1" max="90" density="compact"
 								  variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.configBackup.nudge.triggerOverdueDays')"
 								  style="max-width: 260px;" class="mt-2 ms-8" @update:model-value="saveNudgeSettings" />
+
+					<v-divider class="my-3" />
+					<div class="d-flex align-center ga-2 mb-1">
+						<v-icon size="18">mdi-backup-restore</v-icon>
+						<span class="text-body-2 font-weight-medium">{{ $t("plugins.flexibleLayouts.configBackup.nudge.autoRunHeading") }}</span>
+					</div>
+					<div class="text-caption text-medium-emphasis mb-2">{{ $t("plugins.flexibleLayouts.configBackup.nudge.autoRunNote") }}</div>
+					<v-checkbox v-model="nudgeAutoRun" density="compact" hide-details
+								:label="$t('plugins.flexibleLayouts.configBackup.nudge.autoRunTrigger')" @update:model-value="saveNudgeSettings" />
+					<v-select v-if="nudgeAutoRun" v-model="nudgeAutoRunDestination" :items="autoRunDestinationItems" density="compact"
+							  variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.configBackup.nudge.autoRunDestinationLabel')"
+							  :hint="$t('plugins.flexibleLayouts.configBackup.nudge.autoRunDestinationHint')" persistent-hint
+							  style="max-width: 360px;" class="mt-2 ms-8" @update:model-value="saveNudgeSettings" />
+					<v-alert v-if="autoRunEncryptionConflict" type="warning" variant="tonal" density="compact" class="mt-2 ms-8">
+						{{ autoRunEncryptionConflict }}
+					</v-alert>
 				</v-card-text>
 			</v-card>
 
@@ -349,14 +365,15 @@ import { verifyToken as dropboxVerify } from "dwc-config-backup-core/destination
 import { verifyConnection as webdavVerify } from "dwc-config-backup-core/destinations/webdav";
 import {
 	disableEncryption, DUET_BACKUP_WEB_URL, enableEncryption, exportEncryptedBundle, getAutoBackupNudgeSettings, getDropboxSettings,
-	getDuetCloudApiUrl, getDuetCloudFifoLimit, getDuetCloudSession, getGithubSettings, getGoogleDriveSettings,
+	getDuetCloudApiUrl, getDuetCloudFifoLimit, getDuetCloudSession, getEncryptPreference, getGithubSettings, getGoogleDriveSettings,
 	getWebDavSettings, importEncryptedBundle, importPlaintextCredentials, isEncryptionAvailable, isEncryptionEnabled,
 	isNamespaceEncrypted, isSessionUnlocked, lockSession, readPlaintextCredentials, setAutoBackupNudgeSettings,
 	setDropboxSettings, setDuetCloudFifoLimit, setGithubSettings, setGoogleDriveSettings, setWebDavSettings, unlockSession,
 } from "dwc-config-backup-core";
-import type { DuetCloudSession } from "dwc-config-backup-core";
+import type { BackupDestinationId, DuetCloudSession } from "dwc-config-backup-core";
 import { loadCredentialsFromSd, parseCredentialBundle, writeCredentialsToSd } from "dwc-config-backup-core";
 import { defaultMachineIO } from "../model/configBackup/machineIO";
+import { DESTINATION_IDS, DESTINATION_LABEL_KEYS } from "../model/configBackup/constants";
 import { getGoogleDriveAccessToken, resolveDriveRefreshTokenOnSave } from "../model/configBackup/googleDriveAuth";
 import GoogleDriveSignInDialog from "./GoogleDriveSignInDialog.vue";
 import { buildMachineIdentity } from "dwc-config-backup-core";
@@ -565,11 +582,41 @@ const nudgeConfigSaved = ref(nudgeSaved.configSaved);
 const nudgeNewMachine = ref(nudgeSaved.newMachine);
 const nudgeOverdue = ref(nudgeSaved.overdue);
 const nudgeOverdueDays = ref(nudgeSaved.overdueDays);
+const nudgeAutoRun = ref(nudgeSaved.autoRun);
+const nudgeAutoRunDestination = ref<BackupDestinationId | null>(nudgeSaved.autoRunDestination);
+
+// Which destinations an unattended auto-run can complete without a prompt (SCHEDULED-BACKUPS-PLAN.md
+// §4.2). Mirrors the same set in autoBackupNudges.ts - kept here rather than imported so the two
+// lists are each right next to the UI/logic they drive. "local" and "drive" are absent by design.
+const AUTO_RUN_ELIGIBLE: ReadonlyArray<BackupDestinationId> = ["duet", "github", "dropbox", "webdav"];
+
+/** Destination picker options: every real destination, with the ones that can't run unattended shown
+ * disabled-with-a-reason rather than hidden (§5.2 - a silently missing entry looks like a bug). */
+const autoRunDestinationItems = computed(() => DESTINATION_IDS.map((id) => {
+	const eligible = AUTO_RUN_ELIGIBLE.includes(id);
+	const encrypted = eligible && getEncryptPreference(id);
+	const label = i18n.global.t(DESTINATION_LABEL_KEYS[id]);
+	const reason = !eligible
+		? i18n.global.t("plugins.flexibleLayouts.configBackup.nudge.autoRunIneligibleReason")
+		: encrypted ? i18n.global.t("plugins.flexibleLayouts.configBackup.nudge.autoRunEncryptedReason") : "";
+	return { value: id, title: reason ? `${label} (${reason})` : label, props: { disabled: !eligible || encrypted } };
+}));
+
+/** Non-empty when the chosen destination has per-backup encryption on - an auto-run to it can never
+ * complete (§4.2), so say so inline rather than letting it silently do nothing. */
+const autoRunEncryptionConflict = computed(() => {
+	const d = nudgeAutoRunDestination.value;
+	if (!d || !nudgeAutoRun.value || !getEncryptPreference(d)) { return ""; }
+	return i18n.global.t("plugins.flexibleLayouts.configBackup.nudge.autoRunEncryptionConflict", {
+		destination: i18n.global.t(DESTINATION_LABEL_KEYS[d]),
+	});
+});
 
 function saveNudgeSettings(): void {
 	setAutoBackupNudgeSettings({
 		configSaved: nudgeConfigSaved.value, newMachine: nudgeNewMachine.value,
 		overdue: nudgeOverdue.value, overdueDays: nudgeOverdueDays.value || 1,
+		autoRun: nudgeAutoRun.value, autoRunDestination: nudgeAutoRunDestination.value,
 	});
 }
 

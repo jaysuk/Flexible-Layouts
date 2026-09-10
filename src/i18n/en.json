@@ -1737,7 +1737,25 @@
 			"newMachineTitle": "New machine detected",
 			"newMachineBody": "This machine hasn't been backed up before. Back it up now?",
 			"overdueTitle": "Backup overdue",
-			"overdueBody": "It's been {days} day(s) since your last backup."
+			"overdueBody": "It's been {days} day(s) since your last backup.",
+			"autoRunHeading": "Automatic backups",
+			"autoRunTrigger": "Back up automatically when overdue",
+			"autoRunNote": "When DWC is open and a backup is overdue, take one automatically. This can only happen while DWC is open in a browser - it is not a scheduled or unattended backup.",
+			"autoRunDestinationLabel": "Back up to",
+			"autoRunDestinationHint": "Only destinations that can back up without any prompts are listed. Google Drive and a local download always need you to act, so they can't run automatically.",
+			"autoRunIneligibleReason": "needs you to act each time",
+			"autoRunEncryptedReason": "encryption on - password not saved",
+			"autoRunEncryptionConflict": "{destination} has per-backup encryption turned on, and the backup password is never saved - so an automatic backup to it can't run. Turn off encryption for {destination} on the Create tab, or choose a different destination."
+		},
+		"autoRun": {
+			"startedTitle": "Automatic backup started",
+			"startedBody": "Backing up to {destination}…",
+			"okTitle": "Automatic backup complete",
+			"okBody": "Backed up to {destination}.",
+			"failedTitle": "Automatic backup failed",
+			"failedBody": "Couldn't back up to {destination} - {message}",
+			"failedRepeatedlyTitle": "Automatic backups keep failing",
+			"failedRepeatedlyBody": "The last {count} automatic backups to {destination} have failed - {message}. Check that destination's connection settings."
 		}
 	},
 	"canAddress": {
