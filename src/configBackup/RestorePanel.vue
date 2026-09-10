@@ -284,6 +284,7 @@ import { buildArchive, computeMachineKey, readArchive } from "dwc-config-backup-
 import { decryptArchiveBlob, DecryptError, isEncryptedArchiveBlob } from "dwc-config-backup-core";
 import { collectAll, walkDirectory } from "dwc-config-backup-core";
 import { defaultMachineIO } from "../model/configBackup/machineIO";
+import { CLOUD_SOURCE_IDS, type CloudSourceId } from "../model/configBackup/constants";
 import { BACKUP_DIR_KINDS, DEFAULT_MAX_FILE_BYTES, DIR_FOLDER } from "dwc-config-backup-core";
 import type { BackupDirKind } from "dwc-config-backup-core";
 import { backupFilename, downloadArchive } from "dwc-config-backup-core/destinations/localZip";
@@ -358,10 +359,8 @@ const props = defineProps<{ active?: boolean }>();
 const refreshTick = ref(0);
 watch(() => props.active, (active) => { if (active) { refreshTick.value++; } });
 
-type CloudSourceId = "duet" | "github" | "dropbox" | "webdav" | "drive";
 const sourceMode = ref<"local" | CloudSourceId>("local");
 
-const CLOUD_SOURCE_IDS: Array<CloudSourceId> = ["duet", "github", "dropbox", "webdav", "drive"];
 const CLOUD_SOURCE_LABEL_KEYS: Record<CloudSourceId, string> = {
 	duet: "plugins.flexibleLayouts.configBackup.cloud.duetHeading",
 	github: "plugins.flexibleLayouts.configBackup.github.heading",

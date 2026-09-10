@@ -13,6 +13,12 @@ export const CONFIG_BACKUP_ROUTE_PATH = "/Plugins/FlexibleLayouts/ConfigBackup";
 /** Every destination the Create tab offers, in display order. */
 export const DESTINATION_IDS: Array<BackupDestinationId> = ["local", "duet", "github", "drive", "dropbox", "webdav"];
 
+/** The Restore tab's cloud source picker - the same set and ORDER as the Create tab minus "local"
+ *  (Restore handles a local zip as its own separate option). Derived, not hand-maintained, so the two
+ *  pickers can't drift apart again (they had, with Drive appended to the end of one but not the other). */
+export type CloudSourceId = Exclude<BackupDestinationId, "local">;
+export const CLOUD_SOURCE_IDS: Array<CloudSourceId> = DESTINATION_IDS.filter((id): id is CloudSourceId => id !== "local");
+
 /** i18n keys for each destination's display label - shared between `BackupCreatePanel.vue` (the
  * destination picker) and `runBackup.ts` (error messages like "GitHub isn't configured yet"), so both
  * agree on the exact same wording. */
