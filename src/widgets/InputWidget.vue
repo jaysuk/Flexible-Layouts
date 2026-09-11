@@ -7,7 +7,7 @@
 			<v-text-field v-model="val" :type="widget.inputKind === 'number' ? 'number' : 'text'"
 						  density="compact" variant="outlined" hide-details
 						  :disabled="uiStore.uiFrozen || disabled" @keyup.enter="send" />
-			<v-btn icon="mdi-send" :color="widget.color || 'primary'" variant="flat" size="small"
+			<v-btn icon="mdi-send" :color="overrideColor || widget.color || 'primary'" variant="flat" size="small"
 				   :disabled="uiStore.uiFrozen || disabled" :loading="busy"
 				   :title="$t('plugins.flexibleLayouts.widgets.send')" @click="send" />
 		</div>
@@ -29,7 +29,7 @@ import type { Widget } from "../model/document";
 import { applyInputModifier, invertLinear } from "../util/inputModifier";
 import { resolveOmPath } from "../util/omPath";
 
-const props = defineProps<{ widget: Extract<Widget, { type: "input" }>; disabled?: boolean }>();
+const props = defineProps<{ widget: Extract<Widget, { type: "input" }>; overrideColor?: string; disabled?: boolean }>();
 
 const machineStore = useMachineStore();
 const uiStore = useUiStore();

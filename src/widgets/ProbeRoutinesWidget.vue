@@ -27,7 +27,7 @@
 					<div v-if="masterProbedZ !== null" class="text-caption text-medium-emphasis mb-2">
 						{{ $t("plugins.flexibleLayouts.probeRoutines.masterSet", { z: masterProbedZ.toFixed(3) }) }}
 					</div>
-					<v-btn block :color="widget.color || 'primary'" :loading="busy === 'tool'"
+					<v-btn block :color="overrideColor || widget.color || 'primary'" :loading="busy === 'tool'"
 						   :disabled="disabledNow || masterProbedZ === null" @click="probeToolAndApply">
 						{{ $t("plugins.flexibleLayouts.probeRoutines.probeToolApply") }}
 					</v-btn>
@@ -59,7 +59,7 @@
 						<v-col cols="6"><v-text-field v-model.number="rotationCentreX" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.probeRoutines.centreX')" :disabled="disabledNow" /></v-col>
 						<v-col cols="6"><v-text-field v-model.number="rotationCentreY" type="number" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.probeRoutines.centreY')" :disabled="disabledNow" /></v-col>
 					</v-row>
-					<v-btn block :color="widget.color || 'primary'" :disabled="disabledNow || skewAngle === null" @click="applyRotation">
+					<v-btn block :color="overrideColor || widget.color || 'primary'" :disabled="disabledNow || skewAngle === null" @click="applyRotation">
 						{{ $t("plugins.flexibleLayouts.probeRoutines.applyRotation") }}
 					</v-btn>
 				</template>
@@ -80,7 +80,7 @@
 					<div v-if="boreCentre" class="text-caption text-medium-emphasis mb-2">
 						{{ $t("plugins.flexibleLayouts.probeRoutines.boreCentre", { x: boreCentre.x.toFixed(3), y: boreCentre.y.toFixed(3) }) }}
 					</div>
-					<v-btn block :color="widget.color || 'primary'" :disabled="disabledNow || !boreCentre" @click="applyBoreCentre">
+					<v-btn block :color="overrideColor || widget.color || 'primary'" :disabled="disabledNow || !boreCentre" @click="applyBoreCentre">
 						{{ $t("plugins.flexibleLayouts.probeRoutines.moveToCentreZero") }}
 					</v-btn>
 				</template>
@@ -103,7 +103,7 @@
 					<div v-if="edgeTouched !== null" class="text-caption text-medium-emphasis mb-2">
 						{{ $t("plugins.flexibleLayouts.probeRoutines.edgeTouched", { value: edgeTouched.toFixed(3) }) }}
 					</div>
-					<v-btn block :color="widget.color || 'primary'" :disabled="disabledNow || edgeTouched === null" @click="applyEdgeOffset">
+					<v-btn block :color="overrideColor || widget.color || 'primary'" :disabled="disabledNow || edgeTouched === null" @click="applyEdgeOffset">
 						{{ $t("plugins.flexibleLayouts.probeRoutines.setWorkOffset") }}
 					</v-btn>
 				</template>
@@ -172,7 +172,7 @@ import { unhomedAxes } from "../util/homedCheck";
 import { WIDGET_PATCH_KEY } from "../util/widgetPatch";
 import UnhomedWarning from "./UnhomedWarning.vue";
 
-const props = defineProps<{ widget: Extract<Widget, { type: "probeRoutines" }>; disabled?: boolean }>();
+const props = defineProps<{ widget: Extract<Widget, { type: "probeRoutines" }>; overrideColor?: string; disabled?: boolean }>();
 const machineStore = useMachineStore();
 const uiStore = useUiStore();
 const patch = inject(WIDGET_PATCH_KEY, null);

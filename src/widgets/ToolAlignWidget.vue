@@ -31,7 +31,7 @@
     <div class="ta-tools d-flex flex-wrap align-center ga-1 px-1 pt-1 flex-shrink-0">
       <v-btn v-for="t in tools" :key="t.number" size="small" class="text-none ta-btn"
              :variant="t.number === current ? 'flat' : 'tonal'"
-             :color="t.number === current ? (widget.color || 'primary') : undefined"
+             :color="t.number === current ? ((overrideColor || widget.color) || 'primary') : undefined"
              :disabled="disabledNow" @click="select(t.number)">
         {{ t.name || ("T" + t.number) }}
         <v-icon v-if="t.number === widget.referenceTool" size="14" class="ml-1" :title="$t('plugins.flexibleLayouts.toolAlign.reference')">mdi-target</v-icon>
@@ -149,7 +149,7 @@ import { type AxisCapture, computeToolOffset, formatG10, type ToolOffset } from 
 import { resolveOmPath } from "../util/omPath";
 import { unhomedAxes } from "../util/homedCheck";
 
-const props = defineProps<{ widget: Extract<Widget, { type: "toolAlign" }>; disabled?: boolean }>();
+const props = defineProps<{ widget: Extract<Widget, { type: "toolAlign" }>; overrideColor?: string; disabled?: boolean }>();
 const machineStore = useMachineStore();
 const uiStore = useUiStore();
 

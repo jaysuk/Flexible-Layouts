@@ -13,7 +13,7 @@
     </div>
 
     <div class="prb-ops flex-grow-1">
-      <v-btn v-for="op in ops" :key="op.id" size="small" variant="tonal" :color="widget.color || 'primary'"
+      <v-btn v-for="op in ops" :key="op.id" size="small" variant="tonal" :color="overrideColor || widget.color || 'primary'"
              class="prb-btn" :disabled="disabledNow" :prepend-icon="op.icon" @click="trigger(op.id)">
         {{ op.label }}
       </v-btn>
@@ -50,7 +50,7 @@ import { unhomedAxes } from "../util/homedCheck";
 import { WIDGET_PATCH_KEY } from "../util/widgetPatch";
 import UnhomedWarning from "./UnhomedWarning.vue";
 
-const props = defineProps<{ widget: Extract<Widget, { type: "probe" }>; disabled?: boolean }>();
+const props = defineProps<{ widget: Extract<Widget, { type: "probe" }>; overrideColor?: string; disabled?: boolean }>();
 const machineStore = useMachineStore();
 const uiStore = useUiStore();
 const patch = inject(WIDGET_PATCH_KEY, null);

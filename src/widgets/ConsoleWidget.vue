@@ -1,6 +1,6 @@
 <template>
   <div class="cn-root fill-height d-flex flex-column pa-1" :class="{ 'cn-frozen': disabledNow }"
-       :style="widget.color ? { '--cn-color': resolveColor(widget.color) } : {}">
+       :style="(overrideColor || widget.color) ? { '--cn-color': resolveColor(overrideColor || widget.color) } : {}">
     <div ref="log" class="cn-log flex-grow-1">
       <div v-for="(m, i) in entries" :key="i" class="cn-entry" :class="`cn-${m.type}`">
         <div v-if="m.title" class="cn-title">{{ m.title }}</div>
@@ -40,7 +40,7 @@ import type { Widget } from "../model/document";
 import { useAutoScroll, useConsoleEntries, useConsoleSend } from "../util/consoleLog";
 import { resolveColor } from "../util/color";
 
-const props = defineProps<{ widget: Extract<Widget, { type: "console" }>; disabled?: boolean }>();
+const props = defineProps<{ widget: Extract<Widget, { type: "console" }>; overrideColor?: string; disabled?: boolean }>();
 const uiStore = useUiStore();
 
 const disabledNow = computed(() => props.disabled || uiStore.uiFrozen);

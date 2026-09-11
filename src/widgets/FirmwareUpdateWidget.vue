@@ -20,7 +20,7 @@
 						 class="mt-1 flex-shrink-0" @click:close="dismissAvailableUpdate">
 					{{ $t("plugins.flexibleLayouts.firmwareUpdate.updateAvailable", { version: availableUpdate.tag, running: main.firmwareVersion }) }}
 					<template #append>
-						<v-btn size="x-small" variant="tonal" @click="viewAvailableUpdate">
+						<v-btn size="x-small" variant="tonal" :color="overrideColor || widget.color" @click="viewAvailableUpdate">
 							{{ $t("plugins.flexibleLayouts.firmwareUpdate.viewUpdate") }}
 						</v-btn>
 					</template>
@@ -29,7 +29,7 @@
 				<div class="d-flex ga-1 align-center flex-shrink-0 mt-1 flex-wrap">
 					<v-select v-model="sourceId" :items="sourceItems" density="compact" variant="outlined" hide-details
 							  class="fuw-source" :label="$t('plugins.flexibleLayouts.firmwareUpdate.source')" @update:model-value="onSourceChanged" />
-					<v-btn v-if="sourceId !== 'duet3d' || !blockSbcDuetFlow" size="small" :loading="listing" @click="loadReleases">
+					<v-btn v-if="sourceId !== 'duet3d' || !blockSbcDuetFlow" size="small" :color="overrideColor || widget.color" :loading="listing" @click="loadReleases">
 						{{ releases.length ? $t("plugins.flexibleLayouts.firmwareUpdate.refresh") : $t("plugins.flexibleLayouts.firmwareUpdate.list") }}
 					</v-btn>
 					<v-checkbox v-model="includePrereleases" density="compact" hide-details
@@ -174,7 +174,7 @@ import { useFirmwareInstallController } from "@/composables/useFirmwareInstallCo
 
 type SourceId = "duet3d" | "gloomyandy36" | "gloomyandy37" | "dwc";
 
-const props = defineProps<{ widget: Extract<Widget, { type: "firmwareUpdate" }> }>();
+const props = defineProps<{ widget: Extract<Widget, { type: "firmwareUpdate" }>; overrideColor?: string }>();
 const machineStore = useMachineStore();
 const uiStore = useUiStore();
 const patch = inject(WIDGET_PATCH_KEY, null);

@@ -8,7 +8,7 @@
 						  placeholder="0:/gcodes/part.gcode" @change="patch?.({ defaultFile: filePath })" />
 			<v-btn icon="mdi-file-find-outline" size="small" variant="tonal" density="comfortable"
 				   :title="$t('plugins.flexibleLayouts.filePicker.title')" @click="pickerOpen = true" />
-			<v-btn size="small" :color="widget.color || 'primary'" :loading="checking" :disabled="!filePath"
+			<v-btn size="small" :color="overrideColor || widget.color || 'primary'" :loading="checking" :disabled="!filePath"
 				   @click="runCheck">{{ $t("plugins.flexibleLayouts.preflight.check") }}</v-btn>
 		</div>
 
@@ -71,7 +71,7 @@ import { getToolTable, setToolTable, type ToolTableEntry, type ToolType } from "
 import { WIDGET_PATCH_KEY } from "../util/widgetPatch";
 import GcodeFilePickerDialog from "./GcodeFilePickerDialog.vue";
 
-const props = defineProps<{ widget: Extract<Widget, { type: "preflight" }> }>();
+const props = defineProps<{ widget: Extract<Widget, { type: "preflight" }>; overrideColor?: string }>();
 const machineStore = useMachineStore();
 const uiStore = useUiStore();
 const patch = inject(WIDGET_PATCH_KEY, null);

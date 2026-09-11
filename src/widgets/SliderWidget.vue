@@ -5,7 +5,7 @@
       <v-spacer />
       <span class="sl-val">{{ displayValue }}{{ widget.unit || "" }}</span>
     </div>
-    <v-slider :model-value="position" :min="min" :max="max" :step="step" :color="widget.color || 'primary'"
+    <v-slider :model-value="position" :min="min" :max="max" :step="step" :color="(overrideColor || widget.color) || 'primary'"
               density="compact" hide-details thumb-size="14" :disabled="disabledNow"
               @update:model-value="onInput" @end="onEnd" />
   </div>
@@ -20,7 +20,7 @@ import { LogLevel, useUiStore } from "@/stores/ui";
 import type { Widget } from "../model/document";
 import { resolveOmPath } from "../util/omPath";
 
-const props = defineProps<{ widget: Extract<Widget, { type: "slider" }>; disabled?: boolean }>();
+const props = defineProps<{ widget: Extract<Widget, { type: "slider" }>; overrideColor?: string; disabled?: boolean }>();
 
 const machineStore = useMachineStore();
 const uiStore = useUiStore();

@@ -17,7 +17,7 @@
 					<tr v-for="row in rows" :key="row.code" :class="{ 'wt-active': row.index === activeWcs }">
 						<td>
 							<v-btn size="x-small" :variant="row.index === activeWcs ? 'flat' : 'text'"
-								   :color="row.index === activeWcs ? (widget.color || 'primary') : undefined"
+								   :color="row.index === activeWcs ? (overrideColor || widget.color || 'primary') : undefined"
 								   :disabled="disabledNow" class="wt-code" @click="selectWcs(row.index)">{{ row.code }}</v-btn>
 						</td>
 						<td>
@@ -46,7 +46,7 @@
 			<v-icon size="16">mdi-arrow-right</v-icon>
 			<v-select v-model="copyTo" :items="wcsItems" density="compact" variant="outlined" hide-details
 					  class="wt-copy-select" :disabled="disabledNow" />
-			<v-btn size="small" variant="tonal" :color="widget.color || 'primary'" :disabled="disabledNow || copyFrom === copyTo" @click="copyOffsets">
+			<v-btn size="small" variant="tonal" :color="overrideColor || widget.color || 'primary'" :disabled="disabledNow || copyFrom === copyTo" @click="copyOffsets">
 				{{ $t("plugins.flexibleLayouts.wcsTable.copyButton") }}
 			</v-btn>
 		</div>
@@ -66,7 +66,7 @@
 							  class="wt-rot-field" :label="$t('plugins.flexibleLayouts.wcsTable.centreX')" :disabled="disabledNow" />
 				<v-text-field v-model.number="rotCentreY" type="number" step="any" density="compact" variant="outlined" hide-details
 							  class="wt-rot-field" :label="$t('plugins.flexibleLayouts.wcsTable.centreY')" :disabled="disabledNow" />
-				<v-btn size="small" variant="tonal" :color="widget.color || 'primary'" :disabled="disabledNow" @click="applyRotation">
+				<v-btn size="small" variant="tonal" :color="overrideColor || widget.color || 'primary'" :disabled="disabledNow" @click="applyRotation">
 					{{ $t("plugins.flexibleLayouts.wcsTable.applyRotation") }}
 				</v-btn>
 				<v-btn v-if="rotationActive" size="small" variant="text" :disabled="disabledNow" @click="clearRotation">
@@ -88,7 +88,7 @@ import { resolveOmPath } from "../util/omPath";
 import { unhomedAxes } from "../util/homedCheck";
 import UnhomedWarning from "./UnhomedWarning.vue";
 
-const props = defineProps<{ widget: Extract<Widget, { type: "wcsTable" }>; disabled?: boolean }>();
+const props = defineProps<{ widget: Extract<Widget, { type: "wcsTable" }>; overrideColor?: string; disabled?: boolean }>();
 const machineStore = useMachineStore();
 const uiStore = useUiStore();
 

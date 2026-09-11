@@ -22,7 +22,7 @@
 			</div>
 		</div>
 
-		<v-btn block class="flex-shrink-0 mt-2" :color="widget.color || 'primary'" prepend-icon="mdi-square-outline"
+		<v-btn block class="flex-shrink-0 mt-2" :color="overrideColor || widget.color || 'primary'" prepend-icon="mdi-square-outline"
 			   :loading="running" :disabled="disabledNow" @click="trigger">
 			{{ $t("plugins.flexibleLayouts.bedTram.run") }}
 		</v-btn>
@@ -56,7 +56,7 @@ import type { Widget } from "../model/document";
 import { unhomedAxes } from "../util/homedCheck";
 import UnhomedWarning from "./UnhomedWarning.vue";
 
-const props = defineProps<{ widget: Extract<Widget, { type: "bedTram" }>; disabled?: boolean }>();
+const props = defineProps<{ widget: Extract<Widget, { type: "bedTram" }>; overrideColor?: string; disabled?: boolean }>();
 const machineStore = useMachineStore();
 const uiStore = useUiStore();
 

@@ -8,7 +8,7 @@
         <span class="ex-sub">{{ $t("plugins.flexibleLayouts.extruder.amount") }}</span>
         <div class="d-flex flex-wrap ga-1">
           <v-chip v-for="a in amounts" :key="a" size="x-small" :variant="a === amount ? 'flat' : 'tonal'"
-                  :color="a === amount ? (widget.color || 'primary') : undefined" @click="amount = a">{{ a }}</v-chip>
+                  :color="a === amount ? (overrideColor || widget.color || 'primary') : undefined" @click="amount = a">{{ a }}</v-chip>
         </div>
       </div>
 
@@ -52,9 +52,9 @@
         <span class="text-truncate">{{ $t("plugins.flexibleLayouts.extruder.coldWarning", { temp: hotendTemp!.toFixed(0) }) }}</span>
       </div>
       <div class="d-flex ga-1 mt-1">
-        <v-btn size="small" variant="tonal" :color="belowExtrudeTemp ? 'warning' : (widget.color || 'primary')" class="flex-grow-1" :disabled="disabledNow"
+        <v-btn size="small" variant="tonal" :color="belowExtrudeTemp ? 'warning' : (overrideColor || widget.color || 'primary')" class="flex-grow-1" :disabled="disabledNow"
                prepend-icon="mdi-arrow-down" @click="move(1)">{{ $t("plugins.flexibleLayouts.extruder.extrude") }}</v-btn>
-        <v-btn size="small" variant="tonal" :color="belowRetractTemp ? 'warning' : (widget.color || 'primary')" class="flex-grow-1" :disabled="disabledNow"
+        <v-btn size="small" variant="tonal" :color="belowRetractTemp ? 'warning' : (overrideColor || widget.color || 'primary')" class="flex-grow-1" :disabled="disabledNow"
                prepend-icon="mdi-arrow-up" @click="move(-1)">{{ $t("plugins.flexibleLayouts.extruder.retract") }}</v-btn>
       </div>
     </div>
@@ -73,7 +73,7 @@ interface Extruder { filamentDiameter?: number }
 interface Tool { extruders?: Array<number>; heaters?: Array<number> }
 interface Heater { current?: number }
 
-const props = defineProps<{ widget: Extract<Widget, { type: "extruder" }>; disabled?: boolean }>();
+const props = defineProps<{ widget: Extract<Widget, { type: "extruder" }>; overrideColor?: string; disabled?: boolean }>();
 const machineStore = useMachineStore();
 const uiStore = useUiStore();
 

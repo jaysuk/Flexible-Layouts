@@ -27,7 +27,7 @@
 						  :hint="$t('plugins.flexibleLayouts.surfacing.spindleRpmHint')" persistent-hint :disabled="disabledNow" @change="patch?.({ spindleRpm })" />
 		</div>
 
-		<v-btn block class="flex-shrink-0 mt-2" :color="widget.color || 'primary'" prepend-icon="mdi-layers-triple-outline"
+		<v-btn block class="flex-shrink-0 mt-2" :color="(overrideColor || widget.color) || 'primary'" prepend-icon="mdi-layers-triple-outline"
 			   :disabled="disabledNow || !paramsValid" @click="trigger">
 			{{ $t("plugins.flexibleLayouts.surfacing.run") }}
 		</v-btn>
@@ -68,7 +68,7 @@ import { unhomedAxes } from "../util/homedCheck";
 import { WIDGET_PATCH_KEY } from "../util/widgetPatch";
 import UnhomedWarning from "./UnhomedWarning.vue";
 
-const props = defineProps<{ widget: Extract<Widget, { type: "surfacing" }>; disabled?: boolean }>();
+const props = defineProps<{ widget: Extract<Widget, { type: "surfacing" }>; overrideColor?: string; disabled?: boolean }>();
 const machineStore = useMachineStore();
 const uiStore = useUiStore();
 const patch = inject(WIDGET_PATCH_KEY, null);

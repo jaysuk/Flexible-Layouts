@@ -49,7 +49,7 @@
 		</div>
 
 		<div class="d-flex align-center ga-2 flex-shrink-0">
-			<v-btn size="small" variant="tonal" :color="widget.color || 'primary'" class="flex-grow-1" prepend-icon="mdi-open-in-new" @click="open">
+			<v-btn size="small" variant="tonal" :color="overrideColor || widget.color || 'primary'" class="flex-grow-1" prepend-icon="mdi-open-in-new" @click="open">
 				{{ $t("plugins.flexibleLayouts.maintenance.title") }}
 			</v-btn>
 			<!-- Item H: a single count badge, not per-rule detail - that lives on the full page. -->
@@ -75,7 +75,7 @@ import { computeDueStatus } from "../model/reminders/dueStatus";
 import { getIntervalRules } from "../model/reminders/storage";
 import { resolveOmPath } from "../util/omPath";
 
-defineProps<{ widget: Extract<Widget, { type: "maintenanceWidget" }> }>();
+defineProps<{ widget: Extract<Widget, { type: "maintenanceWidget" }>; overrideColor?: string }>();
 const machineStore = useMachineStore();
 const router = useRouter();
 

@@ -149,6 +149,7 @@ import UnhomedWarning from "./UnhomedWarning.vue";
 
 const props = defineProps<{
 	widget: Extract<Widget, { type: "octopusJog" }>;
+	overrideColor?: string;
 	disabled?: boolean;
 }>();
 
@@ -185,7 +186,7 @@ const xAxisLetter = computed(() => props.widget.xAxis ?? "X");
 const yAxisLetter = computed(() => props.widget.yAxis ?? "Y");
 const zAxisLetter = computed(() => props.widget.zAxis ?? "Z");
 const zSign       = computed(() => props.widget.invertZ ? -1 : 1);
-const sectorFill  = computed(() => resolveColor(props.widget.color));
+const sectorFill  = computed(() => resolveColor(props.overrideColor || props.widget.color));
 const axisBtnStyle = computed(() => ({ color: sectorFill.value }));
 
 const xFeed = computed({

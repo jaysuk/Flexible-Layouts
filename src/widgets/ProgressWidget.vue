@@ -5,7 +5,7 @@
       <v-spacer />
       <span v-if="widget.showValue !== false" class="pr-val">{{ pctText }}%</span>
     </div>
-    <v-progress-linear :model-value="pct" :color="widget.color || 'primary'" height="10" rounded />
+    <v-progress-linear :model-value="pct" :color="(overrideColor || widget.color) || 'primary'" height="10" rounded />
   </div>
 </template>
 
@@ -17,7 +17,7 @@ import { useMachineStore } from "@/stores/machine";
 import type { Widget } from "../model/document";
 import { resolveOmPath } from "../util/omPath";
 
-const props = defineProps<{ widget: Extract<Widget, { type: "progress" }>; disabled?: boolean }>();
+const props = defineProps<{ widget: Extract<Widget, { type: "progress" }>; overrideColor?: string; disabled?: boolean }>();
 const machineStore = useMachineStore();
 
 const pct = computed(() => {

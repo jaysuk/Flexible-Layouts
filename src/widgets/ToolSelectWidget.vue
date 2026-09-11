@@ -4,10 +4,10 @@
     <UnhomedWarning :axes="unhomedNow" class="mt-1" />
     <div class="d-flex flex-wrap ga-1 mt-1">
       <v-btn v-for="t in tools" :key="t.number" size="small" :variant="t.number === current ? 'flat' : 'tonal'"
-             :color="t.number === current ? (widget.color || 'primary') : undefined" :disabled="disabledNow"
+             :color="t.number === current ? (overrideColor || widget.color || 'primary') : undefined" :disabled="disabledNow"
              class="ts-btn text-none" @click="select(t.number)">{{ t.name || ("T" + t.number) }}</v-btn>
       <v-btn v-if="tools.length" size="small" :variant="current === -1 ? 'flat' : 'tonal'"
-             :color="current === -1 ? (widget.color || 'primary') : undefined" :disabled="disabledNow"
+             :color="current === -1 ? (overrideColor || widget.color || 'primary') : undefined" :disabled="disabledNow"
              class="ts-btn text-none" prepend-icon="mdi-close"
              :title="$t('plugins.flexibleLayouts.toolSelect.none')" @click="select(-1)">T-1</v-btn>
     </div>
@@ -26,7 +26,7 @@ import { resolveOmPath } from "../util/omPath";
 import { unhomedAxes } from "../util/homedCheck";
 import UnhomedWarning from "./UnhomedWarning.vue";
 
-const props = defineProps<{ widget: Extract<Widget, { type: "toolSelect" }>; disabled?: boolean }>();
+const props = defineProps<{ widget: Extract<Widget, { type: "toolSelect" }>; overrideColor?: string; disabled?: boolean }>();
 const machineStore = useMachineStore();
 const uiStore = useUiStore();
 

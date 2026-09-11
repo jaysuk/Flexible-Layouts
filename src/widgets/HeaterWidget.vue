@@ -3,11 +3,11 @@
     <div class="d-flex align-baseline">
       <span class="ht-label text-truncate">{{ widget.label }}</span>
       <v-spacer />
-      <span class="ht-cur">{{ current }}<span class="ht-unit">°C</span></span>
+      <span class="ht-cur" :style="readingStyle">{{ current }}<span class="ht-unit">°C</span></span>
     </div>
     <div class="ht-target text-medium-emphasis">→ {{ active }}<span v-if="state"> · {{ state }}</span></div>
     <div class="ht-presets mt-1">
-      <v-btn v-for="p in widget.presets || []" :key="p" size="x-small" variant="tonal" :color="widget.color || 'primary'"
+      <v-btn v-for="p in widget.presets || []" :key="p" size="x-small" variant="tonal" :color="effectiveColor || 'primary'"
              class="ht-btn" :disabled="disabledNow" @click="setTarget(p)">{{ p }}°</v-btn>
       <v-btn size="x-small" variant="tonal" color="error" class="ht-btn" :disabled="disabledNow" @click="off">
         {{ $t("plugins.flexibleLayouts.heater.off") }}
@@ -23,14 +23,23 @@ import { useMachineStore } from "@/stores/machine";
 import { LogLevel, useUiStore } from "@/stores/ui";
 
 import type { Widget } from "../model/document";
+import { resolveColor } from "../util/color";
 import { resolveOmPath } from "../util/omPath";
 
-const props = defineProps<{ widget: Extract<Widget, { type: "heater" }>; disabled?: boolean }>();
+const props = defineProps<{ widget: Extract<Widget, { type: "heater" }>; overrideColor?: string; disabled?: boolean }>();
 const machineStore = useMachineStore();
 const uiStore = useUiStore();
 
 const disabledNow = computed(() => props.disabled || uiStore.uiFrozen);
 const base = computed(() => props.widget.omPath ?? "");
+
+// A grid item's Conditional behaviour rule (FlexGridItem.vue's `overrideColor`) takes precedence over
+// this widget's own static colour setting - same convention as ValueWidget/LabelWidget/
+// CommandButtonWidget. Previously this widget never received `overrideColor` at all (WidgetView.vue
+// didn't pass it), AND `widget.color` itself only ever tinted the preset buttons below, never the
+// live reading - so a "recolour when overheating" rule had no visible effect whatsoever.
+const effectiveColor = computed(() => props.overrideColor || props.widget.color);
+const readingStyle = computed(() => (effectiveColor.value ? { color: resolveColor(effectiveColor.value) } : {}));
 
 function num(path: string): number | null {
   const v = resolveOmPath(machineStore.model, path);

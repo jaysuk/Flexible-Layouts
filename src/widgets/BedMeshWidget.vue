@@ -9,7 +9,7 @@
 					  :disabled="disabledNow || filesLoading" @update:model-value="onSelectFile" />
 			<v-btn icon="mdi-refresh" size="small" variant="text" :disabled="disabledNow" :loading="filesLoading"
 				   :title="$t('plugins.flexibleLayouts.bedMesh.refresh')" @click="refreshFiles" />
-			<v-btn icon="mdi-content-save" size="small" variant="text" color="primary" :disabled="disabledNow || !dirty"
+			<v-btn icon="mdi-content-save" size="small" variant="text" :color="overrideColor || widget.color || 'primary'" :disabled="disabledNow || !dirty"
 				   :loading="saving" :title="$t('plugins.flexibleLayouts.bedMesh.save')" @click="onSave" />
 			<v-btn icon="mdi-undo" size="small" variant="text" :disabled="disabledNow || !dirty"
 				   :title="$t('plugins.flexibleLayouts.bedMesh.discard')" @click="discard" />
@@ -132,7 +132,7 @@ import { unhomedAxes } from "../util/homedCheck";
 import { WIDGET_PATCH_KEY } from "../util/widgetPatch";
 import UnhomedWarning from "./UnhomedWarning.vue";
 
-const props = defineProps<{ widget: Extract<Widget, { type: "bedMesh" }>; disabled?: boolean }>();
+const props = defineProps<{ widget: Extract<Widget, { type: "bedMesh" }>; overrideColor?: string; disabled?: boolean }>();
 const machineStore = useMachineStore();
 const uiStore = useUiStore();
 const io = defaultMachineIO();

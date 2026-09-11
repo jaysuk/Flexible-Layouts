@@ -899,6 +899,7 @@ export type Widget =
 	| {
 		/** The current Access level (Observer/Operator/Admin) - click to log in or lock. */
 		type: "accessChip";
+		color?: string;
 	};
 
 /**

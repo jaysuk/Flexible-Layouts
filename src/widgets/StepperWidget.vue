@@ -2,10 +2,10 @@
   <div class="st-root fill-height d-flex flex-column justify-center px-2" :class="{ 'st-frozen': disabledNow }">
     <span v-if="widget.label" class="st-label text-truncate text-center">{{ widget.label }}</span>
     <div class="d-flex align-center justify-center ga-1">
-      <v-btn :icon="widget.minusIcon || 'mdi-minus'" size="small" variant="tonal" :color="widget.color || 'primary'"
+      <v-btn :icon="widget.minusIcon || 'mdi-minus'" size="small" variant="tonal" :color="(overrideColor || widget.color) || 'primary'"
              :disabled="disabledNow" @click="bump(-1)" />
       <span v-if="widget.showValue !== false" class="st-val text-center flex-grow-1">{{ displayValue }}<span v-if="widget.unit" class="st-unit">{{ widget.unit }}</span></span>
-      <v-btn :icon="widget.plusIcon || 'mdi-plus'" size="small" variant="tonal" :color="widget.color || 'primary'"
+      <v-btn :icon="widget.plusIcon || 'mdi-plus'" size="small" variant="tonal" :color="(overrideColor || widget.color) || 'primary'"
              :disabled="disabledNow" @click="bump(1)" />
     </div>
   </div>
@@ -20,7 +20,7 @@ import { LogLevel, useUiStore } from "@/stores/ui";
 import type { Widget } from "../model/document";
 import { resolveOmPath } from "../util/omPath";
 
-const props = defineProps<{ widget: Extract<Widget, { type: "stepper" }>; disabled?: boolean }>();
+const props = defineProps<{ widget: Extract<Widget, { type: "stepper" }>; overrideColor?: string; disabled?: boolean }>();
 
 const machineStore = useMachineStore();
 const uiStore = useUiStore();

@@ -25,7 +25,7 @@
         </button>
       </template>
       <template v-else>
-        <v-btn v-for="f in files" :key="'f:' + f.name" size="small" variant="tonal" :color="widget.color || 'primary'"
+        <v-btn v-for="f in files" :key="'f:' + f.name" size="small" variant="tonal" :color="overrideColor || widget.color || 'primary'"
                class="text-none fl-btn" :disabled="disabledNow" prepend-icon="mdi-file-outline"
                @click="start(f.name)">{{ f.name }}</v-btn>
       </template>
@@ -42,7 +42,7 @@ import { LogLevel, useUiStore } from "@/stores/ui";
 
 import type { Widget } from "../model/document";
 
-const props = defineProps<{ widget: Extract<Widget, { type: "files" }>; disabled?: boolean }>();
+const props = defineProps<{ widget: Extract<Widget, { type: "files" }>; overrideColor?: string; disabled?: boolean }>();
 const machineStore = useMachineStore();
 const uiStore = useUiStore();
 

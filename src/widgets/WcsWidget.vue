@@ -18,16 +18,16 @@
         <button v-else type="button" class="wcs-pos" :disabled="disabledNow"
                 :title="$t('plugins.flexibleLayouts.wcs.editHint')" @click="startEdit(a.letter)">{{ a.work }}</button>
         <span v-if="showMachine" class="wcs-mpos">{{ a.machine }}</span>
-        <v-btn size="x-small" variant="tonal" :color="widget.color || 'primary'" class="wcs-zero" :disabled="disabledNow"
+        <v-btn size="x-small" variant="tonal" :color="overrideColor || widget.color || 'primary'" class="wcs-zero" :disabled="disabledNow"
                :title="`${$t('plugins.flexibleLayouts.wcs.zero')} ${a.letter}`" @click="zeroAxis(a.letter)">0</v-btn>
       </div>
       <div v-if="!axisRows.length" class="text-medium-emphasis text-caption">{{ $t("plugins.flexibleLayouts.dro.none") }}</div>
     </div>
 
     <div class="d-flex ga-1 mt-1 flex-shrink-0">
-      <v-btn size="small" variant="tonal" :color="widget.color || 'primary'" class="flex-grow-1" :disabled="disabledNow"
+      <v-btn size="small" variant="tonal" :color="overrideColor || widget.color || 'primary'" class="flex-grow-1" :disabled="disabledNow"
              prepend-icon="mdi-crosshairs-gps" @click="zeroAll">{{ $t("plugins.flexibleLayouts.wcs.zeroHere") }}</v-btn>
-      <v-btn v-if="widget.goto !== false" size="small" variant="tonal" :color="widget.color || 'primary'"
+      <v-btn v-if="widget.goto !== false" size="small" variant="tonal" :color="overrideColor || widget.color || 'primary'"
              class="flex-grow-1" :disabled="disabledNow" prepend-icon="mdi-target"
              :title="$t('plugins.flexibleLayouts.wcs.gotoZeroHint')" @click="gotoWorkZero">
         {{ $t("plugins.flexibleLayouts.wcs.gotoZero") }}
@@ -51,7 +51,7 @@ import { resolveOmPath } from "../util/omPath";
 import { unhomedAxes } from "../util/homedCheck";
 import UnhomedWarning from "./UnhomedWarning.vue";
 
-const props = defineProps<{ widget: Extract<Widget, { type: "wcs" }>; disabled?: boolean }>();
+const props = defineProps<{ widget: Extract<Widget, { type: "wcs" }>; overrideColor?: string; disabled?: boolean }>();
 const machineStore = useMachineStore();
 const uiStore = useUiStore();
 

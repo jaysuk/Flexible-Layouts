@@ -46,7 +46,7 @@
       <!-- Target + per-LED pips -->
       <div v-if="widget.showPerLed !== false" class="np-pips-wrap mt-1">
         <v-chip size="x-small" :variant="target === 'all' ? 'flat' : 'tonal'"
-                :color="target === 'all' ? (widget.color || 'primary') : undefined"
+                :color="target === 'all' ? (overrideColor || widget.color || 'primary') : undefined"
                 class="mb-1" @click="target = 'all'">{{ $t("plugins.flexibleLayouts.neopixel.all") }}</v-chip>
         <div class="np-pips">
           <button v-for="(c, i) in colors" :key="i" type="button" class="np-pip"
@@ -55,7 +55,7 @@
         </div>
       </div>
 
-      <v-btn class="mt-1 flex-shrink-0" size="small" variant="flat" :color="widget.color || 'primary'"
+      <v-btn class="mt-1 flex-shrink-0" size="small" variant="flat" :color="overrideColor || widget.color || 'primary'"
              :disabled="disabledNow" block @click="apply">
         {{ $t("plugins.flexibleLayouts.neopixel.apply") }}
       </v-btn>
@@ -74,7 +74,7 @@ import type { Widget } from "../model/document";
 interface LedColor { r: number; g: number; b: number; w: number }
 interface Strip { type?: string; pin?: string; board?: number; stopMovement?: boolean }
 
-const props = defineProps<{ widget: Extract<Widget, { type: "neopixel" }>; disabled?: boolean }>();
+const props = defineProps<{ widget: Extract<Widget, { type: "neopixel" }>; overrideColor?: string; disabled?: boolean }>();
 
 const machineStore = useMachineStore();
 const uiStore = useUiStore();

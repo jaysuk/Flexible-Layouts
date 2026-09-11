@@ -4,44 +4,44 @@
 						 :override-color="overrideColor" :disabled="disabled" />
 	<ValueWidget v-else-if="widget.type === 'value'" :widget="widget" :override-color="overrideColor" />
 	<LabelWidget v-else-if="widget.type === 'label'" :widget="widget" :override-color="overrideColor" />
-	<InputWidget v-else-if="widget.type === 'input'" :widget="widget" :disabled="disabled" />
+	<InputWidget v-else-if="widget.type === 'input'" :widget="widget" :override-color="overrideColor" :disabled="disabled" />
 	<ChartWidget v-else-if="widget.type === 'chart'" :widget="widget" />
-	<JogWidget v-else-if="widget.type === 'jog'" :widget="widget" :disabled="disabled" />
-	<OctopusJogWidget v-else-if="widget.type === 'octopusJog'" :widget="widget" :disabled="disabled" />
-	<NeopixelWidget v-else-if="widget.type === 'neopixel'" :widget="widget" :disabled="disabled" />
+	<JogWidget v-else-if="widget.type === 'jog'" :widget="widget" :override-color="overrideColor" :disabled="disabled" />
+	<OctopusJogWidget v-else-if="widget.type === 'octopusJog'" :widget="widget" :override-color="overrideColor" :disabled="disabled" />
+	<NeopixelWidget v-else-if="widget.type === 'neopixel'" :widget="widget" :override-color="overrideColor" :disabled="disabled" />
 	<GlobalsWidget v-else-if="widget.type === 'globals'" :widget="widget" :disabled="disabled" />
-	<SliderWidget v-else-if="widget.type === 'slider'" :widget="widget" :disabled="disabled" />
-	<ToggleWidget v-else-if="widget.type === 'toggle'" :widget="widget" :disabled="disabled" />
-	<StepperWidget v-else-if="widget.type === 'stepper'" :widget="widget" :disabled="disabled" />
-	<ProgressWidget v-else-if="widget.type === 'progress'" :widget="widget" />
+	<SliderWidget v-else-if="widget.type === 'slider'" :widget="widget" :override-color="overrideColor" :disabled="disabled" />
+	<ToggleWidget v-else-if="widget.type === 'toggle'" :widget="widget" :override-color="overrideColor" :disabled="disabled" />
+	<StepperWidget v-else-if="widget.type === 'stepper'" :widget="widget" :override-color="overrideColor" :disabled="disabled" />
+	<ProgressWidget v-else-if="widget.type === 'progress'" :widget="widget" :override-color="overrideColor" />
 	<StatusWidget v-else-if="widget.type === 'status'" :widget="widget" />
 	<AlertWidget v-else-if="widget.type === 'alert'" :widget="widget" />
 	<WebcamWidget v-else-if="widget.type === 'webcam'" :widget="widget" />
-	<MacrosWidget v-else-if="widget.type === 'macros'" :widget="widget" :disabled="disabled" />
-	<ConsoleWidget v-else-if="widget.type === 'console'" :widget="widget" :disabled="disabled" />
+	<MacrosWidget v-else-if="widget.type === 'macros'" :widget="widget" :override-color="overrideColor" :disabled="disabled" />
+	<ConsoleWidget v-else-if="widget.type === 'console'" :widget="widget" :override-color="overrideColor" :disabled="disabled" />
 	<ConsoleInputWidget v-else-if="widget.type === 'consoleInput'" :widget="widget" :disabled="disabled" />
-	<HeaterWidget v-else-if="widget.type === 'heater'" :widget="widget" :disabled="disabled" />
+	<HeaterWidget v-else-if="widget.type === 'heater'" :widget="widget" :override-color="overrideColor" :disabled="disabled" />
 	<ClockWidget v-else-if="widget.type === 'clock'" :widget="widget" />
 	<ThumbnailWidget v-else-if="widget.type === 'thumbnail'" :widget="widget" />
 	<TableWidget v-else-if="widget.type === 'table'" :widget="widget" />
-	<ExtruderWidget v-else-if="widget.type === 'extruder'" :widget="widget" :disabled="disabled" />
-	<WcsWidget v-else-if="widget.type === 'wcs'" :widget="widget" :disabled="disabled" />
-	<WcsTableWidget v-else-if="widget.type === 'wcsTable'" :widget="widget" :disabled="disabled" />
-	<ProbeWidget v-else-if="widget.type === 'probe'" :widget="widget" :disabled="disabled" />
-	<BedMeshWidget v-else-if="widget.type === 'bedMesh'" :widget="widget" :disabled="disabled" />
-	<BedTramWidget v-else-if="widget.type === 'bedTram'" :widget="widget" :disabled="disabled" />
-	<XyzProbeWidget v-else-if="widget.type === 'xyzProbe'" :widget="widget" :disabled="disabled" />
-	<ProbeRoutinesWidget v-else-if="widget.type === 'probeRoutines'" :widget="widget" :disabled="disabled" />
-	<SurfacingWidget v-else-if="widget.type === 'surfacing'" :widget="widget" :disabled="disabled" />
+	<ExtruderWidget v-else-if="widget.type === 'extruder'" :widget="widget" :override-color="overrideColor" :disabled="disabled" />
+	<WcsWidget v-else-if="widget.type === 'wcs'" :widget="widget" :override-color="overrideColor" :disabled="disabled" />
+	<WcsTableWidget v-else-if="widget.type === 'wcsTable'" :widget="widget" :override-color="overrideColor" :disabled="disabled" />
+	<ProbeWidget v-else-if="widget.type === 'probe'" :widget="widget" :override-color="overrideColor" :disabled="disabled" />
+	<BedMeshWidget v-else-if="widget.type === 'bedMesh'" :widget="widget" :override-color="overrideColor" :disabled="disabled" />
+	<BedTramWidget v-else-if="widget.type === 'bedTram'" :widget="widget" :override-color="overrideColor" :disabled="disabled" />
+	<XyzProbeWidget v-else-if="widget.type === 'xyzProbe'" :widget="widget" :override-color="overrideColor" :disabled="disabled" />
+	<ProbeRoutinesWidget v-else-if="widget.type === 'probeRoutines'" :widget="widget" :override-color="overrideColor" :disabled="disabled" />
+	<SurfacingWidget v-else-if="widget.type === 'surfacing'" :widget="widget" :override-color="overrideColor" :disabled="disabled" />
 	<MachineHealthWidget v-else-if="widget.type === 'machineHealth'" :widget="widget" />
-	<MaintenanceWidget v-else-if="widget.type === 'maintenanceWidget'" :widget="widget" />
-	<PreflightWidget v-else-if="widget.type === 'preflight'" :widget="widget" />
-	<ToolpathWidget v-else-if="widget.type === 'toolpath'" :widget="widget" />
-	<FirmwareUpdateWidget v-else-if="widget.type === 'firmwareUpdate'" :widget="widget" />
-	<ToolSelectWidget v-else-if="widget.type === 'toolSelect'" :widget="widget" :disabled="disabled" />
-	<ToolAlignWidget v-else-if="widget.type === 'toolAlign'" :widget="widget" :disabled="disabled" />
-	<FanWidget v-else-if="widget.type === 'fan'" :widget="widget" :disabled="disabled" />
-	<FilesWidget v-else-if="widget.type === 'files'" :widget="widget" :disabled="disabled" />
+	<MaintenanceWidget v-else-if="widget.type === 'maintenanceWidget'" :widget="widget" :override-color="overrideColor" />
+	<PreflightWidget v-else-if="widget.type === 'preflight'" :widget="widget" :override-color="overrideColor" />
+	<ToolpathWidget v-else-if="widget.type === 'toolpath'" :widget="widget" :override-color="overrideColor" />
+	<FirmwareUpdateWidget v-else-if="widget.type === 'firmwareUpdate'" :widget="widget" :override-color="overrideColor" />
+	<ToolSelectWidget v-else-if="widget.type === 'toolSelect'" :widget="widget" :override-color="overrideColor" :disabled="disabled" />
+	<ToolAlignWidget v-else-if="widget.type === 'toolAlign'" :widget="widget" :override-color="overrideColor" :disabled="disabled" />
+	<FanWidget v-else-if="widget.type === 'fan'" :widget="widget" :override-color="overrideColor" :disabled="disabled" />
+	<FilesWidget v-else-if="widget.type === 'files'" :widget="widget" :override-color="overrideColor" :disabled="disabled" />
 	<GaugeClusterWidget v-else-if="widget.type === 'gaugeCluster'" :widget="widget" />
 	<IndicatorsWidget v-else-if="widget.type === 'indicators'" :widget="widget" />
 	<SparklineWidget v-else-if="widget.type === 'sparkline'" :widget="widget" />
@@ -50,14 +50,14 @@
 	<HttpWidget v-else-if="widget.type === 'http'" :widget="widget" />
 	<EventLogWidget v-else-if="widget.type === 'eventLog'" :widget="widget" />
 	<DroWidget v-else-if="widget.type === 'dro'" :widget="widget" />
-	<SpindleWidget v-else-if="widget.type === 'spindle'" :widget="widget" :disabled="disabled" />
+	<SpindleWidget v-else-if="widget.type === 'spindle'" :widget="widget" :override-color="overrideColor" :disabled="disabled" />
 	<MessageBoxWidget v-else-if="widget.type === 'messageBox'" :widget="widget" />
 	<ProfileSwitchWidget v-else-if="widget.type === 'profileSwitch'" :widget="widget" />
 	<ThemeToggleWidget v-else-if="widget.type === 'themeToggle'" :widget="widget" />
 	<CodeInputWidget v-else-if="widget.type === 'codeInput'" :widget="widget" />
 	<EditModeToggleWidget v-else-if="widget.type === 'editModeToggle'" :widget="widget" />
 	<UploadButtonWidget v-else-if="widget.type === 'uploadButton'" :widget="widget" />
-	<AccessChipWidget v-else-if="widget.type === 'accessChip'" :widget="widget" />
+	<AccessChipWidget v-else-if="widget.type === 'accessChip'" :widget="widget" :override-color="overrideColor" />
 	<GroupWidget v-else-if="widget.type === 'group'" :widget="widget" />
 	<PluginPageWidget v-else-if="widget.type === 'pluginPage'" :widget="widget" />
 	<EmbeddableWidget v-else-if="widget.type === 'embeddable'" :widget="widget" />

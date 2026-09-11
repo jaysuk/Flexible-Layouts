@@ -1,7 +1,7 @@
 <template>
   <div class="tg-root fill-height d-flex align-center px-2" :class="{ 'tg-frozen': disabledNow }">
     <template v-if="widget.variant === 'button'">
-      <v-btn :color="isOn ? (widget.color || 'primary') : undefined" :variant="isOn ? 'flat' : 'tonal'"
+      <v-btn :color="isOn ? (overrideColor || widget.color || 'primary') : undefined" :variant="isOn ? 'flat' : 'tonal'"
              block class="text-none fill-height tg-btn" :disabled="disabledNow" @click="toggle">
         <div class="d-flex align-center justify-center ga-1" :class="iconLayoutClass">
           <v-icon>{{ isOn ? "mdi-toggle-switch" : "mdi-toggle-switch-off-outline" }}</v-icon>
@@ -13,7 +13,7 @@
       <!-- Extra end padding: the switch's Material ripple extends past its own control box, and
            without room to expand inside this widget's own bounds it gets clipped by the grid item's
            ancestor overflow instead. -->
-      <v-switch :model-value="isOn" :color="widget.color || 'primary'" :base-color="widget.offColor"
+      <v-switch :model-value="isOn" :color="overrideColor || widget.color || 'primary'" :base-color="widget.offColor"
                 density="compact" hide-details class="tg-switch-pad-start"
                 :disabled="disabledNow" @update:model-value="set($event === true)" />
       <v-spacer />
@@ -22,7 +22,7 @@
     <template v-else>
       <span class="tg-label text-truncate">{{ widget.label }}</span>
       <v-spacer />
-      <v-switch :model-value="isOn" :color="widget.color || 'primary'" :base-color="widget.offColor"
+      <v-switch :model-value="isOn" :color="overrideColor || widget.color || 'primary'" :base-color="widget.offColor"
                 density="compact" hide-details class="tg-switch-pad-end"
                 :disabled="disabledNow" @update:model-value="set($event === true)" />
     </template>
@@ -38,7 +38,7 @@ import { LogLevel, useUiStore } from "@/stores/ui";
 import type { Widget } from "../model/document";
 import { resolveOmPath } from "../util/omPath";
 
-const props = defineProps<{ widget: Extract<Widget, { type: "toggle" }>; disabled?: boolean }>();
+const props = defineProps<{ widget: Extract<Widget, { type: "toggle" }>; overrideColor?: string; disabled?: boolean }>();
 
 const machineStore = useMachineStore();
 const uiStore = useUiStore();

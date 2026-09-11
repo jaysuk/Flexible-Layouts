@@ -43,7 +43,7 @@
 					  @update:model-value="patch?.({ corner })" />
 		</div>
 
-		<v-btn block :color="widget.color || 'primary'" prepend-icon="mdi-crosshairs-gps" class="mb-2 flex-shrink-0"
+		<v-btn block :color="(overrideColor || widget.color) || 'primary'" prepend-icon="mdi-crosshairs-gps" class="mb-2 flex-shrink-0"
 			   :loading="probingOp === 'corner'" :disabled="disabledNow || macrosMissing" @click="trigger('corner')">
 			{{ $t("plugins.flexibleLayouts.xyzProbe.probeCorner") }}
 		</v-btn>
@@ -126,7 +126,7 @@ import { isProbeTriggered, type ProbeTriggerInfo } from "../util/probe";
 import { WIDGET_PATCH_KEY } from "../util/widgetPatch";
 import UnhomedWarning from "./UnhomedWarning.vue";
 
-const props = defineProps<{ widget: Extract<Widget, { type: "xyzProbe" }>; disabled?: boolean }>();
+const props = defineProps<{ widget: Extract<Widget, { type: "xyzProbe" }>; overrideColor?: string; disabled?: boolean }>();
 const machineStore = useMachineStore();
 const uiStore = useUiStore();
 const io = defaultMachineIO();

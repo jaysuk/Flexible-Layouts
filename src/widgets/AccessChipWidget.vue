@@ -1,7 +1,7 @@
 <template>
 	<div class="fill-height d-flex align-center">
 		<v-chip v-if="accessEnabledNow" size="small" variant="tonal" style="cursor: pointer"
-				:prepend-icon="levelIcon"
+				:color="overrideColor || widget.color" :prepend-icon="levelIcon"
 				:title="isElevatedNow ? $t('plugins.flexibleLayouts.access.lockNowHint') : $t('plugins.flexibleLayouts.access.unlockHint')"
 				@click="onClick">
 			{{ levelLabel }}
@@ -17,7 +17,7 @@ import i18n from "@/i18n";
 import type { Widget } from "../model/document";
 import { currentLevel, defaultLevel, isAccessEnabled, relock, requestElevation } from "../model/access";
 
-defineProps<{ widget: Extract<Widget, { type: "accessChip" }> }>();
+defineProps<{ widget: Extract<Widget, { type: "accessChip" }>; overrideColor?: string }>();
 
 const accessEnabledNow = computed(() => isAccessEnabled());
 const levelNow = computed(() => currentLevel());

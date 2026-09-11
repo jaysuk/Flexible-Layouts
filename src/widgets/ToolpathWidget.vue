@@ -9,7 +9,7 @@
 						  placeholder="0:/gcodes/part.gcode" @change="patch?.({ defaultFile: filePath })" />
 			<v-btn icon="mdi-file-find-outline" size="small" variant="tonal" density="comfortable"
 				   :title="$t('plugins.flexibleLayouts.filePicker.title')" @click="pickerOpen = true" />
-			<v-btn size="small" :color="widget.color || 'primary'" :loading="loading" :disabled="!filePath" @click="load">
+			<v-btn size="small" :color="overrideColor || widget.color || 'primary'" :loading="loading" :disabled="!filePath" @click="load">
 				{{ $t("plugins.flexibleLayouts.toolpath.load") }}
 			</v-btn>
 		</div>
@@ -47,7 +47,7 @@ import { WIDGET_PATCH_KEY } from "../util/widgetPatch";
 import GcodeFilePickerDialog from "./GcodeFilePickerDialog.vue";
 import UnhomedWarning from "./UnhomedWarning.vue";
 
-const props = defineProps<{ widget: Extract<Widget, { type: "toolpath" }> }>();
+const props = defineProps<{ widget: Extract<Widget, { type: "toolpath" }>; overrideColor?: string }>();
 const machineStore = useMachineStore();
 const uiStore = useUiStore();
 const patch = inject(WIDGET_PATCH_KEY, null);
@@ -144,7 +144,7 @@ function draw(): void {
 	};
 
 	const filePos = liveFilePosition.value;
-	const cutColor = resolveColor(widget.color) || "rgba(33,150,243,0.9)";
+	const cutColor = resolveColor(props.overrideColor || widget.color) || "rgba(33,150,243,0.9)";
 	const verts = result.vertices;
 	ctx.lineWidth = Math.max(1, dpr);
 	for (let i = 1; i < verts.length; i++) {

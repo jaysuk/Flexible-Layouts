@@ -7,13 +7,13 @@
     </div>
     <div class="d-flex align-center ga-2 mb-1">
       <v-slider v-model="rpm" :min="min" :max="max" :step="stepSize" density="compact" hide-details thumb-size="14"
-                :color="widget.color || 'primary'" :disabled="disabledNow" />
+                :color="(overrideColor || widget.color) || 'primary'" :disabled="disabledNow" />
       <span class="spn-rpm">{{ rpmText }}</span>
     </div>
     <div class="d-flex ga-1">
-      <v-btn size="small" variant="tonal" :color="widget.color || 'primary'" class="flex-grow-1" :disabled="disabledNow"
+      <v-btn size="small" variant="tonal" :color="(overrideColor || widget.color) || 'primary'" class="flex-grow-1" :disabled="disabledNow"
              icon="mdi-rotate-right" :title="$t('plugins.flexibleLayouts.spindle.forward')" @click="run(`M3 S${rpmText}`)" />
-      <v-btn size="small" variant="tonal" :color="widget.color || 'primary'" class="flex-grow-1" :disabled="disabledNow"
+      <v-btn size="small" variant="tonal" :color="(overrideColor || widget.color) || 'primary'" class="flex-grow-1" :disabled="disabledNow"
              icon="mdi-rotate-left" :title="$t('plugins.flexibleLayouts.spindle.reverse')" @click="run(`M4 S${rpmText}`)" />
       <v-btn size="small" variant="tonal" color="error" class="flex-grow-1" :disabled="disabledNow"
              icon="mdi-stop" :title="$t('plugins.flexibleLayouts.spindle.stop')" @click="run('M5')" />
@@ -30,7 +30,7 @@ import { LogLevel, useUiStore } from "@/stores/ui";
 import type { Widget } from "../model/document";
 import { resolveOmPath } from "../util/omPath";
 
-const props = defineProps<{ widget: Extract<Widget, { type: "spindle" }>; disabled?: boolean }>();
+const props = defineProps<{ widget: Extract<Widget, { type: "spindle" }>; overrideColor?: string; disabled?: boolean }>();
 const machineStore = useMachineStore();
 const uiStore = useUiStore();
 
