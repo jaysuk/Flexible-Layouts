@@ -196,6 +196,7 @@
 							{{ $t("plugins.flexibleLayouts.vectorImport.runButton") }}
 						</v-btn>
 						<span v-if="!cutDisabled" />
+						<span v-else-if="!isCncOrLaser" class="text-caption text-error align-self-center">{{ $t("plugins.flexibleLayouts.vectorImport.notCncMode") }}</span>
 						<span v-else-if="unhomedNow.length" class="text-caption text-error align-self-center">{{ $t("plugins.flexibleLayouts.vectorImport.unhomedBlocked") }}</span>
 						<span v-else-if="isPrintingStatus(status)" class="text-caption text-error align-self-center">{{ $t("plugins.flexibleLayouts.vectorImport.printingBlocked") }}</span>
 						<span v-else-if="!canRunJobs" class="text-caption text-error align-self-center">{{ $t("plugins.flexibleLayouts.vectorImport.notCutCapable") }}</span>
@@ -226,6 +227,7 @@ import { importSvg } from "../model/vectorImport/svg";
 import { offsetPaths, orderForCut, orientForCut, type CutSide } from "../model/vectorImport/offset";
 import { boundsOf, pathLength, type ImportedDrawing, type Polyline } from "../model/vectorImport/types";
 import { unhomedAxes } from "../util/homedCheck";
+import { isCncOrLaserMode } from "../util/machineMode";
 import { isPrintingStatus } from "../util/printLock";
 import UnhomedWarning from "../widgets/UnhomedWarning.vue";
 
@@ -553,11 +555,20 @@ function onMakeItWide(ev: Event): void {
 const unhomedNow = computed(() => unhomedAxes(machineStore.model, ["X", "Y", "Z"]));
 const status = computed(() => (machineStore.model as { state?: { status?: string } })?.state?.status);
 const canRunJobs = computed(() => can("runJobs"));
+// The nav entry itself is already hidden unless the machine is CNC/Laser (see index.ts), but that
+// only stops someone getting here from the menu - a direct URL, a stale bookmark, or a mode switch
+// (M453/M451/M450) while this page is already open all bypass it. Belt and braces: block the actual
+// cut here too, same hard-block treatment as unhomed below (this isn't "risky but sometimes valid"
+// like the public-repo confirm elsewhere in this plugin - running spindle/laser G-code against an
+// FFF machine is simply wrong).
+const isCncOrLaser = computed(() =>
+	isCncOrLaserMode((machineStore.model as { state?: { machineMode?: string } })?.state?.machineMode),
+);
 // Preview and download gate on nothing - only actually running a cut (upload + M32) needs runJobs.
 // Unhomed is a hard block (not just a warning): a surfacing pass starts at the work origin, but a
 // vector-imported part can be placed anywhere in the envelope.
 const cutDisabled = computed(() =>
-	uiStore.uiFrozen || !canRunJobs.value || unhomedNow.value.length > 0 || isPrintingStatus(status.value) || !built.value,
+	uiStore.uiFrozen || !isCncOrLaser.value || !canRunJobs.value || unhomedNow.value.length > 0 || isPrintingStatus(status.value) || !built.value,
 );
 
 const running = ref(false);

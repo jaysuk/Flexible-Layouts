@@ -1224,6 +1224,7 @@
 		"unhomedBlocked": "Home the machine before cutting.",
 		"printingBlocked": "Can't cut while a job is running.",
 		"notCutCapable": "You don't have permission to run a cut on this machine.",
+			"notCncMode": "This machine isn't in CNC or Laser mode.",
 		"downloadButton": "Download G-code",
 		"runButton": "Cut it",
 		"confirmTitle": "Run this cut?",

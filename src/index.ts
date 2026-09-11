@@ -16,6 +16,7 @@ import { showConfirmDialog } from "@/composables/useConfirmDialog";
 import Events from "@/utils/events";
 import i18n from "@/i18n";
 import { useCacheStore } from "@/stores/cache";
+import { useMachineStore } from "@/stores/machine";
 import { useSettingsStore } from "@/stores/settings";
 
 import { configureHost } from "dwc-config-backup-core";
@@ -27,6 +28,7 @@ import { CONFIG_BACKUP_ROUTE_PATH, FL_PROTECTED_SD_FILES } from "./model/configB
 import { MAINTENANCE_ROUTE_PATH } from "./model/maintenance/constants";
 import { VECTOR_IMPORT_ROUTE_PATH } from "./model/vectorImport/constants";
 import { activateFlLayout } from "./model/layoutState";
+import { isCncOrLaserMode } from "./util/machineMode";
 import { installEscapeGuard, uninstallEscapeGuard } from "./model/access";
 import { installAutoBackupNudges, uninstallAutoBackupNudges } from "./model/configBackup/autoBackupNudges";
 import { installMaintenanceReminderNudge, uninstallMaintenanceReminderNudge } from "./model/reminders/nudge";
@@ -202,16 +204,26 @@ registerRoute(MaintenancePage, {
 });
 
 // Vector import (SVG/DXF -> CAM) is its own full page (drop zone, live preview, a long parameter
-// list) - same "too big for a dialog" reasoning as config-backup/maintenance above. Registered
-// ungated: viewing the page (loading a drawing, previewing it, downloading the G-code) needs no
-// capability at all, so an Operator (who has runJobs but not editLayout/editConfig) can actually
-// reach it - only the "Cut it" button, deep inside, gates on can("runJobs").
+// list) - same "too big for a dialog" reasoning as config-backup/maintenance above. Access-level
+// gating stays the same as before: viewing the page (loading a drawing, previewing it, downloading
+// the G-code) needs no capability at all, so an Operator (who has runJobs but not editLayout/
+// editConfig) can still reach it - only the "Cut it" button, deep inside, gates on can("runJobs").
+//
+// The NAV ENTRY itself, though, only makes sense on a CNC/Laser machine - generating a router/laser
+// toolpath for a FFF printer is meaningless, not just "extra care needed" like the runJobs gate
+// above. `condition` is re-evaluated reactively (see the identical pattern for the standalone
+// duet-config-backup-plugin's nav entry, and pageManager.ts's customPageVisible), so this tracks a
+// live mode switch (e.g. M453/M451/M450) without needing a page reload.
+function vectorImportVisible(): boolean {
+	return isCncOrLaserMode(useMachineStore().model.state.machineMode);
+}
 registerRoute(VectorImportPage, {
 	Plugins: {
 		FlexibleLayoutsVectorImport: {
 			icon: "mdi-content-cut",
 			path: VECTOR_IMPORT_ROUTE_PATH,
 			caption: "plugins.flexibleLayouts.vectorImport.navCaption",
+			condition: vectorImportVisible,
 		},
 	},
 });

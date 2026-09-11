@@ -10,12 +10,12 @@
  *
  * Adding another editable built-in page is just another entry here (with a suitable fallback).
  */
-import { MachineMode } from "@duet3d/objectmodel";
 import type { Component } from "vue";
 
 import { useMachineStore } from "@/stores/machine";
 
 import { type GridItemModel, newItemId } from "./document";
+import { isCncOrLaserMode } from "../util/machineMode";
 import DashboardFallback from "../page/fallbacks/DashboardFallback.vue";
 import ConsoleFallback from "../page/fallbacks/ConsoleFallback.vue";
 import TemperaturesFallback from "../page/fallbacks/TemperaturesFallback.vue";
@@ -39,7 +39,7 @@ function panel(component: string, x: number, y: number, w: number, h: number): G
 /** Editable equivalent of the stock dashboard, branched on machine mode. */
 function dashboardSeed(): Array<GridItemModel> {
 	const mode = useMachineStore().model.state.machineMode;
-	const isCnc = mode === MachineMode.cnc || mode === MachineMode.laser;
+	const isCnc = isCncOrLaserMode(mode);
 	if (isCnc) {
 		return [
 			panel("MovementPanel", 0, 0, 8, 9),
@@ -61,7 +61,7 @@ function dashboardSeed(): Array<GridItemModel> {
  */
 export function statusBarSeed(): Array<GridItemModel> {
 	const mode = useMachineStore().model.state.machineMode;
-	const isCnc = mode === MachineMode.cnc || mode === MachineMode.laser;
+	const isCnc = isCncOrLaserMode(mode);
 	if (isCnc) {
 		// DWC's stock CNC/Laser status bar (CNCContainerPanel) is just these two side by side - no
 		// MovementPanel/SpindleSpeedPanel here, those belong to the Dashboard page, not the status bar.
