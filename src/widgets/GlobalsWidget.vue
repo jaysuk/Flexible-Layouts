@@ -18,7 +18,7 @@
         <span class="gl-name text-truncate" :title="r.name">{{ r.name }}</span>
 
         <!-- read-only -->
-        <span v-if="widget.allowEdit === false" class="gl-ro text-truncate" :title="r.live">{{ r.live }}</span>
+        <span v-if="widget.allowEdit === false" class="gl-ro text-truncate" :style="readingStyle" :title="r.live">{{ r.live }}</span>
 
         <!-- boolean: immediate toggle -->
         <v-switch v-else-if="r.kind === 'boolean'" :model-value="r.value === true" color="primary"
@@ -48,16 +48,21 @@ import { useMachineStore } from "@/stores/machine";
 import { LogLevel, useUiStore } from "@/stores/ui";
 
 import type { Widget } from "../model/document";
+import { resolveColor } from "../util/color";
 
 type Kind = "boolean" | "number" | "string" | "array" | "object";
 interface Row { name: string; value: unknown; kind: Kind; live: string }
 
-const props = defineProps<{ widget: Extract<Widget, { type: "globals" }>; disabled?: boolean }>();
+const props = defineProps<{ widget: Extract<Widget, { type: "globals" }>; overrideColor?: string; disabled?: boolean }>();
 
 const machineStore = useMachineStore();
 const uiStore = useUiStore();
 
 const disabledNow = computed(() => props.disabled || uiStore.uiFrozen);
+const readingStyle = computed(() => {
+  const c = props.overrideColor || props.widget.color;
+  return c ? { color: resolveColor(c) } : {};
+});
 const search = ref("");
 const drafts = reactive<Record<string, string>>({});
 

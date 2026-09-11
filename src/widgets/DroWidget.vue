@@ -14,7 +14,7 @@
           {{ a.homed ? "mdi-circle" : "mdi-circle-outline" }}
         </v-icon>
         <span class="dro-letter">{{ a.letter }}</span>
-        <span class="dro-pos">{{ a.pos }}</span>
+        <span class="dro-pos" :style="readingStyle">{{ a.pos }}</span>
       </div>
       <div v-if="!axes.length" class="text-medium-emphasis text-caption">{{ $t("plugins.flexibleLayouts.dro.none") }}</div>
     </div>
@@ -27,13 +27,18 @@ import { computed, ref } from "vue";
 import { useMachineStore } from "@/stores/machine";
 
 import type { Widget } from "../model/document";
+import { resolveColor } from "../util/color";
 import { resolveOmPath } from "../util/omPath";
 
-const props = defineProps<{ widget: Extract<Widget, { type: "dro" }>; disabled?: boolean }>();
+const props = defineProps<{ widget: Extract<Widget, { type: "dro" }>; overrideColor?: string; disabled?: boolean }>();
 const machineStore = useMachineStore();
 
 const coord = ref<"work" | "machine">(props.widget.coord ?? "work");
 const precision = computed(() => props.widget.precision ?? 2);
+
+// Same "conditional rule overrides the widget's own static colour" idiom as HeaterWidget's reading.
+const effectiveColor = computed(() => props.overrideColor || props.widget.color);
+const readingStyle = computed(() => (effectiveColor.value ? { color: resolveColor(effectiveColor.value) } : {}));
 
 interface RawAxis { letter?: string; homed?: boolean; visible?: boolean; machinePosition?: number | null; userPosition?: number | null }
 

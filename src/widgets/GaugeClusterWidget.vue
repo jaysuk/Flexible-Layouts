@@ -28,7 +28,7 @@ import type { Widget } from "../model/document";
 import { resolveColor } from "../util/color";
 import { resolveOmPath } from "../util/omPath";
 
-const props = defineProps<{ widget: Extract<Widget, { type: "gaugeCluster" }>; disabled?: boolean }>();
+const props = defineProps<{ widget: Extract<Widget, { type: "gaugeCluster" }>; overrideColor?: string; disabled?: boolean }>();
 const machineStore = useMachineStore();
 
 // "bottom" matches how each gauge rendered before labelPosition existed (gauge first, label after).
@@ -45,11 +45,14 @@ const gauges = computed(() =>
     const dp = Math.max(0, props.widget.precision ?? 0);
     return {
       label: g.label || g.omPath,
-      color: g.color,
+      // A matching Conditional behaviour rule (props.overrideColor) overrides EVERY gauge at once -
+      // e.g. "flash the whole cluster red" - taking precedence over each gauge's own individual
+      // colour rather than being merged per-gauge.
+      color: props.overrideColor || g.color,
       // v-progress-circular takes a Vuetify colour PROP (token or literal, resolved by Vuetify
       // itself); the linear bar's fill is a plain CSS background, so it needs the literal colour
       // string up front instead.
-      strokeColor: resolveColor(g.color),
+      strokeColor: resolveColor(props.overrideColor || g.color),
       pct,
       text: num === null ? "—" : `${num.toFixed(dp)}${g.unit || ""}`,
     };

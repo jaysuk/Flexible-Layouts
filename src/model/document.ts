@@ -278,6 +278,9 @@ export type Widget =
 		showSearch?: boolean;
 		/** Allow editing values inline (otherwise read-only). */
 		allowEdit?: boolean;
+		/** Colours the read-only value display (allowEdit: false only - an editable field's typed text
+		 *  isn't a "reading" in the same sense). */
+		color?: string;
 	}
 	| {
 		/** Slider that sends a command template ({value}) and optionally tracks a live OM value. */
@@ -820,6 +823,7 @@ export type Widget =
 		/** Formatted note (minimal Markdown). */
 		type: "note";
 		content?: string;
+		color?: string;
 	}
 	| {
 		/** Poll an HTTP endpoint and display the result. */
@@ -855,6 +859,7 @@ export type Widget =
 		axes?: Array<string>;
 		coord?: "work" | "machine";
 		precision?: number;
+		color?: string;
 	}
 	| {
 		/** Spindle / laser control (M3/M4/M5). */

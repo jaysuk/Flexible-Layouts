@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { flushPromises } from "@vue/test-utils";
-import { dwc, mountInDwc, setFiles } from "dwc-plugin-test-kit";
+import { dwc, mountInDwc, setFiles, setGlobals } from "dwc-plugin-test-kit";
 
-import { createDefaultWidget } from "../src/model/document";
+import { createDefaultWidget, type Widget } from "../src/model/document";
 import { setAccess } from "../src/model/access";
 import WidgetView from "../src/widgets/WidgetView.vue";
 
@@ -25,7 +25,7 @@ import WidgetView from "../src/widgets/WidgetView.vue";
  */
 const PROBE = "#123456";
 
-const CASES: Array<{ type: Parameters<typeof createDefaultWidget>[0]; setup?: () => void }> = [
+const CASES: Array<{ type: Parameters<typeof createDefaultWidget>[0]; setup?: () => void; widgetPatch?: Record<string, unknown> }> = [
 	{ type: "heater" },
 	{ type: "bedTram" },
 	{ type: "console" },
@@ -62,15 +62,23 @@ const CASES: Array<{ type: Parameters<typeof createDefaultWidget>[0]; setup?: ()
 	{ type: "accessChip", setup: () => setAccess({ observerEnabled: true, operatorEnabled: false, adminHash: "", operatorHash: "", hideEmergencyStop: false }) },
 	{ type: "bedMesh" },
 	{ type: "firmwareUpdate" },
+	// dro/gaugeCluster/sparkline/note render with default data - no setup needed.
+	{ type: "dro" },
+	{ type: "gaugeCluster" },
+	{ type: "sparkline" },
+	{ type: "note" },
+	// The read-only value span (the thing override-color targets) only renders with allowEdit: false,
+	// and needs at least one global to actually show a row.
+	{ type: "globals", widgetPatch: { allowEdit: false }, setup: () => setGlobals({ myVar: 1 }) },
 ];
 
 beforeEach(() => setAccess({ observerEnabled: false, operatorEnabled: false, adminHash: "", operatorHash: "", hideEmergencyStop: false }));
 
 describe("WidgetView forwards override-color through to every widget with a colour accent", () => {
-	for (const { type, setup } of CASES) {
+	for (const { type, setup, widgetPatch } of CASES) {
 		it(`${type} reflects override-color in its rendered output`, async () => {
 			setup?.();
-			const widget = createDefaultWidget(type);
+			const widget = { ...createDefaultWidget(type), ...widgetPatch } as Widget;
 			const wrapper = mountInDwc(WidgetView, { props: { widget, overrideColor: PROBE } });
 			await flushPromises(); // files/macros load their listing asynchronously
 			expect(wrapper.html()).toContain(PROBE);

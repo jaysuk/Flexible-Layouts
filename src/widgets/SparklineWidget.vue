@@ -20,7 +20,7 @@ import type { Widget } from "../model/document";
 import { resolveColor } from "../util/color";
 import { resolveOmPath } from "../util/omPath";
 
-const props = defineProps<{ widget: Extract<Widget, { type: "sparkline" }>; disabled?: boolean }>();
+const props = defineProps<{ widget: Extract<Widget, { type: "sparkline" }>; overrideColor?: string; disabled?: boolean }>();
 const machineStore = useMachineStore();
 
 const interval = computed(() => props.widget.intervalMs ?? 1000);
@@ -52,7 +52,9 @@ const lines = computed(() =>
     }
     return {
       points,
-      stroke: resolveColor(s.color),
+      // A matching Conditional behaviour rule overrides every line at once, same reasoning as
+      // GaugeClusterWidget's own override-vs-per-item precedence.
+      stroke: resolveColor(props.overrideColor || s.color),
       last: buf.length ? buf[buf.length - 1].toFixed(Math.max(0, props.widget.precision ?? 1)) : "—",
     };
   }),

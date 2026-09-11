@@ -6,7 +6,7 @@
     </template>
     <!-- Otherwise: content is author-supplied via the widget settings; rendered from a minimal
          Markdown subset. -->
-    <div v-else class="nt-view" v-html="html" />
+    <div v-else class="nt-view" :style="colorStyle" v-html="html" />
     <!-- mousedown.prevent: clicking this while the textarea is focused would otherwise blur it
          FIRST (before this button's own click handler runs), which already calls save() and flips
          `editing` to false - so the click handler's `editing ? save() : startEdit()` would see
@@ -23,10 +23,16 @@ import { computed, inject, ref } from "vue";
 
 import type { Widget } from "../model/document";
 import { editMode } from "../model/editorState";
+import { resolveColor } from "../util/color";
 import { WIDGET_PATCH_KEY } from "../util/widgetPatch";
 
-const props = defineProps<{ widget: Extract<Widget, { type: "note" }>; disabled?: boolean }>();
+const props = defineProps<{ widget: Extract<Widget, { type: "note" }>; overrideColor?: string; disabled?: boolean }>();
 const patch = inject(WIDGET_PATCH_KEY, null);
+
+const colorStyle = computed(() => {
+	const c = props.overrideColor || props.widget.color;
+	return c ? { color: resolveColor(c) } : {};
+});
 
 // Only offered outside layout-edit mode (the widget is being dragged/resized there, not read) and
 // only when there's somewhere to persist to - a group's free-mode preview, for instance, mounts
