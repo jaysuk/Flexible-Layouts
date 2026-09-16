@@ -961,6 +961,16 @@
 		"thumbnails": "Show thumbnails",
 		"none": "No files or folders here."
 	},
+	"gcodeEditor": {
+		"save": "Save",
+		"saved": "Saved {name}",
+		"saveFailed": "Could not save {name}: {error}",
+		"checkErrors": "Check for errors",
+		"loadFailed": "Could not load {name}: {error}",
+		"settingsTitle": "G-code editor",
+		"settingsHint": "The new editor understands G-code specifically (real syntax highlighting, error checking) but not other file types yet - menu files, STM32 board.txt and plain text always open in the standard editor regardless of this setting.",
+		"settingsToggle": "Use the new G-code editor for G-code files"
+	},
 	"filePicker": {
 		"title": "Choose a G-code file",
 		"empty": "No G-code files or folders here."

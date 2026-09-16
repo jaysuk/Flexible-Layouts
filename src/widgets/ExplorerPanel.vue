@@ -24,12 +24,14 @@
 				 instance simultaneously. Monaco is by far the heaviest thing this panel can mount
 				 (~3.8 MB of chunk plus per-instance model/DOM), so they are mounted on demand instead. -->
 			<v-window-item v-for="tab in tabs" :key="tab.id" :value="tab.id">
-				<!-- Editor tab: Monaco loads/saves the file itself. -->
+				<!-- Editor tab: whichever editor loads/saves the file itself. -->
 				<template v-if="tab.kind === 'editor' && tab.filename">
 					<!-- Only the ACTIVE editor stays mounted, so N open files no longer mean N live
 						 editors. A tab with unsaved edits is deliberately kept mounted even when
 						 inactive - unmounting it would throw those edits away. -->
-					<component :is="monacoEditor" v-if="tab.id === activeTab || tab.dirty"
+					<GcodeCmEditor v-if="(tab.id === activeTab || tab.dirty) && shouldUseNewGcodeEditor(tab.filename)"
+								   :filename="tab.filename" @dirty="tab.dirty = $event" />
+					<component :is="monacoEditor" v-else-if="tab.id === activeTab || tab.dirty"
 							   :filename="tab.filename" @dirty="tab.dirty = $event" />
 				</template>
 				<!-- Browser tab: file-click opens the file in a new editor tab (not the page). -->
@@ -52,6 +54,9 @@
 import { computed, ref, resolveComponent } from "vue";
 
 import i18n from "@/i18n";
+
+import GcodeCmEditor from "./GcodeCmEditor.vue";
+import { shouldUseNewGcodeEditor } from "../model/editorPreference";
 
 interface FileItem { name: string; isDirectory?: boolean }
 interface Tab { id: number; kind: "directory" | "editor"; filename?: string; directory?: string; dirty?: boolean }

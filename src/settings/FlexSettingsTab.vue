@@ -212,6 +212,14 @@
 			</div>
 
 			<v-divider class="my-4" />
+			<div class="text-title-small mb-1">{{ $t("plugins.flexibleLayouts.gcodeEditor.settingsTitle") }}</div>
+			<p class="text-body-small text-medium-emphasis mt-0 mb-2">
+				{{ $t("plugins.flexibleLayouts.gcodeEditor.settingsHint") }}
+			</p>
+			<v-switch :model-value="newEditorEnabled" color="primary" density="compact" hide-details
+					  :label="$t('plugins.flexibleLayouts.gcodeEditor.settingsToggle')" @update:model-value="onToggleNewEditor" />
+
+			<v-divider class="my-4" />
 			<div class="text-title-small mb-1 text-error">{{ $t("plugins.flexibleLayouts.reset.sectionTitle") }}</div>
 			<p class="text-body-small text-medium-emphasis mt-0 mb-2">{{ $t("plugins.flexibleLayouts.reset.hint") }}</p>
 
@@ -307,6 +315,7 @@ import { buildReport, cleanReleaseNotes, copyReport, downloadReport, fetchReleas
 
 import { PLUGIN_MANIFEST_ID } from "../model/constants";
 import { activateFlLayout, deactivateFlLayout, isFlLayoutActive } from "../model/layoutState";
+import { isNewGcodeEditorEnabled, setNewGcodeEditorEnabled } from "../model/editorPreference";
 import { editMode } from "../model/editorState";
 import { applying, checking, dismissCurrentUpdate, dismissedVersion, pendingReload, runUpdateCheck, setUpdateChecksEnabled, undismissUpdate, updateChecksEnabled, updateDiagnostics, updateState as update, applyUpdateNow } from "../model/updateCheck";
 import { useLayoutStore } from "../model/store";
@@ -681,6 +690,14 @@ function sdT(key: string, params?: Record<string, unknown>): string {
 }
 function sdNotify(level: LogLevel, key: string, params?: Record<string, unknown>): void {
 	uiStore.makeNotification(level, sdT("title"), sdT(key, params));
+}
+
+// --- G-code editor choice ------------------------------------------------------------------------
+const newEditorEnabled = ref(isNewGcodeEditorEnabled());
+function onToggleNewEditor(value: boolean | null): void {
+	const on = value === true;
+	newEditorEnabled.value = on;
+	setNewGcodeEditorEnabled(on);
 }
 
 function onToggleSd(value: boolean | null): void {
