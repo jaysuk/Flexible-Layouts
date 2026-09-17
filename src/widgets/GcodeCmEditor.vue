@@ -51,16 +51,16 @@
  * idea (this one additionally saves, matching what this panel actually needs Monaco for here).
  */
 import { onUnmounted, ref, shallowRef, watch } from "vue";
-import { defaultHighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { lintGutter } from "@codemirror/lint";
 import { EditorView, lineNumbers } from "@codemirror/view";
 import { diagnoseDocument, parseDocument } from "dwc-gcode-core";
 import {
-	applyDiagnostics, buildDocFromString, createEditorInstance, gcodeLanguage, gcodeLintUi,
-	saveKeymap, type EditorInstance,
+	applyDiagnostics, buildDocFromString, createEditorInstance, createThemeController,
+	gcodeCompletion, gcodeLanguage, gcodeLintUi, saveKeymap, type EditorInstance, type ThemeController,
 } from "dwc-gcode-editor";
 
 import { useMachineStore } from "@/stores/machine";
+import { useSettingsStore } from "@/stores/settings";
 import { LogLevel, useUiStore } from "@/stores/ui";
 import i18n from "@/i18n";
 
@@ -75,6 +75,8 @@ const emit = defineEmits<{ dirty: [boolean]; saved: [string] }>();
 
 const machineStore = useMachineStore();
 const uiStore = useUiStore();
+// Narrow cast, matching this repo's own convention elsewhere - this component only reads one field.
+const settingsStore = useSettingsStore() as unknown as { darkTheme: boolean };
 
 const hostEl = ref<HTMLElement | null>(null);
 const loading = ref(true);
@@ -85,6 +87,10 @@ const dirty = ref(false);
 const diagnosticCount = ref<number | null>(null);
 // shallowRef: EditorInstance wraps a live CM6 EditorView - Vue must never try to deep-reactive-proxy it.
 const editorInstance = shallowRef<EditorInstance | null>(null);
+// One ThemeController per instance (a Compartment belongs to exactly one EditorView) - this
+// component is mounted fresh per filename (see ExplorerPanel.vue's tab-per-file model), so
+// load() only ever runs once and this is only ever set once.
+let themeController: ThemeController | null = null;
 
 function basename(path: string): string {
 	return path.replace(/\/+$/, "").split("/").pop() || path;
@@ -95,11 +101,12 @@ function setDirty(value: boolean): void {
 	emit("dirty", value);
 }
 
-function editorExtensions() {
+function editorExtensions(theme: ThemeController) {
 	return [
 		lineNumbers(),
 		gcodeLanguage,
-		syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+		theme.extension,
+		gcodeCompletion(),
 		gcodeLintUi(),
 		lintGutter(),
 		// `save` is a hoisted function declaration below - referencing it here (only ever invoked
@@ -121,7 +128,8 @@ async function load(): Promise<void> {
 		const doc = await buildDocFromString(content);
 		editorInstance.value?.destroy();
 		if (hostEl.value === null) return;
-		editorInstance.value = createEditorInstance({ doc, parent: hostEl.value, extensions: editorExtensions() });
+		themeController = createThemeController(settingsStore.darkTheme);
+		editorInstance.value = createEditorInstance({ doc, parent: hostEl.value, extensions: editorExtensions(themeController) });
 		setDirty(false);
 	} catch (e) {
 		loadError.value = i18n.global.t("plugins.flexibleLayouts.gcodeEditor.loadFailed", {
@@ -181,6 +189,13 @@ async function checkForErrors(): Promise<void> {
 }
 
 watch(hostEl, (el) => { if (el !== null) void load(); }, { immediate: true });
+
+// Follow DWC's own dark/light toggle live - the same flag MonacoEditor.vue reads to pick "vs" vs
+// "vs-dark".
+watch(() => settingsStore.darkTheme, (dark) => {
+	const instance = editorInstance.value;
+	if (instance !== null && themeController !== null) themeController.setDark(instance.view, dark);
+});
 
 onUnmounted(() => editorInstance.value?.destroy());
 

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { mountInDwc } from "dwc-plugin-test-kit";
+import { startCompletion } from "@codemirror/autocomplete";
+import { dwc, mountInDwc } from "dwc-plugin-test-kit";
 
 import GcodeCmEditor from "../widgets/GcodeCmEditor.vue";
 
@@ -119,6 +120,61 @@ describe("GcodeCmEditor", () => {
 			new KeyboardEvent("keydown", { key: "s", ctrlKey: true, bubbles: true, cancelable: true }),
 		);
 		await vi.waitFor(() => expect(uploadMock).toHaveBeenCalledTimes(1));
+		wrapper.unmount();
+	});
+
+	it("opens in dark mode when DWC's own darkTheme setting is already on", async () => {
+		dwc.settings.darkTheme = true;
+		const wrapper = mountInDwc(GcodeCmEditor, { props: { filename: "0:/gcodes/g.g" } });
+		document.body.appendChild(wrapper.element); // getComputedStyle needs a connected element
+		await vi.waitFor(() => expect(wrapper.text()).toContain("G1 X10 Y10"));
+
+		const cmEditor = wrapper.find(".cm-editor");
+		expect(cmEditor.exists()).toBe(true);
+		const bg = getComputedStyle(cmEditor.element).backgroundColor;
+		expect(bg).not.toBe(""); // oneDarkTheme's own background, not the browser default
+		expect(bg).not.toBe("rgba(0, 0, 0, 0)");
+
+		dwc.settings.darkTheme = false;
+		wrapper.unmount();
+	});
+
+	it("follows a live darkTheme toggle without reloading the file", async () => {
+		dwc.settings.darkTheme = false;
+		const wrapper = mountInDwc(GcodeCmEditor, { props: { filename: "0:/gcodes/h.g" } });
+		document.body.appendChild(wrapper.element);
+		await vi.waitFor(() => expect(wrapper.text()).toContain("G1 X10 Y10"));
+
+		const cmEditor = wrapper.find(".cm-editor");
+		const lightBg = getComputedStyle(cmEditor.element).backgroundColor;
+
+		dwc.settings.darkTheme = true;
+		await wrapper.vm.$nextTick();
+		const darkBg = getComputedStyle(cmEditor.element).backgroundColor;
+		expect(darkBg).not.toBe(lightBg);
+		expect(wrapper.text()).toContain("G1 X10 Y10"); // same document - not a reload
+
+		dwc.settings.darkTheme = false;
+		wrapper.unmount();
+	});
+
+	it("offers a real completion for a bare command code (Ctrl+Space)", async () => {
+		const wrapper = mountInDwc(GcodeCmEditor, { props: { filename: "0:/gcodes/i.g" } });
+		document.body.appendChild(wrapper.element); // CM6's tooltip positioning needs a connected view
+		await vi.waitFor(() => expect(wrapper.text()).toContain("G1 X10 Y10"));
+		const vm = wrapper.vm as unknown as ExposedVm;
+
+		const docLength = vm.editorInstance.view.state.doc.length;
+		vm.editorInstance.view.dispatch({ changes: { from: 0, to: docLength, insert: "G1" }, selection: { anchor: 2 } });
+		// A plain `dispatch()` doesn't carry the "typed input" annotation autocompletion's automatic
+		// trigger listens for - `startCompletion` is the real command `completionKeymap`'s Ctrl-Space
+		// binding calls, so this exercises the same path a user's keypress does.
+		startCompletion(vm.editorInstance.view);
+		await vi.waitFor(() => {
+			// @codemirror/autocomplete renders its tooltip into the document body, listing matching
+			// dictionary entries once the source resolves - a real completion round-trip, not a stub.
+			expect(document.body.textContent).toContain("Linear move");
+		});
 		wrapper.unmount();
 	});
 });
