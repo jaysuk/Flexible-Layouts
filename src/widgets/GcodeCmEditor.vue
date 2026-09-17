@@ -41,12 +41,14 @@
 /**
  * The `dwc-gcode-editor` alternative to DWC's own bundled `MonacoEditor` for a G-code file -
  * `ExplorerPanel.vue` renders this one instead when `editorPreference.ts`'s toggle is on and the
- * file is G-code syntax. Deliberately mirrors `MonacoEditor.vue`'s own external contract exactly
- * (a bare `filename` prop, `dirty`/`saved` emits) so swapping between the two needs no other change
- * at the call site - see `docs/gcode-editor-plan.md` in `duet-gcode-postprocessor` for the design
- * this implements, and that repo's own `GcodeEditor.vue` for the sibling, read-only-plus-diagnostics
- * version of this same idea (this one additionally saves, matching what this panel actually needs
- * Monaco for here).
+ * file is G-code syntax. Deliberately mirrors `MonacoEditor.vue`'s own external contract exactly -
+ * `filename`/`initialContent` props, `dirty`/`saved` emits, an exposed `focus()` and a `save()`
+ * that returns `Promise<boolean>` - so swapping between the two needs no other change at the call
+ * site, and so this same component satisfies DWC core's `FileEditorEntry` contract (PR #519,
+ * `registerFileEditor`) when used to replace Monaco on DWC's own native Explorer page. See
+ * `docs/gcode-editor-plan.md` in `duet-gcode-postprocessor` for the design this implements, and
+ * that repo's own `GcodeEditor.vue` for the sibling, read-only-plus-diagnostics version of this same
+ * idea (this one additionally saves, matching what this panel actually needs Monaco for here).
  */
 import { onUnmounted, ref, shallowRef, watch } from "vue";
 import { defaultHighlightStyle, syntaxHighlighting } from "@codemirror/language";
@@ -55,14 +57,20 @@ import { EditorView, lineNumbers } from "@codemirror/view";
 import { diagnoseDocument, parseDocument } from "dwc-gcode-core";
 import {
 	applyDiagnostics, buildDocFromString, createEditorInstance, gcodeLanguage, gcodeLintUi,
-	type EditorInstance,
+	saveKeymap, type EditorInstance,
 } from "dwc-gcode-editor";
 
 import { useMachineStore } from "@/stores/machine";
 import { LogLevel, useUiStore } from "@/stores/ui";
 import i18n from "@/i18n";
 
-const props = defineProps<{ filename: string }>();
+const props = defineProps<{
+	filename: string;
+	/** Pre-fetched content (e.g. from a route data loader) - when set, the on-mount download is
+	 *  skipped and the editor opens with this text already loaded. Mirrors MonacoEditor.vue's own
+	 *  `initialContent` prop exactly, since `FileEditorEntry`'s contract requires it. */
+	initialContent?: string;
+}>();
 const emit = defineEmits<{ dirty: [boolean]; saved: [string] }>();
 
 const machineStore = useMachineStore();
@@ -94,6 +102,9 @@ function editorExtensions() {
 		syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
 		gcodeLintUi(),
 		lintGutter(),
+		// `save` is a hoisted function declaration below - referencing it here (only ever invoked
+		// later, on a real Ctrl+S) does not depend on declaration order.
+		saveKeymap(() => { void save(); }),
 		EditorView.updateListener.of((update) => {
 			if (update.docChanged) setDirty(true);
 		}),
@@ -104,7 +115,9 @@ async function load(): Promise<void> {
 	loading.value = true;
 	loadError.value = null;
 	try {
-		const content = await machineStore.download({ filename: props.filename, type: "text" }, false, false, false, false) as string;
+		const content = props.initialContent ?? await machineStore.download(
+			{ filename: props.filename, type: "text" }, false, false, false, false,
+		) as string;
 		const doc = await buildDocFromString(content);
 		editorInstance.value?.destroy();
 		if (hostEl.value === null) return;
@@ -119,9 +132,12 @@ async function load(): Promise<void> {
 	}
 }
 
-async function save(): Promise<void> {
+// Mirrors MonacoEditor.vue's save() contract exactly: true on a successful upload, false if a save
+// was already in flight, there's no editor yet, or the upload itself failed - never throws, so a
+// caller (e.g. DWC's Explorer page save-before-close) can just `if (!(await save())) ...` .
+async function save(): Promise<boolean> {
 	const instance = editorInstance.value;
-	if (instance === null || saving.value) return;
+	if (instance === null || saving.value) return false;
 	saving.value = true;
 	try {
 		const content = instance.flush().toString();
@@ -130,14 +146,22 @@ async function save(): Promise<void> {
 		uiStore.makeNotification(LogLevel.success, basename(props.filename),
 			i18n.global.t("plugins.flexibleLayouts.gcodeEditor.saved", { name: basename(props.filename) }));
 		emit("saved", props.filename);
+		return true;
 	} catch (e) {
 		uiStore.makeNotification(LogLevel.error, basename(props.filename),
 			i18n.global.t("plugins.flexibleLayouts.gcodeEditor.saveFailed", {
 				name: basename(props.filename), error: (e as Error)?.message ?? String(e),
 			}));
+		return false;
 	} finally {
 		saving.value = false;
 	}
+}
+
+// Mirrors MonacoEditor.vue's focusEditor(): give the CM6 view keyboard focus so typing and Ctrl+S
+// work right away once this tab becomes active. No-op if the instance hasn't mounted yet.
+function focus(): void {
+	editorInstance.value?.view.focus();
 }
 
 async function checkForErrors(): Promise<void> {
@@ -160,9 +184,10 @@ watch(hostEl, (el) => { if (el !== null) void load(); }, { immediate: true });
 
 onUnmounted(() => editorInstance.value?.destroy());
 
-// `save` mirrors MonacoEditor.vue's own exposed surface. `editorInstance` is additionally exposed
-// (read-only in spirit - callers should only ever dispatch through `.view`) purely so tests can
-// drive a real CM6 edit directly, the same way this family's other editor tests do when a
+// `save`/`focus` mirror MonacoEditor.vue's own exposed surface exactly (both required by DWC core's
+// `FileEditorEntry` contract - PR #519's `registerFileEditor`). `editorInstance` is additionally
+// exposed (read-only in spirit - callers should only ever dispatch through `.view`) purely so tests
+// can drive a real CM6 edit directly, the same way this family's other editor tests do when a
 // synthetic DOM `beforeinput`/composition event under happy-dom would be unreliable to fake.
-defineExpose({ save, editorInstance });
+defineExpose({ save, focus, editorInstance });
 </script>
