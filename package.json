@@ -28,7 +28,7 @@
     "clipper-lib": "^6.4.2",
     "dwc-config-backup-core": "^0.2.0",
     "dwc-gcode-core": "^1.3.1",
-    "dwc-gcode-editor": "github:jaysuk/dwc-gcode-editor#v0.3.0",
+    "dwc-gcode-editor": "github:jaysuk/dwc-gcode-editor#v0.4.1",
     "dwc-plugin-runtime": "^0.8.7",
     "grid-layout-plus": "^1.1.1",
     "jszip": "^3.10.1"
