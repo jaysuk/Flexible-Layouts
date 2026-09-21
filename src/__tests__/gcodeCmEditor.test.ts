@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { startCompletion } from "@codemirror/autocomplete";
+import type { EditorView } from "@codemirror/view";
 import { dwc, mountInDwc } from "dwc-plugin-test-kit";
 
 import GcodeCmEditor from "../widgets/GcodeCmEditor.vue";
@@ -16,10 +17,14 @@ const uploadMock = vi.fn(async (options: { filename: string; content: Blob }) =>
 	uploaded.push({ filename: options.filename, content: await options.content.text() });
 });
 
+// The real EditorView, not a hand-rolled subset of its shape - a prior narrower duck-type here
+// (only dispatch/focus/contentDOM) silently drifted out of sync once a later test started reading
+// .state off it directly and passing the view itself into startCompletion(), both of which need the
+// real type. Caught by CI's real DWC typecheck, not by this repo's own local `npm run typecheck`.
 type ExposedVm = {
 	save: () => Promise<boolean>;
 	focus: () => void;
-	editorInstance: { view: { dispatch: (spec: unknown) => void; focus: () => void; contentDOM: HTMLElement } };
+	editorInstance: { view: EditorView };
 };
 
 vi.mock("@/stores/machine", async (importOriginal) => {
