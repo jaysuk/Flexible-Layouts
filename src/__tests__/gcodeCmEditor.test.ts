@@ -268,4 +268,48 @@ describe("GcodeCmEditor", () => {
 		expect(wrapper.findAll("button").find((b) => b.attributes("title") === "Run")).toBeUndefined();
 		wrapper.unmount();
 	});
+
+	it("the quick-search button opens the G/M-code picker by default, titled Find Code (F4)", async () => {
+		const wrapper = mountInDwc(GcodeCmEditor, { props: { filename: "0:/gcodes/o.g" } });
+		await vi.waitFor(() => expect(wrapper.text()).toContain("G1 X10 Y10"));
+
+		const quickSearchBtn = () => wrapper.findAll("button").find((b) => b.attributes("title")?.startsWith("Find "));
+		expect(quickSearchBtn()!.attributes("title")).toBe("Find Code (F4)");
+		await quickSearchBtn()!.trigger("click");
+		expect(wrapper.find(".cm-gcodeQuickSearch").exists()).toBe(true);
+		const input = wrapper.find(".cm-gcodeQuickSearch-input").element as HTMLInputElement;
+		expect(input.placeholder).toMatch(/code/i);
+		wrapper.unmount();
+	});
+
+	it("the quick-search button switches to Find Expression (F4) once the cursor sits inside a { expression, and offers the live object model", async () => {
+		patchModel({ move: { speedFactor: 1 } });
+		const wrapper = mountInDwc(GcodeCmEditor, { props: { filename: "0:/gcodes/p.g" } });
+		await vi.waitFor(() => expect(wrapper.text()).toContain("G1 X10 Y10"));
+		const vm = wrapper.vm as unknown as ExposedVm;
+
+		const docLength = vm.editorInstance.view.state.doc.length;
+		vm.editorInstance.view.dispatch({
+			changes: { from: 0, to: docLength, insert: "G1 X{move.speedFactor}" },
+			selection: { anchor: 6 },
+		});
+		await wrapper.vm.$nextTick();
+
+		const quickSearchBtn = () => wrapper.findAll("button").find((b) => b.attributes("title")?.startsWith("Find "));
+		expect(quickSearchBtn()!.attributes("title")).toBe("Find Expression (F4)");
+		await quickSearchBtn()!.trigger("click");
+		const labels = wrapper.findAll(".cm-gcodeQuickSearch-label").map((e) => e.text());
+		expect(labels).toContain("move.speedFactor");
+		wrapper.unmount();
+	});
+
+	it("F4 itself opens the same quick-search picker", async () => {
+		const wrapper = mountInDwc(GcodeCmEditor, { props: { filename: "0:/gcodes/q.g" } });
+		await vi.waitFor(() => expect(wrapper.text()).toContain("G1 X10 Y10"));
+		const vm = wrapper.vm as unknown as ExposedVm;
+
+		vm.editorInstance.view.contentDOM.dispatchEvent(new KeyboardEvent("keydown", { key: "F4", bubbles: true, cancelable: true }));
+		expect(wrapper.find(".cm-gcodeQuickSearch").exists()).toBe(true);
+		wrapper.unmount();
+	});
 });

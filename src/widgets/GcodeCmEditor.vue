@@ -21,6 +21,7 @@
 		<v-toolbar density="compact" color="surface" class="flex-shrink-0">
 			<v-btn :loading="saving" :disabled="!dirty || loading" icon="mdi-content-save-outline"
 				   :title="$t('plugins.flexibleLayouts.gcodeEditor.save')" @click="save" />
+			<v-btn :disabled="loading" icon="mdi-tag-search" :title="quickSearchTitle" @click="openCodeSearch" />
 			<v-btn :disabled="loading" icon="mdi-magnify" title="Search (Ctrl+F)" @click="openSearch" />
 			<v-btn :disabled="loading" icon="mdi-help-circle-outline" title="G-code reference"
 				   :href="docsUrl" target="_blank" rel="noopener noreferrer" />
@@ -64,7 +65,8 @@ import { EditorView, lineNumbers } from "@codemirror/view";
 import { diagnoseDocument, parseDocument } from "dwc-gcode-core";
 import {
 	alignLineComments, applyDiagnostics, buildDocFromString, codeAtCursor, createEditorInstance,
-	createThemeController, gcodeCompletion, gcodeLanguage, gcodeLintUi, gcodeSearch, openSearchPanel,
+	createThemeController, gcodeCompletion, gcodeLanguage, gcodeLintUi, gcodeQuickSearchKeymap,
+	gcodeSearch, isInsideExpression, openExpressionQuickSearch, openGcodeQuickSearch, openSearchPanel,
 	saveKeymap, type EditorInstance, type ThemeController,
 } from "dwc-gcode-editor";
 import type { Text } from "@codemirror/state";
@@ -117,6 +119,7 @@ const loadError = ref<string | null>(null);
 const dirty = ref(false);
 const diagnosticCount = ref<number | null>(null);
 const cursorCode = ref<string | null>(null);
+const cursorInExpression = ref(false);
 const running = ref(false);
 // shallowRef: EditorInstance wraps a live CM6 EditorView - Vue must never try to deep-reactive-proxy it.
 const editorInstance = shallowRef<EditorInstance | null>(null);
@@ -132,6 +135,9 @@ const docsUrl = computed(() => {
 	const base = "https://docs.duet3d.com/en/User_manual/Reference/Gcodes";
 	return cursorCode.value !== null ? `${base}/${cursorCode.value}` : base;
 });
+
+// Matches MonacoEditor.vue's own toolbar wording exactly ("Find Code (F4)" / "Find Expression (F4)").
+const quickSearchTitle = computed(() => cursorInExpression.value ? "Find Expression (F4)" : "Find Code (F4)");
 
 // Mirrors MonacoEditor.vue's own canRun exactly: M98 executes any macro-style file in place, but
 // sliced job files under the gcodes directory start via M32 from the Jobs page instead, never this
@@ -163,9 +169,15 @@ function editorExtensions(theme: ThemeController) {
 		// later, on a real Ctrl+S) does not depend on declaration order.
 		saveKeymap(() => { void save(); }),
 		gcodeSearch(),
+		gcodeQuickSearchKeymap(() => machineStore.model),
 		EditorView.updateListener.of((update) => {
 			if (update.docChanged) setDirty(true);
-			if (update.docChanged || update.selectionSet) cursorCode.value = codeAtCursor(update.view);
+			if (update.docChanged || update.selectionSet) {
+				cursorCode.value = codeAtCursor(update.view);
+				const line = update.state.doc.lineAt(update.state.selection.main.head);
+				const beforeCursor = line.text.slice(0, update.state.selection.main.head - line.from);
+				cursorInExpression.value = isInsideExpression(beforeCursor);
+			}
 		}),
 	];
 }
@@ -228,6 +240,16 @@ function focus(): void {
 function openSearch(): void {
 	const instance = editorInstance.value;
 	if (instance !== null) openSearchPanel(instance.view);
+}
+
+// Matches MonacoEditor.vue's own searchGcode(): the toolbar button always calls this one function,
+// which picks G/M-code search vs. object-model-path search off where the cursor sits - the same
+// switch the F4 keybinding (gcodeQuickSearchKeymap, in editorExtensions above) already makes.
+function openCodeSearch(): void {
+	const instance = editorInstance.value;
+	if (instance === null) return;
+	if (cursorInExpression.value) openExpressionQuickSearch(instance.view, machineStore.model);
+	else openGcodeQuickSearch(instance.view);
 }
 
 function alignComments(): void {
