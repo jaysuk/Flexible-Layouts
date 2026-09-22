@@ -959,7 +959,13 @@
 		"back": "Back to files",
 		"filesTab": "Files",
 		"thumbnails": "Show thumbnails",
-		"none": "No files or folders here."
+		"none": "No files or folders here.",
+		"closeUnsaved": {
+			"title": "Unsaved changes",
+			"body": "{name} has unsaved changes. Save before closing?",
+			"save": "Save",
+			"discard": "Discard"
+		}
 	},
 	"gcodeEditor": {
 		"save": "Save",
