@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { startCompletion } from "@codemirror/autocomplete";
 import type { EditorView } from "@codemirror/view";
-import { dwc, mountInDwc } from "dwc-plugin-test-kit";
+import { dwc, lastCode, mountInDwc, patchModel, sentCodes, setUiFrozen } from "dwc-plugin-test-kit";
 
 import GcodeCmEditor from "../widgets/GcodeCmEditor.vue";
 
@@ -180,6 +180,92 @@ describe("GcodeCmEditor", () => {
 			// dictionary entries once the source resolves - a real completion round-trip, not a stub.
 			expect(document.body.textContent).toContain("Linear move");
 		});
+		wrapper.unmount();
+	});
+
+	it("opens the search panel via the toolbar button", async () => {
+		const wrapper = mountInDwc(GcodeCmEditor, { props: { filename: "0:/gcodes/j.g" } });
+		await vi.waitFor(() => expect(wrapper.text()).toContain("G1 X10 Y10"));
+
+		expect(wrapper.find(".cm-search").exists()).toBe(false);
+		const searchBtn = wrapper.findAll("button").find((b) => b.attributes("title") === "Search (Ctrl+F)");
+		await searchBtn!.trigger("click");
+		expect(wrapper.find(".cm-search").exists()).toBe(true);
+		wrapper.unmount();
+	});
+
+	it("the docs-link button follows the cursor onto whatever code it sits on", async () => {
+		const wrapper = mountInDwc(GcodeCmEditor, { props: { filename: "0:/gcodes/k.g" } });
+		await vi.waitFor(() => expect(wrapper.text()).toContain("G1 X10 Y10"));
+		const vm = wrapper.vm as unknown as ExposedVm;
+
+		const docsLink = () => wrapper.findAll("a").find((a) => a.attributes("title") === "G-code reference");
+		expect(docsLink()!.attributes("href")).toBe("https://docs.duet3d.com/en/User_manual/Reference/Gcodes");
+
+		vm.editorInstance.view.dispatch({ selection: { anchor: 1 } }); // inside "G28"
+		await wrapper.vm.$nextTick();
+		expect(docsLink()!.attributes("href")).toBe("https://docs.duet3d.com/en/User_manual/Reference/Gcodes/G28");
+		wrapper.unmount();
+	});
+
+	it("aligns comments via the toolbar button", async () => {
+		fileContent = "G1 X10 ;short\nG1 X10 Y20 ;longer\n";
+		const wrapper = mountInDwc(GcodeCmEditor, { props: { filename: "0:/gcodes/l.g" } });
+		await vi.waitFor(() => expect(wrapper.text()).toContain("longer"));
+
+		const alignBtn = wrapper.findAll("button").find((b) => b.attributes("title") === "Align comments");
+		await alignBtn!.trigger("click");
+		await wrapper.vm.$nextTick();
+		expect(wrapper.text()).toContain("G1 X10     ;short");
+		fileContent = "G28\nG1 X10 Y10\n";
+		wrapper.unmount();
+	});
+
+	it("reverts to the loaded content and disables itself once clean again", async () => {
+		const wrapper = mountInDwc(GcodeCmEditor, { props: { filename: "0:/gcodes/m.g" } });
+		await vi.waitFor(() => expect(wrapper.text()).toContain("G1 X10 Y10"));
+		const vm = wrapper.vm as unknown as ExposedVm;
+
+		const revertBtn = () => wrapper.findAll("button").find((b) => b.attributes("title") === "Revert");
+		expect(revertBtn()!.attributes("disabled")).toBeDefined();
+
+		vm.editorInstance.view.dispatch({ changes: { from: 0, insert: "; edited\n" } });
+		await wrapper.vm.$nextTick();
+		expect(revertBtn()!.attributes("disabled")).toBeUndefined();
+
+		await revertBtn()!.trigger("click");
+		await wrapper.vm.$nextTick();
+		expect(vm.editorInstance.view.state.doc.toString()).toBe("G28\nG1 X10 Y10\n");
+		expect(revertBtn()!.attributes("disabled")).toBeDefined();
+		wrapper.unmount();
+	});
+
+	it("Run sends M98 for a macro-style file, disabled while the UI is frozen", async () => {
+		patchModel({ directories: { gCodes: "0:/gcodes" } });
+		const wrapper = mountInDwc(GcodeCmEditor, { props: { filename: "0:/macros/prime.g" } });
+		await vi.waitFor(() => expect(wrapper.text()).toContain("G1 X10 Y10"));
+
+		const runBtn = () => wrapper.findAll("button").find((b) => b.attributes("title") === "Run");
+		expect(runBtn()).toBeDefined(); // not under the gcodes directory - offered
+
+		setUiFrozen(true);
+		await wrapper.vm.$nextTick();
+		expect(runBtn()!.attributes("disabled")).toBeDefined();
+		setUiFrozen(false);
+		await wrapper.vm.$nextTick();
+
+		await runBtn()!.trigger("click");
+		await vi.waitFor(() => expect(sentCodes().length).toBeGreaterThan(0));
+		expect(lastCode()).toBe('M98 P"0:/macros/prime.g"');
+		wrapper.unmount();
+	});
+
+	it("Run is not offered for a file under the gcodes (job) directory", async () => {
+		patchModel({ directories: { gCodes: "0:/gcodes" } });
+		const wrapper = mountInDwc(GcodeCmEditor, { props: { filename: "0:/gcodes/n.g" } });
+		await vi.waitFor(() => expect(wrapper.text()).toContain("G1 X10 Y10"));
+
+		expect(wrapper.findAll("button").find((b) => b.attributes("title") === "Run")).toBeUndefined();
 		wrapper.unmount();
 	});
 });
