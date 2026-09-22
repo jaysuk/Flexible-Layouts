@@ -1,20 +1,33 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { flushPromises } from "@vue/test-utils";
 import { startCompletion } from "@codemirror/autocomplete";
 import type { EditorView } from "@codemirror/view";
+import { GCODE_EDITOR_COLORS_SD_PATH } from "dwc-gcode-editor";
 import { dwc, lastCode, mountInDwc, patchModel, sentCodes, setUiFrozen } from "dwc-plugin-test-kit";
 
 import GcodeCmEditor from "../widgets/GcodeCmEditor.vue";
+import { resetEditorColorSettingsForTests } from "../model/editorColorSettings";
 
 let fileContent = "G28\nG1 X10 Y10\n";
 let failUpload = false;
 const uploaded: Array<{ filename: string; content: string }> = [];
+// A tiny in-memory store keyed by filename, just for the color-settings SD file - GcodeCmEditor's own
+// g-code content download/upload (fileContent/uploaded above) is unrelated and untouched by this.
+const colorFiles = new Map<string, string>();
 const downloadMock = vi.fn(async (options: { filename: string }) => {
 	if (options.filename === "0:/gcodes/missing.g") throw new Error("not found");
+	if (options.filename === GCODE_EDITOR_COLORS_SD_PATH) {
+		const stored = colorFiles.get(options.filename);
+		if (stored === undefined) throw new Error("not found");
+		return stored;
+	}
 	return fileContent;
 });
 const uploadMock = vi.fn(async (options: { filename: string; content: Blob }) => {
 	if (failUpload) throw new Error("disk full");
-	uploaded.push({ filename: options.filename, content: await options.content.text() });
+	const text = await options.content.text();
+	uploaded.push({ filename: options.filename, content: text });
+	if (options.filename === GCODE_EDITOR_COLORS_SD_PATH) colorFiles.set(options.filename, text);
 });
 
 // The real EditorView, not a hand-rolled subset of its shape - a prior narrower duck-type here
@@ -39,6 +52,12 @@ vi.mock("@/stores/machine", async (importOriginal) => {
 });
 
 describe("GcodeCmEditor", () => {
+	beforeEach(() => {
+		colorFiles.clear();
+		resetEditorColorSettingsForTests();
+	});
+
+
 	it("loads the file's content into a live editor", async () => {
 		const wrapper = mountInDwc(GcodeCmEditor, { props: { filename: "0:/gcodes/a.g" } });
 		await vi.waitFor(() => expect(wrapper.text()).toContain("G1 X10 Y10"));
@@ -78,7 +97,10 @@ describe("GcodeCmEditor", () => {
 			props: { filename: "0:/gcodes/c.g", initialContent: "; pre-fetched\nG1 Z5\n" },
 		});
 		await vi.waitFor(() => expect(wrapper.text()).toContain("G1 Z5"));
-		expect(downloadMock).not.toHaveBeenCalled();
+		// initialContent skips downloading the FILE's own content specifically - the shared,
+		// unrelated color-scheme SD file is still loaded once per session regardless (see
+		// editorColorSettings.ts), so downloadMock itself isn't a clean "not called at all" signal.
+		expect(downloadMock).not.toHaveBeenCalledWith(expect.objectContaining({ filename: "0:/gcodes/c.g" }));
 		wrapper.unmount();
 	});
 
@@ -311,5 +333,97 @@ describe("GcodeCmEditor", () => {
 		vm.editorInstance.view.contentDOM.dispatchEvent(new KeyboardEvent("keydown", { key: "F4", bubbles: true, cancelable: true }));
 		expect(wrapper.find(".cm-gcodeQuickSearch").exists()).toBe(true);
 		wrapper.unmount();
+	});
+
+	it("opens the color settings dialog via the toolbar button", async () => {
+		const wrapper = mountInDwc(GcodeCmEditor, { props: { filename: "0:/gcodes/r.g" } });
+		await vi.waitFor(() => expect(wrapper.text()).toContain("G1 X10 Y10"));
+
+		const settingsBtn = wrapper.findAll("button").find((b) => b.attributes("title") === "plugins.flexibleLayouts.gcodeEditor.colors");
+		await settingsBtn!.trigger("click");
+		// The test kit's $t stub echoes the raw key (see its own doc comment: "tests assert on keys
+		// rather than translations") - real English text/interpolation only renders against the actual
+		// DWC i18n instance, not under this stub.
+		expect(document.body.textContent).toContain("plugins.flexibleLayouts.gcodeEditor.colors");
+		expect(document.body.querySelectorAll("input[type=color]").length).toBe(10);
+		wrapper.unmount();
+	});
+
+	it("Save persists the scheme to the SD card and applies it live to the same instance", async () => {
+		const wrapper = mountInDwc(GcodeCmEditor, { props: { filename: "0:/gcodes/s.g" } });
+		document.body.appendChild(wrapper.element); // getComputedStyle needs a connected element
+		await vi.waitFor(() => expect(wrapper.text()).toContain("G1 X10 Y10"));
+
+		await wrapper.findAll("button").find((b) => b.attributes("title") === "plugins.flexibleLayouts.gcodeEditor.colors")!.trigger("click");
+		const bgInput = document.body.querySelector("#gcode-editor-color-background") as HTMLInputElement;
+		bgInput.value = "#123456";
+		bgInput.dispatchEvent(new Event("input", { bubbles: true }));
+
+		const saveBtn = Array.from(document.body.querySelectorAll("button")).find((b) => b.textContent?.trim() === "plugins.flexibleLayouts.gcodeEditor.save");
+		saveBtn!.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+		await flushPromises();
+
+		expect(colorFiles.get(GCODE_EDITOR_COLORS_SD_PATH)).toContain("#123456");
+		const cmEditor = wrapper.find(".cm-editor");
+		expect(getComputedStyle(cmEditor.element).backgroundColor).toBe("#123456");
+		wrapper.unmount();
+	});
+
+	it("Cancel closes the dialog without persisting or applying anything", async () => {
+		const wrapper = mountInDwc(GcodeCmEditor, { props: { filename: "0:/gcodes/t.g" } });
+		await vi.waitFor(() => expect(wrapper.text()).toContain("G1 X10 Y10"));
+
+		await wrapper.findAll("button").find((b) => b.attributes("title") === "plugins.flexibleLayouts.gcodeEditor.colors")!.trigger("click");
+		const bgInput = document.body.querySelector("#gcode-editor-color-background") as HTMLInputElement;
+		bgInput.value = "#123456";
+		bgInput.dispatchEvent(new Event("input", { bubbles: true }));
+
+		const cancelBtn = Array.from(document.body.querySelectorAll("button")).find((b) => b.textContent?.trim() === "plugins.flexibleLayouts.gcodeEditor.colorsCancel");
+		cancelBtn!.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+		await flushPromises();
+
+		expect(colorFiles.size).toBe(0);
+		wrapper.unmount();
+	});
+
+	it("Reset to defaults resets the visible color inputs", async () => {
+		const wrapper = mountInDwc(GcodeCmEditor, { props: { filename: "0:/gcodes/u.g" } });
+		await vi.waitFor(() => expect(wrapper.text()).toContain("G1 X10 Y10"));
+
+		await wrapper.findAll("button").find((b) => b.attributes("title") === "plugins.flexibleLayouts.gcodeEditor.colors")!.trigger("click");
+		const bgInput = document.body.querySelector("#gcode-editor-color-background") as HTMLInputElement;
+		const originalDefault = bgInput.value;
+		bgInput.value = "#123456";
+		bgInput.dispatchEvent(new Event("input", { bubbles: true }));
+		await wrapper.vm.$nextTick();
+		expect(bgInput.value).toBe("#123456");
+
+		const resetBtn = Array.from(document.body.querySelectorAll("button")).find((b) => b.textContent?.trim() === "plugins.flexibleLayouts.gcodeEditor.colorsReset");
+		resetBtn!.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+		await wrapper.vm.$nextTick();
+		expect(bgInput.value).toBe(originalDefault);
+		wrapper.unmount();
+	});
+
+	it("a saved scheme applies live to a DIFFERENT already-open editor instance, not just the one that saved it", async () => {
+		const a = mountInDwc(GcodeCmEditor, { props: { filename: "0:/gcodes/v.g" } });
+		document.body.appendChild(a.element);
+		await vi.waitFor(() => expect(a.text()).toContain("G1 X10 Y10"));
+		const b = mountInDwc(GcodeCmEditor, { props: { filename: "0:/gcodes/w.g" } });
+		document.body.appendChild(b.element);
+		await vi.waitFor(() => expect(b.text()).toContain("G1 X10 Y10"));
+
+		await a.findAll("button").find((btn) => btn.attributes("title") === "plugins.flexibleLayouts.gcodeEditor.colors")!.trigger("click");
+		const bgInput = document.body.querySelector("#gcode-editor-color-background") as HTMLInputElement;
+		bgInput.value = "#654321";
+		bgInput.dispatchEvent(new Event("input", { bubbles: true }));
+		const saveBtn = Array.from(document.body.querySelectorAll("button")).find((btn) => btn.textContent?.trim() === "plugins.flexibleLayouts.gcodeEditor.save");
+		saveBtn!.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+		await flushPromises();
+
+		const bCmEditor = b.find(".cm-editor");
+		expect(getComputedStyle(bCmEditor.element).backgroundColor).toBe("#654321");
+		a.unmount();
+		b.unmount();
 	});
 });

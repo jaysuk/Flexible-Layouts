@@ -34,6 +34,7 @@
 			<span v-if="diagnosticCount !== null" class="text-caption text-medium-emphasis ml-1">
 				{{ diagnosticCount }}
 			</span>
+			<v-btn icon="mdi-palette" :title="$t('plugins.flexibleLayouts.gcodeEditor.colors')" @click="colorSettingsOpen = true" />
 			<v-spacer />
 			<span class="text-caption text-medium-emphasis text-truncate">{{ basename(filename) }}{{ dirty ? " *" : "" }}</span>
 		</v-toolbar>
@@ -42,6 +43,7 @@
 		</v-alert>
 		<v-progress-linear v-if="loading" indeterminate />
 		<div ref="hostEl" class="flex-grow-1 gcode-cm-editor-host"></div>
+		<EditorColorSettingsDialog v-model="colorSettingsOpen" />
 	</div>
 </template>
 
@@ -75,6 +77,8 @@ import { useMachineStore } from "@/stores/machine";
 import { useSettingsStore } from "@/stores/settings";
 import { LogLevel, useUiStore } from "@/stores/ui";
 import i18n from "@/i18n";
+import EditorColorSettingsDialog from "./EditorColorSettingsDialog.vue";
+import { editorColorScheme, loadEditorColorScheme } from "../model/editorColorSettings";
 
 // DWC's own Path.escapeFilename (src/utils/path.ts) is not in a plugin's externalised import
 // surface (only @/plugins, @/stores/*, and DWC's public component palette are - see this repo's own
@@ -121,6 +125,7 @@ const diagnosticCount = ref<number | null>(null);
 const cursorCode = ref<string | null>(null);
 const cursorInExpression = ref(false);
 const running = ref(false);
+const colorSettingsOpen = ref(false);
 // shallowRef: EditorInstance wraps a live CM6 EditorView - Vue must never try to deep-reactive-proxy it.
 const editorInstance = shallowRef<EditorInstance | null>(null);
 // One ThemeController per instance (a Compartment belongs to exactly one EditorView) - this
@@ -190,11 +195,17 @@ async function load(): Promise<void> {
 			{ filename: props.filename, type: "text" }, false, false, false, false,
 		) as string;
 		const doc = await buildDocFromString(content);
+		// A no-op after the first real call this session (every editor instance calls this on load -
+		// see editorColorSettings.ts's own doc comment for the shared-load pattern).
+		await loadEditorColorScheme();
 		editorInstance.value?.destroy();
 		if (hostEl.value === null) return;
 		themeController = createThemeController(settingsStore.darkTheme);
 		originalDoc = doc;
 		editorInstance.value = createEditorInstance({ doc, parent: hostEl.value, extensions: editorExtensions(themeController) });
+		// Applied right after creation, in the same synchronous block, so there's no visible flash of
+		// the fixed theme before the loaded custom colors (if any) take over.
+		themeController.setCustomColors(editorInstance.value.view, editorColorScheme.value);
 		setDirty(false);
 	} catch (e) {
 		loadError.value = i18n.global.t("plugins.flexibleLayouts.gcodeEditor.loadFailed", {
@@ -302,6 +313,14 @@ watch(hostEl, (el) => { if (el !== null) void load(); }, { immediate: true });
 watch(() => settingsStore.darkTheme, (dark) => {
 	const instance = editorInstance.value;
 	if (instance !== null && themeController !== null) themeController.setDark(instance.view, dark);
+});
+
+// Live, site-wide colour updates: a Save from ANY open tab's settings dialog (this instance's own, or
+// a different tab's, or duet-gcode-postprocessor's - same shared SD file) updates the shared
+// editorColorScheme ref, which every open instance is watching.
+watch(editorColorScheme, (scheme) => {
+	const instance = editorInstance.value;
+	if (instance !== null && themeController !== null) themeController.setCustomColors(instance.view, scheme);
 });
 
 onUnmounted(() => editorInstance.value?.destroy());

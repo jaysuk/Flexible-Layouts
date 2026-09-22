@@ -969,7 +969,26 @@
 		"loadFailed": "Could not load {name}: {error}",
 		"settingsTitle": "G-code editor",
 		"settingsHint": "The new editor understands G-code specifically (real syntax highlighting, error checking) but not other file types yet - menu files, STM32 board.txt and plain text always open in the standard editor regardless of this setting.",
-		"settingsToggle": "Use the new G-code editor for G-code files"
+		"settingsToggle": "Use the new G-code editor for G-code files",
+		"colors": "Editor colors",
+		"colorsHint": "Applies site-wide, wherever this G-code editor is used, and is saved to the SD card ({path}).",
+		"colorsLight": "Light",
+		"colorsDark": "Dark",
+		"colorsPreview": "Preview",
+		"colorsReset": "Reset to defaults",
+		"colorsCancel": "Cancel",
+		"colorLabels": {
+			"background": "Background",
+			"foreground": "Text",
+			"keyword": "Command code",
+			"controlKeyword": "Control keyword (if/while/...)",
+			"definitionKeyword": "Definition keyword (var/global/set)",
+			"propertyName": "Parameter",
+			"number": "Number",
+			"string": "String",
+			"atom": "Expression",
+			"comment": "Comment"
+		}
 	},
 	"filePicker": {
 		"title": "Choose a G-code file",
