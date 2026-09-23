@@ -8,6 +8,17 @@ import { dwc, lastCode, mountInDwc, patchModel, sentCodes, setUiFrozen } from "d
 import GcodeCmEditor from "../widgets/GcodeCmEditor.vue";
 import { resetEditorColorSettingsForTests } from "../model/editorColorSettings";
 
+// This harness's happy-dom `localStorage` is a non-functional stub (`localStorage.setItem` is not a
+// function - same environment gap duet-gcode-postprocessor's own executionIndex.test.ts documents and
+// works around). A tiny in-memory stand-in is the only way to exercise the stepper's simulated-value/
+// message-box persistence tests below; real DWC runs in an actual browser, where localStorage works.
+const memoryStorage = new Map<string, string>();
+vi.stubGlobal("localStorage", {
+	getItem: (key: string) => memoryStorage.get(key) ?? null,
+	setItem: (key: string, value: string) => { memoryStorage.set(key, value); },
+	removeItem: (key: string) => { memoryStorage.delete(key); },
+});
+
 let fileContent = "G28\nG1 X10 Y10\n";
 let failUpload = false;
 const uploaded: Array<{ filename: string; content: string }> = [];
@@ -402,6 +413,91 @@ describe("GcodeCmEditor", () => {
 		resetBtn!.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
 		await wrapper.vm.$nextTick();
 		expect(bgInput.value).toBe(originalDefault);
+		wrapper.unmount();
+	});
+
+	it("Step through file shows step info and highlights the current line", async () => {
+		fileContent = "G28\nG1 X10 Y10\nG1 Z5\n";
+		const wrapper = mountInDwc(GcodeCmEditor, { props: { filename: "0:/gcodes/stepper-a.g" } });
+		document.body.appendChild(wrapper.element); // CM6 line decorations need a connected view
+		await vi.waitFor(() => expect(wrapper.text()).toContain("G1 Z5"));
+
+		const stepBtn = wrapper.findAll("button").find((b) => b.attributes("title") === "Step through file");
+		await stepBtn!.trigger("click");
+		await vi.waitFor(() => expect(wrapper.text()).toContain("Step 1 / 3"));
+		expect(wrapper.text()).toContain("line 1");
+		expect(wrapper.find(".cm-gcodeCurrentLine").exists()).toBe(true);
+
+		fileContent = "G28\nG1 X10 Y10\n";
+		wrapper.unmount();
+	});
+
+	it("Step forward advances the step counter and the derived machine state", async () => {
+		fileContent = "G28\nG1 X10 Y20\nG1 Z5\n";
+		const wrapper = mountInDwc(GcodeCmEditor, { props: { filename: "0:/gcodes/stepper-b.g" } });
+		await vi.waitFor(() => expect(wrapper.text()).toContain("G1 Z5"));
+
+		await wrapper.findAll("button").find((b) => b.attributes("title") === "Step through file")!.trigger("click");
+		await vi.waitFor(() => expect(wrapper.text()).toContain("Step 1 / 3"));
+
+		const stepForwardBtn = wrapper.findAll("button").find((b) => b.attributes("title") === "Step forward");
+		await stepForwardBtn!.trigger("click");
+		await stepForwardBtn!.trigger("click");
+		await vi.waitFor(() => expect(wrapper.text()).toContain("Step 3 / 3"));
+		expect(wrapper.text()).toContain("Z5.00");
+
+		fileContent = "G28\nG1 X10 Y10\n";
+		wrapper.unmount();
+	});
+
+	it("pauses on an unresolved object-model path, resumes once a simulated value is supplied, and persists it for the next open", async () => {
+		fileContent = 'G28\nif sensors.gpIn[0].value > 0\n    G1 X1\nG1 Y1\n';
+		const filename = "0:/gcodes/stepper-c.g";
+		const wrapper = mountInDwc(GcodeCmEditor, { props: { filename } });
+		await vi.waitFor(() => expect(wrapper.text()).toContain("G1 Y1"));
+
+		await wrapper.findAll("button").find((b) => b.attributes("title") === "Step through file")!.trigger("click");
+		await vi.waitFor(() => expect(wrapper.text()).toContain("sensors.gpIn[0].value"));
+
+		const promptInput = wrapper.find("input[placeholder='e.g. 1, true, ...']");
+		await promptInput.setValue("1");
+		const applyBtn = wrapper.findAll("button").find((b) => b.text() === "Apply");
+		await applyBtn!.trigger("click");
+		// Resolving a pause rebuilds the index (now 4 real steps: G28, the true if-body's G1 X1, G1 Y1)
+		// but deliberately does NOT jump the scrub position to the end - only clamps it into range.
+		await vi.waitFor(() => expect(wrapper.text()).toContain("Step 1 / 4"));
+		expect(wrapper.text()).toContain("sensors.gpIn[0].value = 1");
+		wrapper.unmount();
+
+		// A fresh instance for the same file (e.g. the tab was closed and reopened) picks the saved
+		// simulated value back up without re-prompting - own flexibleLayouts.* localStorage namespace,
+		// distinct from duet-gcode-postprocessor's identically-shaped keys.
+		const reopened = mountInDwc(GcodeCmEditor, { props: { filename } });
+		await vi.waitFor(() => expect(reopened.text()).toContain("G1 Y1"));
+		await reopened.findAll("button").find((b) => b.attributes("title") === "Step through file")!.trigger("click");
+		await vi.waitFor(() => expect(reopened.text()).toContain("Step 1 / 4"));
+		expect(reopened.text()).not.toContain("has no known value offline");
+
+		localStorage.removeItem("flexibleLayouts.stepperSimulatedValues." + filename);
+		fileContent = "G28\nG1 X10 Y10\n";
+		reopened.unmount();
+	});
+
+	it("pauses on a blocking M291 and resumes once answered", async () => {
+		fileContent = 'M291 P"Ready?" R"Confirm" S2\nG1 X1\n';
+		const wrapper = mountInDwc(GcodeCmEditor, { props: { filename: "0:/gcodes/stepper-d.g" } });
+		await vi.waitFor(() => expect(wrapper.text()).toContain("G1 X1"));
+
+		await wrapper.findAll("button").find((b) => b.attributes("title") === "Step through file")!.trigger("click");
+		await vi.waitFor(() => expect(wrapper.text()).toContain("Ready?"));
+
+		const okBtn = wrapper.findAll("button").find((b) => b.text() === "OK");
+		await okBtn!.trigger("click");
+		// Resolving the message box rebuilds the index to its full 2 real steps (M291, then G1 X1) -
+		// same "clamps, doesn't jump to the end" behaviour as the simulated-value pause above.
+		await vi.waitFor(() => expect(wrapper.text()).toContain("Step 1 / 2"));
+
+		fileContent = "G28\nG1 X10 Y10\n";
 		wrapper.unmount();
 	});
 
