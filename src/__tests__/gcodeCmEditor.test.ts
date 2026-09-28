@@ -444,7 +444,7 @@ describe("GcodeCmEditor", () => {
 		await stepForwardBtn!.trigger("click");
 		await stepForwardBtn!.trigger("click");
 		await vi.waitFor(() => expect(wrapper.text()).toContain("Step 3 / 3"));
-		expect(wrapper.text()).toContain("Z5.00");
+		expect(wrapper.find("[data-axis=\"Z\"]").text()).toContain("5.000");
 
 		fileContent = "G28\nG1 X10 Y10\n";
 		wrapper.unmount();
@@ -466,7 +466,11 @@ describe("GcodeCmEditor", () => {
 		// Resolving a pause rebuilds the index (now 4 real steps: G28, the true if-body's G1 X1, G1 Y1)
 		// but deliberately does NOT jump the scrub position to the end - only clamps it into range.
 		await vi.waitFor(() => expect(wrapper.text()).toContain("Step 1 / 4"));
-		expect(wrapper.text()).toContain("sensors.gpIn[0].value = 1");
+		// The value now lives in the scenario editor (collapsed by default): open it and read the field.
+		await wrapper.find("[data-scenario-panel] button").trigger("click");
+		const valueField = wrapper.find("input[aria-label=\"Value of sensors.gpIn[0].value\"]");
+		expect((valueField.element as HTMLInputElement).value).toBe("1");
+		expect(localStorage.getItem("flexibleLayouts.stepperScenario." + filename)).toContain("sensors.gpIn[0].value");
 		wrapper.unmount();
 
 		// A fresh instance for the same file (e.g. the tab was closed and reopened) picks the saved
@@ -478,7 +482,7 @@ describe("GcodeCmEditor", () => {
 		await vi.waitFor(() => expect(reopened.text()).toContain("Step 1 / 4"));
 		expect(reopened.text()).not.toContain("has no known value offline");
 
-		localStorage.removeItem("flexibleLayouts.stepperSimulatedValues." + filename);
+		localStorage.removeItem("flexibleLayouts.stepperScenario." + filename);
 		fileContent = "G28\nG1 X10 Y10\n";
 		reopened.unmount();
 	});
@@ -499,6 +503,94 @@ describe("GcodeCmEditor", () => {
 
 		fileContent = "G28\nG1 X10 Y10\n";
 		wrapper.unmount();
+	});
+
+	describe("the stepper as a macro-testing scenario", () => {
+		async function openStepper(content: string, filename: string): Promise<ReturnType<typeof mountInDwc>> {
+			fileContent = content;
+			const wrapper = mountInDwc(GcodeCmEditor, { props: { filename } });
+			document.body.appendChild(wrapper.element);
+			await vi.waitFor(() => expect(wrapper.find(".cm-content").exists()).toBe(true));
+			await wrapper.findAll("button").find((b) => b.attributes("title") === "Step through file")!.trigger("click");
+			return wrapper;
+		}
+		const stepForward = (wrapper: ReturnType<typeof mountInDwc>) =>
+			wrapper.findAll("button").find((b) => b.attributes("title") === "Step forward")!;
+
+		async function typeInto(wrapper: ReturnType<typeof mountInDwc>, label: string, value: string): Promise<void> {
+			const input = wrapper.find(`input[aria-label="${label}"]`);
+			expect(input.exists(), `no input labelled "${label}"`).toBe(true);
+			await input.setValue(value);
+			await input.trigger("blur"); // fields commit on blur/Enter, not per keystroke
+		}
+
+		it("shows the line as evaluated, in the panel and beneath the line in the editor", async () => {
+			const wrapper = await openStepper("var a = 5\nG1 X{var.a * 2} Y1\n", "0:/macros/scn-a.g");
+			await vi.waitFor(() => expect(wrapper.text()).toContain("Step 1 / 2"));
+			await stepForward(wrapper).trigger("click");
+			expect(wrapper.find('[data-readout="evaluated"]').text()).toBe("G1 X10 Y1");
+			expect(wrapper.find(".cm-gcodeEvaluatedLine").text()).toBe("G1 X10 Y1");
+			fileContent = "G28\nG1 X10 Y10\n";
+			wrapper.unmount();
+		});
+
+		it("a starting position gives a relative move something to be relative to, and is saved for this file", async () => {
+			const filename = "0:/macros/scn-b.g";
+			const wrapper = await openStepper("G91\nG1 X5\n", filename);
+			await vi.waitFor(() => expect(wrapper.text()).toContain("Step 1 / 2"));
+			await stepForward(wrapper).trigger("click");
+			expect(wrapper.find('[data-axis="X"]').text()).toContain("5.000");
+
+			await wrapper.find("[data-scenario-panel] button").trigger("click");
+			await typeInto(wrapper, "Start X", "100");
+			await vi.waitFor(() => expect(wrapper.find('[data-axis="X"]').text()).toContain("105.000"));
+			expect(wrapper.find('[data-axis="X"]').text()).toContain("+5.000");
+			expect(localStorage.getItem("flexibleLayouts.stepperScenario." + filename)).toContain('"X":100');
+
+			localStorage.removeItem("flexibleLayouts.stepperScenario." + filename);
+			fileContent = "G28\nG1 X10 Y10\n";
+			wrapper.unmount();
+		});
+
+		it("offers the values the file reads, and changing one takes the other branch", async () => {
+			const filename = "0:/macros/scn-c.g";
+			const wrapper = await openStepper("if sensors.gpIn[0].value = 1\n    G1 X10\nelse\n    G1 X20\n", filename);
+			await vi.waitFor(() => expect(wrapper.text()).toContain("depends on"));
+			await wrapper.find("[data-scenario-panel] button").trigger("click");
+			await vi.waitFor(() => expect(wrapper.find('[data-scenario-input="objectModel:sensors.gpIn[0].value"]').exists()).toBe(true));
+
+			const lastX = async (): Promise<string> => {
+				const total = Number(/Step \d+ \/ (\d+)/.exec(wrapper.text())![1]);
+				while (!wrapper.text().includes(`Step ${total} /`)) await stepForward(wrapper).trigger("click");
+				return wrapper.find('[data-axis="X"]').text();
+			};
+			await typeInto(wrapper, "Value of sensors.gpIn[0].value", "1");
+			await vi.waitFor(() => expect(wrapper.text()).toContain("Step 1 / 3"));
+			expect(await lastX()).toContain("10.000");
+			await typeInto(wrapper, "Value of sensors.gpIn[0].value", "0");
+			await vi.waitFor(() => expect(wrapper.find('[data-axis="X"]').text()).not.toContain("10.000"));
+			expect(await lastX()).toContain("20.000");
+
+			localStorage.removeItem("flexibleLayouts.stepperScenario." + filename);
+			fileContent = "G28\nG1 X10 Y10\n";
+			wrapper.unmount();
+		});
+
+		it("re-runs the walk when the buffer is edited while stepping", async () => {
+			const wrapper = await openStepper("G28\nG1 X10\n", "0:/macros/scn-d.g");
+			await vi.waitFor(() => expect(wrapper.text()).toContain("Step 1 / 2"));
+			// load() schedules a (0 ms) rebuild that may still be pending - it reads the buffer when it FIRES,
+			// so let it settle first, or it would pick the edit up below and this would pass without the
+			// edit-triggered rebuild it is meant to check.
+			await new Promise((resolve) => setTimeout(resolve, 50));
+			const vm = wrapper.vm as unknown as { editorInstance: { view: EditorView } };
+			vm.editorInstance.view.dispatch({ changes: { from: 0, insert: "G90\n" } });
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			expect(wrapper.text()).toContain("Step 1 / 2"); // debounced: not re-run yet
+			await vi.waitFor(() => expect(wrapper.text()).toContain("Step 1 / 3"), { timeout: 3000 });
+			fileContent = "G28\nG1 X10 Y10\n";
+			wrapper.unmount();
+		});
 	});
 
 	it("a saved scheme applies live to a DIFFERENT already-open editor instance, not just the one that saved it", async () => {
