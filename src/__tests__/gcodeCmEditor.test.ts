@@ -76,8 +76,13 @@ describe("GcodeCmEditor", () => {
 	});
 
 	it("shows a load error rather than throwing when the download fails", async () => {
+		// This assertion used to read "missing.g" off the toolbar's own now-removed filename label
+		// (redundant with the host's own tab/tile title) rather than off the load-error alert itself -
+		// checks the alert directly now. The i18n key comes back untranslated in this test environment
+		// (see the "plugins.flexibleLayouts.gcodeEditor.colors" checks elsewhere in this file), so this
+		// asserts on the raw key, not the interpolated "Could not load missing.g: ..." a real locale gives.
 		const wrapper = mountInDwc(GcodeCmEditor, { props: { filename: "0:/gcodes/missing.g" } });
-		await vi.waitFor(() => expect(wrapper.text()).toContain("missing.g"));
+		await vi.waitFor(() => expect(wrapper.text()).toContain("plugins.flexibleLayouts.gcodeEditor.loadFailed"));
 		wrapper.unmount();
 	});
 

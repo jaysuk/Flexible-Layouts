@@ -4,13 +4,27 @@
 }
 .now {
 	border-left: 3px solid rgb(var(--v-theme-primary));
-	padding: 0.25rem 0.75rem;
+	padding: 0.1875rem 0.625rem;
 	background: rgba(var(--v-theme-primary), 0.06);
 }
+.now-line {
+	display: flex;
+	align-items: baseline;
+	gap: 0.5rem;
+}
+.now-line-label {
+	flex: 0 0 auto;
+	white-space: nowrap;
+}
 .now-code {
+	min-width: 0;
 	white-space: pre-wrap;
 	word-break: break-all;
-	font-size: 0.875rem;
+	font-size: 0.8125rem;
+	line-height: 1.35;
+}
+.now-evaluated {
+	margin-top: 0.125rem;
 }
 .now-evaluated .value {
 	font-weight: 700;
@@ -22,32 +36,32 @@
 }
 .axes {
 	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
-	gap: 0.5rem;
+	grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+	gap: 0.375rem;
 }
 .axis-card {
 	border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 	border-radius: 6px;
-	padding: 0.25rem 0.625rem;
-	min-height: 4.25rem;
+	padding: 0.125rem 0.5rem;
+	min-height: 3rem;
 }
 .axis-card--changed {
 	border-color: rgb(var(--v-theme-primary));
 	background: rgba(var(--v-theme-primary), 0.08);
 }
 .axis-letter {
-	font-size: 0.75rem;
+	font-size: 0.6875rem;
 	font-weight: 600;
 	opacity: 0.75;
 }
 .axis-value {
-	font-size: 1.375rem;
+	font-size: 1.0625rem;
 	font-weight: 600;
-	line-height: 1.3;
+	line-height: 1.2;
 }
 .axis-delta {
-	font-size: 0.75rem;
-	min-height: 1.1em;
+	font-size: 0.6875rem;
+	min-height: 1em;
 	opacity: 0.85;
 }
 .axis-unknown {
@@ -61,16 +75,16 @@
 
 <template>
 	<div v-if="view !== null" class="stepper-readout">
-		<div class="now mb-2" data-readout="line">
-			<div class="text-caption text-medium-emphasis">
-				Line {{ view.line }}<template v-if="view.iteration !== null"> · loop iteration {{ view.iteration }}</template>
+		<div class="now mb-1" data-readout="line">
+			<div class="now-line">
+				<span class="now-line-label text-caption text-medium-emphasis mono">L{{ view.line }}<template v-if="view.iteration !== null"> · iter {{ view.iteration }}</template></span>
+				<div class="now-code mono" data-readout="source">{{ view.source === "" ? " " : view.source }}</div>
 			</div>
-			<div class="now-code mono" data-readout="source">{{ view.source === "" ? " " : view.source }}</div>
 			<div v-if="view.evaluated.changed" class="now-code now-evaluated mono" data-readout="evaluated"
 				 aria-label="Line as evaluated"><span v-for="(seg, i) in view.evaluated.segments" :key="i" :class="seg.kind">{{ seg.text }}</span></div>
 		</div>
 
-		<div class="axes mb-2" data-readout="axes">
+		<div class="axes mb-1" data-readout="axes">
 			<div v-for="a in view.axes" :key="a.letter" class="axis-card" :class="{ 'axis-card--changed': a.changed }"
 				 :data-axis="a.letter" :title="a.previous === null ? undefined : `was ${fixed(a.previous)}`">
 				<div class="axis-letter">
@@ -87,7 +101,7 @@
 			</div>
 		</div>
 
-		<div class="d-flex flex-wrap ga-2 mb-2 text-caption mono" data-readout="modes">
+		<div class="d-flex flex-wrap ga-2 mb-1 text-caption mono" data-readout="modes">
 			<span v-if="view.state.layer >= 0">Layer {{ view.state.layer }}</span>
 			<span v-if="view.state.tool >= 0">Tool {{ view.state.tool }}</span>
 			<span v-if="view.state.feedrate !== null">F{{ view.state.feedrate }}</span>

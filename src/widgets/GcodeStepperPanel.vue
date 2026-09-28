@@ -65,9 +65,9 @@
 			{{ errorMessage }}
 		</v-alert>
 
-		<StepperReadout :view="view" class="mt-2" />
+		<StepperReadout :view="view" class="mt-1" />
 
-		<v-expansion-panels variant="accordion" class="mt-2">
+		<v-expansion-panels variant="accordion" class="mt-1 stepper-scenario-panels">
 			<v-expansion-panel title="Scenario" data-scenario-panel>
 				<v-expansion-panel-text>
 					<StepperScenarioPanel :inputs="inputs" :referenced="referenced" :pending-path="status === 'paused' ? pendingPath : null"
@@ -77,6 +77,19 @@
 		</v-expansion-panels>
 	</div>
 </template>
+
+<style scoped>
+/* Vuetify's own expansion-panel-title/text padding is sized for a standalone accordion, not a
+   collapsed-by-default strip under an already-dense readout - trimmed so the closed "Scenario" row
+   costs one compact line, not a full-height list item. */
+.stepper-scenario-panels :deep(.v-expansion-panel-title) {
+	min-height: 2.25rem;
+	padding: 0.375rem 1rem;
+}
+.stepper-scenario-panels :deep(.v-expansion-panel-text__wrapper) {
+	padding: 0.5rem 1rem 0.75rem;
+}
+</style>
 
 <script setup lang="ts">
 /**

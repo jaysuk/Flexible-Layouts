@@ -37,8 +37,6 @@
 			<v-btn icon="mdi-palette" :title="$t('plugins.flexibleLayouts.gcodeEditor.colors')" @click="colorSettingsOpen = true" />
 			<v-btn :disabled="loading" :color="stepperOpen ? 'primary' : undefined" icon="mdi-motion-play-outline"
 				   title="Step through file" @click="stepperOpen = !stepperOpen" />
-			<v-spacer />
-			<span class="text-caption text-medium-emphasis text-truncate">{{ basename(filename) }}{{ dirty ? " *" : "" }}</span>
 		</v-toolbar>
 		<v-alert v-if="loadError !== null" type="error" variant="tonal" density="compact" class="ma-2">
 			{{ loadError }}
