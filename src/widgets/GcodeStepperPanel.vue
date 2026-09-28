@@ -68,7 +68,7 @@
 		<StepperReadout :view="view" class="mt-2" />
 
 		<v-expansion-panels variant="accordion" class="mt-2">
-			<v-expansion-panel :title="scenarioTitle" data-scenario-panel>
+			<v-expansion-panel title="Scenario" data-scenario-panel>
 				<v-expansion-panel-text>
 					<StepperScenarioPanel :inputs="inputs" :referenced="referenced" :pending-path="status === 'paused' ? pendingPath : null"
 										  @update:inputs="(next: SimulationInputs) => emit('update:inputs', next)" />
@@ -92,7 +92,7 @@
  */
 import { computed, ref, watch } from "vue";
 import type { MessageBoxAnswer, MessageBoxPrompt } from "dwc-gcode-core";
-import { isEmptySimulationInputs, type ReferencedInput, type SimulationInputs, type StepView } from "dwc-gcode-core/stepper/simulation";
+import type { ReferencedInput, SimulationInputs, StepView } from "dwc-gcode-core/stepper/simulation";
 
 import StepperReadout from "./StepperReadout.vue";
 import StepperScenarioPanel from "./StepperScenarioPanel.vue";
@@ -124,14 +124,6 @@ const emit = defineEmits<{
 	"remove-message-box-answer": [key: string];
 	"reset-message-box-answers": [];
 }>();
-
-const scenarioTitle = computed(() => {
-	const set = props.inputs.paths.size + props.inputs.globals.size + props.inputs.vars.size
-		+ Object.keys(props.inputs.start.axes ?? {}).length;
-	return isEmptySimulationInputs(props.inputs)
-		? "Scenario — starting position and test values"
-		: `Scenario — starting position and test values (${set} set)`;
-});
 
 const promptValue = ref("");
 watch(() => props.pendingPath, () => { promptValue.value = ""; });

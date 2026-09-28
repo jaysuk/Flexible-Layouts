@@ -6,7 +6,7 @@
 </style>
 
 <template>
-	<v-text-field v-model="draft" density="compact" hide-details variant="outlined" class="scenario-field"
+	<v-text-field v-model="draft" density="compact" :hide-details="hideDetails ?? true" :variant="variant ?? 'outlined'" class="scenario-field"
 				  :label="label" :placeholder="placeholder" :aria-label="ariaLabel ?? label ?? placeholder"
 				  :clearable="clearable" spellcheck="false" autocomplete="off"
 				  @blur="commit" @keyup.enter="commit" @click:clear="onClear" />
@@ -18,6 +18,10 @@
  * half-typed value never rebuilds a whole simulation run, and typing `1` on the way to `12` doesn't
  * flash through a different scenario. Emits the raw text; the parent decides what it means (a number,
  * an object-model value, ...). An emptied field commits "" so the parent can treat it as "unset".
+ *
+ * `variant` defaults to Vuetify's own default ("outlined") for backward compatibility; the compact
+ * 2026-09-28 scenario-panel redesign passes "plain" (inside an already-bordered capsule) or
+ * "underlined" (a dense value-list row) instead, since "outlined" draws its own box per field.
  */
 import { ref, watch } from "vue";
 
@@ -28,6 +32,8 @@ const props = defineProps<{
 	placeholder?: string;
 	ariaLabel?: string;
 	clearable?: boolean;
+	variant?: "outlined" | "plain" | "underlined" | "filled" | "solo";
+	hideDetails?: boolean;
 }>();
 const emit = defineEmits<{ commit: [text: string] }>();
 
