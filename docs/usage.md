@@ -89,7 +89,9 @@ Open **Manage pages** (the edit toolbar, the drawer, or *Settings → Flexible L
 Below tablet width the top bar gets a **status bar toggle** and, while printing, a **progress ring**
 (tap it for the job page). *Settings → Flexible Layouts → Phone navigation* (per device) switches to DWC's
 own phone navigation: the home screen becomes a grid of page tiles with a back arrow instead of the side
-menu (editing still uses the side menu).
+menu (editing still uses the side menu). As in DWC, moving between the home screen and a page **slides** (skipped
+if your device asks for reduced motion), and a page's badge - unread console messages, modified editors - shows in the
+corner of its tile.
 
 ## Responsive layouts
 

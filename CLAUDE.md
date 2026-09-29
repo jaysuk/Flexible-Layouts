@@ -51,6 +51,16 @@ Vue 3 + Vuetify plugin for DuetWebControl (drag-and-drop layout customisation fo
 - **Stock Explorer replacement is opt-in and load-time**: `model/builtinPages.ts`'s `EXPLORER_PAGE` is only
   in `BUILTIN_PAGES` when `shouldReplaceExplorerPage()` was true at plugin load - DWC installs route overrides
   once with the layout, and an override replaces the stock page's keep-alive, so it can't be always-on.
+- **Phone navigation (opt-in "DWC-style navigation on phones")**: `shell/MobileHub.vue` (tiles, with each page's
+  `MenuItem.badge` as a `NavMenuBadge` in the corner), `shell/useMobileHub.ts` (`useMobileHubMode` = phone + opt-in + not
+  editing; `useShowMobileHub` adds "route is `/`"), `shell/hubTransition.ts` (the `fl-hub-forward`/`fl-hub-back` name, set in a
+  `beforeEach` guard and handed to `DwcRouterView`'s `transitionName`; CSS is an UNSCOPED block at the end of `FlexShell.vue`,
+  with a `prefers-reduced-motion` off switch) and `page/pageOverride.ts`. Gotchas, both found in a real browser: (1) a
+  `<Transition>` child needs a single element root - a leading template comment makes a dev-build fragment and the leave
+  animation silently never runs (`MobileHub`'s comment lives inside its root; a test pins it); (2) the Dashboard override is one
+  component PER PATH (`/` and `/Dashboard`), because Vue only animates a swap between two component types, and the hub
+  decision is made from the record, not the router's current route, or the hub sliding out turns into the dashboard mid-slide.
+  Edit mode has no hub and no slide (the drawer is how you leave).
 - **Shared logic gets extracted once a second consumer needs it**, not duplicated — e.g.
   `util/shapes.ts`'s `buttonShapeToParams()` (shared by `CommandButtonWidget.vue` and
   `HotspotWidget.vue`'s shaped regions), `composables/useWidgetPreviewFrame.ts` (shared by

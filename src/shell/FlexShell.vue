@@ -175,9 +175,9 @@
 			<!-- Render pages through DWC's own DwcRouterView so native pages (Explorer, etc.) cache
 				 via meta.keepAlive exactly as they do in the stock shell. A single error boundary wraps
 				 the lot and clears on navigation (reset-key), recovering from any page-level crash. -->
-			<v-container fluid class="pa-0 pa-md-4">
+			<v-container fluid class="pa-0 pa-md-4 fl-route-area">
 				<ErrorBoundary :reset-key="currentPath">
-					<DwcRouterView />
+					<DwcRouterView :transition-name="transitionName" />
 				</ErrorBoundary>
 			</v-container>
 		</v-main>
@@ -283,6 +283,7 @@ import { PLUGIN_MANIFEST_ID } from "../model/constants";
 import { CUSTOM_PAGE_PREFIX } from "../model/pageManager";
 import { stockMobileNav } from "../model/mobileNav";
 import { PLUGINS_PATH, useNavGroups } from "./useNavGroups";
+import { useHubTransition } from "./hubTransition";
 import { useShowMobileHub } from "./useMobileHub";
 import FlexPage from "../page/FlexPage.vue";
 import StatusFallback from "./StatusFallback.vue";
@@ -660,6 +661,10 @@ const stockNav = computed(() => !mdAndUp.value && stockMobileNav.value);
 const showBackButton = computed(() => stockNav.value && !editMode.value && !isAtHub.value);
 const showDrawerToggle = computed(() => !stockNav.value || editMode.value);
 const hubShown = useShowMobileHub();
+// The slide between the hub and a page (stock: layouts/builtin.vue's hub-forward/hub-back). Only where the hub
+// exists - DWC-style navigation, below md, not editing - so a customised phone dashboard and edit mode never
+// slide. See shell/hubTransition.ts for how DwcRouterView is wired.
+const transitionName = useHubTransition(() => stockNav.value && !editMode.value);
 const statusPanelVisible = computed(() => (mdAndUp.value || settingsStore.showStatusPanel) && !hubShown.value);
 const showStatusToggle = computed(() => !mdAndUp.value && !hubShown.value);
 
@@ -723,6 +728,14 @@ onUnmounted(() => {
 @media (min-width: 840px) {
 	.machine-name { max-width: none; }
 }
+/* The page sliding out is taken out of flow (see the unscoped .fl-hub-* block below) so it needs a
+   positioned parent, and below md a clip so it can't widen the page while it is off to the side. */
+.fl-route-area {
+	position: relative;
+}
+@media (max-width: 839.98px) {
+	.fl-route-area { overflow-x: clip; }
+}
 .fl-drawer-resizer {
 	position: absolute;
 	top: 0;
@@ -734,5 +747,35 @@ onUnmounted(() => {
 }
 .fl-drawer-resizer:hover {
 	background: rgba(var(--v-theme-primary), 0.4);
+}
+</style>
+
+<!-- Unscoped on purpose: Vue puts these classes on the routed page's own root element, which a scoped block
+	 would not reach. Prefixed `fl-` so they can't meet DWC's own hub-* rules. Same 0.25 s ease as stock. -->
+<style>
+.fl-hub-forward-enter-active,
+.fl-hub-forward-leave-active,
+.fl-hub-back-enter-active,
+.fl-hub-back-leave-active {
+	transition: transform 0.25s ease;
+}
+.fl-hub-forward-leave-active,
+.fl-hub-back-leave-active {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+}
+.fl-hub-forward-enter-from { transform: translateX(100%); }
+.fl-hub-forward-leave-to { transform: translateX(-100%); }
+.fl-hub-back-enter-from { transform: translateX(-100%); }
+.fl-hub-back-leave-to { transform: translateX(100%); }
+@media (prefers-reduced-motion: reduce) {
+	.fl-hub-forward-enter-active,
+	.fl-hub-forward-leave-active,
+	.fl-hub-back-enter-active,
+	.fl-hub-back-leave-active {
+		transition: none;
+	}
 }
 </style>

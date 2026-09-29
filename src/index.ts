@@ -9,7 +9,7 @@
  * Editable page route-overrides, the widget registry, theming and import/export are layered
  * on in later milestones.
  */
-import { type Component, defineComponent, h } from "vue";
+import { type Component } from "vue";
 
 import { registerLayout, registerPluginMessages, registerRoute, registerSettingTab } from "@/plugins";
 import { showConfirmDialog } from "@/composables/useConfirmDialog";
@@ -37,10 +37,8 @@ import { installErrorCapture } from "dwc-plugin-runtime";
 import { migrateGlobalHides, registerExistingCustomPages } from "./model/pageManager";
 import { registerDocument } from "./model/store";
 import { applyTheme } from "./model/theme";
-import FlexPage from "./page/FlexPage.vue";
+import { createPageOverride } from "./page/pageOverride";
 import FlexShell from "./shell/FlexShell.vue";
-import MobileHub from "./shell/MobileHub.vue";
-import { useShowMobileHub } from "./shell/useMobileHub";
 import FlexSettingsTab from "./settings/FlexSettingsTab.vue";
 import ConfigBackupPage from "./configBackup/ConfigBackupPage.vue";
 import MaintenancePage from "./maintenance/MaintenancePage.vue";
@@ -143,17 +141,9 @@ Events.on("dwcPluginUnloaded", onPluginUnloaded);
 // restores every original automatically.
 const routeOverrides: Record<string, Component> = {};
 for (const def of BUILTIN_PAGES) {
-	const override = defineComponent({
-		name: `FlexOverride_${def.pageId.replace(/[^a-zA-Z0-9]/g, "_")}`,
-		setup() {
-			// The Dashboard route doubles as the phone hub when DWC-style phone navigation is on (see
-			// shell/useMobileHub.ts) - swapped here, in the route content, exactly as stock DWC does.
-			const showHub = def.pageId === "/Dashboard" ? useShowMobileHub() : null;
-			return () => showHub?.value ? h(MobileHub) : h(FlexPage, { pageId: def.pageId, kind: "override", fallback: def.fallback, seed: def.seed, lockFallbackWhilePrinting: def.lockWhilePrinting !== false, defaultFullPage: def.fullPage === true });
-		},
-	});
 	for (const path of def.paths) {
-		routeOverrides[path] = override;
+		// One component per path: see page/pageOverride.ts (the phone hub's slide, and why the hub is per record).
+		routeOverrides[path] = createPageOverride(def, path);
 	}
 }
 
