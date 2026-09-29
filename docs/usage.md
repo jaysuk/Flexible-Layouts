@@ -24,8 +24,10 @@ Click **Edit** in the top bar to start; **Done** to finish.
 - **Add widget** opens the palette: filter by **category** chips (Controls, Machine, Read-outs,
   Dashboard, Layout, Built-in panels, Plugin pages) or **search**, then click a tile to add it
   (see [widgets.md](widgets.md)).
-- Built-in DWC pages (Console, Settings, File Explorer, Job…) can't take widgets — you'll see an
-  amber note on those while editing.
+- **Change a panel's icon** in its ⚙ properties (handy when the same panel appears several times).
+- Built-in DWC pages that aren't overridden (Settings, Job…) can't take widgets — you'll see an amber
+  note on those while editing. The File Explorer is one of them unless you opt into the replacement
+  (see [Explorer & G-code editor](#explorer--g-code-editor)).
 
 The **Dashboard** and any page you create are editable grids. On a built-in page's first edit you're
 offered *Use current layout* (seed it from the stock content) or *Start blank*.
@@ -57,6 +59,33 @@ Open **Manage pages** (the edit toolbar, the drawer, or *Settings → Flexible L
 - Set a page-level **grid size** (columns / row height) and **background**.
 - Make a page **conditional** — only shown when an object-model rule is true (e.g. a CNC page only in
   CNC mode).
+- Turn on **Full page** (edit toolbar → *Page & background*) to fill the screen below the top bar and
+  open the page scrolled down so the status bar is out of the way, like DWC's own Explorer. It follows
+  DWC's *Settings → Behaviour* auto-scroll (off = no scrolling).
+- **Lock while printing** — per widget, or for the whole page. The stock Console and Temperatures
+  pages are never locked; Dashboard and Macros are, until you customise them.
+
+## Explorer & G-code editor
+
+*Settings → Flexible Layouts → G-code editor*:
+
+- **Use the new G-code editor** opens G-code files in a CodeMirror editor with real syntax highlighting
+  and error checking (other file types still use DWC's editor).
+- **Also replace the Explorer page** swaps DWC's Explorer for a full-page Flexible Layouts one that uses
+  it. Links from notifications and macro lists still work. It needs a page reload to apply, and unlike
+  the stock page it isn't kept alive when you leave, so you're asked before leaving with unsaved edits.
+- **12864 display preview** — open a menu file (`0:/menu/…`) in that Explorer and toggle the preview: an
+  emulated 12864 (ST7920) display, pixel-accurate to RepRapFirmware, driven by your printer's real
+  menu files and live values. Click a button on the screen or use the knob; commands are only listed,
+  never sent. It shows the saved file and refreshes when you save, and lists every problem in the menu
+  (RepRapFirmware stops loading a menu at the first one).
+
+## Phones
+
+Below tablet width the top bar gets a **status bar toggle** and, while printing, a **progress ring**
+(tap it for the job page). *Settings → Flexible Layouts → Phone navigation* (per device) switches to DWC's
+own phone navigation: the home screen becomes a grid of page tiles with a back arrow instead of the side
+menu (editing still uses the side menu).
 
 ## Responsive layouts
 

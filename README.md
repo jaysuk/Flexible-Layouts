@@ -47,7 +47,11 @@ multiple switchable interfaces, and share it all as a file.
   shape, drop them into a **free-mode group** (drag / resize / rotate / overlap with z-order), and use
   **Arrange…** to lay them out in a ring or hex grid. Ready-made **presets** (e.g. a Hex Pad) get you
   started.
-- **Responsive** — a separate layout per screen size (desktop / tablet / phone).
+- **Responsive** — a separate layout per screen size (desktop / tablet / phone), a status-bar toggle
+  and print-progress ring on phones, and an optional DWC-style tile home screen.
+- **G-code editor & Explorer** — an opt-in CodeMirror G-code editor and a full-page Explorer
+  replacement, with an emulated **12864 display** beside menu files. Pages can be set to **Full
+  page**. See [docs/usage.md](docs/usage.md#explorer--g-code-editor).
 - **Editing aids** — undo/redo (Ctrl+Z / Ctrl+Y), duplicate, lock, and an object-model **path
   picker** so you never have to type paths.
 - **Layout profiles** — several complete interfaces (e.g. FFF / CNC) you switch between from the top
