@@ -60,3 +60,31 @@ export function parseExplorerRoute(params: ExplorerRouteParams): ExplorerTarget 
 	}
 	return { kind: "directory", path: rest ? `${volume}:/${rest}` : `${volume}:/` };
 }
+
+// Volume + path segments for an Explorer URL, dropping the default volume 0 unless the first path segment is
+// itself numeric (a folder named e.g. "0"), which would otherwise be misread as the volume. DWC's own
+// `explorerSegments` (src/utils/path.ts), ported because it is not in a plugin's importable surface.
+function explorerSegments(sdPath: string): Array<string> {
+	const match = /^(\d+):\/?(.*)$/.exec(sdPath);
+	const volume = match ? match[1] : "0";
+	const pathSegments = (match ? match[2] : "").split("/").filter(Boolean);
+	const omitVolume = volume === "0" && (pathSegments.length === 0 || !/^\d+$/.test(pathSegments[0]));
+	return omitVolume ? pathSegments : [volume, ...pathSegments];
+}
+
+/**
+ * The URL that `parseExplorerRoute` reads back as `target` - the same one DWC's `Path.explorerRoute` /
+ * `Path.editRoute` build, so a link made here and a link made by DWC are interchangeable.
+ */
+export function explorerUrl(target: ExplorerTarget): string {
+	const segments = explorerSegments(target.path);
+	if (target.kind === "editor") {
+		return `/Explorer/${["edit", ...segments].join("/")}`;
+	}
+	return segments.length > 0 ? `/Explorer/${segments.join("/")}` : "/Explorer";
+}
+
+/** Whether two targets ask for the same thing (the same kind of thing at the same place). */
+export function sameExplorerTarget(a: ExplorerTarget, b: ExplorerTarget): boolean {
+	return a.kind === b.kind && a.path.replace(/\/+$/, "") === b.path.replace(/\/+$/, "");
+}

@@ -71,6 +71,28 @@ Vue 3 + Vuetify plugin for DuetWebControl (drag-and-drop layout customisation fo
   component PER PATH (`/` and `/Dashboard`), because Vue only animates a swap between two component types, and the hub
   decision is made from the record, not the router's current route, or the hub sliding out turns into the dashboard mid-slide.
   Edit mode has no hub and no slide (the drawer is how you leave).
+- **Explorer state outlives the panel** (`model/explorerSession.ts`). Neither a plugin route (`registerRoute` takes only
+  `pageFill`/`scrollToBottom`, so no `meta.keepAlive`) nor an overridden page (renders through `RouteOverrideDispatcher`,
+  which hides the component name from `keep-alive`; `DwcRouterView` also reads its include list once at setup) can be
+  kept alive, so `ExplorerPanel`'s tabs live in a module-level reactive session keyed per placement (`page:/Explorer`, or
+  the grid item id from `SETTINGS_SCOPE_KEY`; no key = not remembered). An editor that unmounts dirty emits `stash` with its
+  text; the tab keeps it as `draft` and hands it back on remount (`GcodeCmEditor`'s `draft` prop: file loaded, then the draft
+  put over it so undo reaches the card). Cursor/scroll come from `editorViewState.ts` (one in-memory `ViewStateStore`). In
+  `ExplorerFallback` the URL follows the active tab (`explorerUrl`, DWC's own `/Explorer/edit/<file>` form) - `target` is
+  `undefined` once the route is off Explorer, because on the way out `route.params` is already the next page's and would read
+  as "browse the root". A bare `/Explorer` on a *return* visit keeps the session and the first `location` report `replace`s
+  the URL. Only a dirty **Monaco** tab is "lossy" (`dirty-change`), everything in the new editor is stashed. Memory only: a
+  browser reload drops sessions (unsaved text is deliberately not written to storage).
+- **Custom page ids are readable** (`model/pageSlug.ts`): `/p/<slug of the title>` (`-2`, `-3` on a clash), fixed at creation
+  so a rename never moves the URL. A document that still has UUID ids is re-keyed on `registerExistingCustomPages()` (which
+  every document swap already calls) by `migrateOpaquePageIds`: deterministic (document order), idempotent, rewrites
+  `nav.order`/`nav.hidden`/`startupPath`/`jobStartPath`, and records the old path in `PageLayout.legacyPaths`. Each legacy
+  path is registered as a hidden route (`CustomPageAlias`, condition false + menu item removed) that `router.replace`s to the
+  current page and renders NOTHING - a built-in panel derives its saved-settings id from the route path it first mounts under.
+  Those ids (`<route path>::<panel>` in DWC's `componentSettings`) are moved to the new path by `moveLegacyComponentSettings`,
+  re-run by a watch because DWC loads settings after plugins. `mergeImported` gives an imported page whose slug collides with
+  a different-titled local page a new address (same slug + same title = the page coming back, overwrites). The importers
+  (`io.ts`, `btncmd.ts`) still mint UUIDs on purpose; the migration slugs them once merged.
 - **Shared logic gets extracted once a second consumer needs it**, not duplicated — e.g.
   `util/shapes.ts`'s `buttonShapeToParams()` (shared by `CommandButtonWidget.vue` and
   `HotspotWidget.vue`'s shaped regions), `composables/useWidgetPreviewFrame.ts` (shared by

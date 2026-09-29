@@ -10,18 +10,22 @@
  * works in both the built-in and custom shells). Reordering is stored in `document.nav.order` and
  * applied by the custom shell's drawer.
  */
+import { watch } from "vue";
+
 import { registerRoute, unregisterRoute } from "@/plugins";
 import i18n from "@/i18n";
 import { useMenuStore } from "@/stores/menu";
 import { useSettingsStore } from "@/stores/settings";
 
-import { createEmptyPage, newItemId, type PageLayout } from "./document";
+import { createEmptyPage, type PageLayout } from "./document";
 import { isFlLayoutActive } from "./layoutState";
+import { CUSTOM_PAGE_PREFIX, migrateOpaquePageIds, uniqueCustomPagePath } from "./pageSlug";
 import { useLayoutStore } from "./store";
+import CustomPageAlias from "../page/CustomPageAlias.vue";
 import CustomPageHost from "../page/CustomPageHost.vue";
 
 /** All custom-page route paths share this prefix. */
-export const CUSTOM_PAGE_PREFIX = "/Plugins/FlexibleLayouts/p/";
+export { CUSTOM_PAGE_PREFIX };
 
 /** Categories a custom page can be filed under (must match the menu store's category keys). */
 export const PAGE_CATEGORIES = ["control", "job", "files", "preferences", "plugins"] as const;
@@ -75,11 +79,38 @@ function addRoute(path: string, page: PageLayout): void {
 		},
 	});
 	_registeredPaths.add(path);
+	for (const legacy of page.legacyPaths ?? []) {
+		addAliasRoute(legacy, page);
+	}
+}
+
+/**
+ * An earlier address of a page (see `PageLayout.legacyPaths`): a route that sends whoever lands on it to the page's
+ * current one. It is a route only - `registerRoute` also adds a navigation entry, which is taken straight back out,
+ * so nothing shows in the drawer, the hub or the page manager.
+ */
+function addAliasRoute(alias: string, page: PageLayout): void {
+	if (_registeredPaths.has(alias)) {
+		return;
+	}
+	registerRoute(CustomPageAlias, {
+		[capitalise(page.category ?? "control")]: {
+			["FlexOld_" + alias.slice(CUSTOM_PAGE_PREFIX.length)]: {
+				icon: page.icon ?? DEFAULT_ICON,
+				caption: page.title ?? "Page",
+				path: alias,
+				translated: true,
+				condition: () => false,
+			},
+		},
+	});
+	useMenuStore().unregisterItem(alias);
+	_registeredPaths.add(alias);
 }
 
 /** Create a new custom page, persist it, and register its route. Returns the new page's path. */
 export function createCustomPage(opts: { title: string; icon?: string; category?: string }): string {
-	const path = CUSTOM_PAGE_PREFIX + newItemId();
+	const path = uniqueCustomPagePath(opts.title, Object.keys(liveDoc().pages));
 	const page: PageLayout = {
 		...createEmptyPage("custom"),
 		title: opts.title,
@@ -93,6 +124,10 @@ export function createCustomPage(opts: { title: string; icon?: string; category?
 
 /** Remove a custom page: tear down its route, drop it from the document and any nav state. */
 export function deleteCustomPage(path: string): void {
+	for (const alias of liveDoc().pages[path]?.legacyPaths ?? []) {
+		unregisterRoute(alias);
+		_registeredPaths.delete(alias);
+	}
 	unregisterRoute(path);
 	_registeredPaths.delete(path);
 	delete liveDoc().pages[path];
@@ -201,8 +236,43 @@ export function migrateGlobalHides(): void {
 	doc.migratedGlobalHides = true;
 }
 
+/**
+ * Whatever DWC saved under a page's old path (a built-in panel's settings are keyed `<route path>::<panel>`) is
+ * moved to the page's current one, so renaming a page's address does not reset the panels on it. Safe to repeat,
+ * and repeated on purpose: DWC loads its settings after plugins, so at load there may be nothing to move yet.
+ */
+export function moveLegacyComponentSettings(): void {
+	const settings = useSettingsStore() as unknown as { componentSettings?: Record<string, unknown> };
+	const saved = settings.componentSettings;
+	if (!saved) {
+		return;
+	}
+	const ids = Object.keys(saved);
+	for (const { path, page } of listCustomPages()) {
+		for (const legacy of page.legacyPaths ?? []) {
+			for (const id of ids) {
+				if (id.startsWith(legacy + "::") && id in saved) {
+					saved[path + id.slice(legacy.length)] = saved[id];
+					delete saved[id];
+				}
+			}
+		}
+	}
+}
+
+let _stopSettingsWatch: (() => void) | null = null;
+
 /** Re-register every persisted custom page. Called once at plugin load. */
 export function registerExistingCustomPages(): void {
+	// A document that still names pages by random ids gets readable ones first (see model/pageSlug.ts).
+	migrateOpaquePageIds(liveDoc());
+	moveLegacyComponentSettings();
+	if (_stopSettingsWatch === null) {
+		_stopSettingsWatch = watch(
+			() => Object.keys((useSettingsStore() as unknown as { componentSettings?: Record<string, unknown> }).componentSettings ?? {}).length,
+			moveLegacyComponentSettings,
+		);
+	}
 	ensureCustomCategories(); // sections must exist before pages register under them
 	for (const { path, page } of listCustomPages()) {
 		addRoute(path, page);

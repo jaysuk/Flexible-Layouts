@@ -55,6 +55,10 @@ a movement dial, prefer the dedicated **CNC / Octopus jog** widget.
 Open **Manage pages** (the edit toolbar, the drawer, or *Settings → Flexible Layouts*) to:
 
 - **Create / rename / delete** pages, and pick an icon and menu section.
+- A page's **address** is made from its name when you create it (`…/Plugins/FlexibleLayouts/p/print-farm`;
+  a second page of the same name gets `-2`). It doesn't change when you rename the page, so bookmarks
+  keep working. Pages made before this had a long random address; they were given readable ones the first
+  time the layout loaded, and the old address still opens the page (and sends you on to the new one).
 - **Hide / reorder** pages in the navigation.
 - Set a page-level **grid size** (columns / row height) and **background**.
 - Make a page **conditional** — only shown when an object-model rule is true (e.g. a CNC page only in
@@ -74,8 +78,13 @@ Open **Manage pages** (the edit toolbar, the drawer, or *Settings → Flexible L
 - **Also replace the Explorer page** swaps DWC's Explorer for a full-page Flexible Layouts one that uses
   it. Links from notifications and macro lists still work. It applies as soon as you flip the switch on a DWC
   that can change a layout's pages while running (DWC builds with `addLayoutRoutes`); on older builds the
-  setting says when a page reload is needed. Unlike the stock page it isn't kept alive when you leave, so
-  you're asked before leaving with unsaved edits.
+  setting says when a page reload is needed. Unlike the stock page it isn't kept alive when you leave, but it
+  remembers what it had open: come back (from another page, or an Explorer panel on a dashboard coming back
+  into view) and the same files are open in the same tabs, with your cursor and scroll position, and any
+  **unsaved edits** are still there, still unsaved. This lasts until you reload the browser page. The address
+  follows the tab you're on (`/Explorer/edit/macros/foo.g`), so Back, refresh and bookmarks work as in DWC's own
+  Explorer. Only an unsaved edit in DWC's own editor (not the new one) can't be brought back, so leaving with one
+  still asks first.
 - **12864 display preview** — open a menu file (`0:/menu/…`) in that Explorer and toggle the preview: an
   emulated 12864 (ST7920) display, pixel-accurate to RepRapFirmware, driven by your printer's real
   menu files and live values. Click a button on the screen or use the knob; commands are only listed,

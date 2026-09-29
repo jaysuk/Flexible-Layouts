@@ -13,7 +13,8 @@ import { compareVersions } from "dwc-plugin-runtime";
 import { PLUGIN_MANIFEST_ID } from "./constants";
 import { createEmptyDocument, type GridItemModel, type LayoutDependency, type LayoutDocument, type PageLayout, migrateDocument, newItemId, reidItem, sanitizeRuntimeFields, stripItemRuntimeFields } from "./document";
 import { computeDependencies, recomputeDependencies } from "./dependencies";
-import { CUSTOM_PAGE_PREFIX, registerExistingCustomPages, unregisterAllCustomPages } from "./pageManager";
+import { registerExistingCustomPages, unregisterAllCustomPages } from "./pageManager";
+import { CUSTOM_PAGE_PREFIX, uniqueCustomPagePath } from "./pageSlug";
 import { setLiveDocument, useLayoutStore } from "./store";
 import { applyTheme } from "./theme";
 
@@ -194,6 +195,7 @@ export function mergeImported(current: LayoutDocument, imported: LayoutDocument,
 		}
 	}
 
+	const keyMap = new Map<string, string>(); // imported key -> the key it was given here, where they differ
 	const existingTitles = new Set(
 		Object.values(target.pages).map((p) => (p?.title ?? "").trim().toLowerCase()).filter(Boolean),
 	);
@@ -204,9 +206,20 @@ export function mergeImported(current: LayoutDocument, imported: LayoutDocument,
 			continue;
 		}
 		const page = JSON.parse(JSON.stringify(src)) as PageLayout;
+		// A readable page id is a slug of a title, so two unrelated pages (from two layouts) can share one. Same key
+		// and same title is the page coming back (a restore, an updated copy) and overwrites; same key and a
+		// different title is somebody else's page, and must not overwrite ours - it gets an address of its own.
+		let targetKey = key;
+		const existing = target.pages[key];
+		if (existing && existing.kind === "custom" && page.kind === "custom" && key.startsWith(CUSTOM_PAGE_PREFIX)
+			&& (existing.title ?? "").trim().toLowerCase() !== (page.title ?? "").trim().toLowerCase()) {
+			targetKey = uniqueCustomPagePath(page.title ?? "", Object.keys(target.pages));
+			keyMap.set(key, targetKey);
+			delete page.legacyPaths; // they pointed at the page this one collided with, not at this one
+		}
 		// A page arriving under a NEW key (not overwriting an existing one) gets a unique title, so you
 		// don't end up with two identically-named pages in the navigation.
-		if (!(key in target.pages) && page.title) {
+		if (!(targetKey in target.pages) && page.title) {
 			let title = page.title;
 			let n = 2;
 			while (existingTitles.has(title.trim().toLowerCase())) {
@@ -217,11 +230,12 @@ export function mergeImported(current: LayoutDocument, imported: LayoutDocument,
 		if (page.title) {
 			existingTitles.add(page.title.trim().toLowerCase());
 		}
-		target.pages[key] = page;
+		target.pages[targetKey] = page;
 	}
 
 	if (settings) {
-		const importedNav = imported.nav ?? { order: [], hidden: [] };
+		const rekey = (path: string): string => keyMap.get(path) ?? path;
+		const importedNav = { ...imported.nav, order: (imported.nav?.order ?? []).map(rekey), hidden: (imported.nav?.hidden ?? []).map(rekey) };
 		if (replaceExisting) {
 			target.statusHidden = imported.statusHidden;
 			target.nav = JSON.parse(JSON.stringify(importedNav));

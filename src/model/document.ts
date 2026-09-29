@@ -1377,6 +1377,11 @@ export interface PageLayout {
 	/** Hide this page from navigation entirely. */
 	hidden?: boolean;
 	/**
+	 * Custom pages only: earlier addresses of this page. A page used to be named by a random id; when it was given a
+	 * readable one (`model/pageSlug.ts`) the old path stayed here, and still opens the page (redirecting to the new one).
+	 */
+	legacyPaths?: Array<string>;
+	/**
 	 * Page backdrop shown behind all widgets. `color` is a Vuetify theme token or a literal CSS colour
 	 * (resolved via util/color). `image` is either a web URL (`imageSource` "url"/undefined) or a path
 	 * on the printer's SD card (`imageSource` "sd"), which is fetched and shown as an object URL.

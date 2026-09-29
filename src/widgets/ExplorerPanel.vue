@@ -43,10 +43,12 @@
 								 inactive - unmounting it would throw those edits away. -->
 							<GcodeCmEditor v-if="(tab.id === activeTab || tab.dirty) && shouldUseNewGcodeEditor(tab.filename)"
 										   :ref="(el: unknown) => bindEditorRef(tab.id, el)"
-										   :filename="tab.filename" @dirty="tab.dirty = $event" @live-text="tab.liveText = $event" />
+										   :filename="tab.filename" :draft="tab.draft"
+										   @dirty="onEditorDirty(tab, $event)" @stash="tab.draft = $event"
+										   @live-text="tab.liveText = $event" />
 							<component :is="monacoEditor" v-else-if="tab.id === activeTab || tab.dirty"
 									   :ref="(el: unknown) => bindEditorRef(tab.id, el)"
-									   :filename="tab.filename" @dirty="tab.dirty = $event" />
+									   :filename="tab.filename" @dirty="onEditorDirty(tab, $event)" />
 						</div>
 						<aside v-if="tab.preview && isMenuFile(tab.filename) && tab.id === activeTab" class="exp-menu-preview pa-2">
 							<Display12864Emulator :menu="basename(tab.filename)" :reload-key="tab.saves ?? 0" :overrides="menuOverrides" />
@@ -94,7 +96,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, resolveComponent, watch } from "vue";
+import { computed, inject, ref, resolveComponent, toRef, watch } from "vue";
+
+import { SETTINGS_SCOPE_KEY } from "@/composables/useComponentSettings";
 
 import i18n from "@/i18n";
 
@@ -102,15 +106,9 @@ import Display12864Emulator from "./Display12864Emulator.vue";
 import GcodeCmEditor from "./GcodeCmEditor.vue";
 import { isMenuFile, shouldUseNewGcodeEditor } from "../model/editorPreference";
 import type { ExplorerTarget } from "../model/explorerRoute";
+import { explorerSession, type ExplorerTab as Tab } from "../model/explorerSession";
 
 interface FileItem { name: string; isDirectory?: boolean }
-interface Tab {
-	id: number; kind: "directory" | "editor"; filename?: string; directory?: string; dirty?: boolean;
-	/** Menu files: whether the 12864 preview is showing, and how many times the file has been saved (re-reads the preview). */
-	preview?: boolean; saves?: number;
-	/** Menu files open in the new editor: the unsaved buffer as last reported (`live-text`); undefined until edited. */
-	liveText?: string;
-}
 // The subset of GcodeCmEditor.vue's/DWC core's MonacoEditor.vue's exposed surface this panel needs -
 // both mirror the same `save(): Promise<boolean>` contract (see GcodeCmEditor.vue's own doc comment).
 interface EditorHandle { save: () => Promise<boolean> }
@@ -126,15 +124,38 @@ const props = defineProps<{
 	 * omitted (the panel as a plain widget).
 	 */
 	target?: ExplorerTarget;
+	/**
+	 * Which remembered session to use (see `model/explorerSession.ts`). Left out, a panel placed on a page
+	 * takes its grid item's id, so it keeps its tabs across a trip to another page; a panel that is neither
+	 * keyed nor inside a grid item starts empty every time.
+	 */
+	sessionKey?: string;
 }>();
-const emit = defineEmits<{ "dirty-change": [dirty: boolean] }>();
+const emit = defineEmits<{
+	/** True while a tab has unsaved edits that would be LOST by leaving (a Monaco tab: only the new editor hands its text back). */
+	"dirty-change": [dirty: boolean];
+	/** What the active tab is showing, for a host that mirrors it in the URL. Fired on mount and on every change. */
+	location: [target: ExplorerTarget];
+}>();
 
 const fileList = resolveComponent("FileList");
 const monacoEditor = resolveComponent("MonacoEditor");
 
-let nextId = 1;
-const tabs = ref<Array<Tab>>([{ id: 0, kind: "directory", directory: "0:/" }]);
-const activeTab = ref<number>(0);
+// The tabs live in a session that outlives this component (see model/explorerSession.ts): leaving the page
+// unmounts the panel, and coming back finds the same tabs, the same active one, the same folders.
+const settingsScope = SETTINGS_SCOPE_KEY ? inject(SETTINGS_SCOPE_KEY, null) : null;
+const session = explorerSession(props.sessionKey ?? (settingsScope ? `panel:${settingsScope.segments.join("/")}` : null));
+const returning = session.returning;
+const tabs = toRef(session, "tabs");
+const activeTab = toRef(session, "activeTab");
+// Nothing is mounted yet, so what a tab says about its editor is only as true as its stashed text: a tab is
+// dirty exactly when it has a draft to bring back. (A Monaco tab has none - its edits went with its editor.)
+for (const tab of tabs.value) tab.dirty = tab.draft !== undefined;
+
+function onEditorDirty(tab: Tab, dirty: boolean): void {
+	tab.dirty = dirty;
+	if (!dirty) tab.draft = undefined; // saved or reverted: nothing left to restore
+}
 
 // Keyed by tab id rather than a single "current editor" ref, since a dirty background tab stays
 // mounted too (see the template's own comment) and Save-on-close must be able to reach it even when
@@ -163,7 +184,7 @@ function open(item: FileItem, directory: string): void {
 		activeTab.value = existing.id; // already open — focus it
 		return;
 	}
-	const id = nextId++;
+	const id = session.nextId++;
 	tabs.value.push({ id, kind: "editor", filename: full });
 	activeTab.value = id;
 }
@@ -183,10 +204,26 @@ function applyTarget(target: ExplorerTarget): void {
 		activeTab.value = browser.id;
 	}
 }
+let firstTarget = true;
 watch(() => (props.target ? `${props.target.kind}|${props.target.path}` : ""), () => {
-	if (props.target) {
-		applyTarget(props.target);
-	}
+	const first = firstTarget;
+	firstTarget = false;
+	if (!props.target) return;
+	// A bare `/Explorer` (the nav drawer's link) on a return visit means "back to Explorer", not "back to the
+	// root of the card": keep what was open, and let `location` below put the URL right.
+	if (first && returning && props.target.kind === "directory" && props.target.path === "0:/") return;
+	applyTarget(props.target);
+}, { immediate: true });
+
+const location = computed<ExplorerTarget | null>(() => {
+	const tab = tabs.value.find((t) => t.id === activeTab.value);
+	if (!tab) return null;
+	return tab.kind === "editor" && tab.filename
+		? { kind: "editor", path: tab.filename }
+		: { kind: "directory", path: tab.directory || "0:/" };
+});
+watch(location, (now) => {
+	if (now) emit("location", now);
 }, { immediate: true });
 
 // The unsaved text of every menu file being edited in an editor that reports it, by file name, for the
@@ -208,11 +245,13 @@ watch(() => tabs.value.map((t) => !!t.dirty), (now, before) => {
 	});
 });
 
-// Lets a host (the replacement Explorer page) guard navigation away while edits are unsaved.
-watch(() => tabs.value.some((t) => t.dirty), (dirty) => emit("dirty-change", dirty));
+// Lets a host (the replacement Explorer page) guard navigation away while edits would be lost. An edit in
+// the new editor is not one: it is stashed on the tab when the editor unmounts and comes back with it.
+watch(() => tabs.value.some((t) => t.dirty && t.filename !== undefined && !shouldUseNewGcodeEditor(t.filename)),
+	(lossy) => emit("dirty-change", lossy));
 
 function addBrowserTab(): void {
-	const id = nextId++;
+	const id = session.nextId++;
 	tabs.value.push({ id, kind: "directory", directory: "0:/" });
 	activeTab.value = id;
 }

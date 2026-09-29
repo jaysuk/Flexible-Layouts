@@ -86,7 +86,7 @@
  * plugin-specific import at all) — Vue components can't be shared across plugin bundles even once
  * the underlying model layer is, so the presentation layer is duplicated deliberately, once, here.
  */
-import { computed, onUnmounted, ref, shallowRef, watch } from "vue";
+import { computed, onBeforeUnmount, onUnmounted, ref, shallowRef, watch } from "vue";
 import { DisconnectedError } from "@duet3d/connectors";
 import { forceLinting, lintGutter } from "@codemirror/lint";
 import { EditorView, lineNumbers } from "@codemirror/view";
@@ -105,6 +105,7 @@ import {
 import {
 	alignLineComments, applyDiagnostics, buildDocFromString, codeAtCursor, createEditorInstance,
 	createThemeController, gcodeCompletion, gcodeCurrentLine, gcodeLanguage, gcodeLintUi,
+	gcodeViewStatePersistence,
 	gcodeQuickSearchKeymap, gcodeSearch, isInsideExpression, menuLanguage, menuLiveLinter, openExpressionQuickSearch,
 	openGcodeQuickSearch, openSearchPanel, saveKeymap, setCurrentLine, type EditorInstance, type ThemeController,
 } from "dwc-gcode-editor";
@@ -118,6 +119,7 @@ import EditorColorSettingsDialog from "./EditorColorSettingsDialog.vue";
 import GcodeStepperPanel from "./GcodeStepperPanel.vue";
 import { defaultMachineIO } from "../model/configBackup/machineIO";
 import { editorColorScheme, loadEditorColorScheme } from "../model/editorColorSettings";
+import { sharedViewStates } from "../model/editorViewState";
 import { isMenuFile } from "../model/editorPreference";
 import { MENU_DIRECTORY } from "../model/display12864/menuSource";
 import { loadScenarioSet, saveScenarioSet } from "../model/gcode/simulationScenario";
@@ -150,8 +152,13 @@ const props = defineProps<{
 	 *  skipped and the editor opens with this text already loaded. Mirrors MonacoEditor.vue's own
 	 *  `initialContent` prop exactly, since `FileEditorEntry`'s contract requires it. */
 	initialContent?: string;
+	/** Unsaved text from an earlier instance for this file (see `stash`): the editor loads the file as usual,
+	 *  then puts this over it, dirty - so Ctrl+Z still gets back to what is on the card. */
+	draft?: string;
 }>();
-const emit = defineEmits<{ dirty: [boolean]; saved: [string]; "live-text": [string] }>();
+// `stash` fires as the editor is torn down with unsaved edits, carrying them, so a host that remounts it (the
+// Explorer coming back after a trip to another page) can hand them back as `draft`.
+const emit = defineEmits<{ dirty: [boolean]; saved: [string]; "live-text": [string]; stash: [string] }>();
 
 const machineStore = useMachineStore();
 const uiStore = useUiStore();
@@ -287,6 +294,9 @@ function setDirty(value: boolean): void {
 	emit("dirty", value);
 }
 
+// One store for every editor instance: the point is that a NEW instance finds where the last one left off.
+const viewStates = sharedViewStates();
+
 function editorExtensions(theme: ThemeController) {
 	return [
 		lineNumbers(),
@@ -303,6 +313,9 @@ function editorExtensions(theme: ThemeController) {
 		gcodeSearch(),
 		...(isMenu ? [] : [gcodeQuickSearchKeymap(() => machineStore.model)]),
 		gcodeCurrentLine(),
+		// Cursor and scroll come back when a file is reopened (a tab that was closed, or an Explorer that was
+		// left and returned to), keyed by file. In memory only: it lasts as long as the browser page.
+		gcodeViewStatePersistence({ key: props.filename, store: viewStates }),
 		EditorView.updateListener.of((update) => {
 			if (update.docChanged) {
 				setDirty(true);
@@ -447,6 +460,7 @@ async function load(): Promise<void> {
 			{ filename: props.filename, type: "text" }, false, false, false, false,
 		) as string;
 		const doc = await buildDocFromString(content);
+		const draftDoc = props.draft !== undefined && props.draft !== content ? await buildDocFromString(props.draft) : null;
 		// A no-op after the first real call this session (every editor instance calls this on load -
 		// see editorColorSettings.ts's own doc comment for the shared-load pattern).
 		await loadEditorColorScheme();
@@ -458,7 +472,14 @@ async function load(): Promise<void> {
 		// Applied right after creation, in the same synchronous block, so there's no visible flash of
 		// the fixed theme before the loaded custom colors (if any) take over.
 		themeController.setCustomColors(editorInstance.value.view, editorColorScheme.value);
-		setDirty(false);
+		if (draftDoc !== null) {
+			// The dispatch marks it dirty by itself (the update listener), so the host never sees a clean
+			// moment in between - it would count that as a save.
+			const view = editorInstance.value.view;
+			view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: draftDoc } });
+		} else {
+			setDirty(false);
+		}
 		if (isMenu) {
 			void loadMenuSiblings();
 		} else {
@@ -591,6 +612,11 @@ watch(() => settingsStore.darkTheme, (dark) => {
 watch(editorColorScheme, (scheme) => {
 	const instance = editorInstance.value;
 	if (instance !== null && themeController !== null) themeController.setCustomColors(instance.view, scheme);
+});
+
+onBeforeUnmount(() => {
+	const instance = editorInstance.value;
+	if (dirty.value && instance !== null) emit("stash", instance.flush().toString());
 });
 
 onUnmounted(() => {

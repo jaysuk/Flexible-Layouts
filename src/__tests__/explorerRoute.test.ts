@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parseExplorerRoute } from "../model/explorerRoute";
+import { explorerUrl, parseExplorerRoute, sameExplorerTarget, type ExplorerTarget } from "../model/explorerRoute";
 
 // Mirrors DWC's own resolveExplorerRoute (src/pages/Explorer/...) and the URLs its
 // Path.explorerRoute()/Path.editRoute() produce, so the replacement page honours the same deep links.
@@ -36,5 +36,40 @@ describe("parseExplorerRoute", () => {
 
 	it("a bare `edit` with no file degrades to browsing the volume root", () => {
 		expect(parseExplorerRoute({ tab: "edit" })).toEqual({ kind: "directory", path: "0:/" });
+	});
+});
+
+describe("explorerUrl", () => {
+	// The URLs DWC's own Path.explorerRoute()/Path.editRoute() build - a link made here and one made there
+	// have to be the same link.
+	it("matches DWC's URLs for the cases it documents", () => {
+		expect(explorerUrl({ kind: "directory", path: "0:/" })).toBe("/Explorer");
+		expect(explorerUrl({ kind: "directory", path: "0:/macros" })).toBe("/Explorer/macros");
+		expect(explorerUrl({ kind: "editor", path: "0:/macros/foo.g" })).toBe("/Explorer/edit/macros/foo.g");
+		expect(explorerUrl({ kind: "directory", path: "1:/" })).toBe("/Explorer/1");
+		expect(explorerUrl({ kind: "editor", path: "1:/config.g" })).toBe("/Explorer/edit/1/config.g");
+		// a folder actually named "0" would read back as the volume, so volume 0 is spelled out
+		expect(explorerUrl({ kind: "directory", path: "0:/0/sub" })).toBe("/Explorer/0/0/sub");
+	});
+
+	it("is read back as the same target by parseExplorerRoute", () => {
+		const targets: Array<ExplorerTarget> = [
+			{ kind: "directory", path: "0:/" }, { kind: "directory", path: "0:/sys" }, { kind: "editor", path: "0:/sys/config.g" },
+			{ kind: "directory", path: "1:/" }, { kind: "editor", path: "1:/a/b.g" }, { kind: "directory", path: "0:/0/sub" },
+			{ kind: "editor", path: "0:/12/x.g" },
+		];
+		for (const target of targets) {
+			const segments = explorerUrl(target).split("/").slice(2); // drop "" and "Explorer"
+			const [tab, volume, ...path] = segments;
+			expect(parseExplorerRoute({ tab, volume, path }), explorerUrl(target)).toEqual(target);
+		}
+	});
+});
+
+describe("sameExplorerTarget", () => {
+	it("compares kind and path, ignoring a trailing slash", () => {
+		expect(sameExplorerTarget({ kind: "directory", path: "0:/sys/" }, { kind: "directory", path: "0:/sys" })).toBe(true);
+		expect(sameExplorerTarget({ kind: "directory", path: "0:/sys" }, { kind: "editor", path: "0:/sys" })).toBe(false);
+		expect(sameExplorerTarget({ kind: "directory", path: "0:/sys" }, { kind: "directory", path: "0:/macros" })).toBe(false);
 	});
 });
