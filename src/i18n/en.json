@@ -972,6 +972,11 @@
 		},
 		"leaveUnsaved": "You have unsaved changes in the file editor. Leave this page and lose them?"
 	},
+	"mobileNav": {
+		"title": "Phone navigation",
+		"hint": "On a phone-sized screen, use DWC's own navigation: the home screen is a grid of tiles to every page, with a back arrow instead of the side menu. Applies to this device only. Editing still uses the side menu.",
+		"toggle": "Use DWC-style navigation on phones"
+	},
 	"gcodeEditor": {
 		"save": "Save",
 		"saved": "Saved {name}",

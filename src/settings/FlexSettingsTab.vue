@@ -212,6 +212,14 @@
 			</div>
 
 			<v-divider class="my-4" />
+			<div class="text-title-small mb-1">{{ $t("plugins.flexibleLayouts.mobileNav.title") }}</div>
+			<p class="text-body-small text-medium-emphasis mt-0 mb-2">
+				{{ $t("plugins.flexibleLayouts.mobileNav.hint") }}
+			</p>
+			<v-switch :model-value="stockMobileNav" color="primary" density="compact" hide-details
+					  :label="$t('plugins.flexibleLayouts.mobileNav.toggle')" @update:model-value="onToggleStockMobileNav" />
+
+			<v-divider class="my-4" />
 			<div class="text-title-small mb-1">{{ $t("plugins.flexibleLayouts.gcodeEditor.settingsTitle") }}</div>
 			<p class="text-body-small text-medium-emphasis mt-0 mb-2">
 				{{ $t("plugins.flexibleLayouts.gcodeEditor.settingsHint") }}
@@ -329,6 +337,7 @@ import { PLUGIN_MANIFEST_ID } from "../model/constants";
 import { activateFlLayout, deactivateFlLayout, isFlLayoutActive } from "../model/layoutState";
 import { isExplorerReplaceEnabled, isNewGcodeEditorEnabled, setExplorerReplaceEnabled, setNewGcodeEditorEnabled, shouldReplaceExplorerPage } from "../model/editorPreference";
 import { EXPLORER_REPLACED_AT_LOAD } from "../model/builtinPages";
+import { setStockMobileNav, stockMobileNav } from "../model/mobileNav";
 import { editMode } from "../model/editorState";
 import { applying, checking, dismissCurrentUpdate, dismissedVersion, pendingReload, runUpdateCheck, setUpdateChecksEnabled, undismissUpdate, updateChecksEnabled, updateDiagnostics, updateState as update, applyUpdateNow } from "../model/updateCheck";
 import { useLayoutStore } from "../model/store";
@@ -705,6 +714,11 @@ function sdNotify(level: LogLevel, key: string, params?: Record<string, unknown>
 	uiStore.makeNotification(level, sdT("title"), sdT(key, params));
 }
 
+// --- Phone navigation ----------------------------------------------------------------------------
+function onToggleStockMobileNav(value: boolean | null): void {
+	setStockMobileNav(value === true);
+}
+
 // --- G-code editor choice ------------------------------------------------------------------------
 const newEditorEnabled = ref(isNewGcodeEditorEnabled());
 const replaceExplorer = ref(isExplorerReplaceEnabled());
@@ -719,9 +733,6 @@ function onToggleReplaceExplorer(value: boolean | null): void {
 	replaceExplorer.value = on;
 	setExplorerReplaceEnabled(on);
 	refreshExplorerReloadNeeded();
-}
-function reloadPage(): void {
-	window.location.reload();
 }
 function onToggleNewEditor(value: boolean | null): void {
 	const on = value === true;

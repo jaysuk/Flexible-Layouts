@@ -39,6 +39,8 @@ import { registerDocument } from "./model/store";
 import { applyTheme } from "./model/theme";
 import FlexPage from "./page/FlexPage.vue";
 import FlexShell from "./shell/FlexShell.vue";
+import MobileHub from "./shell/MobileHub.vue";
+import { useShowMobileHub } from "./shell/useMobileHub";
 import FlexSettingsTab from "./settings/FlexSettingsTab.vue";
 import ConfigBackupPage from "./configBackup/ConfigBackupPage.vue";
 import MaintenancePage from "./maintenance/MaintenancePage.vue";
@@ -144,7 +146,10 @@ for (const def of BUILTIN_PAGES) {
 	const override = defineComponent({
 		name: `FlexOverride_${def.pageId.replace(/[^a-zA-Z0-9]/g, "_")}`,
 		setup() {
-			return () => h(FlexPage, { pageId: def.pageId, kind: "override", fallback: def.fallback, seed: def.seed, lockFallbackWhilePrinting: def.lockWhilePrinting !== false, defaultFullPage: def.fullPage === true });
+			// The Dashboard route doubles as the phone hub when DWC-style phone navigation is on (see
+			// shell/useMobileHub.ts) - swapped here, in the route content, exactly as stock DWC does.
+			const showHub = def.pageId === "/Dashboard" ? useShowMobileHub() : null;
+			return () => showHub?.value ? h(MobileHub) : h(FlexPage, { pageId: def.pageId, kind: "override", fallback: def.fallback, seed: def.seed, lockFallbackWhilePrinting: def.lockWhilePrinting !== false, defaultFullPage: def.fullPage === true });
 		},
 	});
 	for (const path of def.paths) {

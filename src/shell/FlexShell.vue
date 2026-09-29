@@ -6,7 +6,11 @@
 				 and profile switcher are showing) - without becoming a flex sibling itself, so it never
 				 takes layout space or pushes HeaderWidgets' canvas around when it appears/disappears. -->
 			<div class="fl-app-bar-left">
-				<v-app-bar-nav-icon @click="drawer = !drawer" />
+				<!-- Stock phone navigation (opt-in): no drawer toggle below md - a back arrow returns to the hub
+					 instead. Edit mode keeps the drawer, which is where the editing tools live. -->
+				<v-btn v-if="showBackButton" icon="mdi-arrow-left" variant="text"
+					   :aria-label="$t('layout.backToHub')" @click="router.push('/')" />
+				<v-app-bar-nav-icon v-else-if="showDrawerToggle" @click="drawer = !drawer" />
 
 				<img v-if="headerLogo" :src="headerLogo" class="header-logo ms-2 me-2" alt="" />
 				<div v-else class="text-truncate machine-name ms-2 me-2" :title="headerTitle || machineName">
@@ -52,6 +56,19 @@
 				 profile-switcher's visibility depends on profile count, which the generic header-item system
 				 doesn't model. -->
 			<HeaderWidgets v-if="mdAndUp" ref="headerWidgetsRef" class="me-2" />
+
+			<!-- Phone app bar extras, as in the stock shell: a ring showing print progress (tap for the job
+				 page) and the status-region toggle - without it the status region can never be shown below
+				 md, since it defaults to hidden there. -->
+			<v-progress-circular v-if="showHeaderJobProgress" :model-value="jobProgressValue" :color="jobProgressColor"
+								 size="36" width="4" class="fl-job-progress me-2" role="button"
+								 :title="$t('layout.goToJobStatus')" @click="router.push('/Job/Status')">
+				<span class="text-body-small">{{ Math.round(jobProgressValue) }}%</span>
+			</v-progress-circular>
+			<v-btn v-if="showStatusToggle" icon="mdi-list-status" variant="tonal" rounded="md" size="small" class="me-1"
+				   :active="settingsStore.showStatusPanel" :color="settingsStore.showStatusPanel ? 'primary' : undefined"
+				   :title="settingsStore.showStatusPanel ? $t('layout.hideStatusPanel') : $t('layout.showStatusPanel')"
+				   @click="settingsStore.showStatusPanel = !settingsStore.showStatusPanel" />
 
 			<!-- Edit mode has exactly one entry point (see FlexPage.vue's comment), and on mobile the
 				 pinned editModeToggle header widget is otherwise buried inside the "⋮" overflow below,
@@ -242,7 +259,7 @@ import { useRouter } from "vue-router";
 
 import Events from "@/utils/events";
 import i18n from "@/i18n";
-import { type MenuItem, useMenuStore } from "@/stores/menu";
+import { type MenuItem } from "@/stores/menu";
 import { useCacheStore } from "@/stores/cache";
 import { useMachineStore } from "@/stores/machine";
 import { useSettingsStore } from "@/stores/settings";
@@ -259,13 +276,14 @@ import { startChartSampler, stopChartSampler } from "../model/chartSampler";
 import { applyBackup, checkForRestore, dismissRestore, type FlBackup, isAutoBackupEnabled, writeBackup, writeHistorySnapshot } from "../model/sdBackup";
 import { isPrintingStatus } from "../util/printLock";
 import { can, currentLevel, getAccess } from "../model/access";
-import { applyNavOrder, isHidden } from "../model/pageManager";
 import { getActiveProfileId, listProfiles, useLayoutStore } from "../model/store";
 import { switchProfile } from "../model/profiles";
 import { BUILTIN_PAGES, statusBarSeed } from "../model/builtinPages";
 import { PLUGIN_MANIFEST_ID } from "../model/constants";
 import { CUSTOM_PAGE_PREFIX } from "../model/pageManager";
-import { evaluateRule } from "../util/conditions";
+import { stockMobileNav } from "../model/mobileNav";
+import { PLUGINS_PATH, useNavGroups } from "./useNavGroups";
+import { useShowMobileHub } from "./useMobileHub";
 import FlexPage from "../page/FlexPage.vue";
 import StatusFallback from "./StatusFallback.vue";
 import HeaderWidgets from "./HeaderWidgets.vue";
@@ -279,7 +297,6 @@ import WhatsNewDialog from "../editor/WhatsNewDialog.vue";
 import PasswordDialog from "../editor/PasswordDialog.vue";
 
 const machineStore = useMachineStore();
-const menuStore = useMenuStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUiStore();
 
@@ -303,9 +320,6 @@ const isEditablePage = computed(() => {
 const canEditLayoutNow = computed(() => can("editLayout"));
 const showEmergencyStopNow = computed(() =>
 	settingsStore.showEmergencyStop && !(currentLevel() === "observer" && getAccess().hideEmergencyStop));
-
-// Route of DWC's plugin-management page, where the plugin could be stopped/uninstalled.
-const PLUGINS_PATH = "/Plugins";
 
 const { mdAndUp } = useFlexDisplay();
 
@@ -581,29 +595,9 @@ function setStatusHidden(hidden: boolean) {
 	layoutStore.document.value.statusHidden = hidden;
 }
 
-// Apply the user's persisted nav order, then drop plugin-hidden items. itemsByCategory already
-// removes DWC's own globally-hidden items; isHidden additionally removes pages hidden via this
-// plugin (document.nav.hidden), which the built-in layout never sees.
-function pageVisible(path: string): boolean {
-	const page = layoutStore.document.value.pages[path];
-	return evaluateRule(machineStore.model, page?.showWhen);
-}
-
-function orderedItems(categoryKey: string): Array<MenuItem> {
-	// While restricted, hide the Plugins page from the nav too (it's where the plugin could be stopped).
-	const hidePlugins = !can("leaveLayout");
-	const items = menuStore.itemsByCategory(categoryKey)
-		.filter((i) => !isHidden(i.path) && pageVisible(i.path) && !(hidePlugins && i.path === PLUGINS_PATH));
-	const byPath = new Map(items.map((i) => [i.path, i]));
-	return applyNavOrder(items.map((i) => i.path)).map((p) => byPath.get(p)).filter(Boolean) as Array<MenuItem>;
-}
-
-// Categories that still have at least one visible item after plugin-hide filtering, so empty
-// sections don't render a dangling subheader.
-const navGroups = computed(() =>
-	menuStore.visibleCategories
-		.map((category) => ({ category, items: orderedItems(category.key) }))
-		.filter((group) => group.items.length > 0));
+// Nav entries for the drawer: DWC's menu minus globally-hidden and plugin-hidden pages, in the
+// user's saved order (shared with the phone hub - see useNavGroups.ts).
+const navGroups = useNavGroups();
 
 const headerWidgetsRef = ref<InstanceType<typeof HeaderWidgets> | null>(null);
 
@@ -656,7 +650,30 @@ function onDrawerResizeUp(): void {
 }
 
 const machineName = computed(() => machineStore.model.network.name || "Duet Web Control");
-const statusPanelVisible = computed(() => mdAndUp.value || settingsStore.showStatusPanel);
+
+// --- Phone chrome, mirroring the stock shell (layouts/builtin.vue) ---------------------------------
+// Below md the status region is opt-in via the app-bar toggle (stock keeps the same per-user
+// `showStatusPanel` setting), and on the hub (stock-style navigation, `/`) there's no page to show it for.
+const isAtHub = computed(() => router.currentRoute.value.path === "/");
+const stockNav = computed(() => !mdAndUp.value && stockMobileNav.value);
+// Editing needs the drawer (page manager, theme, import/export, ...) and the real dashboard at `/`.
+const showBackButton = computed(() => stockNav.value && !editMode.value && !isAtHub.value);
+const showDrawerToggle = computed(() => !stockNav.value || editMode.value);
+const hubShown = useShowMobileHub();
+const statusPanelVisible = computed(() => (mdAndUp.value || settingsStore.showStatusPanel) && !hubShown.value);
+const showStatusToggle = computed(() => !mdAndUp.value && !hubShown.value);
+
+const printing = computed(() => isPrintingStatus((machineStore.model as { state?: { status?: string } }).state?.status));
+const showHeaderJobProgress = computed(() =>
+	!mdAndUp.value && !hubShown.value && printing.value && router.currentRoute.value.path !== "/Job/Status");
+const jobProgressValue = computed(() => Math.max(0, Math.min(100, ((machineStore as { jobProgress?: number }).jobProgress ?? 0) * 100)));
+const jobProgressColor = computed(() => {
+	const status = (machineStore.model as { state?: { status?: string } }).state?.status;
+	if (status === "cancelling") {
+		return "error";
+	}
+	return status === "paused" || status === "pausing" ? "warning" : "success";
+});
 
 function resolveItemTitle(item: MenuItem): string {
 	return item.translated ? item.caption : i18n.global.t(item.caption);
