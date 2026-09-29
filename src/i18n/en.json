@@ -462,6 +462,8 @@
 		"columns": "Columns",
 		"rowHeight": "Row height",
 		"gap": "Panel gap",
+		"fullPage": "Full page",
+		"fullPageHint": "Fill the screen below the top bar and open this page scrolled down so the status bar is out of the way, like the stock Explorer page. Follows Settings > Behaviour > auto-scroll (off = no scrolling).",
 		"reset": "Reset to default",
 		"resetTitle": "Reset this page to default",
 		"resetHelp": "Choose what to clear. A single screen size removes just that layout (tablet/phone revert to inheriting); “Everything” also clears the background and grid. This can't be undone.",

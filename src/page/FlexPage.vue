@@ -1,5 +1,5 @@
 <template>
-	<div class="flex-page" :style="backgroundStyle">
+	<div class="flex-page" :class="{ 'flex-page--full': pageFullPage }" :style="backgroundStyle">
 		<!-- Edit toolbar. Shown only while editing; editing is always entered from the shell's top-bar
 			 Edit button (the single entry point), so no standalone edit button floats over the page. -->
 		<div v-if="editMode" class="flex-page-toolbar">
@@ -270,6 +270,11 @@
 							  :label="$t('plugins.flexibleLayouts.printLock.pageLabel')"
 							  @update:model-value="setPageLock" />
 					<div class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.printLock.pageHint") }}</div>
+
+					<v-switch v-if="!isStatusRegion" :model-value="pageFullPage" color="primary" density="compact" hide-details class="mt-2"
+							  :label="$t('plugins.flexibleLayouts.pageSettings.fullPage')"
+							  @update:model-value="setPageFullPage" />
+					<div v-if="!isStatusRegion" class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.pageSettings.fullPageHint") }}</div>
 				</v-card-text>
 				<v-card-actions>
 					<v-btn variant="text" color="error" prepend-icon="mdi-backup-restore" @click="openResetDialog">
@@ -298,6 +303,7 @@ import { exportPanel } from "../model/io";
 import { attemptToggleEdit, editMode } from "../model/editorState";
 import { can } from "../model/access";
 import { isPrintingStatus } from "../util/printLock";
+import { scrollPageToBottom } from "../util/pageScroll";
 import { describeWidget } from "../widgets/registry";
 import FlexGrid from "./FlexGrid.vue";
 import WidgetPalette from "../editor/WidgetPalette.vue";
@@ -366,6 +372,23 @@ const pageLockWhilePrinting = computed(() => store.getPage(props.pageId)?.lockWh
 function setPageLock(v: boolean | null) {
 	store.ensurePage(props.pageId, props.kind ?? "custom").lockWhilePrinting = v === true ? true : undefined;
 }
+
+// Full page: fill the viewport below the app bar and open scrolled flush (status region off the
+// top), like DWC's own Explorer. Not offered for the status region itself, which is the thing being
+// scrolled past.
+// (Its id is the same literal FlexShell mounts it with.)
+const isStatusRegion = computed(() => props.pageId === "__status__");
+const pageFullPage = computed(() => !isStatusRegion.value && (store.getPage(props.pageId)?.fullPage ?? false));
+function setPageFullPage(v: boolean | null) {
+	store.ensurePage(props.pageId, props.kind ?? "custom").fullPage = v === true ? true : undefined;
+}
+// The scroll only makes sense in view mode (editing needs the toolbar in view) and where the layout
+// has a status row above the page to scroll past (md+).
+onMounted(() => {
+	if (pageFullPage.value && !editMode.value) {
+		scrollPageToBottom(mdAndUp.value);
+	}
+});
 
 // The stock fallback (un-customized page) is one opaque, possibly motion-capable panel set - not
 // individual widgets with their own lock defaults - so it locks while printing, regardless of the
@@ -1070,6 +1093,12 @@ onBeforeUnmount(() => {
 <style scoped>
 .flex-page {
 	min-height: 200px;
+}
+/* Full page: at least one viewport tall below the app bar (Vuetify pads v-main by --v-layout-top), so
+   scrolled to the bottom the page fills the screen exactly with the status region above the fold. A
+   min-height rather than a fixed height so a grid taller than the screen still just scrolls. */
+.flex-page--full {
+	min-height: calc(100dvh - var(--v-layout-top, 64px));
 }
 .flex-fallback-wrap {
 	position: relative;

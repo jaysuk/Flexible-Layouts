@@ -1386,6 +1386,11 @@ export interface PageLayout {
 	showWhen?: ConditionRule;
 	/** Lock every interactive widget on this page while the printer is printing (page-wide override). */
 	lockWhilePrinting?: boolean;
+	/**
+	 * "Full page": the page fills the viewport below the app bar and opens scrolled flush with the
+	 * status region off the top - the way DWC's own Explorer / G-code viewer pages behave.
+	 */
+	fullPage?: boolean;
 	grid: { cols: number; rowHeight: number; /** Gap (px) between panels. Default 8. */ gap?: number };
 	/** Base (desktop / lg) layout. */
 	items: Array<GridItemModel>;
