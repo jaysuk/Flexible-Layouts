@@ -67,11 +67,17 @@
 
 		<StepperReadout :view="view" class="mt-1" />
 
-		<v-expansion-panels variant="accordion" class="mt-1 stepper-scenario-panels">
-			<v-expansion-panel title="Scenario" data-scenario-panel>
+		<v-expansion-panels v-model="scenarioPanelOpen" variant="accordion" class="mt-1 stepper-scenario-panels">
+			<v-expansion-panel :title="scenarioPanelTitle" data-scenario-panel>
 				<v-expansion-panel-text>
 					<StepperScenarioPanel :inputs="inputs" :referenced="referenced" :pending-path="status === 'paused' ? pendingPath : null"
-										  @update:inputs="(next: SimulationInputs) => emit('update:inputs', next)" />
+										  :scenario-names="scenarioNames" :active-scenario="activeScenario" :cursor-line="cursorLine"
+										  @update:inputs="(next: SimulationInputs) => emit('update:inputs', next)"
+										  @select-scenario="(name: string) => emit('select-scenario', name)"
+										  @add-scenario="(name: string) => emit('add-scenario', name)"
+										  @duplicate-scenario="emit('duplicate-scenario')"
+										  @rename-scenario="(name: string) => emit('rename-scenario', name)"
+										  @delete-scenario="emit('delete-scenario')" />
 				</v-expansion-panel-text>
 			</v-expansion-panel>
 		</v-expansion-panels>
@@ -95,8 +101,10 @@
 /**
  * The offline stepper for system files and macros: scrub bar + step buttons, what the current step DID
  * (`StepperReadout` - the line as evaluated, every axis's position and how far it moved, the variables),
- * the scenario editor (`StepperScenarioPanel` - starting position, and the object-model / `param.*` /
- * global values to test with), and two kinds of "paused, need input" prompt: an unresolved path, or an
+ * the scenario editor (`StepperScenarioPanel` - the file's named scenarios, starting position and start
+ * line, the endstops a `G1 H1` homing move meets, and the object-model / `param.*` / global values to
+ * test with; it opens itself when the walk pauses on a value it has a field for), and two kinds of
+ * "paused, need input" prompt: an unresolved path, or an
  * unanswered blocking `M291` message box, rendered with the buttons/input the real box would show
  * (OK / OK+Cancel / a bounds-checked value field). Steps are EXECUTION steps, not physical lines - a
  * false `if`/`while` branch contributes none, a loop body one per iteration (`executionIndex.ts`).
@@ -128,15 +136,38 @@ const props = defineProps<{
 	/** Every remembered message-box answer, `key` the opaque content-key `GcodeEditor.vue` uses to
 	 *  remove it again, `display` already formatted for read-only display. */
 	messageBoxAnswers: ReadonlyArray<{ key: string; display: string }>;
+	/** The file's named scenarios and which is active (`dwc-gcode-core/stepper/scenarioSet`), and the
+	 *  1-based line the editor cursor is on (null when unknown) for the "start here" button. */
+	scenarioNames: ReadonlyArray<string>;
+	activeScenario: string;
+	cursorLine: number | null;
 }>();
 const emit = defineEmits<{
 	"update:currentStep": [number];
 	"update:inputs": [SimulationInputs];
+	"select-scenario": [name: string];
+	"add-scenario": [name: string];
+	"duplicate-scenario": [];
+	"rename-scenario": [name: string];
+	"delete-scenario": [];
 	"resolve-path": [path: string, rawValue: string];
 	"resolve-message-box": [answer: MessageBoxAnswer];
 	"remove-message-box-answer": [key: string];
 	"reset-message-box-answers": [];
 }>();
+
+// The Scenario accordion: the panel's own model, so it can open itself. The title carries the active
+// scenario's name once a file has more than one, so a collapsed panel still says which one is running.
+const scenarioPanelOpen = ref<number | undefined>(undefined);
+const scenarioPanelTitle = computed(() => (props.scenarioNames.length > 1 ? `Scenario: ${props.activeScenario}` : "Scenario"));
+
+// When the walk stops on a value the scenario has a field for, open the scenario panel - it is where
+// that value is entered, and otherwise the alert above is easy to read and the accordion below easy to
+// miss. Only on a NEW pause: someone who collapses it again keeps it collapsed while they work on the
+// same path, and a path the panel has no field for (a computed index) is left to the alert's own input.
+watch(() => (props.status === "paused" ? props.pendingPath : null), (path) => {
+	if (path !== null && props.referenced.some((r) => r.name === path && !r.dynamic)) scenarioPanelOpen.value = 0;
+}, { immediate: true });
 
 const promptValue = ref("");
 watch(() => props.pendingPath, () => { promptValue.value = ""; });

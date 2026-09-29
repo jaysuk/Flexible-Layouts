@@ -40,6 +40,23 @@
 	padding: 0 0.375rem;
 	text-align: right;
 }
+.endstop-capsule {
+	display: flex;
+	align-items: center;
+	gap: 0.375rem;
+	min-height: 2.25rem;
+	border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+	border-radius: 8px;
+	padding-right: 0.25rem;
+}
+.endstop-capsule .mini-field {
+	width: 4.25rem;
+}
+.endstop-capsule :deep(.v-select .v-field__input) {
+	padding-top: 0;
+	padding-bottom: 0;
+	min-height: 0;
+}
 .mini-field {
 	display: flex;
 	flex-direction: column;
@@ -105,9 +122,33 @@
 </style>
 
 <template>
-	<div class="stepper-scenario">
-		<div class="d-flex align-center ga-2 mb-3">
+	<div ref="rootEl" class="stepper-scenario">
+		<div class="d-flex align-center flex-wrap ga-2 mb-3" data-scenario-selector>
 			<span class="scenario-section-title">Scenario</span>
+			<v-select :items="scenarioNames" :model-value="activeScenario" density="compact" hide-details variant="outlined"
+					  aria-label="Active scenario" style="max-width: 14rem; min-width: 9rem"
+					  @update:model-value="(name: string) => emit('select-scenario', name)" />
+			<template v-if="naming !== null">
+				<v-text-field v-model="nameDraft" density="compact" hide-details variant="outlined" style="max-width: 14rem"
+							  :placeholder="naming === 'add' ? 'New scenario name' : 'New name'" aria-label="Scenario name"
+							  spellcheck="false" autocomplete="off" autofocus @keyup.enter="commitNaming" @keyup.esc="naming = null" />
+				<v-btn size="small" variant="tonal" :disabled="nameDraft.trim() === ''" @click="commitNaming">{{ naming === 'add' ? 'Create' : 'Rename' }}</v-btn>
+				<v-btn icon="mdi-close" size="x-small" variant="text" title="Cancel" aria-label="Cancel naming" @click="naming = null" />
+			</template>
+			<template v-else-if="confirmingDelete">
+				<span class="text-caption">Delete "{{ activeScenario }}"?</span>
+				<v-btn size="small" variant="tonal" color="error" @click="confirmDelete">Delete</v-btn>
+				<v-btn size="small" variant="text" @click="confirmingDelete = false">Keep</v-btn>
+			</template>
+			<template v-else>
+				<v-btn icon="mdi-plus" size="x-small" variant="text" title="New blank scenario" aria-label="New scenario" @click="startNaming('add')" />
+				<v-btn icon="mdi-content-copy" size="x-small" variant="text" title="Duplicate this scenario" aria-label="Duplicate scenario"
+					   @click="emit('duplicate-scenario')" />
+				<v-btn icon="mdi-pencil-outline" size="x-small" variant="text" title="Rename this scenario" aria-label="Rename scenario"
+					   @click="startNaming('rename')" />
+				<v-btn icon="mdi-delete-outline" size="x-small" variant="text" title="Delete this scenario" aria-label="Delete scenario"
+					   :disabled="scenarioNames.length <= 1" @click="askDelete" />
+			</template>
 			<span class="text-caption text-medium-emphasis">{{ setCount }} set</span>
 			<v-spacer />
 			<v-btn v-if="!isEmptySimulationInputs(inputs)" size="small" variant="text" density="compact"
@@ -116,12 +157,14 @@
 
 		<div class="d-flex align-center ga-1 mb-2">
 			<span class="scenario-section-title">Starting position</span>
-			<v-tooltip location="bottom" max-width="20rem">
+			<v-tooltip location="bottom" max-width="22rem">
 				<template #activator="{ props: tip }">
 					<v-icon v-bind="tip" icon="mdi-information-outline" size="14" class="scenario-info" />
 				</template>
-				Where the machine is before line 1 runs. A macro that moves relative to the current position, or
+				Where the machine is before the first line runs. A macro that moves relative to the current position, or
 				reads <code>move.axes[n].userPosition</code>, starts from these. Leave an axis blank if it is unknown.
+				Set a start line to begin part-way through the file: lines above it are skipped, so give any variable
+				they would have declared a value under "Values this file reads".
 			</v-tooltip>
 		</div>
 		<div class="d-flex flex-wrap ga-2 align-center mb-3">
@@ -158,6 +201,14 @@
 									@commit="(text: string) => commitNumber('e', text)" />
 			</div>
 
+			<div class="mini-field">
+				<span class="mini-field__label">Start line</span>
+				<ScenarioValueField :model-value="startLineText" variant="plain" hide-details placeholder="1" aria-label="Start line"
+									@commit="commitStartLine" />
+			</div>
+			<v-btn v-if="cursorLine !== null" icon="mdi-crosshairs-gps" size="x-small" variant="text" aria-label="Start at the cursor line"
+				   :title="`Start at line ${cursorLine}, where the cursor is`" @click="emit('update:inputs', withStartLine(inputs, cursorLine))" />
+
 			<v-btn size="small" variant="tonal" density="comfortable" :aria-pressed="inputs.start.relativeMoves === true"
 				   :color="inputs.start.relativeMoves === true ? 'primary' : undefined"
 				   @click="emit('update:inputs', withStartMode(inputs, 'relativeMoves', inputs.start.relativeMoves !== true))">
@@ -168,6 +219,45 @@
 				   @click="emit('update:inputs', withStartMode(inputs, 'relativeE', inputs.start.relativeE !== true))">
 				M83 relative E
 			</v-btn>
+		</div>
+
+		<div class="d-flex align-center ga-1 mb-2">
+			<v-btn size="small" variant="text" density="compact" :prepend-icon="endstopsOpen ? 'mdi-chevron-down' : 'mdi-chevron-right'"
+				   :aria-expanded="endstopsOpen" data-scenario-endstops-toggle @click="endstopsOpen = !endstopsOpen">
+				Endstops for G1 H1 homing moves
+			</v-btn>
+			<span v-if="endstopCount > 0" class="text-caption text-medium-emphasis">{{ endstopCount }} set</span>
+			<v-tooltip location="bottom" max-width="26rem">
+				<template #activator="{ props: tip }">
+					<v-icon v-bind="tip" icon="mdi-information-outline" size="14" class="scenario-info" />
+				</template>
+				A <code>G1 H1</code> move runs until the axis's endstop triggers; the axis is then set to its minimum
+				(a low-end endstop) or maximum (high end) and marked homed. That is configuration, not in the file, so
+				say it here. Left blank an endstop triggers at the end the move heads toward, with RRF's own defaults
+				(minimum 0, maximum 200). "Never triggers" lets the move finish at its target with the axis still unhomed.
+			</v-tooltip>
+		</div>
+		<div v-if="endstopsOpen" class="d-flex flex-wrap ga-2 mb-3" data-scenario-endstops>
+			<div v-for="letter in startAxes" :key="letter" class="endstop-capsule" :data-scenario-endstop="letter">
+				<span class="axis-capsule__letter">{{ letter }}</span>
+				<v-select :items="ENDSTOP_ENDS" :model-value="endOf(letter)" density="compact" hide-details variant="plain"
+						  :aria-label="`Endstop end for ${letter}`" style="width: 10.5rem"
+						  @update:model-value="(v: string) => commitEnd(letter, v)" />
+				<div class="mini-field">
+					<span class="mini-field__label">Min</span>
+					<ScenarioValueField :model-value="endstopNumberText(letter, 'min')" variant="plain" hide-details placeholder="0"
+										:aria-label="`Axis minimum ${letter}`" @commit="(text: string) => commitEndstopNumber(letter, 'min', text)" />
+				</div>
+				<div class="mini-field">
+					<span class="mini-field__label">Max</span>
+					<ScenarioValueField :model-value="endstopNumberText(letter, 'max')" variant="plain" hide-details placeholder="200"
+										:aria-label="`Axis maximum ${letter}`" @commit="(text: string) => commitEndstopNumber(letter, 'max', text)" />
+				</div>
+				<v-btn :icon="triggers(letter) ? 'mdi-check-circle-outline' : 'mdi-close-circle-outline'" size="x-small" variant="text"
+					   density="compact" :color="triggers(letter) ? undefined : 'warning'" :aria-pressed="!triggers(letter)"
+					   :title="`${letter}'s endstop ${triggers(letter) ? 'triggers' : 'never triggers'} during a G1 H1 move - click to toggle`"
+					   :aria-label="`${letter} endstop never triggers`" @click="emit('update:inputs', withEndstop(inputs, letter, { triggers: triggers(letter) ? false : undefined }))" />
+			</div>
 		</div>
 
 		<v-divider class="mb-3" />
@@ -245,10 +335,13 @@
 <script setup lang="ts">
 /**
  * The offline stepper's scenario editor: the starting position (X/Y/Z and any extra axis, which are
- * homed, tool, feedrate, extruder, G91/M83) and the values the file's expressions read (object-model
- * paths, `param.*`, globals), so a macro can be tested down every branch by changing one field.
- * Purely presentational - it edits a `SimulationInputs` (`dwc-gcode-core/stepper/simulation`, which
- * owns every edit rule) and emits the new one; `GcodeEditor.vue` re-runs the walk and persists it.
+ * homed, tool, feedrate, extruder, G91/M83), the line to start at, the endstops a `G1 H1` homing move
+ * meets, and the values the file's expressions read (object-model paths, `param.*`, globals), so a
+ * macro can be tested down every branch by changing one field - and several such scenarios per file,
+ * by name (a selector with new/duplicate/rename/delete). Purely presentational - it edits a
+ * `SimulationInputs` (`dwc-gcode-core/stepper/simulation`, which owns every edit rule) and emits the
+ * new one, and reports scenario-set operations (`dwc-gcode-core/stepper/scenarioSet`) as events;
+ * `GcodeEditor.vue` re-runs the walk and persists them.
  *
  * Kept compact deliberately (2026-09-28 redesign, after a real-browser report that the previous
  * layout - one stacked field+checkbox per axis, two long help paragraphs, one row per referenced
@@ -259,11 +352,11 @@
  * grid scrolls; nothing below it can be pushed off screen. See the artifact this was designed from
  * (linked from the session that made this change) for the reasoning behind each specific control.
  */
-import { computed, ref } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import type { EvalValue } from "dwc-gcode-core";
 import {
 	emptySimulationInputs, formatEvalValue, getInputValue, isEmptySimulationInputs, withDeclaredAxis, withInputValue,
-	withStartAxis, withStartHomed, withStartMode, withStartValue,
+	withEndstop, withStartAxis, withStartHomed, withStartLine, withStartMode, withStartValue,
 	type ReferencedInput, type ReferencedInputKind, type SimulationInputs,
 } from "dwc-gcode-core/stepper/simulation";
 import { parseSimulatedValueInput } from "dwc-gcode-core/stepper/simulatedValues";
@@ -276,8 +369,93 @@ const props = defineProps<{
 	referenced: ReadonlyArray<ReferencedInput>;
 	/** The path the walk is currently paused on, if any - highlighted so it's easy to find. */
 	pendingPath: string | null;
+	/** The named scenarios this file has, and which one `inputs` is. */
+	scenarioNames: ReadonlyArray<string>;
+	activeScenario: string;
+	/** The 1-based line the editor's cursor is on, offered as "start here" - null when unknown. */
+	cursorLine: number | null;
 }>();
-const emit = defineEmits<{ "update:inputs": [SimulationInputs] }>();
+const emit = defineEmits<{
+	"update:inputs": [SimulationInputs];
+	"select-scenario": [name: string];
+	"add-scenario": [name: string];
+	"duplicate-scenario": [];
+	"rename-scenario": [name: string];
+	"delete-scenario": [];
+}>();
+
+// ── named scenarios ──
+const naming = ref<"add" | "rename" | null>(null);
+const nameDraft = ref("");
+const confirmingDelete = ref(false);
+
+function startNaming(mode: "add" | "rename"): void {
+	naming.value = mode;
+	nameDraft.value = mode === "rename" ? props.activeScenario : "";
+}
+function commitNaming(): void {
+	const name = nameDraft.value.trim();
+	if (name === "" || naming.value === null) return;
+	if (naming.value === "add") emit("add-scenario", name);
+	else emit("rename-scenario", name);
+	naming.value = null;
+}
+/** Deleting a scenario that holds something is asked about first; an empty one just goes. */
+function askDelete(): void {
+	if (isEmptySimulationInputs(props.inputs)) emit("delete-scenario");
+	else confirmingDelete.value = true;
+}
+function confirmDelete(): void {
+	confirmingDelete.value = false;
+	emit("delete-scenario");
+}
+// A different scenario is a different thing to have half-typed a name or a confirmation for.
+watch(() => props.activeScenario, () => { naming.value = null; confirmingDelete.value = false; });
+
+// ── the start line ──
+const startLineText = computed(() => (props.inputs.startLine === undefined ? "" : String(props.inputs.startLine)));
+function commitStartLine(text: string): void {
+	const t = text.trim();
+	emit("update:inputs", withStartLine(props.inputs, t === "" ? null : Number(t)));
+}
+
+// ── endstops for G1 H1 ──
+const ENDSTOP_ENDS: ReadonlyArray<{ title: string; value: string }> = [
+	{ title: "Auto (way the move heads)", value: "auto" },
+	{ title: "Low end (minimum)", value: "low" },
+	{ title: "High end (maximum)", value: "high" },
+	{ title: "No endstop", value: "none" },
+];
+const endstopsOpen = ref(false);
+const endstopCount = computed(() => Object.keys(props.inputs.start.endstops ?? {}).length);
+const endOf = (letter: string): string => props.inputs.start.endstops?.[letter]?.end ?? "auto";
+const triggers = (letter: string): boolean => props.inputs.start.endstops?.[letter]?.triggers !== false;
+function commitEnd(letter: string, value: string): void {
+	emit("update:inputs", withEndstop(props.inputs, letter, { end: value === "auto" ? undefined : value as "low" | "high" | "none" }));
+}
+function endstopNumberText(letter: string, key: "min" | "max"): string {
+	const v = props.inputs.start.endstops?.[letter]?.[key];
+	return v === undefined ? "" : String(v);
+}
+function commitEndstopNumber(letter: string, key: "min" | "max", text: string): void {
+	const t = text.trim();
+	const n = Number(t);
+	if (t === "") emit("update:inputs", withEndstop(props.inputs, letter, { [key]: undefined }));
+	else if (Number.isFinite(n)) emit("update:inputs", withEndstop(props.inputs, letter, { [key]: n }));
+}
+
+// ── the value the walk is waiting for ──
+// The values grid scrolls inside its own height cap, so the row the walk paused on can be out of sight;
+// bring it into view when the pause changes and when the panel is first drawn (it is drawn open, by the
+// parent, because of that very pause).
+const rootEl = ref<HTMLElement | null>(null);
+async function revealPending(): Promise<void> {
+	if (props.pendingPath === null) return;
+	await nextTick();
+	rootEl.value?.querySelector(".value-row--pending")?.scrollIntoView?.({ block: "nearest" });
+}
+watch(() => props.pendingPath, () => { void revealPending(); });
+onMounted(() => { void revealPending(); });
 
 const EXTRA_AXES: ReadonlyArray<string> = ["U", "V", "W", "A", "B", "C", "D"];
 
@@ -360,7 +538,7 @@ const otherValues = computed(() => {
 /** How many fields are actually set, shown next to the panel's own title instead of in one long sentence. */
 const setCount = computed(() => {
 	const axisCount = startAxes.value.filter((letter) => axisText(letter) !== "").length;
-	return axisCount + props.inputs.paths.size + props.inputs.globals.size + props.inputs.vars.size;
+	return axisCount + (props.inputs.startLine === undefined ? 0 : 1) + props.inputs.paths.size + props.inputs.globals.size + props.inputs.vars.size;
 });
 
 function commitValue(kind: ReferencedInputKind, name: string, text: string): void {

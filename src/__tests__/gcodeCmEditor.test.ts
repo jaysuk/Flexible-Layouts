@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { flushPromises } from "@vue/test-utils";
 import { startCompletion } from "@codemirror/autocomplete";
 import type { EditorView } from "@codemirror/view";
@@ -471,8 +471,8 @@ describe("GcodeCmEditor", () => {
 		// Resolving a pause rebuilds the index (now 4 real steps: G28, the true if-body's G1 X1, G1 Y1)
 		// but deliberately does NOT jump the scrub position to the end - only clamps it into range.
 		await vi.waitFor(() => expect(wrapper.text()).toContain("Step 1 / 4"));
-		// The value now lives in the scenario editor (collapsed by default): open it and read the field.
-		await wrapper.find("[data-scenario-panel] button").trigger("click");
+		// The value now lives in the scenario editor, which the pause opened by itself - read the field.
+		expect(wrapper.find("[data-scenario-panel]").classes()).toContain("v-expansion-panel--active");
 		const valueField = wrapper.find("input[aria-label=\"Value of sensors.gpIn[0].value\"]");
 		expect((valueField.element as HTMLInputElement).value).toBe("1");
 		expect(localStorage.getItem("flexibleLayouts.stepperScenario." + filename)).toContain("sensors.gpIn[0].value");
@@ -561,7 +561,8 @@ describe("GcodeCmEditor", () => {
 			const filename = "0:/macros/scn-c.g";
 			const wrapper = await openStepper("if sensors.gpIn[0].value = 1\n    G1 X10\nelse\n    G1 X20\n", filename);
 			await vi.waitFor(() => expect(wrapper.text()).toContain("depends on"));
-			await wrapper.find("[data-scenario-panel] button").trigger("click");
+			// The pause opened the scenario panel by itself (no click needed), where the value is entered.
+			await vi.waitFor(() => expect(wrapper.find("[data-scenario-panel]").classes()).toContain("v-expansion-panel--active"));
 			await vi.waitFor(() => expect(wrapper.find('[data-scenario-input="objectModel:sensors.gpIn[0].value"]').exists()).toBe(true));
 
 			const lastX = async (): Promise<string> => {
@@ -579,6 +580,186 @@ describe("GcodeCmEditor", () => {
 			localStorage.removeItem("flexibleLayouts.stepperScenario." + filename);
 			fileContent = "G28\nG1 X10 Y10\n";
 			wrapper.unmount();
+		});
+
+		describe("scenario controls", () => {
+			// One open-the-stepper helper per host; `name` keeps each test's saved scenario apart.
+			const open = (text: string, name: string) => openStepper(text, `0:/macros/${name}.g`);
+			afterEach(() => { fileContent = "G28\nG1 X10 Y10\n"; });
+			const panelOpen = (wrapper: ReturnType<typeof mountInDwc>): boolean =>
+				wrapper.find("[data-scenario-panel]").classes().includes("v-expansion-panel--active");
+			const toggleScenarioPanel = (wrapper: ReturnType<typeof mountInDwc>) =>
+				wrapper.find("[data-scenario-panel] button").trigger("click");
+			const buttonLabelled = (wrapper: ReturnType<typeof mountInDwc>, label: string) =>
+				wrapper.findAll("button").find((b) => b.attributes("aria-label") === label)!;
+			async function typeInto(wrapper: ReturnType<typeof mountInDwc>, label: string, value: string): Promise<void> {
+				const input = wrapper.find(`input[aria-label="${label}"]`);
+				expect(input.exists(), `no input labelled "${label}"`).toBe(true);
+				await input.setValue(value);
+				await input.trigger("blur"); // fields commit on blur/Enter, not per keystroke
+			}
+			const axisText = (wrapper: ReturnType<typeof mountInDwc>, letter: string): string => wrapper.find(`[data-axis="${letter}"]`).text();
+
+			it("opens the scenario panel by itself when the walk pauses on a value it has a field for", async () => {
+				const wrapper = await open("if sensors.gpIn[0].value = 1\n    G1 X10\n", "auto-open");
+				await vi.waitFor(() => expect(wrapper.text()).toContain("depends on"));
+				await vi.waitFor(() => expect(panelOpen(wrapper)).toBe(true));
+				expect(wrapper.find('[data-scenario-input="objectModel:sensors.gpIn[0].value"]').text()).toContain("needs a value");
+				wrapper.unmount();
+			});
+
+			it("leaves it closed when nothing is missing", async () => {
+				const wrapper = await open("G28\nG1 X10\n", "auto-closed");
+				await vi.waitFor(() => expect(wrapper.text()).toContain("Step 1 / 2"));
+				expect(panelOpen(wrapper)).toBe(false);
+				wrapper.unmount();
+			});
+
+			it("does not reopen a panel someone collapsed while the same value is still being asked for", async () => {
+				const wrapper = await open("if sensors.gpIn[0].value = 1\n    G1 X10\n", "auto-collapsed");
+				await vi.waitFor(() => expect(panelOpen(wrapper)).toBe(true));
+				await toggleScenarioPanel(wrapper);
+				expect(panelOpen(wrapper)).toBe(false);
+
+				// Same pause again (a different starting position, still no value for the sensor).
+				const scenario = wrapper.findComponent({ name: "StepperScenarioPanel" });
+				await scenario.vm.$emit("update:inputs", { ...(scenario.props("inputs") as object), start: { axes: { X: 5 } } });
+				await new Promise((resolve) => setTimeout(resolve, 50));
+				expect(panelOpen(wrapper)).toBe(false);
+				wrapper.unmount();
+			});
+
+			it("keeps named scenarios apart, and switching between them re-runs the walk", async () => {
+				const wrapper = await open("G91\nG1 X5\n", "named");
+				await vi.waitFor(() => expect(wrapper.text()).toContain("Step 1 / 2"));
+				await toggleScenarioPanel(wrapper);
+				await typeInto(wrapper, "Start X", "100");
+				await stepForward(wrapper).trigger("click");
+				await vi.waitFor(() => expect(axisText(wrapper, "X")).toMatch(/^X\s*105\.000/));
+
+				await buttonLabelled(wrapper, "New scenario").trigger("click");
+				const name = wrapper.find('input[aria-label="Scenario name"]');
+				await name.setValue("Primed");
+				await name.trigger("keyup.enter");
+				await vi.waitFor(() => expect(wrapper.find("[data-scenario-panel] .v-expansion-panel-title").text()).toContain("Scenario: Primed"));
+				expect((wrapper.find('input[aria-label="Start X"]').element as HTMLInputElement).value).toBe(""); // a blank scenario
+				await vi.waitFor(() => expect(wrapper.text()).toContain("Step 1 / 2"));
+				await stepForward(wrapper).trigger("click");
+				await vi.waitFor(() => expect(axisText(wrapper, "X")).toMatch(/^X\s*5\.000/)); // not the 105 of the other scenario
+
+				// The select's popup can't be clicked in happy-dom, so drive the panel's own emit.
+				await wrapper.findComponent({ name: "StepperScenarioPanel" }).vm.$emit("select-scenario", "Default");
+				await vi.waitFor(() => expect((wrapper.find('input[aria-label="Start X"]').element as HTMLInputElement).value).toBe("100"));
+				await vi.waitFor(() => expect(wrapper.text()).toContain("Step 1 / 2"));
+				await stepForward(wrapper).trigger("click");
+				await vi.waitFor(() => expect(axisText(wrapper, "X")).toMatch(/^X\s*105\.000/));
+				wrapper.unmount();
+			});
+
+			it("duplicates, renames and deletes a scenario", async () => {
+				const wrapper = await open("G28\n", "named-ops");
+				await vi.waitFor(() => expect(wrapper.text()).toContain("Step 1 / 1"));
+				await toggleScenarioPanel(wrapper);
+				await buttonLabelled(wrapper, "Duplicate scenario").trigger("click");
+				const title = () => wrapper.find("[data-scenario-panel] .v-expansion-panel-title").text();
+				await vi.waitFor(() => expect(title()).toContain("Scenario: Default copy"));
+
+				await buttonLabelled(wrapper, "Rename scenario").trigger("click");
+				const name = wrapper.find('input[aria-label="Scenario name"]');
+				expect((name.element as HTMLInputElement).value).toBe("Default copy"); // starts from the current name
+				await name.setValue("Second");
+				await name.trigger("keyup.enter");
+				await vi.waitFor(() => expect(title()).toContain("Scenario: Second"));
+
+				// An empty scenario is deleted straight away; the other one becomes active.
+				await buttonLabelled(wrapper, "Delete scenario").trigger("click");
+				await vi.waitFor(() => expect(title()).toBe("Scenario"));
+				expect(buttonLabelled(wrapper, "Delete scenario").attributes("disabled")).toBeDefined(); // the last one stays
+				wrapper.unmount();
+			});
+
+			it("asks before deleting a scenario that holds something", async () => {
+				const wrapper = await open("G91\nG1 X5\n", "named-delete");
+				await vi.waitFor(() => expect(wrapper.text()).toContain("Step 1 / 2"));
+				await toggleScenarioPanel(wrapper);
+				await buttonLabelled(wrapper, "New scenario").trigger("click");
+				const name = wrapper.find('input[aria-label="Scenario name"]');
+				await name.setValue("Keep me");
+				await name.trigger("keyup.enter");
+				await vi.waitFor(() => expect(wrapper.find("[data-scenario-panel] .v-expansion-panel-title").text()).toContain("Keep me"));
+				await typeInto(wrapper, "Start X", "7");
+
+				await buttonLabelled(wrapper, "Delete scenario").trigger("click");
+				expect(wrapper.text()).toContain('Delete "Keep me"?');
+				await wrapper.findAll("button").find((b) => b.text() === "Keep")!.trigger("click");
+				expect(wrapper.text()).not.toContain('Delete "Keep me"?');
+				expect(wrapper.find("[data-scenario-panel] .v-expansion-panel-title").text()).toContain("Keep me");
+
+				await buttonLabelled(wrapper, "Delete scenario").trigger("click");
+				await wrapper.findAll("button").find((b) => b.text() === "Delete")!.trigger("click");
+				await vi.waitFor(() => expect(wrapper.find("[data-scenario-panel] .v-expansion-panel-title").text()).toBe("Scenario"));
+				wrapper.unmount();
+			});
+
+			it("begins the walk at a chosen start line, and can take the cursor's line", async () => {
+				const wrapper = await open("G1 X1\nG1 X2\nG1 X3\n", "start-line");
+				await vi.waitFor(() => expect(wrapper.text()).toContain("Step 1 / 3"));
+				await toggleScenarioPanel(wrapper);
+				await typeInto(wrapper, "Start line", "3");
+				await vi.waitFor(() => expect(wrapper.text()).toContain("Step 1 / 1"));
+				expect(axisText(wrapper, "X")).toContain("3.000");
+				expect(wrapper.text()).toContain("line 3");
+
+				const vm = wrapper.vm as unknown as { editorInstance: { view: EditorView } };
+				const view = vm.editorInstance.view;
+				view.dispatch({ selection: { anchor: view.state.doc.line(2).from } });
+				await flushPromises(); // the cursor line reaches the panel through a ref
+				await buttonLabelled(wrapper, "Start at the cursor line").trigger("click");
+				await vi.waitFor(() => expect(wrapper.text()).toContain("Step 1 / 2"));
+				expect((wrapper.find('input[aria-label="Start line"]').element as HTMLInputElement).value).toBe("2");
+				wrapper.unmount();
+			});
+
+			it("a start line inside a branch resumes it, and the variables above it become inputs to fill in", async () => {
+				const wrapper = await open("var n = 1\nif var.n > 0\n    G1 X{var.n}\n    G1 X{var.n + 1}\n", "start-branch");
+				await vi.waitFor(() => expect(wrapper.text()).toContain("Step 1 / 4"));
+				await toggleScenarioPanel(wrapper);
+				await typeInto(wrapper, "Start line", "4");
+				// var.n is declared above the start line, so the walk cannot know it: it asks for it.
+				await vi.waitFor(() => expect(wrapper.find('[data-scenario-input="var:n"]').exists()).toBe(true));
+				await typeInto(wrapper, "Value of var.n", "10");
+				await vi.waitFor(() => expect(wrapper.text()).toContain("Step 1 / 1"));
+				expect(axisText(wrapper, "X")).toContain("11.000");
+				wrapper.unmount();
+			});
+
+			it("shows an M291 message written as an expression, evaluated", async () => {
+				const wrapper = await open('var who = "Bob"\nM291 P{"Hello " ^ var.who} S2\nG1 X1\n', "m291-expression");
+				await vi.waitFor(() => expect(wrapper.text()).toContain("Hello Bob"));
+				await wrapper.findAll("button").find((b) => b.text() === "OK")!.trigger("click");
+				await vi.waitFor(() => expect(wrapper.text()).toContain("Step 1 / 3"));
+				await stepForward(wrapper).trigger("click");
+				expect(wrapper.find('[data-readout="evaluated"]').text()).toBe('M291 P"Hello Bob" S2');
+				wrapper.unmount();
+			});
+
+			it("models a G1 H1 homing move against the endstops set in the scenario", async () => {
+				const wrapper = await open("G91\nG1 H1 X-300 F3000\n", "homing");
+				await vi.waitFor(() => expect(wrapper.text()).toContain("Step 1 / 2"));
+				await stepForward(wrapper).trigger("click");
+				await vi.waitFor(() => expect(axisText(wrapper, "X")).toContain("0.000")); // RRF's default axis minimum
+				expect(wrapper.find('[data-axis="X"] [aria-label="Homed"]').exists()).toBe(true);
+
+				await toggleScenarioPanel(wrapper);
+				await wrapper.find("[data-scenario-endstops-toggle]").trigger("click");
+				await typeInto(wrapper, "Axis minimum X", "-5");
+				await vi.waitFor(() => expect(axisText(wrapper, "X")).toContain("-5.000"));
+
+				await buttonLabelled(wrapper, "X endstop never triggers").trigger("click");
+				await vi.waitFor(() => expect(axisText(wrapper, "X")).toContain("-300.000")); // stopped at its target instead
+				expect(wrapper.find('[data-axis="X"] [aria-label="Homed"]').exists()).toBe(false);
+				wrapper.unmount();
+			});
 		});
 
 		it("re-runs the walk when the buffer is edited while stepping", async () => {
