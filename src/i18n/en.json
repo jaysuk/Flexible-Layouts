@@ -982,6 +982,16 @@
 		"toggleHelp": "Show this menu file on an emulated 12864 (ST7920) display - pixel-accurate to RepRapFirmware. In the new G-code editor it follows your unsaved edits; in the standard editor it shows the saved file and refreshes when you save.",
 		"live": "Live",
 		"liveHelp": "Showing your unsaved edits, as you type",
+		"messageBox": "Message box",
+		"messageBoxHelp": "Put up a sample M291 message box, to see how one looks on this display. Its OK / Cancel buttons send M292 (listed below, never sent) and take the box down, as the firmware would.",
+		"sample": {
+			"ok": "OK box (M291 S2)",
+			"okCancel": "OK and Cancel (M291 S3)",
+			"close": "Close box (M291 S1 - shown with a Cancel button)",
+			"jog": "Jog X, Y, Z (M291 S3 X1 Y1 Z1)"
+		},
+		"sampleTitle": "Sample message",
+		"sampleMessage": "Check the nozzle",
 		"restart": "Restart",
 		"restartHelp": "Start again from the main menu",
 		"reload": "Reload",

@@ -79,7 +79,9 @@ Open **Manage pages** (the edit toolbar, the drawer, or *Settings → Flexible L
   menu files and live values. Click a button on the screen or use the knob; commands are only listed,
   never sent. With the new editor on, it **follows your unsaved edits** as you type (a "Live" badge shows
   it, and an edit to another open menu file shows up too); menu files opened in DWC's own editor show the
-  saved file and refresh when you save. It lists every problem in the menu (RepRapFirmware stops loading a
+  saved file and refresh when you save. The **Message box** button puts up a sample `M291` box (OK, OK and
+  Cancel, Close, or with X/Y/Z jog values) so you can see how one looks on the display - a preview has no
+  live `M291` - and its OK / Cancel buttons list the `M292` they would send and take the box down. It lists every problem in the menu (RepRapFirmware stops loading a
   menu at the first one), and the editor underlines the same problems in the text.
 
 ## Phones

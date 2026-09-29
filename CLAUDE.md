@@ -44,6 +44,10 @@ Vue 3 + Vuetify plugin for DuetWebControl (drag-and-drop layout customisation fo
   (`defineExpose({ save, focus: focusEditor })`), so a menu file still opened there falls back to the saved
   file, re-read on save. `GcodeCmEditor` is kind-aware (`isMenu`): menu grammar + live `menu/*` linting from
   `dwc-gcode-editor`'s `menuFile.ts` (needs editor >= v0.11.0), no G-code completion/F4/Run/stepper.
+  The emulator's **Message box** menu shows a sample M291 box (`MenuDisplay.setMessageBox`, core >= 1.30.0): a preview
+  has no live M291, so the emulator plays the firmware's part - a recorded `M292` (an OK/Cancel press) takes the box
+  down again with `setMessageBox(null)`, after the encoder call returns, as RRF does (clearing it synchronously
+  would re-arm the inactivity timeout that a box switches off).
 - **Stock Explorer replacement is opt-in and load-time**: `model/builtinPages.ts`'s `EXPLORER_PAGE` is only
   in `BUILTIN_PAGES` when `shouldReplaceExplorerPage()` was true at plugin load - DWC installs route overrides
   once with the layout, and an override replaces the stock page's keep-alive, so it can't be always-on.

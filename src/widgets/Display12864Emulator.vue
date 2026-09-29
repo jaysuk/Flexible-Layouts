@@ -6,6 +6,17 @@
 			<v-chip v-if="following" size="x-small" color="primary" variant="tonal" class="d12864-live"
 					:title="$t('plugins.flexibleLayouts.display12864.liveHelp')">{{ $t("plugins.flexibleLayouts.display12864.live") }}</v-chip>
 			<v-spacer />
+			<!-- A preview has no live M291, so a sample box can be put up to see how a message box looks on the display. -->
+			<v-menu>
+				<template #activator="{ props: menuProps }">
+					<v-btn v-bind="menuProps" size="x-small" variant="text" prepend-icon="mdi-message-alert-outline" class="d12864-box-button"
+						   :title="$t('plugins.flexibleLayouts.display12864.messageBoxHelp')">{{ $t("plugins.flexibleLayouts.display12864.messageBox") }}</v-btn>
+				</template>
+				<v-list density="compact">
+					<v-list-item v-for="sample in SAMPLE_BOXES" :key="sample.id" :data-sample-box="sample.id"
+								 :title="$t(`plugins.flexibleLayouts.display12864.sample.${sample.id}`)" @click="showSampleMessageBox(sample.id)" />
+				</v-list>
+			</v-menu>
 			<v-btn size="x-small" variant="text" prepend-icon="mdi-restart" :title="$t('plugins.flexibleLayouts.display12864.restartHelp')"
 				   @click="restart">{{ $t("plugins.flexibleLayouts.display12864.restart") }}</v-btn>
 			<v-btn size="x-small" variant="text" prepend-icon="mdi-refresh" :loading="loading"
@@ -42,7 +53,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
 
-import { MenuDisplay, type MenuError, resolveMenu } from "dwc-gcode-core";
+import { type DisplayMessageBox, MenuDisplay, type MenuError, resolveMenu } from "dwc-gcode-core";
+import i18n from "@/i18n";
 import { useMachineStore } from "@/stores/machine";
 
 import { defaultMachineIO } from "../model/configBackup/machineIO";
@@ -69,6 +81,15 @@ const ROWS = 64;
 const SCALE = 4;
 const REFRESH_MS = 250; // RRF's own display refresh interval (Display.cpp NormalRefreshMillis)
 
+// The M291 boxes the display can draw (modes 0-3), as a real `M291 R"..." P"..." S<mode>` would produce them.
+const SAMPLE_BOXES: ReadonlyArray<{ id: string; box: Omit<DisplayMessageBox, "title" | "message" | "seq"> }> = [
+	{ id: "ok", box: { mode: 2 } }, // M291 S2: OK
+	{ id: "okCancel", box: { mode: 3 } }, // M291 S3: OK and Cancel
+	{ id: "close", box: { mode: 1 } }, // M291 S1: the display shows Cancel for this (bit 1 is Cancel)
+	{ id: "jog", box: { mode: 3, controls: { x: true, y: true, z: true } } }, // M291 S3 X1 Y1 Z1
+];
+let boxSeq = 0;
+
 const machineStore = useMachineStore();
 const canvas = ref<HTMLCanvasElement | null>(null);
 const loading = ref(false);
@@ -89,6 +110,11 @@ const problems = ref<Array<MenuError>>([]);
 const display = shallowRef<MenuDisplay | null>(null);
 let timer: ReturnType<typeof setInterval> | undefined;
 
+// The message box being previewed. Real RRF holds the box in the firmware and takes it down once the M292 a button
+// sent has been processed; the preview has no firmware, so it does the same: a recorded M292 acknowledges the box.
+const sampleBox = shallowRef<DisplayMessageBox | null>(null);
+let acknowledged = false;
+
 /** Starts from `main`. `keep` (a previous display's menu stack) reopens the menus that were open, so a
  *  reload or a live edit doesn't throw the user back to the top; without it, `props.menu` opens on top of `main`. */
 function startMenu(keep?: ReadonlyArray<string>): void {
@@ -96,7 +122,10 @@ function startMenu(keep?: ReadonlyArray<string>): void {
 		source: effective.value,
 		model: () => machineStore.model as unknown as Record<string, unknown>,
 		io: props.source ? undefined : defaultMachineIO(),
-		onCommand: (c) => { commands.value = [c, ...commands.value].slice(0, 12); },
+		onCommand: (c) => {
+			commands.value = [c, ...commands.value].slice(0, 12);
+			if (/^M292\b/i.test(c)) acknowledged = true;
+		},
 	});
 	const d = new MenuDisplay(host);
 	d.start();
@@ -107,7 +136,31 @@ function startMenu(keep?: ReadonlyArray<string>): void {
 		if (wanted.toLowerCase() !== "main") d.load(wanted);
 	}
 	display.value = d;
+	if (sampleBox.value !== null) d.setMessageBox(sampleBox.value); // a restart (a live edit, a reload) keeps the box up
 	redraw();
+}
+
+/** Puts one of the sample boxes up, replacing any that is showing. */
+function showSampleMessageBox(id: string): void {
+	const sample = SAMPLE_BOXES.find((s) => s.id === id);
+	const d = display.value;
+	if (sample === undefined || d === null) return;
+	sampleBox.value = {
+		...sample.box,
+		title: i18n.global.t("plugins.flexibleLayouts.display12864.sampleTitle"),
+		message: i18n.global.t("plugins.flexibleLayouts.display12864.sampleMessage"),
+		seq: ++boxSeq,
+	};
+	d.setMessageBox(sampleBox.value);
+	redraw();
+}
+
+/** What the firmware does once an M292 has been processed: the box goes, and the menu underneath is reloaded. */
+function acknowledgeMessageBox(): void {
+	if (!acknowledged) return;
+	acknowledged = false;
+	sampleBox.value = null;
+	display.value?.setMessageBox(null);
 }
 
 async function reload(): Promise<void> {
@@ -129,6 +182,8 @@ async function reload(): Promise<void> {
 
 function restart(): void {
 	commands.value = [];
+	sampleBox.value = null;
+	acknowledged = false;
 	startMenu();
 }
 
@@ -166,6 +221,7 @@ function redraw(): void {
 
 function turn(clicks: number): void {
 	display.value?.encoder(clicks);
+	acknowledgeMessageBox();
 	redraw();
 }
 
@@ -182,6 +238,7 @@ function onCanvasClick(e: MouseEvent): void {
 	const x = Math.floor(((e.clientX - rect.left) / rect.width) * COLS);
 	const y = Math.floor(((e.clientY - rect.top) / rect.height) * ROWS);
 	display.value?.touch(x, y);
+	acknowledgeMessageBox();
 	redraw();
 }
 
@@ -196,7 +253,7 @@ watch(() => props.menu, () => { startMenu(); });
 // A live edit: the display restarts on the new text, at the menu it was showing.
 watch(() => props.overrides, () => { startMenu(display.value?.menuStack); });
 
-defineExpose({ display, reload, turn, restart });
+defineExpose({ display, reload, turn, restart, showSampleMessageBox });
 </script>
 
 <style scoped>

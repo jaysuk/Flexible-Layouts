@@ -195,6 +195,105 @@ describe("Display12864Emulator overrides", () => {
 	});
 });
 
+describe("Display12864Emulator: sample M291 message box", () => {
+	const source = menuSourceFromTexts({ main: "text R30 C10 F0 T\"the menu\"" });
+	type Vm = { display: { messageBox: { mode: number } | null; items: ReadonlyArray<{ kind: string; text?: string; n?: number; selectable: boolean }>; lcd: { getPixel(y: number, x: number): boolean } }; turn: (n: number) => void; restart: () => void; showSampleMessageBox: (id: string) => void };
+
+	async function mount(props: Record<string, unknown> = {}) {
+		const w = mountInDwc(Display12864Emulator, { props: { source, ...props } });
+		await nextTick();
+		await nextTick();
+		return w;
+	}
+	const vmOf = (w: Awaited<ReturnType<typeof mount>>) => w.vm as unknown as Vm;
+	const labels = (w: Awaited<ReturnType<typeof mount>>) => vmOf(w).display.items.filter((i) => i.selectable).map((i) => (i.kind === "alter" ? `N${i.n}` : i.text));
+
+	it("has a control for it", async () => {
+		const w = await mount();
+		expect(w.find(".d12864-box-button").exists()).toBe(true);
+		w.unmount();
+	});
+
+	it("puts up an OK / Cancel box over the menu, with its border on the display", async () => {
+		const w = await mount();
+		expect(vmOf(w).display.messageBox).toBeNull();
+		vmOf(w).showSampleMessageBox("okCancel");
+		expect(vmOf(w).display.messageBox?.mode).toBe(3);
+		expect(labels(w)).toEqual(["OK", "Cancel"]);
+		expect(vmOf(w).display.lcd.getPixel(4, 64)).toBe(true); // the border RRF draws 4 pixels in
+		w.unmount();
+	});
+
+	it("OK sends M292 P0 (listed, not sent) and takes the box down, reloading the menu", async () => {
+		const w = await mount();
+		vmOf(w).showSampleMessageBox("okCancel");
+		vmOf(w).turn(1);
+		vmOf(w).turn(0);
+		await nextTick();
+		expect(w.text()).toContain("M292 P0");
+		expect(vmOf(w).display.messageBox).toBeNull();
+		expect(vmOf(w).display.items.map((i) => i.text)).toEqual(["the menu"]);
+		w.unmount();
+	});
+
+	it("Cancel sends M292 P1", async () => {
+		const w = await mount();
+		vmOf(w).showSampleMessageBox("okCancel");
+		vmOf(w).turn(1);
+		vmOf(w).turn(1);
+		vmOf(w).turn(0);
+		await nextTick();
+		expect(w.text()).toContain("M292 P1");
+		expect(vmOf(w).display.messageBox).toBeNull();
+		w.unmount();
+	});
+
+	it("a click on the OK button on the screen does the same as pushing the knob", async () => {
+		const w = await mount();
+		vmOf(w).showSampleMessageBox("ok");
+		const canvas = w.find("canvas");
+		// happy-dom has no layout: give the canvas the size the component draws it at (128x64 at 4 pixels a dot)
+		(canvas.element as HTMLElement).getBoundingClientRect = () => ({ left: 0, top: 0, width: 512, height: 256 }) as DOMRect;
+		await canvas.trigger("click", { clientX: 20 * 4, clientY: 48 * 4 }); // inside OK: columns 7-36, rows 43-53
+		expect(w.text()).toContain("M292 P0");
+		expect(vmOf(w).display.messageBox).toBeNull();
+		w.unmount();
+	});
+
+	it("the Close sample (S1) shows only a Cancel button - the display reads mode bit 1 as Cancel", async () => {
+		const w = await mount();
+		vmOf(w).showSampleMessageBox("close");
+		expect(labels(w)).toEqual(["Cancel"]);
+		w.unmount();
+	});
+
+	it("the jog sample shows X, Y and Z controls as well as the buttons", async () => {
+		const w = await mount();
+		vmOf(w).showSampleMessageBox("jog");
+		expect(labels(w)).toEqual(["N510", "N511", "N512", "OK", "Cancel"]);
+		w.unmount();
+	});
+
+	it("keeps the box up while the preview restarts for a live edit, and Restart drops it", async () => {
+		const w = await mount();
+		vmOf(w).showSampleMessageBox("ok");
+		await w.setProps({ overrides: { main: "text T\"edited\"" } });
+		await nextTick();
+		expect(vmOf(w).display.messageBox?.mode).toBe(2);
+		vmOf(w).restart();
+		expect(vmOf(w).display.messageBox).toBeNull();
+		w.unmount();
+	});
+
+	it("a second sample replaces the first", async () => {
+		const w = await mount();
+		vmOf(w).showSampleMessageBox("ok");
+		vmOf(w).showSampleMessageBox("close");
+		expect(labels(w)).toEqual(["Cancel"]);
+		w.unmount();
+	});
+});
+
 describe("ExplorerPanel: a menu file in the new editor", () => {
 	beforeEach(() => {
 		Object.assign(dwc.model, { volumes: [{ mounted: true }] });
