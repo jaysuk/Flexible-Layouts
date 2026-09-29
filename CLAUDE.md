@@ -48,9 +48,18 @@ Vue 3 + Vuetify plugin for DuetWebControl (drag-and-drop layout customisation fo
   has no live M291, so the emulator plays the firmware's part - a recorded `M292` (an OK/Cancel press) takes the box
   down again with `setMessageBox(null)`, after the encoder call returns, as RRF does (clearing it synchronously
   would re-arm the inactivity timeout that a box switches off).
-- **Stock Explorer replacement is opt-in and load-time**: `model/builtinPages.ts`'s `EXPLORER_PAGE` is only
-  in `BUILTIN_PAGES` when `shouldReplaceExplorerPage()` was true at plugin load - DWC installs route overrides
-  once with the layout, and an override replaces the stock page's keep-alive, so it can't be always-on.
+- **Stock Explorer replacement is opt-in and can be switched at run time** (where DWC allows): an override replaces
+  the stock page's keep-alive (a record with any override renders through `RouteOverrideDispatcher`, which hides the
+  component name from `keep-alive`), so it can't be always-on and is installed only while wanted.
+  `page/explorerReplacement.ts`'s `syncExplorerReplacement()` (called from the Settings toggles) uses DWC's
+  `addLayoutRoutes`/`removeLayoutRoutes` when `window.DWC` has them (feature-detected at run time, never imported -
+  the manifest pins only a DWC major) and otherwise returns false, which Settings shows as "reload to apply" - the
+  old behaviour. The plugin-load install still goes through `registerLayout`'s `routes` (`EXPLORER_REPLACED_AT_LOAD`).
+  The route pattern is looked up, not assumed: DWC 3.7.0-rc.2's record is `/Explorer/:tab?/:volume?/:path*` while its
+  generated types say `:path(.*)?`; `EXPLORER_PAGE.paths` lists both and `model/routeRecords.ts`'s
+  `existingRoutePaths` keeps the ones `getPageComponent` resolves. (Before that the replacement was silently inert on
+  rc.2: DWC warned "Cannot override route" and skipped it.) The DWC side lives on `../DuetWebControl` branch
+  `feature/runtime-layout-routes` (not pushed).
 - **Phone navigation (opt-in "DWC-style navigation on phones")**: `shell/MobileHub.vue` (tiles, with each page's
   `MenuItem.badge` as a `NavMenuBadge` in the corner), `shell/useMobileHub.ts` (`useMobileHubMode` = phone + opt-in + not
   editing; `useShowMobileHub` adds "route is `/`"), `shell/hubTransition.ts` (the `fl-hub-forward`/`fl-hub-back` name, set in a

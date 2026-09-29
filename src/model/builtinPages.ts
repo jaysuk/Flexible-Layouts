@@ -99,14 +99,18 @@ const BASE_PAGES: ReadonlyArray<BuiltinPageDef> = [
 ];
 
 /**
- * DWC's Explorer route is `/Explorer/:tab?/:volume?/:path(.*)?`. Opt-in (Settings > G-code editor), and
+ * DWC's Explorer route: `/Explorer/:tab?/:volume?/:path*` as vue-router normalises it on 3.7.0-rc.2, and
+ * `/Explorer/:tab?/:volume?/:path(.*)?` as DWC's generated route types (and earlier builds) spell it. Both are
+ * listed; `existingRoutePaths` (model/routeRecords.ts) installs whichever the running DWC actually has.
+ * A pattern DWC has no record for is skipped by it with a warning, and the override just isn't there - the
+ * replacement was silently inert on rc.2 until this listed the right one. Opt-in (Settings > G-code editor), and
  * only when the new editor is on: it replaces the stock page, which always uses Monaco, with one that
  * opens G-code in the new editor. Off by default because the stock page is kept alive by DWC (open
  * editors survive navigating away) and this one isn't - see ExplorerFallback.vue. Full page by
  * default, like the page it replaces.
  */
 export const EXPLORER_PAGE: BuiltinPageDef = {
-	paths: ["/Explorer/:tab?/:volume?/:path(.*)?"],
+	paths: ["/Explorer/:tab?/:volume?/:path*", "/Explorer/:tab?/:volume?/:path(.*)?"],
 	pageId: "/Explorer",
 	fallback: ExplorerFallback,
 	seed: () => [panel("FileList", 0, 0, 12, 16)],

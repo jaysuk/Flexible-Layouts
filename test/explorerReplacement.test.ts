@@ -14,7 +14,8 @@ describe("builtinPages", () => {
 	it("adds the Explorer replacement, matching DWC's route pattern, when asked", () => {
 		const pages = builtinPages(true);
 		expect(pages).toContain(EXPLORER_PAGE);
-		expect(EXPLORER_PAGE.paths).toEqual(["/Explorer/:tab?/:volume?/:path(.*)?"]);
+		// both spellings vue-router has used for the catch-all; existingRoutePaths picks the one DWC has
+		expect(EXPLORER_PAGE.paths).toEqual(["/Explorer/:tab?/:volume?/:path*", "/Explorer/:tab?/:volume?/:path(.*)?"]);
 	});
 
 	it("makes the replacement full-page by default, and never print-locks a file editor", () => {

@@ -23,6 +23,7 @@ import { configureHost } from "dwc-config-backup-core";
 
 import en from "./i18n/en.json";
 import { BUILTIN_PAGES } from "./model/builtinPages";
+import { existingRoutePaths } from "./model/routeRecords";
 import { LAYOUT_ID, PLUGIN_MANIFEST_ID } from "./model/constants";
 import { CONFIG_BACKUP_ROUTE_PATH, FL_PROTECTED_SD_FILES } from "./model/configBackup/constants";
 import { MAINTENANCE_ROUTE_PATH } from "./model/maintenance/constants";
@@ -141,7 +142,7 @@ Events.on("dwcPluginUnloaded", onPluginUnloaded);
 // restores every original automatically.
 const routeOverrides: Record<string, Component> = {};
 for (const def of BUILTIN_PAGES) {
-	for (const path of def.paths) {
+	for (const path of existingRoutePaths(def.paths)) {
 		// One component per path: see page/pageOverride.ts (the phone hub's slide, and why the hub is per record).
 		routeOverrides[path] = createPageOverride(def, path);
 	}

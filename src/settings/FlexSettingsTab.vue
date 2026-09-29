@@ -335,8 +335,8 @@ import { buildReport, cleanReleaseNotes, copyReport, downloadReport, fetchReleas
 
 import { PLUGIN_MANIFEST_ID } from "../model/constants";
 import { activateFlLayout, deactivateFlLayout, isFlLayoutActive } from "../model/layoutState";
-import { isExplorerReplaceEnabled, isNewGcodeEditorEnabled, setExplorerReplaceEnabled, setNewGcodeEditorEnabled, shouldReplaceExplorerPage } from "../model/editorPreference";
-import { EXPLORER_REPLACED_AT_LOAD } from "../model/builtinPages";
+import { isExplorerReplaceEnabled, isNewGcodeEditorEnabled, setExplorerReplaceEnabled, setNewGcodeEditorEnabled } from "../model/editorPreference";
+import { syncExplorerReplacement } from "../page/explorerReplacement";
 import { setStockMobileNav, stockMobileNav } from "../model/mobileNav";
 import { editMode } from "../model/editorState";
 import { applying, checking, dismissCurrentUpdate, dismissedVersion, pendingReload, runUpdateCheck, setUpdateChecksEnabled, undismissUpdate, updateChecksEnabled, updateDiagnostics, updateState as update, applyUpdateNow } from "../model/updateCheck";
@@ -722,11 +722,11 @@ function onToggleStockMobileNav(value: boolean | null): void {
 // --- G-code editor choice ------------------------------------------------------------------------
 const newEditorEnabled = ref(isNewGcodeEditorEnabled());
 const replaceExplorer = ref(isExplorerReplaceEnabled());
-// The Explorer override is installed once at plugin load, so a change only shows after a reload:
-// compare what would be installed now with what was installed at load.
+// The Explorer override is applied on the spot where DWC can change route overrides at run time; on a build
+// that can't (it installs them once, with the layout) the change only shows after a reload, and this says so.
 const explorerReloadNeeded = ref(false);
 function refreshExplorerReloadNeeded(): void {
-	explorerReloadNeeded.value = shouldReplaceExplorerPage() !== EXPLORER_REPLACED_AT_LOAD;
+	explorerReloadNeeded.value = !syncExplorerReplacement();
 }
 function onToggleReplaceExplorer(value: boolean | null): void {
 	const on = value === true;

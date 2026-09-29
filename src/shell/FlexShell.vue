@@ -278,7 +278,8 @@ import { isPrintingStatus } from "../util/printLock";
 import { can, currentLevel, getAccess } from "../model/access";
 import { getActiveProfileId, listProfiles, useLayoutStore } from "../model/store";
 import { switchProfile } from "../model/profiles";
-import { BUILTIN_PAGES, statusBarSeed } from "../model/builtinPages";
+import { builtinPages, statusBarSeed } from "../model/builtinPages";
+import { explorerReplaced } from "../page/explorerReplacement";
 import { PLUGIN_MANIFEST_ID } from "../model/constants";
 import { CUSTOM_PAGE_PREFIX } from "../model/pageManager";
 import { stockMobileNav } from "../model/mobileNav";
@@ -306,14 +307,16 @@ const router = useRouter();
 // Editable = a user custom page, or one of the overridden built-in pages. The override paths can be
 // parameterised (e.g. Jobs `/Jobs/:volume?/:path(.*)?`), which never equal the resolved URL, so match
 // against the matched route record's pattern path rather than the live path string.
-const builtinEditablePaths = new Set(BUILTIN_PAGES.flatMap((d) => d.paths));
+// The Explorer joins the set while its replacement is installed (it can be switched at run time - see
+// page/explorerReplacement.ts), so this is a computed, not a constant.
+const builtinEditablePaths = computed(() => new Set(builtinPages(explorerReplaced.value).flatMap((d) => d.paths)));
 const currentPath = computed(() => router.currentRoute.value.path);
 const isEditablePage = computed(() => {
 	const route = router.currentRoute.value;
-	if (route.path.startsWith(CUSTOM_PAGE_PREFIX) || builtinEditablePaths.has(route.path)) {
+	if (route.path.startsWith(CUSTOM_PAGE_PREFIX) || builtinEditablePaths.value.has(route.path)) {
 		return true;
 	}
-	return route.matched.some((m) => builtinEditablePaths.has(m.path));
+	return route.matched.some((m) => builtinEditablePaths.value.has(m.path));
 });
 
 // Still needed here: the profile-switcher menu gate (editLayout) and the e-stop's own visibility
