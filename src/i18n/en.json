@@ -977,6 +977,22 @@
 		"hint": "On a phone-sized screen, use DWC's own navigation: the home screen is a grid of tiles to every page, with a back arrow instead of the side menu. Applies to this device only. Editing still uses the side menu.",
 		"toggle": "Use DWC-style navigation on phones"
 	},
+	"display12864": {
+		"toggle": "12864 display preview",
+		"toggleHelp": "Show this menu file on an emulated 12864 (ST7920) display - pixel-accurate to RepRapFirmware. Shows the saved file: it refreshes when you save.",
+		"restart": "Restart",
+		"restartHelp": "Start again from the main menu",
+		"reload": "Reload",
+		"reloadHelp": "Re-read the menu files from the printer's SD card",
+		"screenLabel": "Emulated 12864 display. Arrow keys turn the knob, Enter pushes it.",
+		"turnLeft": "Turn the knob anticlockwise",
+		"turnRight": "Turn the knob clockwise",
+		"push": "Push the knob",
+		"controlsHint": "Click a button on the screen, or use the knob. Nothing is sent to the printer - commands are only listed below.",
+		"lineCol": "Line {line}, column {column}:",
+		"stopsHere": "RepRapFirmware stops loading the menu at the first problem and shows an error instead",
+		"wouldSend": "Would send:"
+	},
 	"gcodeEditor": {
 		"save": "Save",
 		"saved": "Saved {name}",

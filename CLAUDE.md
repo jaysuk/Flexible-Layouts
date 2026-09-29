@@ -32,6 +32,15 @@ Vue 3 + Vuetify plugin for DuetWebControl (drag-and-drop layout customisation fo
   can reference a prop by bare name (`widget.foo`) even though the script only ever captures
   `const props = defineProps<...>()`. Some widgets additionally do `const widget = props.widget;` in
   the script for convenience (e.g. `ToolpathWidget.vue`) — both forms are fine and equivalent.
+- **12864 display emulator**: the LCD, fonts, menu layout and encoder behaviour all live in
+  `dwc-gcode-core` (`MenuDisplay`, `resolveMenu` - ported from RRF's `src/Display`, so a fix to how a menu
+  renders belongs there, not here). This repo only supplies the host: `src/model/display12864/` (menu
+  directory loader, object-model values/visibility, a host that *records* G-code and never sends it) and
+  `src/widgets/Display12864Emulator.vue`, shown beside a menu file's editor tab in `ExplorerPanel.vue`.
+  It previews the file as saved on the SD card - DWC's Monaco editor exposes no unsaved text.
+- **Stock Explorer replacement is opt-in and load-time**: `model/builtinPages.ts`'s `EXPLORER_PAGE` is only
+  in `BUILTIN_PAGES` when `shouldReplaceExplorerPage()` was true at plugin load - DWC installs route overrides
+  once with the layout, and an override replaces the stock page's keep-alive, so it can't be always-on.
 - **Shared logic gets extracted once a second consumer needs it**, not duplicated — e.g.
   `util/shapes.ts`'s `buttonShapeToParams()` (shared by `CommandButtonWidget.vue` and
   `HotspotWidget.vue`'s shaped regions), `composables/useWidgetPreviewFrame.ts` (shared by

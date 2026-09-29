@@ -25,17 +25,33 @@
 				 (~3.8 MB of chunk plus per-instance model/DOM), so they are mounted on demand instead. -->
 			<v-window-item v-for="tab in tabs" :key="tab.id" :value="tab.id">
 				<!-- Editor tab: whichever editor loads/saves the file itself. -->
-				<template v-if="tab.kind === 'editor' && tab.filename">
-					<!-- Only the ACTIVE editor stays mounted, so N open files no longer mean N live
-						 editors. A tab with unsaved edits is deliberately kept mounted even when
-						 inactive - unmounting it would throw those edits away. -->
-					<GcodeCmEditor v-if="(tab.id === activeTab || tab.dirty) && shouldUseNewGcodeEditor(tab.filename)"
-								   :ref="(el: unknown) => bindEditorRef(tab.id, el)"
-								   :filename="tab.filename" @dirty="tab.dirty = $event" />
-					<component :is="monacoEditor" v-else-if="tab.id === activeTab || tab.dirty"
-							   :ref="(el: unknown) => bindEditorRef(tab.id, el)"
-							   :filename="tab.filename" @dirty="tab.dirty = $event" />
-				</template>
+				<div v-if="tab.kind === 'editor' && tab.filename" class="exp-editor-col d-flex flex-column fill-height">
+					<!-- A 12864 menu file can be checked as you go: a preview of the display it configures,
+						 re-read whenever the file is saved (the editor holds the unsaved text, so the preview
+						 shows what is on the SD card). -->
+					<div v-if="isMenuFile(tab.filename)" class="exp-menu-bar flex-shrink-0 d-flex align-center px-2">
+						<v-btn size="small" variant="text" :color="tab.preview ? 'primary' : undefined" prepend-icon="mdi-monitor"
+							   :title="$t('plugins.flexibleLayouts.display12864.toggleHelp')" @click="tab.preview = !tab.preview">
+							{{ $t("plugins.flexibleLayouts.display12864.toggle") }}
+						</v-btn>
+					</div>
+					<div class="exp-editor-row d-flex flex-grow-1">
+						<div class="exp-editor-main flex-grow-1">
+							<!-- Only the ACTIVE editor stays mounted, so N open files no longer mean N live
+								 editors. A tab with unsaved edits is deliberately kept mounted even when
+								 inactive - unmounting it would throw those edits away. -->
+							<GcodeCmEditor v-if="(tab.id === activeTab || tab.dirty) && shouldUseNewGcodeEditor(tab.filename)"
+										   :ref="(el: unknown) => bindEditorRef(tab.id, el)"
+										   :filename="tab.filename" @dirty="tab.dirty = $event" />
+							<component :is="monacoEditor" v-else-if="tab.id === activeTab || tab.dirty"
+									   :ref="(el: unknown) => bindEditorRef(tab.id, el)"
+									   :filename="tab.filename" @dirty="tab.dirty = $event" />
+						</div>
+						<aside v-if="tab.preview && isMenuFile(tab.filename) && tab.id === activeTab" class="exp-menu-preview pa-2">
+							<Display12864Emulator :menu="basename(tab.filename)" :reload-key="tab.saves ?? 0" />
+						</aside>
+					</div>
+				</div>
 				<!-- Browser tab: file-click opens the file in a new editor tab (not the page). -->
 				<component :is="fileList" v-else v-model:directory="tab.directory" :options="optionsFor(tab)"
 						   root-directory="0:/" root-label="0:/"
@@ -81,12 +97,19 @@ import { computed, ref, resolveComponent, watch } from "vue";
 
 import i18n from "@/i18n";
 
+import { classifyFile } from "dwc-gcode-core";
+
+import Display12864Emulator from "./Display12864Emulator.vue";
 import GcodeCmEditor from "./GcodeCmEditor.vue";
 import { shouldUseNewGcodeEditor } from "../model/editorPreference";
 import type { ExplorerTarget } from "../model/explorerRoute";
 
 interface FileItem { name: string; isDirectory?: boolean }
-interface Tab { id: number; kind: "directory" | "editor"; filename?: string; directory?: string; dirty?: boolean }
+interface Tab {
+	id: number; kind: "directory" | "editor"; filename?: string; directory?: string; dirty?: boolean;
+	/** Menu files: whether the 12864 preview is showing, and how many times the file has been saved (re-reads the preview). */
+	preview?: boolean; saves?: number;
+}
 // The subset of GcodeCmEditor.vue's/DWC core's MonacoEditor.vue's exposed surface this panel needs -
 // both mirror the same `save(): Promise<boolean>` contract (see GcodeCmEditor.vue's own doc comment).
 interface EditorHandle { save: () => Promise<boolean> }
@@ -164,6 +187,17 @@ watch(() => (props.target ? `${props.target.kind}|${props.target.path}` : ""), (
 		applyTarget(props.target);
 	}
 }, { immediate: true });
+
+function isMenuFile(filename: string): boolean {
+	return classifyFile(filename).kind === "menu";
+}
+
+// Saving a menu file re-reads its preview: dirty -> clean means the editor just wrote it to the card.
+watch(() => tabs.value.map((t) => !!t.dirty), (now, before) => {
+	now.forEach((dirty, i) => {
+		if (before[i] && !dirty && tabs.value[i]) tabs.value[i].saves = (tabs.value[i].saves ?? 0) + 1;
+	});
+});
 
 // Lets a host (the replacement Explorer page) guard navigation away while edits are unsaved.
 watch(() => tabs.value.some((t) => t.dirty), (dirty) => emit("dirty-change", dirty));
@@ -244,6 +278,10 @@ async function saveAndClose(): Promise<void> {
 
 <style scoped>
 .exp-root { min-height: 0; }
+.exp-editor-col, .exp-editor-row, .exp-editor-main { min-height: 0; }
+.exp-editor-main { min-width: 0; }
+.exp-menu-bar { border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); }
+.exp-menu-preview { flex: 0 0 380px; max-width: 45%; overflow: auto; border-left: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); }
 .exp-tab-label { max-width: 12rem; }
 .exp-window { min-height: 0; }
 .exp-window :deep(.v-window__container),
