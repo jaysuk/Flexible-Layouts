@@ -30,6 +30,13 @@ export interface BuiltinPageDef {
 	fallback: Component;
 	/** Editable approximation of the stock content, offered as "use current layout". */
 	seed?: () => Array<GridItemModel>;
+	/**
+	 * Whether the stock fallback is interaction-locked during a print. Defaults to true because the
+	 * fallback is one opaque panel set that may contain motion controls (Dashboard's Movement panel,
+	 * macros). Set false for pages with nothing that can move the machine - the console must stay
+	 * usable mid-print (M25/M226/M291 replies, diagnostics, live tuning), as it is in stock DWC.
+	 */
+	lockWhilePrinting?: boolean;
 }
 
 function panel(component: string, x: number, y: number, w: number, h: number): GridItemModel {
@@ -79,8 +86,8 @@ export function statusBarSeed(): Array<GridItemModel> {
 
 export const BUILTIN_PAGES: ReadonlyArray<BuiltinPageDef> = [
 	{ paths: ["/", "/Dashboard"], pageId: "/Dashboard", fallback: DashboardFallback, seed: dashboardSeed },
-	{ paths: ["/Console"], pageId: "/Console", fallback: ConsoleFallback },
-	{ paths: ["/Temperatures"], pageId: "/Temperatures", fallback: TemperaturesFallback },
+	{ paths: ["/Console"], pageId: "/Console", fallback: ConsoleFallback, lockWhilePrinting: false },
+	{ paths: ["/Temperatures"], pageId: "/Temperatures", fallback: TemperaturesFallback, lockWhilePrinting: false },
 	{ paths: ["/Macros"], pageId: "/Macros", fallback: MacrosFallback },
 	// Jobs and Explorer are intentionally NOT overridden: the Explorer route is DWC's file editor
 	// (Monaco) and Jobs is a multi-volume browser — replacing them with a simple fallback breaks

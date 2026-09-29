@@ -307,7 +307,7 @@ import ColorSelect from "../editor/ColorSelect.vue";
 import SdImagePicker from "../editor/SdImagePicker.vue";
 import { resolveColor } from "../util/color";
 import { hexLayout, ringLayout } from "../util/shapes";
-import { useMachineStore } from "@/stores/machine";
+import { useMachineStore } from "@/stores/machine";
 import { useLazyDialog } from "../composables/useLazyDialog";
 
 const props = defineProps<{
@@ -319,6 +319,8 @@ const props = defineProps<{
 	fallback?: Component;
 	/** Editable approximation of the stock content, offered as "use current layout" on first edit. */
 	seed?: () => Array<GridItemModel>;
+	/** Lock the stock fallback while printing. Default true; see `BuiltinPageDef.lockWhilePrinting`. */
+	lockFallbackWhilePrinting?: boolean;
 }>();
 
 const store = useLayoutStore();
@@ -365,12 +367,13 @@ function setPageLock(v: boolean | null) {
 	store.ensurePage(props.pageId, props.kind ?? "custom").lockWhilePrinting = v === true ? true : undefined;
 }
 
-// The stock fallback (un-customized page) is one opaque, motion-capable panel set - not individual
-// widgets with their own lock defaults - so it always locks while printing, regardless of the
-// per-page toggle above (which is for pages the admin has actually customized).
+// The stock fallback (un-customized page) is one opaque, possibly motion-capable panel set - not
+// individual widgets with their own lock defaults - so it locks while printing, regardless of the
+// per-page toggle above (which is for pages the admin has actually customized). Pages with nothing
+// that can move the machine (Console, Temperatures) opt out via `lockFallbackWhilePrinting: false`.
 const isPrintingNow = computed(() => isPrintingStatus((machineStore.model as { state?: { status?: string } }).state?.status));
 const accessLocked = computed(() => !can("interact"));
-const fallbackLocked = computed(() => isPrintingNow.value || accessLocked.value);
+const fallbackLocked = computed(() => (isPrintingNow.value && props.lockFallbackWhilePrinting !== false) || accessLocked.value);
 
 function resetBreakpoint() {
 	if (activeBp.value === "lg") {

@@ -144,7 +144,7 @@ for (const def of BUILTIN_PAGES) {
 	const override = defineComponent({
 		name: `FlexOverride_${def.pageId.replace(/[^a-zA-Z0-9]/g, "_")}`,
 		setup() {
-			return () => h(FlexPage, { pageId: def.pageId, kind: "override", fallback: def.fallback, seed: def.seed });
+			return () => h(FlexPage, { pageId: def.pageId, kind: "override", fallback: def.fallback, seed: def.seed, lockFallbackWhilePrinting: def.lockWhilePrinting !== false });
 		},
 	});
 	for (const path of def.paths) {
