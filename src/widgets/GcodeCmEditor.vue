@@ -21,21 +21,21 @@
 		<v-toolbar density="compact" color="surface" class="flex-shrink-0">
 			<v-btn :loading="saving" :disabled="!dirty || loading" icon="mdi-content-save-outline"
 				   :title="$t('plugins.flexibleLayouts.gcodeEditor.save')" @click="save" />
-			<v-btn :disabled="loading" icon="mdi-tag-search" :title="quickSearchTitle" @click="openCodeSearch" />
+			<v-btn v-if="!isMenu" :disabled="loading" icon="mdi-tag-search" :title="quickSearchTitle" @click="openCodeSearch" />
 			<v-btn :disabled="loading" icon="mdi-magnify" title="Search (Ctrl+F)" @click="openSearch" />
-			<v-btn :disabled="loading" icon="mdi-help-circle-outline" title="G-code reference"
+			<v-btn v-if="!isMenu" :disabled="loading" icon="mdi-help-circle-outline" title="G-code reference"
 				   :href="docsUrl" target="_blank" rel="noopener noreferrer" />
-			<v-btn :disabled="loading" icon="mdi-format-indent-increase" title="Align comments" @click="alignComments" />
-			<v-btn v-if="canRun" :loading="running" :disabled="loading || uiStore.uiFrozen" icon="mdi-play"
+			<v-btn v-if="!isMenu" :disabled="loading" icon="mdi-format-indent-increase" title="Align comments" @click="alignComments" />
+			<v-btn v-if="canRun && !isMenu" :loading="running" :disabled="loading || uiStore.uiFrozen" icon="mdi-play"
 				   title="Run" @click="run" />
 			<v-btn :disabled="!dirty || loading" icon="mdi-restore" title="Revert" @click="revert" />
-			<v-btn :loading="checking" :disabled="loading" icon="mdi-alert-circle-check-outline"
+			<v-btn v-if="!isMenu" :loading="checking" :disabled="loading" icon="mdi-alert-circle-check-outline"
 				   :title="$t('plugins.flexibleLayouts.gcodeEditor.checkErrors')" @click="checkForErrors" />
-			<span v-if="diagnosticCount !== null" class="text-caption text-medium-emphasis ml-1">
+			<span v-if="!isMenu && diagnosticCount !== null" class="text-caption text-medium-emphasis ml-1">
 				{{ diagnosticCount }}
 			</span>
 			<v-btn icon="mdi-palette" :title="$t('plugins.flexibleLayouts.gcodeEditor.colors')" @click="colorSettingsOpen = true" />
-			<v-btn :disabled="loading" :color="stepperOpen ? 'primary' : undefined" icon="mdi-motion-play-outline"
+			<v-btn v-if="!isMenu" :disabled="loading" :color="stepperOpen ? 'primary' : undefined" icon="mdi-motion-play-outline"
 				   title="Step through file" @click="stepperOpen = !stepperOpen" />
 		</v-toolbar>
 		<v-alert v-if="loadError !== null" type="error" variant="tonal" density="compact" class="ma-2">
@@ -69,6 +69,12 @@
  * that repo's own `GcodeEditor.vue` for the sibling, read-only-plus-diagnostics version of this same
  * idea (this one additionally saves, matching what this panel actually needs Monaco for here).
  *
+ * **Menu files** (`0:/menu/*`, see `editorPreference.ts`'s `isMenuFile`): opened here too, with menu
+ * highlighting and live `menu/*` diagnostics (`dwc-gcode-editor`'s `menuFile.ts`) instead of G-code
+ * completion, F4 search, Run, the stepper and the G-code error check - none of which mean anything for a
+ * 12864 menu. What it adds for them is `live-text`: the unsaved buffer, debounced, which is what lets the
+ * display preview in `ExplorerPanel.vue` follow edits (DWC's Monaco exposes no text at all).
+ *
  * **Offline conditional stepper** (the "Step through file" toolbar toggle, `GcodeStepperPanel.vue`):
  * lets a user step through ANY file open here — not just gcodes/print files, sys files and macros
  * too, matching this widget's own explorer-wide reach — the same feature `GcodeEditor.vue` has, built
@@ -82,7 +88,7 @@
  */
 import { computed, onUnmounted, ref, shallowRef, watch } from "vue";
 import { DisconnectedError } from "@duet3d/connectors";
-import { lintGutter } from "@codemirror/lint";
+import { forceLinting, lintGutter } from "@codemirror/lint";
 import { EditorView, lineNumbers } from "@codemirror/view";
 import { diagnoseDocument, parseDocument, type MessageBoxAnswer, type MessageBoxPrompt } from "dwc-gcode-core";
 import type { ExecutionIndex } from "dwc-gcode-core/stepper/executionIndex";
@@ -99,7 +105,7 @@ import {
 import {
 	alignLineComments, applyDiagnostics, buildDocFromString, codeAtCursor, createEditorInstance,
 	createThemeController, gcodeCompletion, gcodeCurrentLine, gcodeLanguage, gcodeLintUi,
-	gcodeQuickSearchKeymap, gcodeSearch, isInsideExpression, openExpressionQuickSearch,
+	gcodeQuickSearchKeymap, gcodeSearch, isInsideExpression, menuLanguage, menuLiveLinter, openExpressionQuickSearch,
 	openGcodeQuickSearch, openSearchPanel, saveKeymap, setCurrentLine, type EditorInstance, type ThemeController,
 } from "dwc-gcode-editor";
 import type { Text } from "@codemirror/state";
@@ -110,7 +116,10 @@ import { LogLevel, useUiStore } from "@/stores/ui";
 import i18n from "@/i18n";
 import EditorColorSettingsDialog from "./EditorColorSettingsDialog.vue";
 import GcodeStepperPanel from "./GcodeStepperPanel.vue";
+import { defaultMachineIO } from "../model/configBackup/machineIO";
 import { editorColorScheme, loadEditorColorScheme } from "../model/editorColorSettings";
+import { isMenuFile } from "../model/editorPreference";
+import { MENU_DIRECTORY } from "../model/display12864/menuSource";
 import { loadScenarioSet, saveScenarioSet } from "../model/gcode/simulationScenario";
 import { trackedObjectModelVersion } from "../model/gcode/objectModelVersion";
 
@@ -142,12 +151,20 @@ const props = defineProps<{
 	 *  `initialContent` prop exactly, since `FileEditorEntry`'s contract requires it. */
 	initialContent?: string;
 }>();
-const emit = defineEmits<{ dirty: [boolean]; saved: [string] }>();
+const emit = defineEmits<{ dirty: [boolean]; saved: [string]; "live-text": [string] }>();
 
 const machineStore = useMachineStore();
 const uiStore = useUiStore();
 // Narrow cast, matching this repo's own convention elsewhere - this component only reads one field.
 const settingsStore = useSettingsStore() as unknown as { darkTheme: boolean };
+
+// This component is mounted fresh per filename (see ExplorerPanel.vue's tab-per-file model), so a plain
+// const is right: what kind of file this is never changes for the life of the instance.
+const isMenu = isMenuFile(props.filename);
+// The other files in 0:/menu/ (menus and images), for the menu/target-missing and menu/image-missing
+// rules. undefined until listed, which keeps those two rules off rather than reporting everything missing.
+const menuSiblings = shallowRef<ReadonlyArray<string> | undefined>(undefined);
+const LIVE_TEXT_DELAY_MS = 250;
 
 const hostEl = ref<HTMLElement | null>(null);
 const loading = ref(true);
@@ -273,23 +290,27 @@ function setDirty(value: boolean): void {
 function editorExtensions(theme: ThemeController) {
 	return [
 		lineNumbers(),
-		gcodeLanguage,
+		isMenu ? menuLanguage : gcodeLanguage,
 		theme.extension,
-		gcodeCompletion(),
+		...(isMenu ? [] : [gcodeCompletion()]),
 		gcodeLintUi(),
 		lintGutter(),
+		// A menu file is a few hundred bytes (RRF's whole menu buffer is 2500), so it is linted live.
+		...(isMenu ? [menuLiveLinter(() => ({ path: props.filename, siblings: menuSiblings.value }))] : []),
 		// `save` is a hoisted function declaration below - referencing it here (only ever invoked
 		// later, on a real Ctrl+S) does not depend on declaration order.
 		saveKeymap(() => { void save(); }),
 		gcodeSearch(),
-		gcodeQuickSearchKeymap(() => machineStore.model),
+		...(isMenu ? [] : [gcodeQuickSearchKeymap(() => machineStore.model)]),
 		gcodeCurrentLine(),
 		EditorView.updateListener.of((update) => {
 			if (update.docChanged) {
 				setDirty(true);
-				if (stepperOpen.value) scheduleRebuild();
+				if (isMenu) scheduleLiveText();
+				else if (stepperOpen.value) scheduleRebuild();
 			}
-			if (update.docChanged || update.selectionSet) {
+			// The cursor's G-code command/expression state only feeds G-code toolbar buttons and the stepper.
+			if (!isMenu && (update.docChanged || update.selectionSet)) {
 				cursorCode.value = codeAtCursor(update.view);
 				const line = update.state.doc.lineAt(update.state.selection.main.head);
 				cursorLine.value = line.number;
@@ -298,6 +319,30 @@ function editorExtensions(theme: ThemeController) {
 			}
 		}),
 	];
+}
+
+// The buffer as typed, handed to the host after a pause in typing (menu files only).
+let liveTextTimer: ReturnType<typeof setTimeout> | null = null;
+function scheduleLiveText(): void {
+	if (liveTextTimer !== null) clearTimeout(liveTextTimer);
+	liveTextTimer = setTimeout(() => {
+		liveTextTimer = null;
+		const instance = editorInstance.value;
+		if (instance !== null) emit("live-text", instance.view.state.doc.toString());
+	}, LIVE_TEXT_DELAY_MS);
+}
+
+/** Lists 0:/menu/ so the linter can tell a missing menu/image from a folder it has not seen. A failed
+ *  listing leaves the two rules off; it is not worth an error of its own. */
+async function loadMenuSiblings(): Promise<void> {
+	try {
+		const entries = await defaultMachineIO().getFileList(MENU_DIRECTORY);
+		menuSiblings.value = entries.filter((e) => !e.isDirectory).map((e) => e.name);
+	} catch {
+		menuSiblings.value = undefined;
+	}
+	const instance = editorInstance.value;
+	if (instance !== null) forceLinting(instance.view);
 }
 
 /** Rebuilds executionIndex from the live doc and the current scenario - deferred (setTimeout) so a
@@ -414,8 +459,12 @@ async function load(): Promise<void> {
 		// the fixed theme before the loaded custom colors (if any) take over.
 		themeController.setCustomColors(editorInstance.value.view, editorColorScheme.value);
 		setDirty(false);
-		scenarioSet.value = loadScenarioSet(props.filename);
-		rebuildExecutionIndex();
+		if (isMenu) {
+			void loadMenuSiblings();
+		} else {
+			scenarioSet.value = loadScenarioSet(props.filename);
+			rebuildExecutionIndex();
+		}
 	} catch (e) {
 		loadError.value = i18n.global.t("plugins.flexibleLayouts.gcodeEditor.loadFailed", {
 			name: basename(props.filename), error: (e as Error)?.message ?? String(e),
@@ -436,6 +485,7 @@ async function save(): Promise<boolean> {
 		const content = instance.flush().toString();
 		await machineStore.upload({ filename: props.filename, content: new Blob([content]) }, false, false, false, false);
 		setDirty(false);
+		if (isMenu) void loadMenuSiblings();
 		uiStore.makeNotification(LogLevel.success, basename(props.filename),
 			i18n.global.t("plugins.flexibleLayouts.gcodeEditor.saved", { name: basename(props.filename) }));
 		emit("saved", props.filename);
@@ -545,6 +595,7 @@ watch(editorColorScheme, (scheme) => {
 
 onUnmounted(() => {
 	if (rebuildTimer !== null) clearTimeout(rebuildTimer);
+	if (liveTextTimer !== null) clearTimeout(liveTextTimer);
 	editorInstance.value?.destroy();
 });
 

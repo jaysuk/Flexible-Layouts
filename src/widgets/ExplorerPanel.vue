@@ -26,9 +26,10 @@
 			<v-window-item v-for="tab in tabs" :key="tab.id" :value="tab.id">
 				<!-- Editor tab: whichever editor loads/saves the file itself. -->
 				<div v-if="tab.kind === 'editor' && tab.filename" class="exp-editor-col d-flex flex-column fill-height">
-					<!-- A 12864 menu file can be checked as you go: a preview of the display it configures,
-						 re-read whenever the file is saved (the editor holds the unsaved text, so the preview
-						 shows what is on the SD card). -->
+					<!-- A 12864 menu file can be checked as you go: a preview of the display it configures.
+						 In the new editor it follows the unsaved buffer (`live-text`); DWC's Monaco exposes no
+						 text, so a menu file that still opens there shows what is on the SD card and is re-read
+						 whenever the file is saved. -->
 					<div v-if="isMenuFile(tab.filename)" class="exp-menu-bar flex-shrink-0 d-flex align-center px-2">
 						<v-btn size="small" variant="text" :color="tab.preview ? 'primary' : undefined" prepend-icon="mdi-monitor"
 							   :title="$t('plugins.flexibleLayouts.display12864.toggleHelp')" @click="tab.preview = !tab.preview">
@@ -42,13 +43,13 @@
 								 inactive - unmounting it would throw those edits away. -->
 							<GcodeCmEditor v-if="(tab.id === activeTab || tab.dirty) && shouldUseNewGcodeEditor(tab.filename)"
 										   :ref="(el: unknown) => bindEditorRef(tab.id, el)"
-										   :filename="tab.filename" @dirty="tab.dirty = $event" />
+										   :filename="tab.filename" @dirty="tab.dirty = $event" @live-text="tab.liveText = $event" />
 							<component :is="monacoEditor" v-else-if="tab.id === activeTab || tab.dirty"
 									   :ref="(el: unknown) => bindEditorRef(tab.id, el)"
 									   :filename="tab.filename" @dirty="tab.dirty = $event" />
 						</div>
 						<aside v-if="tab.preview && isMenuFile(tab.filename) && tab.id === activeTab" class="exp-menu-preview pa-2">
-							<Display12864Emulator :menu="basename(tab.filename)" :reload-key="tab.saves ?? 0" />
+							<Display12864Emulator :menu="basename(tab.filename)" :reload-key="tab.saves ?? 0" :overrides="menuOverrides" />
 						</aside>
 					</div>
 				</div>
@@ -97,11 +98,9 @@ import { computed, ref, resolveComponent, watch } from "vue";
 
 import i18n from "@/i18n";
 
-import { classifyFile } from "dwc-gcode-core";
-
 import Display12864Emulator from "./Display12864Emulator.vue";
 import GcodeCmEditor from "./GcodeCmEditor.vue";
-import { shouldUseNewGcodeEditor } from "../model/editorPreference";
+import { isMenuFile, shouldUseNewGcodeEditor } from "../model/editorPreference";
 import type { ExplorerTarget } from "../model/explorerRoute";
 
 interface FileItem { name: string; isDirectory?: boolean }
@@ -109,6 +108,8 @@ interface Tab {
 	id: number; kind: "directory" | "editor"; filename?: string; directory?: string; dirty?: boolean;
 	/** Menu files: whether the 12864 preview is showing, and how many times the file has been saved (re-reads the preview). */
 	preview?: boolean; saves?: number;
+	/** Menu files open in the new editor: the unsaved buffer as last reported (`live-text`); undefined until edited. */
+	liveText?: string;
 }
 // The subset of GcodeCmEditor.vue's/DWC core's MonacoEditor.vue's exposed surface this panel needs -
 // both mirror the same `save(): Promise<boolean>` contract (see GcodeCmEditor.vue's own doc comment).
@@ -188,9 +189,17 @@ watch(() => (props.target ? `${props.target.kind}|${props.target.path}` : ""), (
 	}
 }, { immediate: true });
 
-function isMenuFile(filename: string): boolean {
-	return classifyFile(filename).kind === "menu";
-}
+// The unsaved text of every menu file being edited in an editor that reports it, by file name, for the
+// preview to lay over what is on the card - so `main` linking to `listFiles` shows both files' edits.
+const menuOverrides = computed<Record<string, string>>(() => {
+	const out: Record<string, string> = {};
+	for (const tab of tabs.value) {
+		if (tab.kind === "editor" && tab.filename && tab.liveText !== undefined && isMenuFile(tab.filename)) {
+			out[basename(tab.filename).toLowerCase()] = tab.liveText;
+		}
+	}
+	return out;
+});
 
 // Saving a menu file re-reads its preview: dirty -> clean means the editor just wrote it to the card.
 watch(() => tabs.value.map((t) => !!t.dirty), (now, before) => {

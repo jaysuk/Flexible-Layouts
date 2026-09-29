@@ -69,16 +69,18 @@ Open **Manage pages** (the edit toolbar, the drawer, or *Settings → Flexible L
 
 *Settings → Flexible Layouts → G-code editor*:
 
-- **Use the new G-code editor** opens G-code files in a CodeMirror editor with real syntax highlighting
-  and error checking (other file types still use DWC's editor).
+- **Use the new G-code editor** opens G-code files and 12864 menu files (`0:/menu/…`) in a CodeMirror
+  editor with real syntax highlighting and error checking (other file types still use DWC's editor).
 - **Also replace the Explorer page** swaps DWC's Explorer for a full-page Flexible Layouts one that uses
   it. Links from notifications and macro lists still work. It needs a page reload to apply, and unlike
   the stock page it isn't kept alive when you leave, so you're asked before leaving with unsaved edits.
 - **12864 display preview** — open a menu file (`0:/menu/…`) in that Explorer and toggle the preview: an
   emulated 12864 (ST7920) display, pixel-accurate to RepRapFirmware, driven by your printer's real
   menu files and live values. Click a button on the screen or use the knob; commands are only listed,
-  never sent. It shows the saved file and refreshes when you save, and lists every problem in the menu
-  (RepRapFirmware stops loading a menu at the first one).
+  never sent. With the new editor on, it **follows your unsaved edits** as you type (a "Live" badge shows
+  it, and an edit to another open menu file shows up too); menu files opened in DWC's own editor show the
+  saved file and refresh when you save. It lists every problem in the menu (RepRapFirmware stops loading a
+  menu at the first one), and the editor underlines the same problems in the text.
 
 ## Phones
 

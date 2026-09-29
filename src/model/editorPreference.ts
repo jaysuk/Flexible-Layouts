@@ -2,11 +2,12 @@
  * Whether the Explorer panel's G-code files open in `dwc-gcode-editor` (CodeMirror 6, real syntax
  * highlighting + diagnostics + no 200 MB in-memory-string ceiling) instead of DWC's own bundled
  * Monaco editor — see `duet-gcode-postprocessor/docs/gcode-editor-plan.md` for why this exists at
- * all. Off by default: the new editor only handles G-code syntax today (no menu-file/STM32
- * `board.txt`/plain-text support the way Monaco's `@duet3d/monacotokens` does), so this is an
+ * all. Off by default: the new editor handles G-code and 12864 menu files (`0:/menu/*`) today, but
+ * not STM32 `board.txt` or plain text the way Monaco's `@duet3d/monacotokens` does, so this is an
  * explicit opt-in, not a replacement — `shouldUseNewGcodeEditor` only ever says yes for a file
- * `dwc-gcode-core`'s own `classifyFile` reports as G-code syntax; everything else always uses
- * Monaco regardless of the setting. Kept here (not inline in `ExplorerPanel.vue`) so the actual
+ * `dwc-gcode-core`'s own `classifyFile` reports as G-code syntax or a menu file; everything else
+ * always uses Monaco regardless of the setting. A menu file is here because Monaco cannot hand its
+ * unsaved text to the display preview and this editor can (see `Display12864Emulator.vue`). Kept here (not inline in `ExplorerPanel.vue`) so the actual
  * decision logic gets real unit test coverage rather than being untestable inside a `<script setup>`
  * with no exposed surface.
  */
@@ -31,11 +32,19 @@ export function setNewGcodeEditorEnabled(on: boolean): void {
 	ls()?.setItem(KEY, on ? "1" : "0");
 }
 
+/** Whether `filename` is a 12864 menu file (`0:/menu/*`, not its `.bin` images). */
+export function isMenuFile(filename: string): boolean {
+	return classifyFile(filename).kind === "menu";
+}
+
 /** Whether `filename` should open in `dwc-gcode-editor` rather than Monaco: the setting is on, AND
  *  the file is one `dwc-gcode-core` classifies as G-code syntax (covers RRF's well-known files by
- *  name/role too - `config.g`, macros, print files - not just a `.g`/`.gcode` extension check). */
+ *  name/role too - `config.g`, macros, print files - not just a `.g`/`.gcode` extension check) or as
+ *  a menu file. */
 export function shouldUseNewGcodeEditor(filename: string): boolean {
-	return isNewGcodeEditorEnabled() && classifyFile(filename).syntax === "gcode";
+	if (!isNewGcodeEditorEnabled()) return false;
+	const classified = classifyFile(filename);
+	return classified.syntax === "gcode" || classified.kind === "menu";
 }
 
 /** The user's choice to replace DWC's own Explorer page with Flexible Layouts' (which opens G-code in

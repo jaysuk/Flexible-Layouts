@@ -53,11 +53,23 @@ describe("shouldUseNewGcodeEditor", () => {
 		expect(shouldUseNewGcodeEditor("0:/sys/config-override.g")).toBe(true);
 	});
 
-	it("is false even when the setting is on for a non-G-code file (menu/plain text)", () => {
+	it("is false even when the setting is on for a file it has no support for (board.txt/plain text)", () => {
 		setNewGcodeEditorEnabled(true);
-		expect(shouldUseNewGcodeEditor("0:/menu/main")).toBe(false);
 		expect(shouldUseNewGcodeEditor("0:/sys/board.txt")).toBe(false);
 		expect(shouldUseNewGcodeEditor("0:/sys/notes.txt")).toBe(false);
+	});
+
+	it("is true for a 12864 menu file when the setting is on - its unsaved text feeds the display preview", () => {
+		setNewGcodeEditorEnabled(true);
+		expect(shouldUseNewGcodeEditor("0:/menu/main")).toBe(true);
+		expect(shouldUseNewGcodeEditor("0:/menu/listFiles")).toBe(true);
+		setNewGcodeEditorEnabled(false);
+		expect(shouldUseNewGcodeEditor("0:/menu/main")).toBe(false);
+	});
+
+	it("keeps a menu image (.bin) in the standard editor's hands", () => {
+		setNewGcodeEditorEnabled(true);
+		expect(shouldUseNewGcodeEditor("0:/menu/logo.bin")).toBe(false);
 	});
 });
 

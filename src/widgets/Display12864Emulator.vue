@@ -3,6 +3,8 @@
 	<div class="d12864-root d-flex flex-column ga-2">
 		<div class="d-flex align-center ga-2 flex-wrap">
 			<span class="text-caption text-medium-emphasis">{{ breadcrumb }}</span>
+			<v-chip v-if="following" size="x-small" color="primary" variant="tonal" class="d12864-live"
+					:title="$t('plugins.flexibleLayouts.display12864.liveHelp')">{{ $t("plugins.flexibleLayouts.display12864.live") }}</v-chip>
 			<v-spacer />
 			<v-btn size="x-small" variant="text" prepend-icon="mdi-restart" :title="$t('plugins.flexibleLayouts.display12864.restartHelp')"
 				   @click="restart">{{ $t("plugins.flexibleLayouts.display12864.restart") }}</v-btn>
@@ -38,7 +40,7 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
 
 import { MenuDisplay, type MenuError, resolveMenu } from "dwc-gcode-core";
 import { useMachineStore } from "@/stores/machine";
@@ -54,6 +56,12 @@ const props = defineProps<{
 	source?: MenuSource;
 	/** Bump to re-read the menu directory (e.g. after the file being edited is saved). */
 	reloadKey?: number;
+	/**
+	 * Unsaved text of menu files, by name (case-insensitive), laid over what is on the card - so the preview
+	 * follows edits as they are typed. Only files open in an editor that can hand over its buffer appear here;
+	 * anything else shows as saved. Changing it restarts the display at the menu it was showing.
+	 */
+	overrides?: Record<string, string>;
 }>();
 
 const COLS = 128;
@@ -65,6 +73,15 @@ const machineStore = useMachineStore();
 const canvas = ref<HTMLCanvasElement | null>(null);
 const loading = ref(false);
 const source = shallowRef<MenuSource>(props.source ?? emptyMenuSource());
+// What the display actually reads: the card's files with any unsaved text laid over them.
+const effective = computed<MenuSource>(() => {
+	const over = Object.entries(props.overrides ?? {});
+	if (over.length === 0) return source.value;
+	const files = new Map(source.value.files);
+	for (const [name, text] of over) files.set(name.toLowerCase(), text);
+	return { files, images: source.value.images };
+});
+const following = computed(() => Object.keys(props.overrides ?? {}).length > 0);
 const commands = ref<Array<string>>([]);
 const breadcrumb = ref("");
 const problems = ref<Array<MenuError>>([]);
@@ -72,22 +89,29 @@ const problems = ref<Array<MenuError>>([]);
 const display = shallowRef<MenuDisplay | null>(null);
 let timer: ReturnType<typeof setInterval> | undefined;
 
-function startMenu(): void {
+/** Starts from `main`. `keep` (a previous display's menu stack) reopens the menus that were open, so a
+ *  reload or a live edit doesn't throw the user back to the top; without it, `props.menu` opens on top of `main`. */
+function startMenu(keep?: ReadonlyArray<string>): void {
 	const host = createEmulatorHost({
-		source: source.value,
+		source: effective.value,
 		model: () => machineStore.model as unknown as Record<string, unknown>,
 		io: props.source ? undefined : defaultMachineIO(),
 		onCommand: (c) => { commands.value = [c, ...commands.value].slice(0, 12); },
 	});
 	const d = new MenuDisplay(host);
 	d.start();
-	const wanted = props.menu ?? "main";
-	if (wanted.toLowerCase() !== "main") d.load(wanted);
+	if (keep !== undefined && keep.length > 1) {
+		for (const name of keep.slice(1)) d.load(name);
+	} else {
+		const wanted = props.menu ?? "main";
+		if (wanted.toLowerCase() !== "main") d.load(wanted);
+	}
 	display.value = d;
 	redraw();
 }
 
 async function reload(): Promise<void> {
+	const keep = display.value?.menuStack;
 	if (props.source) {
 		source.value = props.source;
 	} else {
@@ -100,7 +124,7 @@ async function reload(): Promise<void> {
 			loading.value = false;
 		}
 	}
-	startMenu();
+	startMenu(keep);
 }
 
 function restart(): void {
@@ -111,7 +135,7 @@ function restart(): void {
 function analyse(d: MenuDisplay): void {
 	// Every problem in the menu now showing, not only the one RRF stops at.
 	const name = d.currentMenu;
-	const text = name ? source.value.files.get(name.toLowerCase()) : undefined;
+	const text = name ? effective.value.files.get(name.toLowerCase()) : undefined;
 	problems.value = text === undefined ? [] : [...resolveMenu(text).errors];
 	breadcrumb.value = d.menuStack.join(" › ");
 }
@@ -169,6 +193,8 @@ onBeforeUnmount(() => clearInterval(timer));
 
 watch(() => props.reloadKey, () => { void reload(); });
 watch(() => props.menu, () => { startMenu(); });
+// A live edit: the display restarts on the new text, at the menu it was showing.
+watch(() => props.overrides, () => { startMenu(display.value?.menuStack); });
 
 defineExpose({ display, reload, turn, restart });
 </script>
