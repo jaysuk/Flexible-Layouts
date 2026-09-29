@@ -1,73 +1,104 @@
 <template>
 	<div class="exp-root fill-height d-flex flex-column">
-		<!-- Tab bar (shown once there's more than one tab): a tab per open file/browser + new-tab "+". -->
-		<v-toolbar v-if="tabs.length > 1" density="compact" color="surface" class="flex-shrink-0">
-			<v-tabs v-model="activeTab" align-tabs="start" show-arrows density="compact" class="flex-grow-1">
-				<v-tab v-for="tab in tabs" :key="tab.id" :value="tab.id" class="text-none"
-					   :color="tab.dirty ? 'warning' : undefined">
-					<v-icon size="small" class="mr-2">{{ tab.kind === 'editor' ? 'mdi-file-document-edit' : 'mdi-folder' }}</v-icon>
-					<span class="exp-tab-label text-truncate">{{ tabLabel(tab) }}{{ tab.dirty ? " *" : "" }}</span>
-					<v-btn variant="text" size="small" density="comfortable" icon class="ml-2"
-						   :disabled="isLastDirectoryTab(tab)"
-						   :title="$t('list.explorer.closeTab')" @click.stop="closeTab(tab.id)">
-						<v-icon size="20">mdi-close</v-icon>
+		<!-- One grid for both panes: row 1 the tab strips, row 2 the content, columns the two panes and the divider.
+			 Every tab's content is a direct child of it (below), placed in a column by an inline style, so a tab that
+			 changes pane only changes `grid-column` - it is never re-parented, and its editor is never unmounted.
+			 (Vue cannot move a component between two parents: nesting each pane's tabs in that pane's own element
+			 would remount the editor on every drag, split and collapse, losing the edits, undo history and scroll.) -->
+		<div ref="panesEl" class="exp-panes flex-grow-1" :style="{ gridTemplateColumns }">
+			<!-- A tab strip per pane (shown once there's more than one tab): a tab per open file/browser + new-tab "+". -->
+			<div v-for="group in session.groups" :key="`strip-${group.id}`" class="exp-strip"
+				 :style="{ gridColumn: columnOf(group.id) }" @dragover.prevent @drop="onTabDrop($event, group.id)">
+				<v-toolbar v-if="tabs.length > 1" density="compact" color="surface" class="flex-shrink-0">
+					<v-tabs :model-value="group.activeTabId" align-tabs="start" show-arrows density="compact" class="flex-grow-1"
+							@update:model-value="onTabsInput">
+						<v-tab v-for="tab in tabsIn(group.id)" :key="tab.id" :value="tab.id" class="text-none"
+							   :color="tab.dirty ? 'warning' : undefined" draggable="true" @dragstart="onTabDragStart($event, tab.id)"
+							   @click="focusTab(tab.id)">
+							<v-icon size="small" class="mr-2">{{ tab.kind === 'editor' ? 'mdi-file-document-edit' : 'mdi-folder' }}</v-icon>
+							<span class="exp-tab-label text-truncate">{{ tabLabel(tab) }}{{ tab.dirty ? " *" : "" }}</span>
+							<v-btn variant="text" size="small" density="comfortable" icon class="ml-2"
+								   :disabled="isLastDirectoryTab(tab)"
+								   :title="$t('list.explorer.closeTab')" @click.stop="closeTab(tab.id)">
+								<v-icon size="20">mdi-close</v-icon>
+							</v-btn>
+						</v-tab>
+					</v-tabs>
+					<v-btn variant="text" icon :title="$t('list.explorer.newTab')" @click="addBrowserTab">
+						<v-icon>mdi-plus</v-icon>
 					</v-btn>
-				</v-tab>
-			</v-tabs>
-			<v-btn variant="text" icon :title="$t('list.explorer.newTab')" @click="addBrowserTab">
-				<v-icon>mdi-plus</v-icon>
-			</v-btn>
-		</v-toolbar>
+					<v-btn v-if="!split && canSplitPanes" variant="text" icon data-explorer-split
+						   :title="$t('plugins.flexibleLayouts.files.splitRight')" @click="onSplit">
+						<v-icon>mdi-dock-right</v-icon>
+					</v-btn>
+					<v-btn v-if="group.id === 2" variant="text" icon data-explorer-close-split
+						   :title="$t('plugins.flexibleLayouts.files.closeSplit')" @click="onCloseSplit">
+						<v-icon>mdi-dock-left</v-icon>
+					</v-btn>
+				</v-toolbar>
+			</div>
 
-		<v-window v-model="activeTab" :touch="false" class="exp-window flex-grow-1">
-			<!-- No `eager`: it forced every tab to render up front, so each open file held a live Monaco
-				 instance simultaneously. Monaco is by far the heaviest thing this panel can mount
-				 (~3.8 MB of chunk plus per-instance model/DOM), so they are mounted on demand instead. -->
-			<v-window-item v-for="tab in tabs" :key="tab.id" :value="tab.id">
-				<!-- Editor tab: whichever editor loads/saves the file itself. -->
-				<div v-if="tab.kind === 'editor' && tab.filename" class="exp-editor-col d-flex flex-column fill-height">
-					<!-- A 12864 menu file can be checked as you go: a preview of the display it configures.
-						 In the new editor it follows the unsaved buffer (`live-text`); DWC's Monaco exposes no
-						 text, so a menu file that still opens there shows what is on the SD card and is re-read
-						 whenever the file is saved. -->
-					<div v-if="isMenuFile(tab.filename)" class="exp-menu-bar flex-shrink-0 d-flex align-center px-2">
-						<v-btn size="small" variant="text" :color="tab.preview ? 'primary' : undefined" prepend-icon="mdi-monitor"
-							   :title="$t('plugins.flexibleLayouts.display12864.toggleHelp')" @click="tab.preview = !tab.preview">
-							{{ $t("plugins.flexibleLayouts.display12864.toggle") }}
-						</v-btn>
-					</div>
-					<div class="exp-editor-row d-flex flex-grow-1">
-						<div class="exp-editor-main flex-grow-1">
-							<!-- Only the ACTIVE editor stays mounted, so N open files no longer mean N live
-								 editors. A tab with unsaved edits is deliberately kept mounted even when
-								 inactive - unmounting it would throw those edits away. -->
-							<GcodeCmEditor v-if="(tab.id === activeTab || tab.dirty) && shouldUseNewGcodeEditor(tab.filename)"
-										   :ref="(el: unknown) => bindEditorRef(tab.id, el)"
-										   :filename="tab.filename" :draft="tab.draft"
-										   @dirty="onEditorDirty(tab, $event)" @stash="tab.draft = $event"
-										   @live-text="tab.liveText = $event" />
-							<component :is="monacoEditor" v-else-if="tab.id === activeTab || tab.dirty"
-									   :ref="(el: unknown) => bindEditorRef(tab.id, el)"
-									   :filename="tab.filename" @dirty="onEditorDirty(tab, $event)" />
+			<!-- An empty drop target under each pane, so a pane whose tab is a file list still takes a dragged tab. -->
+			<div v-for="group in session.groups" :key="`body-${group.id}`" class="exp-body"
+				 :style="{ gridColumn: columnOf(group.id) }" @dragover.prevent @drop="onTabDrop($event, group.id)" />
+
+			<!-- Every tab, flat and in a fixed (id) order. No `eager`: an editor is mounted on demand (below), so N open
+				 files don't mean N live Monaco instances (~3.8 MB of chunk plus per-instance model/DOM). -->
+			<div v-for="tab in slotTabs" :key="tab.id" v-show="isShowing(tab)" class="exp-slot"
+				 :data-tab-id="tab.id" :style="{ gridColumn: columnOf(paneOf(tab)) }"
+				 @dragover.prevent @drop="onTabDrop($event, paneOf(tab))" @focusin="focusTab(tab.id)">
+				<div class="exp-slot-fill">
+					<template v-if="booted.has(tab.id)">
+						<!-- Editor tab: whichever editor loads/saves the file itself. -->
+						<div v-if="tab.kind === 'editor' && tab.filename" class="exp-editor-col d-flex flex-column fill-height">
+							<!-- A 12864 menu file can be checked as you go: a preview of the display it configures.
+								 In the new editor it follows the unsaved buffer (`live-text`); DWC's Monaco exposes no
+								 text, so a menu file that still opens there shows what is on the SD card and is re-read
+								 whenever the file is saved. -->
+							<div v-if="isMenuFile(tab.filename)" class="exp-menu-bar flex-shrink-0 d-flex align-center px-2">
+								<v-btn size="small" variant="text" :color="tab.preview ? 'primary' : undefined" prepend-icon="mdi-monitor"
+									   :title="$t('plugins.flexibleLayouts.display12864.toggleHelp')" @click="tab.preview = !tab.preview">
+									{{ $t("plugins.flexibleLayouts.display12864.toggle") }}
+								</v-btn>
+							</div>
+							<div class="exp-editor-row d-flex flex-grow-1">
+								<div class="exp-editor-main flex-grow-1">
+									<!-- Only a SHOWING editor stays mounted (one per pane, so two when split), so N open
+										 files no longer mean N live editors. A tab with unsaved edits is deliberately kept
+										 mounted even when hidden - unmounting it would throw those edits away. -->
+									<GcodeCmEditor v-if="(isShowing(tab) || tab.dirty) && shouldUseNewGcodeEditor(tab.filename)"
+												   :ref="(el: unknown) => bindEditorRef(tab.id, el)"
+												   :filename="tab.filename" :draft="tab.draft"
+												   @dirty="onEditorDirty(tab, $event)" @stash="tab.draft = $event"
+												   @live-text="tab.liveText = $event" />
+									<component :is="monacoEditor" v-else-if="isShowing(tab) || tab.dirty"
+											   :ref="(el: unknown) => bindEditorRef(tab.id, el)"
+											   :filename="tab.filename" @dirty="onEditorDirty(tab, $event)" />
+								</div>
+								<aside v-if="tab.preview && isMenuFile(tab.filename) && isShowing(tab)" class="exp-menu-preview pa-2">
+									<Display12864Emulator :menu="basename(tab.filename)" :reload-key="tab.saves ?? 0" :overrides="menuOverrides" />
+								</aside>
+							</div>
 						</div>
-						<aside v-if="tab.preview && isMenuFile(tab.filename) && tab.id === activeTab" class="exp-menu-preview pa-2">
-							<Display12864Emulator :menu="basename(tab.filename)" :reload-key="tab.saves ?? 0" :overrides="menuOverrides" />
-						</aside>
-					</div>
-				</div>
-				<!-- Browser tab: file-click opens the file in a new editor tab (not the page). -->
-				<component :is="fileList" v-else v-model:directory="tab.directory" :options="optionsFor(tab)"
-						   root-directory="0:/" root-label="0:/"
-						   :no-items-text="$t('plugins.flexibleLayouts.files.none')"
-						   @file-click="open" @file-edit="open">
-					<template v-if="tabs.length === 1" #actions>
-						<v-btn variant="text" icon :title="$t('list.explorer.newTab')" @click="addBrowserTab">
-							<v-icon>mdi-plus</v-icon>
-						</v-btn>
+						<!-- Browser tab: file-click opens the file in a new editor tab (not the page). -->
+						<component :is="fileList" v-else v-model:directory="tab.directory" :options="optionsFor(tab)"
+								   root-directory="0:/" root-label="0:/"
+								   :no-items-text="$t('plugins.flexibleLayouts.files.none')"
+								   @file-click="open" @file-edit="open">
+							<template v-if="tabs.length === 1" #actions>
+								<v-btn variant="text" icon :title="$t('list.explorer.newTab')" @click="addBrowserTab">
+									<v-icon>mdi-plus</v-icon>
+								</v-btn>
+							</template>
+						</component>
 					</template>
-				</component>
-			</v-window-item>
-		</v-window>
+				</div>
+			</div>
+
+			<div v-if="split" class="exp-divider" :class="{ 'exp-divider--dragging': dragging }"
+				 @pointerdown="onDividerPointerDown" @pointermove="onDividerPointerMove"
+				 @pointerup="onDividerPointerUp" @pointercancel="onDividerPointerUp" />
+		</div>
 	</div>
 
 	<!-- Closing a dirty tab asks first, rather than silently discarding edits. -->
@@ -96,7 +127,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, inject, onBeforeUnmount, ref, resolveComponent, toRef, watch } from "vue";
+import { computed, inject, onBeforeUnmount, reactive, ref, resolveComponent, toRef, watch } from "vue";
+
+import type { GroupId } from "dwc-gcode-editor";
 
 import { SETTINGS_SCOPE_KEY } from "@/composables/useComponentSettings";
 
@@ -106,6 +139,10 @@ import Display12864Emulator from "./Display12864Emulator.vue";
 import GcodeCmEditor from "./GcodeCmEditor.vue";
 import { isMenuFile, shouldUseNewGcodeEditor } from "../model/editorPreference";
 import type { ExplorerTarget } from "../model/explorerRoute";
+import {
+	activateTab, addTab, canSplit, closeSplitPanes, isShowing as paneIsShowing, isSplit, moveTabToPane, paneOf,
+	removeTab as removeFromSession, setPaneRatio, splitPanes,
+} from "../model/explorerPanes";
 import { explorerSession, releaseExplorerSession, type ExplorerTab as Tab } from "../model/explorerSession";
 
 interface FileItem { name: string; isDirectory?: boolean }
@@ -148,7 +185,82 @@ const session = explorerSession(props.sessionKey ?? (settingsScope ? `panel:${se
 onBeforeUnmount(() => releaseExplorerSession(session));
 const returning = session.returning;
 const tabs = toRef(session, "tabs");
+// The FOCUSED pane's showing tab: what the URL mirrors and where a deep link lands. Write it only through
+// `activateTab` (model/explorerPanes.ts), which keeps the per-pane state in step.
 const activeTab = toRef(session, "activeTab");
+
+// --- Split view: two tab strips side by side. -------------------------------------------------------------
+const split = computed(() => isSplit(session));
+const canSplitPanes = computed(() => canSplit(session));
+const panesEl = ref<HTMLElement | null>(null);
+const dragging = ref(false);
+
+function tabsIn(groupId: GroupId): Array<Tab> { return tabs.value.filter((t) => paneOf(t) === groupId); }
+function isShowing(tab: Tab): boolean { return paneIsShowing(session, tab); }
+/** The grid column a pane's strip, drop zone and content sit in: 1 alone; 1 and 3 (2 is the divider) when split. */
+function columnOf(groupId: GroupId): number { return split.value && groupId === 2 ? 3 : 1; }
+const gridTemplateColumns = computed(() => split.value
+	? `minmax(0, ${session.splitRatio}fr) 7px minmax(0, ${1 - session.splitRatio}fr)`
+	: "minmax(0, 1fr)");
+/** Every tab in a fixed order (by id). Moving a tab reorders `tabs`, and a keyed `v-for` follows the order it is
+ *  given by moving DOM nodes, which resets an element's scroll position; sorting keeps each editor's element put. */
+const slotTabs = computed(() => [...tabs.value].sort((a, b) => a.id - b.id));
+// A tab's content is mounted the first time it is shown and then kept (a folder tab keeps its place), like a
+// `v-window-item` without `eager` did.
+const booted = reactive(new Set<number>());
+watch(() => session.groups.map((g) => g.activeTabId), (ids) => {
+	for (const id of ids) if (id !== null) booted.add(id);
+}, { immediate: true });
+
+function onTabsInput(id: unknown): void {
+	if (typeof id === "number") activateTab(session, id);
+}
+/** Clicking a pane (its tab, or into its editor) focuses it: `v-tabs` says nothing when the tab is already the
+ *  selected one, but this pane still has to become the one the URL and a new tab follow. */
+function focusTab(id: number): void {
+	const tab = tabs.value.find((t) => t.id === id);
+	if (tab !== undefined && (session.focusedGroup !== paneOf(tab) || session.activeTab !== id)) activateTab(session, id);
+}
+
+const SPLIT_RATIO_KEY = "flexibleLayouts.explorerSplitRatio";
+function onSplit(): void {
+	splitPanes(session);
+	try {
+		const stored = Number(localStorage.getItem(SPLIT_RATIO_KEY));
+		if (Number.isFinite(stored) && stored > 0) setPaneRatio(session, stored);
+	} catch { /* storage unavailable: keep the default */ }
+}
+function onCloseSplit(): void { closeSplitPanes(session); }
+
+let draggedTabId: number | null = null;
+function onTabDragStart(event: DragEvent, id: number): void {
+	draggedTabId = id;
+	event.dataTransfer?.setData("text/plain", String(id));
+}
+function onTabDrop(event: DragEvent, groupId: GroupId): void {
+	event.preventDefault();
+	const raw = event.dataTransfer?.getData("text/plain");
+	const fromTransfer = raw ? Number(raw) : NaN;
+	const id = Number.isFinite(fromTransfer) ? fromTransfer : draggedTabId;
+	draggedTabId = null;
+	const tab = tabs.value.find((t) => t.id === id);
+	// Dropping on the pane a tab is already in, or on a second pane that does not exist, does nothing.
+	if (tab !== undefined && paneOf(tab) !== groupId && (split.value || groupId === 1)) moveTabToPane(session, tab.id, groupId);
+}
+function onDividerPointerDown(event: PointerEvent): void {
+	dragging.value = true;
+	(event.target as HTMLElement).setPointerCapture?.(event.pointerId);
+}
+function onDividerPointerMove(event: PointerEvent): void {
+	if (!dragging.value || panesEl.value === null) return;
+	const rect = panesEl.value.getBoundingClientRect();
+	if (rect.width > 0) setPaneRatio(session, (event.clientX - rect.left) / rect.width);
+}
+function onDividerPointerUp(): void {
+	if (!dragging.value) return;
+	dragging.value = false;
+	try { localStorage.setItem(SPLIT_RATIO_KEY, String(session.splitRatio)); } catch { /* storage unavailable */ }
+}
 // Nothing is mounted yet, so what a tab says about its editor is only as true as its stashed text: a tab is
 // dirty exactly when it has a draft to bring back. (A Monaco tab has none - its edits went with its editor.)
 for (const tab of tabs.value) tab.dirty = tab.draft !== undefined;
@@ -182,12 +294,10 @@ function open(item: FileItem, directory: string): void {
 	const full = `${directory.replace(/\/+$/, "")}/${item.name}`;
 	const existing = tabs.value.find((t) => t.kind === "editor" && t.filename === full);
 	if (existing) {
-		activeTab.value = existing.id; // already open — focus it
+		activateTab(session, existing.id); // already open (in either pane) - focus it and its pane
 		return;
 	}
-	const id = session.nextId++;
-	tabs.value.push({ id, kind: "editor", filename: full });
-	activeTab.value = id;
+	addTab(session, { kind: "editor", filename: full });
 }
 
 // Follow a deep link: open the file in an editor tab, or point a file-browser tab at the directory
@@ -202,7 +312,7 @@ function applyTarget(target: ExplorerTarget): void {
 	const browser = active ?? tabs.value.find((t) => t.kind === "directory");
 	if (browser) {
 		browser.directory = target.path;
-		activeTab.value = browser.id;
+		activateTab(session, browser.id);
 	}
 }
 let firstTarget = true;
@@ -255,9 +365,7 @@ watch(() => tabs.value.some((t) => t.dirty && t.filename !== undefined && !shoul
 	(lossy) => emit("dirty-change", lossy));
 
 function addBrowserTab(): void {
-	const id = session.nextId++;
-	tabs.value.push({ id, kind: "directory", directory: "0:/" });
-	activeTab.value = id;
+	addTab(session, { kind: "directory", directory: "0:/" });
 }
 
 // The "+" new-tab button lives in a browser/directory tab (its FileList actions when there's one
@@ -269,13 +377,10 @@ function isLastDirectoryTab(tab: Tab): boolean {
 }
 
 function removeTab(id: number): void {
-	const idx = tabs.value.findIndex((t) => t.id === id);
-	if (idx < 0) return;
-	tabs.value.splice(idx, 1);
+	if (!tabs.value.some((t) => t.id === id)) return;
+	removeFromSession(session, id); // its pane collapses if that was the pane's last tab
 	editorRefs.delete(id);
-	if (activeTab.value === id) {
-		activeTab.value = tabs.value[Math.min(idx, tabs.value.length - 1)].id;
-	}
+	booted.delete(id);
 }
 
 // A dirty tab asks first (Save/Discard/Cancel) rather than silently discarding edits - a clean tab
@@ -335,7 +440,12 @@ async function saveAndClose(): Promise<void> {
 .exp-menu-bar { border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); }
 .exp-menu-preview { flex: 0 0 380px; max-width: 45%; overflow: auto; border-left: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); }
 .exp-tab-label { max-width: 12rem; }
-.exp-window { min-height: 0; }
-.exp-window :deep(.v-window__container),
-.exp-window :deep(.v-window-item) { height: 100%; }
+/* Row 1: the tab strips. Row 2: the content. Columns: pane, 7px divider, pane (or one column when not split). */
+.exp-panes { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; }
+.exp-strip { grid-row: 1; min-width: 0; }
+.exp-body { grid-row: 2; min-width: 0; min-height: 0; }
+.exp-slot { grid-row: 2; position: relative; min-width: 0; min-height: 0; }
+.exp-slot-fill { position: absolute; inset: 0; overflow: auto; }
+.exp-divider { grid-row: 1 / span 2; grid-column: 2; margin: 0 -3px; cursor: ew-resize; touch-action: none; z-index: 1; }
+.exp-divider:hover, .exp-divider--dragging { background: rgba(var(--v-theme-on-surface), 0.12); }
 </style>

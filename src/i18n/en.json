@@ -962,6 +962,8 @@
 		"up": "Up a folder",
 		"back": "Back to files",
 		"filesTab": "Files",
+		"splitRight": "Split right",
+		"closeSplit": "Close split",
 		"thumbnails": "Show thumbnails",
 		"none": "No files or folders here.",
 		"closeUnsaved": {

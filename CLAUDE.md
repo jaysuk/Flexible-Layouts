@@ -71,6 +71,15 @@ Vue 3 + Vuetify plugin for DuetWebControl (drag-and-drop layout customisation fo
   component PER PATH (`/` and `/Dashboard`), because Vue only animates a swap between two component types, and the hub
   decision is made from the record, not the router's current route, or the hub sliding out turns into the dashboard mid-slide.
   Edit mode has no hub and no slide (the drawer is how you leave).
+- **Explorer split view (two files side by side)** (`model/explorerPanes.ts`, `ExplorerPanel.vue`). The state machine is
+  `dwc-gcode-editor`'s `workspace.ts` (`splitRight`/`moveTab`/`collapseEmptyGroup`, needs editor > 0.12.0); `explorerPanes.ts` builds a
+  `WorkspaceState` around the session's OWN tab objects (so `dirty`/`draft` stay live), applies one op and writes `groupId`,
+  `groups`, `focusedGroup`, `splitRatio` back. **Every tab's content is rendered flat in one CSS grid, in id order, placed by
+  `grid-column` - never nested in a per-pane element**: Vue cannot re-parent a component, so a per-pane `v-for`/`v-window` remounts
+  the editor on every drag/split/collapse and loses unsaved edits (why Duet3D/DuetWebControl#517 was sent back). Do not "tidy" it into
+  per-pane containers; `explorerSplit.test.ts` fails if you do. `session.activeTab` is the FOCUSED pane's showing tab (what the URL
+  follows); write it only through `activateTab`. An editor is mounted while its pane is showing it or it is dirty, so two files
+  mean two live editors. The URL is path-based, so a deep link to a file open in the other pane focuses it.
 - **Explorer state outlives the panel** (`model/explorerSession.ts`). Neither a plugin route (`registerRoute` takes only
   `pageFill`/`scrollToBottom`, so no `meta.keepAlive`) nor an overridden page (renders through `RouteOverrideDispatcher`,
   which hides the component name from `keep-alive`; `DwcRouterView` also reads its include list once at setup) can be

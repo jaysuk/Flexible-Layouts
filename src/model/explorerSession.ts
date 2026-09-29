@@ -15,11 +15,14 @@
  * behind the user's back.
  */
 import { reactive } from "vue";
+import type { GroupId } from "dwc-gcode-editor";
 
 import type { GridItemModel, LayoutDocument, Widget } from "./document";
 
 export interface ExplorerTab {
 	id: number;
+	/** Which pane the tab is in (1 = left/only, 2 = right). Unset means 1. Only `model/explorerPanes.ts` writes it. */
+	groupId?: GroupId;
 	kind: "directory" | "editor";
 	filename?: string;
 	directory?: string;
@@ -38,8 +41,15 @@ export interface ExplorerTab {
 
 export interface ExplorerSession {
 	tabs: Array<ExplorerTab>;
+	/** The active tab of the FOCUSED pane - the one a host mirrors in the URL. Kept in step by `model/explorerPanes.ts`. */
 	activeTab: number;
 	nextId: number;
+	/** Length 1, or 2 while the panel is split (two files side by side). Each pane's own showing tab. */
+	groups: Array<{ id: GroupId; activeTabId: number | null }>;
+	/** The pane that last had focus: where a new tab opens, and whose tab `activeTab` is. */
+	focusedGroup: GroupId;
+	/** Width of the left pane as a fraction of the panel, meaningful only while split. */
+	splitRatio: number;
 	/** True once the session has been handed out before, i.e. this is a return visit and not a first open. */
 	returning: boolean;
 }
@@ -59,6 +69,9 @@ function freshSession(): ExplorerSession {
 		tabs: [{ id: 0, kind: "directory", directory: "0:/" }] as Array<ExplorerTab>,
 		activeTab: 0,
 		nextId: 1,
+		groups: [{ id: 1, activeTabId: 0 }],
+		focusedGroup: 1,
+		splitRatio: 0.5,
 		returning: false,
 	});
 }
