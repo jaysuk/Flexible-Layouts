@@ -59,7 +59,8 @@ Vue 3 + Vuetify plugin for DuetWebControl (drag-and-drop layout customisation fo
   generated types say `:path(.*)?`; `EXPLORER_PAGE.paths` lists both and `model/routeRecords.ts`'s
   `existingRoutePaths` keeps the ones `getPageComponent` resolves. (Before that the replacement was silently inert on
   rc.2: DWC warned "Cannot override route" and skipped it.) The DWC side lives on `../DuetWebControl` branch
-  `feature/runtime-layout-routes` (not pushed).
+  `feature/runtime-layout-routes` (not pushed, no PR; the `typed-router.d.ts` path mismatch is filed as
+  Duet3D/DuetWebControl#520).
 - **Phone navigation (opt-in "DWC-style navigation on phones")**: `shell/MobileHub.vue` (tiles, with each page's
   `MenuItem.badge` as a `NavMenuBadge` in the corner), `shell/useMobileHub.ts` (`useMobileHubMode` = phone + opt-in + not
   editing; `useShowMobileHub` adds "route is `/`"), `shell/hubTransition.ts` (the `fl-hub-forward`/`fl-hub-back` name, set in a
