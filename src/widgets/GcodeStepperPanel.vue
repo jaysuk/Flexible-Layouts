@@ -1,5 +1,6 @@
 <template>
-	<div>
+	<div class="gcode-stepper-panel">
+		<div class="stepper-pinned">
 		<div class="d-flex align-center ga-2">
 			<v-btn icon="mdi-skip-previous" size="small" variant="text" :disabled="currentStep <= 0"
 				   title="Step back" @click="emit('update:currentStep', currentStep - 1)" />
@@ -66,7 +67,9 @@
 		</v-alert>
 
 		<StepperReadout :view="view" class="mt-1" />
+		</div>
 
+		<div class="stepper-scroll">
 		<v-expansion-panels v-model="scenarioPanelOpen" variant="accordion" class="mt-1 stepper-scenario-panels">
 			<v-expansion-panel :title="scenarioPanelTitle" data-scenario-panel>
 				<v-expansion-panel-text>
@@ -81,10 +84,33 @@
 				</v-expansion-panel-text>
 			</v-expansion-panel>
 		</v-expansion-panels>
+		</div>
 	</div>
 </template>
 
 <style scoped>
+/* The panel is a flex child above the editor. However many values a file reads, it must not push the
+   file off screen: it takes what the column has left after the editor's own minimum (see the host's
+   `min-height` on the editor) and is also capped, so a parent with no definite height (where flex cannot
+   shrink it) still leaves the editor visible. Inside it the scrub bar, prompts and readout stay pinned
+   and only the Scenario accordion scrolls. If even the pinned part does not fit (a very short tile), the
+   whole panel scrolls rather than clipping it. */
+.gcode-stepper-panel {
+	display: flex;
+	flex-direction: column;
+	flex: 0 1 auto;
+	min-height: 6rem;
+	max-height: 60vh;
+	overflow-y: auto;
+}
+.gcode-stepper-panel .stepper-pinned {
+	flex: 0 0 auto;
+}
+.gcode-stepper-panel .stepper-scroll {
+	flex: 1 1 auto;
+	min-height: 4rem;
+	overflow-y: auto;
+}
 /* Vuetify's own expansion-panel-title/text padding is sized for a standalone accordion, not a
    collapsed-by-default strip under an already-dense readout - trimmed so the closed "Scenario" row
    costs one compact line, not a full-height list item. */

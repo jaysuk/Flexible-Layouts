@@ -2,8 +2,12 @@
 .gcode-cm-editor {
 	min-height: 0;
 }
+/* Basis 0 (not the content height, which for a big file is huge) so the stepper panel above is the one
+   that gives way when space runs short, and a floor of about six lines so the file being simulated
+   never disappears behind it. */
 .gcode-cm-editor-host {
-	min-height: 0;
+	flex: 1 1 0;
+	min-height: 8rem;
 	overflow: hidden;
 }
 .gcode-cm-editor-host :deep(.cm-editor) {
