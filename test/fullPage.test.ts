@@ -15,7 +15,7 @@ describe("scrollPageToBottom", () => {
 		vi.useFakeTimers();
 		scrollTo = vi.fn();
 		window.scrollTo = scrollTo as unknown as typeof window.scrollTo;
-		window.requestAnimationFrame = ((cb: FrameRequestCallback) => setTimeout(() => cb(0), 0)) as typeof window.requestAnimationFrame;
+		window.requestAnimationFrame = ((cb: FrameRequestCallback) => setTimeout(() => cb(0), 0)) as unknown as typeof window.requestAnimationFrame;
 	});
 	afterEach(() => {
 		vi.useRealTimers();
