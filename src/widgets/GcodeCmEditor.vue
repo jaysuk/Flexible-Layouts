@@ -35,6 +35,7 @@
 				{{ diagnosticCount }}
 			</span>
 			<v-btn icon="mdi-palette" :title="$t('plugins.flexibleLayouts.gcodeEditor.colors')" @click="colorSettingsOpen = true" />
+			<v-btn :disabled="loading" icon="mdi-keyboard-outline" title="Keyboard shortcuts (F1)" @click="openShortcuts" />
 			<v-btn v-if="!isMenu" :disabled="loading" :color="stepperOpen ? 'primary' : undefined" icon="mdi-motion-play-outline"
 				   title="Step through file" @click="stepperOpen = !stepperOpen" />
 		</v-toolbar>
@@ -90,7 +91,7 @@ import { computed, onBeforeUnmount, onUnmounted, ref, shallowRef, watch } from "
 import { DisconnectedError } from "@duet3d/connectors";
 import { forceLinting, lintGutter } from "@codemirror/lint";
 import { EditorView, lineNumbers } from "@codemirror/view";
-import { diagnoseDocument, parseDocument, type MessageBoxAnswer, type MessageBoxPrompt } from "dwc-gcode-core";
+import type { MessageBoxAnswer, MessageBoxPrompt } from "dwc-gcode-core";
 import type { ExecutionIndex } from "dwc-gcode-core/stepper/executionIndex";
 import { messageBoxKey } from "dwc-gcode-core/stepper/messageBoxAnswers";
 import { parseSimulatedValueInput } from "dwc-gcode-core/stepper/simulatedValues";
@@ -103,11 +104,11 @@ import {
 	singleScenarioSet, updateActiveScenario, type ScenarioSet,
 } from "dwc-gcode-core/stepper/scenarioSet";
 import {
-	alignLineComments, applyDiagnostics, buildDocFromString, codeAtCursor, createEditorInstance,
-	createThemeController, gcodeCompletion, gcodeCurrentLine, gcodeLanguage, gcodeLintUi,
+	alignLineComments, buildDocFromString, canAutoCheck, checkDocument, codeAtCursor, createEditorInstance,
+	createThemeController, gcodeCompletion, gcodeCurrentLine, gcodeLanguage, gcodeLintUi, gcodeLiveCheck,
 	gcodeViewStatePersistence,
-	gcodeQuickSearchKeymap, gcodeSearch, isInsideExpression, menuLanguage, menuLiveLinter, openExpressionQuickSearch,
-	openGcodeQuickSearch, openSearchPanel, saveKeymap, setCurrentLine, type EditorInstance, type ThemeController,
+	gcodeQuickSearchKeymap, gcodeSearch, gcodeShortcutsHelp, isInsideExpression, menuLanguage, menuLiveLinter, openExpressionQuickSearch,
+	openGcodeQuickSearch, openSearchPanel, openShortcutsHelp, saveKeymap, setCurrentLine, type EditorInstance, type ThemeController,
 } from "dwc-gcode-editor";
 import type { Text } from "@codemirror/state";
 
@@ -297,6 +298,9 @@ function setDirty(value: boolean): void {
 // One store for every editor instance: the point is that a NEW instance finds where the last one left off.
 const viewStates = sharedViewStates();
 
+// A menu file has no G-code completion, comments-by-command or F4 picker, so the help leaves those out.
+const SHORTCUTS_HIDDEN = isMenu ? ["quickSearch", "completion", "blockComment"] : [];
+
 function editorExtensions(theme: ThemeController) {
 	return [
 		lineNumbers(),
@@ -305,12 +309,16 @@ function editorExtensions(theme: ThemeController) {
 		...(isMenu ? [] : [gcodeCompletion()]),
 		gcodeLintUi(),
 		lintGutter(),
+		// Re-checks the lines being typed on (and, after a pause, the whole file when it is small enough),
+		// keeping the toolbar count current. Menu files are linted by menuLiveLinter below instead.
+		...(isMenu ? [] : [gcodeLiveCheck({ getOptions: checkOptions, onChange: (count) => { diagnosticCount.value = count; } })]),
 		// A menu file is a few hundred bytes (RRF's whole menu buffer is 2500), so it is linted live.
 		...(isMenu ? [menuLiveLinter(() => ({ path: props.filename, siblings: menuSiblings.value }))] : []),
 		// `save` is a hoisted function declaration below - referencing it here (only ever invoked
 		// later, on a real Ctrl+S) does not depend on declaration order.
 		saveKeymap(() => { void save(); }),
 		gcodeSearch(),
+		gcodeShortcutsHelp({ hide: SHORTCUTS_HIDDEN }),
 		...(isMenu ? [] : [gcodeQuickSearchKeymap(() => machineStore.model)]),
 		gcodeCurrentLine(),
 		// Cursor and scroll come back when a file is reopened (a tab that was closed, or an Explorer that was
@@ -485,6 +493,7 @@ async function load(): Promise<void> {
 		} else {
 			scenarioSet.value = loadScenarioSet(props.filename);
 			rebuildExecutionIndex();
+			checkOnLoad(editorInstance.value);
 		}
 	} catch (e) {
 		loadError.value = i18n.global.t("plugins.flexibleLayouts.gcodeEditor.loadFailed", {
@@ -571,20 +580,39 @@ async function run(): Promise<void> {
 	}
 }
 
+function checkOptions(): { path: string; firmwareVersion: string } {
+	const firmwareVersion = (machineStore.model as { boards?: Array<{ firmwareVersion?: string }> })?.boards?.[0]?.firmwareVersion ?? "0.0.0";
+	return { path: props.filename, firmwareVersion };
+}
+
+function runCheck(instance: EditorInstance): void {
+	diagnosticCount.value = checkDocument(instance.view, checkOptions()).length;
+}
+
 async function checkForErrors(): Promise<void> {
 	const instance = editorInstance.value;
 	if (instance === null) return;
 	checking.value = true;
 	try {
-		const text = instance.view.state.doc.toString();
-		const parsed = parseDocument(text);
-		const firmwareVersion = (machineStore.model as { boards?: Array<{ firmwareVersion?: string }> })?.boards?.[0]?.firmwareVersion ?? "0.0.0";
-		const diagnostics = diagnoseDocument(parsed, props.filename, { firmwareVersion });
-		applyDiagnostics(instance.view, diagnostics);
-		diagnosticCount.value = diagnostics.length;
+		runCheck(instance);
 	} finally {
 		checking.value = false;
 	}
+}
+
+/** The same check as the button, run once right after a G-code file has loaded so its problems are
+ *  marked without anyone asking. Skipped for a file too large to check without freezing the page (the
+ *  button is still there), and deferred so the editor paints first. */
+function checkOnLoad(instance: EditorInstance | null): void {
+	if (instance === null || isMenu || !canAutoCheck(instance.view)) return;
+	setTimeout(() => {
+		if (editorInstance.value === instance) runCheck(instance); // not superseded by a newer load()
+	}, 0);
+}
+
+function openShortcuts(): void {
+	const instance = editorInstance.value;
+	if (instance !== null) openShortcutsHelp(instance.view, { hide: SHORTCUTS_HIDDEN });
 }
 
 watch(hostEl, (el) => { if (el !== null) void load(); }, { immediate: true });

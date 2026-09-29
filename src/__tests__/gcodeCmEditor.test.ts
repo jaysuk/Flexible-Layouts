@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { flushPromises } from "@vue/test-utils";
 import { startCompletion } from "@codemirror/autocomplete";
+import { forEachDiagnostic } from "@codemirror/lint";
 import type { EditorView } from "@codemirror/view";
 import { GCODE_EDITOR_COLORS_SD_PATH } from "dwc-gcode-editor";
 import { dwc, lastCode, mountInDwc, patchModel, sentCodes, setUiFrozen } from "dwc-plugin-test-kit";
@@ -229,6 +230,69 @@ describe("GcodeCmEditor", () => {
 		const searchBtn = wrapper.findAll("button").find((b) => b.attributes("title") === "Search (Ctrl+F)");
 		await searchBtn!.trigger("click");
 		expect(wrapper.find(".cm-search").exists()).toBe(true);
+		wrapper.unmount();
+	});
+
+	it("checks the file for errors as soon as it loads, without the button being pressed", async () => {
+		const before = fileContent;
+		fileContent = "G1 X10\nM106 Q1\n"; // M106 has no Q parameter
+		try {
+			const wrapper = mountInDwc(GcodeCmEditor, { props: { filename: "0:/gcodes/onload.g" } });
+			await vi.waitFor(() => expect(wrapper.text()).toContain("M106 Q1"));
+			const vm = wrapper.vm as unknown as ExposedVm;
+			await vi.waitFor(() => {
+				let count = 0;
+				forEachDiagnostic(vm.editorInstance.view.state, () => count++);
+				expect(count).toBeGreaterThan(0);
+			});
+			wrapper.unmount();
+		} finally {
+			fileContent = before;
+		}
+	});
+
+	it("re-checks a line as it is typed, without the button being pressed", async () => {
+		const wrapper = mountInDwc(GcodeCmEditor, { props: { filename: "0:/gcodes/live.g" } });
+		await vi.waitFor(() => expect(wrapper.text()).toContain("G1 X10 Y10"));
+		const vm = wrapper.vm as unknown as ExposedVm;
+		const view = vm.editorInstance.view;
+		const count = () => { let n = 0; forEachDiagnostic(view.state, () => n++); return n; };
+		await new Promise((r) => setTimeout(r, 20));
+		expect(count()).toBe(0);
+		const end = view.state.doc.length;
+		view.dispatch({ changes: { from: end, insert: "M106 Q1" }, selection: { anchor: end + 7 } });
+		await vi.waitFor(() => expect(count()).toBeGreaterThan(0), { timeout: 3000 });
+		wrapper.unmount();
+	});
+
+	it("does not flag a clean file on load", async () => {
+		const wrapper = mountInDwc(GcodeCmEditor, { props: { filename: "0:/gcodes/clean.g" } });
+		await vi.waitFor(() => expect(wrapper.text()).toContain("G1 X10 Y10"));
+		await new Promise((r) => setTimeout(r, 20)); // the on-load check is deferred one tick
+		const vm = wrapper.vm as unknown as ExposedVm;
+		let count = 0;
+		forEachDiagnostic(vm.editorInstance.view.state, () => count++);
+		expect(count).toBe(0);
+		wrapper.unmount();
+	});
+
+	it("the Keyboard shortcuts button opens a list of the editor's shortcuts, and Find Code can be cancelled", async () => {
+		const wrapper = mountInDwc(GcodeCmEditor, { props: { filename: "0:/gcodes/help.g" } });
+		await vi.waitFor(() => expect(wrapper.text()).toContain("G1 X10 Y10"));
+
+		expect(wrapper.find(".cm-gcodeShortcuts").exists()).toBe(false);
+		const helpBtn = wrapper.findAll("button").find((b) => b.attributes("title") === "Keyboard shortcuts (F1)");
+		await helpBtn!.trigger("click");
+		expect(wrapper.find(".cm-gcodeShortcuts").exists()).toBe(true);
+		expect(wrapper.find(".cm-gcodeShortcuts").text()).toContain("Find and replace");
+		await wrapper.find(".cm-gcodeShortcuts-close").trigger("click");
+		expect(wrapper.find(".cm-gcodeShortcuts").exists()).toBe(false);
+
+		const findBtn = wrapper.findAll("button").find((b) => b.attributes("title")?.startsWith("Find "));
+		await findBtn!.trigger("click");
+		expect(wrapper.find(".cm-gcodeQuickSearch").exists()).toBe(true);
+		await wrapper.find(".cm-gcodeQuickSearch-close").trigger("click");
+		expect(wrapper.find(".cm-gcodeQuickSearch").exists()).toBe(false);
 		wrapper.unmount();
 	});
 
