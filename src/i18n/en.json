@@ -969,7 +969,8 @@
 			"body": "{name} has unsaved changes. Save before closing?",
 			"save": "Save",
 			"discard": "Discard"
-		}
+		},
+		"leaveUnsaved": "You have unsaved changes in the file editor. Leave this page and lose them?"
 	},
 	"gcodeEditor": {
 		"save": "Save",
@@ -980,6 +981,10 @@
 		"settingsTitle": "G-code editor",
 		"settingsHint": "The new editor understands G-code specifically (real syntax highlighting, error checking) but not other file types yet - menu files, STM32 board.txt and plain text always open in the standard editor regardless of this setting.",
 		"settingsToggle": "Use the new G-code editor for G-code files",
+		"replaceExplorer": "Also replace the Explorer page",
+		"replaceExplorerHint": "Swaps DWC's own Explorer page for a Flexible Layouts one that opens G-code in the new editor (deep links from notifications and macro lists still work). It's a full page you can customise like any other. Unlike the stock page it isn't kept alive when you navigate away, so you're asked before leaving with unsaved edits.",
+		"reloadNeeded": "Reload the page to apply this change.",
+		"reloadNow": "Reload now",
 		"colors": "Editor colors",
 		"colorsHint": "Applies site-wide, wherever this G-code editor is used, and is saved to the SD card ({path}).",
 		"colorsLight": "Light",

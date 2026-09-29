@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { isNewGcodeEditorEnabled, setNewGcodeEditorEnabled, shouldUseNewGcodeEditor } from "../model/editorPreference";
+import { isExplorerReplaceEnabled, isNewGcodeEditorEnabled, setExplorerReplaceEnabled, setNewGcodeEditorEnabled, shouldReplaceExplorerPage, shouldUseNewGcodeEditor } from "../model/editorPreference";
 
 // This harness's happy-dom localStorage is a non-functional stub (documented the same way
 // elsewhere in this family - duet-gcode-postprocessor's test/component.test.ts, dwc-gcode-postprocessor's
@@ -58,5 +58,26 @@ describe("shouldUseNewGcodeEditor", () => {
 		expect(shouldUseNewGcodeEditor("0:/menu/main")).toBe(false);
 		expect(shouldUseNewGcodeEditor("0:/sys/board.txt")).toBe(false);
 		expect(shouldUseNewGcodeEditor("0:/sys/notes.txt")).toBe(false);
+	});
+});
+
+describe("shouldReplaceExplorerPage", () => {
+	it("defaults to off", () => {
+		expect(isExplorerReplaceEnabled()).toBe(false);
+		expect(shouldReplaceExplorerPage()).toBe(false);
+	});
+
+	it("needs BOTH the replacement choice and the new editor", () => {
+		setExplorerReplaceEnabled(true);
+		expect(shouldReplaceExplorerPage()).toBe(false); // new editor still off
+		setNewGcodeEditorEnabled(true);
+		expect(shouldReplaceExplorerPage()).toBe(true);
+		setNewGcodeEditorEnabled(false);
+		expect(shouldReplaceExplorerPage()).toBe(false); // turning the editor off drops the replacement
+	});
+
+	it("the new editor alone doesn't replace the page", () => {
+		setNewGcodeEditorEnabled(true);
+		expect(shouldReplaceExplorerPage()).toBe(false);
 	});
 });

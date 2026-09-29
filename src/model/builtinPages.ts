@@ -20,6 +20,8 @@ import DashboardFallback from "../page/fallbacks/DashboardFallback.vue";
 import ConsoleFallback from "../page/fallbacks/ConsoleFallback.vue";
 import TemperaturesFallback from "../page/fallbacks/TemperaturesFallback.vue";
 import MacrosFallback from "../page/fallbacks/MacrosFallback.vue";
+import ExplorerFallback from "../page/fallbacks/ExplorerFallback.vue";
+import { shouldReplaceExplorerPage } from "./editorPreference";
 
 export interface BuiltinPageDef {
 	/** Canonical vue-router paths to override (as seen in router.getRoutes().map(r => r.path)). */
@@ -37,6 +39,8 @@ export interface BuiltinPageDef {
 	 * usable mid-print (M25/M226/M291 replies, diagnostics, live tuning), as it is in stock DWC.
 	 */
 	lockWhilePrinting?: boolean;
+	/** "Full page" default for this page (see PageLayout.fullPage); the user's own choice wins. */
+	fullPage?: boolean;
 }
 
 function panel(component: string, x: number, y: number, w: number, h: number): GridItemModel {
@@ -84,12 +88,42 @@ export function statusBarSeed(): Array<GridItemModel> {
 	];
 }
 
-export const BUILTIN_PAGES: ReadonlyArray<BuiltinPageDef> = [
+const BASE_PAGES: ReadonlyArray<BuiltinPageDef> = [
 	{ paths: ["/", "/Dashboard"], pageId: "/Dashboard", fallback: DashboardFallback, seed: dashboardSeed },
 	{ paths: ["/Console"], pageId: "/Console", fallback: ConsoleFallback, lockWhilePrinting: false },
 	{ paths: ["/Temperatures"], pageId: "/Temperatures", fallback: TemperaturesFallback, lockWhilePrinting: false },
 	{ paths: ["/Macros"], pageId: "/Macros", fallback: MacrosFallback },
-	// Jobs and Explorer are intentionally NOT overridden: the Explorer route is DWC's file editor
-	// (Monaco) and Jobs is a multi-volume browser — replacing them with a simple fallback breaks
-	// editing. They remain native; their browsers are available as the JobFileList/FileList panels.
+	// Jobs is intentionally NOT overridden: it's a multi-volume browser that a simple fallback would
+	// break. It remains native; its browser is available as the JobFileList panel. The Explorer is
+	// native too unless the user opts into the replacement below (EXPLORER_PAGE).
 ];
+
+/**
+ * DWC's Explorer route is `/Explorer/:tab?/:volume?/:path(.*)?`. Opt-in (Settings > G-code editor), and
+ * only when the new editor is on: it replaces the stock page, which always uses Monaco, with one that
+ * opens G-code in the new editor. Off by default because the stock page is kept alive by DWC (open
+ * editors survive navigating away) and this one isn't - see ExplorerFallback.vue. Full page by
+ * default, like the page it replaces.
+ */
+export const EXPLORER_PAGE: BuiltinPageDef = {
+	paths: ["/Explorer/:tab?/:volume?/:path(.*)?"],
+	pageId: "/Explorer",
+	fallback: ExplorerFallback,
+	seed: () => [panel("FileList", 0, 0, 12, 16)],
+	lockWhilePrinting: false,
+	fullPage: true,
+};
+
+/** The editable built-in pages; the Explorer joins them only when it's being replaced. */
+export function builtinPages(replaceExplorer: boolean): ReadonlyArray<BuiltinPageDef> {
+	return replaceExplorer ? [...BASE_PAGES, EXPLORER_PAGE] : BASE_PAGES;
+}
+
+/**
+ * Whether the Explorer replacement was active when the plugin loaded. Route overrides are installed
+ * once with the layout, so this can only change on a reload - Settings compares it against the stored
+ * choice to say when a reload is needed.
+ */
+export const EXPLORER_REPLACED_AT_LOAD = shouldReplaceExplorerPage();
+
+export const BUILTIN_PAGES: ReadonlyArray<BuiltinPageDef> = builtinPages(EXPLORER_REPLACED_AT_LOAD);

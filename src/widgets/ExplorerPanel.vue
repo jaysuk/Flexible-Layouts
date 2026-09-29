@@ -77,12 +77,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, resolveComponent } from "vue";
+import { computed, ref, resolveComponent, watch } from "vue";
 
 import i18n from "@/i18n";
 
 import GcodeCmEditor from "./GcodeCmEditor.vue";
 import { shouldUseNewGcodeEditor } from "../model/editorPreference";
+import type { ExplorerTarget } from "../model/explorerRoute";
 
 interface FileItem { name: string; isDirectory?: boolean }
 interface Tab { id: number; kind: "directory" | "editor"; filename?: string; directory?: string; dirty?: boolean }
@@ -93,7 +94,16 @@ interface EditorHandle { save: () => Promise<boolean> }
 // `attach` is passed straight through to the close-confirmation `v-dialog`, purely for testability
 // (Vuetify teleports dialog content to `<body>` by default, invisible to a `VueWrapper`'s own `find`)
 // - see this repo's CLAUDE.md "Testing" section.
-const props = defineProps<{ attach?: boolean | string }>();
+const props = defineProps<{
+	attach?: boolean | string;
+	/**
+	 * Something to show right away and whenever it changes: a directory to browse or a file to open.
+	 * Used by the replacement Explorer page to honour DWC's `/Explorer/...` deep links; ignored when
+	 * omitted (the panel as a plain widget).
+	 */
+	target?: ExplorerTarget;
+}>();
+const emit = defineEmits<{ "dirty-change": [dirty: boolean] }>();
 
 const fileList = resolveComponent("FileList");
 const monacoEditor = resolveComponent("MonacoEditor");
@@ -133,6 +143,30 @@ function open(item: FileItem, directory: string): void {
 	tabs.value.push({ id, kind: "editor", filename: full });
 	activeTab.value = id;
 }
+
+// Follow a deep link: open the file in an editor tab, or point a file-browser tab at the directory
+// (the active one if it is a browser, else the first browser, so an open editor isn't disturbed).
+function applyTarget(target: ExplorerTarget): void {
+	if (target.kind === "editor") {
+		const slash = target.path.lastIndexOf("/");
+		open({ name: target.path.slice(slash + 1) }, target.path.slice(0, slash));
+		return;
+	}
+	const active = tabs.value.find((t) => t.id === activeTab.value && t.kind === "directory");
+	const browser = active ?? tabs.value.find((t) => t.kind === "directory");
+	if (browser) {
+		browser.directory = target.path;
+		activeTab.value = browser.id;
+	}
+}
+watch(() => (props.target ? `${props.target.kind}|${props.target.path}` : ""), () => {
+	if (props.target) {
+		applyTarget(props.target);
+	}
+}, { immediate: true });
+
+// Lets a host (the replacement Explorer page) guard navigation away while edits are unsaved.
+watch(() => tabs.value.some((t) => t.dirty), (dirty) => emit("dirty-change", dirty));
 
 function addBrowserTab(): void {
 	const id = nextId++;

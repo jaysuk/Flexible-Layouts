@@ -218,6 +218,18 @@
 			</p>
 			<v-switch :model-value="newEditorEnabled" color="primary" density="compact" hide-details
 					  :label="$t('plugins.flexibleLayouts.gcodeEditor.settingsToggle')" @update:model-value="onToggleNewEditor" />
+			<!-- Only meaningful with the new editor: the replacement Explorer page exists to open G-code in it. -->
+			<v-switch :model-value="replaceExplorer" color="primary" density="compact" hide-details :disabled="!newEditorEnabled"
+					  :label="$t('plugins.flexibleLayouts.gcodeEditor.replaceExplorer')" @update:model-value="onToggleReplaceExplorer" />
+			<p class="text-body-small text-medium-emphasis mt-0 mb-2">
+				{{ $t("plugins.flexibleLayouts.gcodeEditor.replaceExplorerHint") }}
+			</p>
+			<v-alert v-if="explorerReloadNeeded" type="info" variant="tonal" density="compact" class="mb-2">
+				{{ $t("plugins.flexibleLayouts.gcodeEditor.reloadNeeded") }}
+				<template #append>
+					<v-btn size="small" variant="text" @click="reloadPage">{{ $t("plugins.flexibleLayouts.gcodeEditor.reloadNow") }}</v-btn>
+				</template>
+			</v-alert>
 
 			<v-divider class="my-4" />
 			<div class="text-title-small mb-1 text-error">{{ $t("plugins.flexibleLayouts.reset.sectionTitle") }}</div>
@@ -315,7 +327,8 @@ import { buildReport, cleanReleaseNotes, copyReport, downloadReport, fetchReleas
 
 import { PLUGIN_MANIFEST_ID } from "../model/constants";
 import { activateFlLayout, deactivateFlLayout, isFlLayoutActive } from "../model/layoutState";
-import { isNewGcodeEditorEnabled, setNewGcodeEditorEnabled } from "../model/editorPreference";
+import { isExplorerReplaceEnabled, isNewGcodeEditorEnabled, setExplorerReplaceEnabled, setNewGcodeEditorEnabled, shouldReplaceExplorerPage } from "../model/editorPreference";
+import { EXPLORER_REPLACED_AT_LOAD } from "../model/builtinPages";
 import { editMode } from "../model/editorState";
 import { applying, checking, dismissCurrentUpdate, dismissedVersion, pendingReload, runUpdateCheck, setUpdateChecksEnabled, undismissUpdate, updateChecksEnabled, updateDiagnostics, updateState as update, applyUpdateNow } from "../model/updateCheck";
 import { useLayoutStore } from "../model/store";
@@ -694,10 +707,27 @@ function sdNotify(level: LogLevel, key: string, params?: Record<string, unknown>
 
 // --- G-code editor choice ------------------------------------------------------------------------
 const newEditorEnabled = ref(isNewGcodeEditorEnabled());
+const replaceExplorer = ref(isExplorerReplaceEnabled());
+// The Explorer override is installed once at plugin load, so a change only shows after a reload:
+// compare what would be installed now with what was installed at load.
+const explorerReloadNeeded = ref(false);
+function refreshExplorerReloadNeeded(): void {
+	explorerReloadNeeded.value = shouldReplaceExplorerPage() !== EXPLORER_REPLACED_AT_LOAD;
+}
+function onToggleReplaceExplorer(value: boolean | null): void {
+	const on = value === true;
+	replaceExplorer.value = on;
+	setExplorerReplaceEnabled(on);
+	refreshExplorerReloadNeeded();
+}
+function reloadPage(): void {
+	window.location.reload();
+}
 function onToggleNewEditor(value: boolean | null): void {
 	const on = value === true;
 	newEditorEnabled.value = on;
 	setNewGcodeEditorEnabled(on);
+	refreshExplorerReloadNeeded(); // turning the editor off also drops the (dependent) Explorer replacement
 }
 
 function onToggleSd(value: boolean | null): void {

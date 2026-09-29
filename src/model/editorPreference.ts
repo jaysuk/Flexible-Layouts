@@ -13,6 +13,7 @@
 import { classifyFile } from "dwc-gcode-core";
 
 const KEY = "flexibleLayouts.useGcodeEditor";
+const REPLACE_EXPLORER_KEY = "flexibleLayouts.replaceExplorerPage";
 
 function ls(): Storage | null {
 	try {
@@ -35,4 +36,22 @@ export function setNewGcodeEditorEnabled(on: boolean): void {
  *  name/role too - `config.g`, macros, print files - not just a `.g`/`.gcode` extension check). */
 export function shouldUseNewGcodeEditor(filename: string): boolean {
 	return isNewGcodeEditorEnabled() && classifyFile(filename).syntax === "gcode";
+}
+
+/** The user's choice to replace DWC's own Explorer page with Flexible Layouts' (which opens G-code in
+ *  the new editor). Only meaningful together with the new editor - see `shouldReplaceExplorerPage`. */
+export function isExplorerReplaceEnabled(): boolean {
+	return ls()?.getItem(REPLACE_EXPLORER_KEY) === "1";
+}
+
+export function setExplorerReplaceEnabled(on: boolean): void {
+	ls()?.setItem(REPLACE_EXPLORER_KEY, on ? "1" : "0");
+}
+
+/** Whether the stock Explorer route should render Flexible Layouts' page instead: the replacement is
+ *  chosen AND the new editor is on (without it the replacement would just be a worse Explorer). Read
+ *  once at plugin load - route overrides are installed with the layout and can't change afterwards, so
+ *  toggling it in Settings takes effect after a reload. */
+export function shouldReplaceExplorerPage(): boolean {
+	return isNewGcodeEditorEnabled() && isExplorerReplaceEnabled();
 }

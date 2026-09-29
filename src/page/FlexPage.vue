@@ -327,6 +327,8 @@ const props = defineProps<{
 	seed?: () => Array<GridItemModel>;
 	/** Lock the stock fallback while printing. Default true; see `BuiltinPageDef.lockWhilePrinting`. */
 	lockFallbackWhilePrinting?: boolean;
+	/** "Full page" default when the user hasn't chosen (see `BuiltinPageDef.fullPage`). */
+	defaultFullPage?: boolean;
 }>();
 
 const store = useLayoutStore();
@@ -378,9 +380,10 @@ function setPageLock(v: boolean | null) {
 // scrolled past.
 // (Its id is the same literal FlexShell mounts it with.)
 const isStatusRegion = computed(() => props.pageId === "__status__");
-const pageFullPage = computed(() => !isStatusRegion.value && (store.getPage(props.pageId)?.fullPage ?? false));
+const pageFullPage = computed(() => !isStatusRegion.value && (store.getPage(props.pageId)?.fullPage ?? props.defaultFullPage ?? false));
 function setPageFullPage(v: boolean | null) {
-	store.ensurePage(props.pageId, props.kind ?? "custom").fullPage = v === true ? true : undefined;
+	// Off is only stored when it overrides a page that is full by default; otherwise "unset" is enough.
+	store.ensurePage(props.pageId, props.kind ?? "custom").fullPage = v === true ? true : (props.defaultFullPage ? false : undefined);
 }
 // The scroll only makes sense in view mode (editing needs the toolbar in view) and where the layout
 // has a status row above the page to scroll past (md+).
