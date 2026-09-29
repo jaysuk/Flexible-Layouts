@@ -16,6 +16,8 @@
  */
 import { reactive } from "vue";
 
+import type { GridItemModel, LayoutDocument, Widget } from "./document";
+
 export interface ExplorerTab {
 	id: number;
 	kind: "directory" | "editor";
@@ -46,6 +48,11 @@ export interface ExplorerSession {
 export const EXPLORER_PAGE_SESSION = "page:/Explorer";
 
 const sessions = new Map<string, ExplorerSession>();
+/** Sessions of panels that can't be told apart (no key): not remembered, but still counted by the unload guard while mounted. */
+const privateSessions = new Set<ExplorerSession>();
+
+/** The session key of an Explorer panel placed on a page: its grid item id (see `ExplorerPanel.vue`). */
+const PANEL_KEY_PREFIX = "panel:";
 
 function freshSession(): ExplorerSession {
 	return reactive({
@@ -58,10 +65,16 @@ function freshSession(): ExplorerSession {
 
 /**
  * The session for `key`, created on first use. A `null` key is a panel that can't be told apart from another
- * (no grid item around it): it gets a private session that is not remembered.
+ * (no grid item around it): it gets a private session that is not remembered - hand it back with
+ * `releaseExplorerSession` when the panel goes.
  */
 export function explorerSession(key: string | null): ExplorerSession {
-	if (key === null) return freshSession();
+	installUnloadGuard();
+	if (key === null) {
+		const session = freshSession();
+		privateSessions.add(session);
+		return session;
+	}
 	let session = sessions.get(key);
 	if (session === undefined) {
 		session = freshSession();
@@ -72,7 +85,64 @@ export function explorerSession(key: string | null): ExplorerSession {
 	return session;
 }
 
+/** A panel with a private (unkeyed) session is going away; a keyed session is kept and this does nothing. */
+export function releaseExplorerSession(session: ExplorerSession): void {
+	privateSessions.delete(session);
+}
+
 /** Forget every session (tests, and anything that swaps the whole document). */
 export function clearExplorerSessions(): void {
 	sessions.clear();
+	privateSessions.clear();
+}
+
+/**
+ * Forget the sessions of Explorer panels that are no longer in `doc` (it was swapped for another layout, or the
+ * panel was deleted), so their tabs and unsaved drafts don't sit in memory - and hold the unload guard up -
+ * for a panel nobody can reach. The replacement Explorer page's own session is not tied to the document and stays.
+ */
+export function pruneExplorerSessions(doc: LayoutDocument): void {
+	const live = new Set<string>();
+	const visit = (items?: Array<GridItemModel>): void => {
+		for (const item of items ?? []) {
+			if (!item) continue;
+			live.add(item.i);
+			if (item.widget?.type === "group") visit((item.widget as Extract<Widget, { type: "group" }>).items);
+		}
+	};
+	for (const page of Object.values(doc.pages ?? {})) {
+		visit(page?.items);
+		visit(page?.variants?.md);
+		visit(page?.variants?.sm);
+	}
+	visit(doc.header?.items);
+	for (const key of [...sessions.keys()]) {
+		// A nested scope can add segments after the grid item's id, so any live id among them keeps the session.
+		if (key.startsWith(PANEL_KEY_PREFIX) && !key.slice(PANEL_KEY_PREFIX.length).split("/").some((id) => live.has(id))) {
+			sessions.delete(key);
+		}
+	}
+}
+
+/** Whether any remembered or mounted Explorer session holds an editor tab with unsaved edits. */
+export function hasUnsavedExplorerEdits(): boolean {
+	const unsaved = (session: ExplorerSession): boolean => session.tabs.some((tab) => tab.kind === "editor" && tab.dirty);
+	return [...sessions.values()].some(unsaved) || [...privateSessions].some(unsaved);
+}
+
+// The same browser-level guard DWC's own Explorer page keeps while an editor has unsaved changes. It has to
+// live here, not in the panel: leaving the page unmounts the panel but keeps the stashed drafts, and a reload
+// then would drop them just the same.
+function onBeforeUnload(e: BeforeUnloadEvent): void {
+	if (hasUnsavedExplorerEdits()) {
+		e.preventDefault();
+		e.returnValue = "";
+	}
+}
+
+let unloadGuardInstalled = false;
+function installUnloadGuard(): void {
+	if (unloadGuardInstalled || typeof window === "undefined") return;
+	window.addEventListener("beforeunload", onBeforeUnload);
+	unloadGuardInstalled = true;
 }

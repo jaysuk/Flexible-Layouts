@@ -96,7 +96,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, inject, ref, resolveComponent, toRef, watch } from "vue";
+import { computed, inject, onBeforeUnmount, ref, resolveComponent, toRef, watch } from "vue";
 
 import { SETTINGS_SCOPE_KEY } from "@/composables/useComponentSettings";
 
@@ -106,7 +106,7 @@ import Display12864Emulator from "./Display12864Emulator.vue";
 import GcodeCmEditor from "./GcodeCmEditor.vue";
 import { isMenuFile, shouldUseNewGcodeEditor } from "../model/editorPreference";
 import type { ExplorerTarget } from "../model/explorerRoute";
-import { explorerSession, type ExplorerTab as Tab } from "../model/explorerSession";
+import { explorerSession, releaseExplorerSession, type ExplorerTab as Tab } from "../model/explorerSession";
 
 interface FileItem { name: string; isDirectory?: boolean }
 // The subset of GcodeCmEditor.vue's/DWC core's MonacoEditor.vue's exposed surface this panel needs -
@@ -145,6 +145,7 @@ const monacoEditor = resolveComponent("MonacoEditor");
 // unmounts the panel, and coming back finds the same tabs, the same active one, the same folders.
 const settingsScope = SETTINGS_SCOPE_KEY ? inject(SETTINGS_SCOPE_KEY, null) : null;
 const session = explorerSession(props.sessionKey ?? (settingsScope ? `panel:${settingsScope.segments.join("/")}` : null));
+onBeforeUnmount(() => releaseExplorerSession(session));
 const returning = session.returning;
 const tabs = toRef(session, "tabs");
 const activeTab = toRef(session, "activeTab");
@@ -239,10 +240,13 @@ const menuOverrides = computed<Record<string, string>>(() => {
 });
 
 // Saving a menu file re-reads its preview: dirty -> clean means the editor just wrote it to the card.
-watch(() => tabs.value.map((t) => !!t.dirty), (now, before) => {
-	now.forEach((dirty, i) => {
-		if (before[i] && !dirty && tabs.value[i]) tabs.value[i].saves = (tabs.value[i].saves ?? 0) + 1;
-	});
+// Matched by tab id, not position: closing a tab shifts the ones after it, and that must not read as a save.
+watch(() => tabs.value.map((t): [number, boolean] => [t.id, !!t.dirty]), (now, before) => {
+	const wasDirty = new Map(before);
+	for (const [id, dirty] of now) {
+		const tab = tabs.value.find((t) => t.id === id);
+		if (wasDirty.get(id) && !dirty && tab) tab.saves = (tab.saves ?? 0) + 1;
+	}
 });
 
 // Lets a host (the replacement Explorer page) guard navigation away while edits would be lost. An edit in

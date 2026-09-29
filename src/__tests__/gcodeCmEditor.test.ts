@@ -278,6 +278,22 @@ describe("GcodeCmEditor", () => {
 		wrapper.unmount();
 	});
 
+	it("reverts to the last SAVED text, not the text from before the first save", async () => {
+		const wrapper = mountInDwc(GcodeCmEditor, { props: { filename: "0:/gcodes/m2.g" } });
+		await vi.waitFor(() => expect(wrapper.text()).toContain("G1 X10 Y10"));
+		const vm = wrapper.vm as unknown as ExposedVm;
+
+		vm.editorInstance.view.dispatch({ changes: { from: 0, insert: "; saved\n" } });
+		expect(await vm.save()).toBe(true);
+		vm.editorInstance.view.dispatch({ changes: { from: 0, insert: "; unsaved\n" } });
+		await wrapper.vm.$nextTick();
+
+		await wrapper.findAll("button").find((b) => b.attributes("title") === "Revert")!.trigger("click");
+		await wrapper.vm.$nextTick();
+		expect(vm.editorInstance.view.state.doc.toString()).toBe("; saved\nG28\nG1 X10 Y10\n");
+		wrapper.unmount();
+	});
+
 	it("Run sends M98 for a macro-style file, disabled while the UI is frozen", async () => {
 		patchModel({ directories: { gCodes: "0:/gcodes" } });
 		const wrapper = mountInDwc(GcodeCmEditor, { props: { filename: "0:/macros/prime.g" } });

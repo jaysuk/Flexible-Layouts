@@ -19,6 +19,7 @@ import { useSettingsStore } from "@/stores/settings";
 
 import { createEmptyPage, type PageLayout } from "./document";
 import { isFlLayoutActive } from "./layoutState";
+import { pruneExplorerSessions } from "./explorerSession";
 import { CUSTOM_PAGE_PREFIX, migrateOpaquePageIds, uniqueCustomPagePath } from "./pageSlug";
 import { useLayoutStore } from "./store";
 import CustomPageAlias from "../page/CustomPageAlias.vue";
@@ -267,6 +268,7 @@ export function registerExistingCustomPages(): void {
 	// A document that still names pages by random ids gets readable ones first (see model/pageSlug.ts).
 	migrateOpaquePageIds(liveDoc());
 	moveLegacyComponentSettings();
+	pruneExplorerSessions(liveDoc()); // every document swap comes through here: drop Explorer panels the new one lacks
 	if (_stopSettingsWatch === null) {
 		_stopSettingsWatch = watch(
 			() => Object.keys((useSettingsStore() as unknown as { componentSettings?: Record<string, unknown> }).componentSettings ?? {}).length,

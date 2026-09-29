@@ -9,7 +9,8 @@ import ExplorerPanel from "../widgets/ExplorerPanel.vue";
 import GcodeCmEditor from "../widgets/GcodeCmEditor.vue";
 import { resetEditorColorSettingsForTests } from "../model/editorColorSettings";
 import { clearViewStates } from "../model/editorViewState";
-import { clearExplorerSessions } from "../model/explorerSession";
+import type { LayoutDocument } from "../model/document";
+import { clearExplorerSessions, explorerSession, hasUnsavedExplorerEdits, pruneExplorerSessions } from "../model/explorerSession";
 import type { ExplorerTarget } from "../model/explorerRoute";
 
 // Same in-memory localStorage stand-in the other editor tests use (this harness's is a non-function stub).
@@ -261,6 +262,80 @@ describe("GcodeCmEditor remembers where you were", () => {
 		const w = mountInDwc(GcodeCmEditor, { props: { filename: "0:/macros/a.g", draft: files["0:/macros/a.g"] } });
 		await vi.waitFor(() => expect(w.text()).toContain("G1 X10"));
 		expect(w.emitted("dirty")).toEqual([[false]]);
+		w.unmount();
+	});
+});
+
+describe("Explorer sessions and the document", () => {
+	const docWith = (items: unknown, header: unknown = []): LayoutDocument => ({
+		pages: { "/Dashboard": { items } }, header: { items: header },
+	} as unknown as LayoutDocument);
+
+	it("prunes the sessions of panels the document no longer has, keeping the ones it does (nested too) and the page's own", () => {
+		const kept = explorerSession("panel:item-1");
+		const nested = explorerSession("panel:in-group");
+		const inHeader = explorerSession("panel:in-header");
+		const gone = explorerSession("panel:item-gone");
+		const page = explorerSession("page:/Explorer");
+
+		pruneExplorerSessions(docWith(
+			[{ i: "item-1", widget: { type: "label" } }, { i: "grp", widget: { type: "group", items: [{ i: "in-group", widget: { type: "label" } }] } }],
+			[{ i: "in-header", widget: { type: "label" } }],
+		));
+
+		expect(explorerSession("panel:item-1")).toBe(kept);
+		expect(explorerSession("panel:in-group")).toBe(nested);
+		expect(explorerSession("panel:in-header")).toBe(inHeader);
+		expect(explorerSession("page:/Explorer")).toBe(page);
+		expect(explorerSession("panel:item-gone")).not.toBe(gone);
+	});
+});
+
+describe("the reload guard", () => {
+	const unload = (): boolean => {
+		const e = new Event("beforeunload", { cancelable: true });
+		window.dispatchEvent(e);
+		return e.defaultPrevented;
+	};
+	const editorTab = (dirty: boolean) => ({ id: 9, kind: "editor" as const, filename: "0:/macros/a.g", dirty });
+
+	it("asks before a reload while any session - not only a mounted one - holds an unsaved editor", () => {
+		const session = explorerSession("panel:guarded");
+		expect(unload()).toBe(false);
+		session.tabs.push(editorTab(true));
+		expect(hasUnsavedExplorerEdits()).toBe(true);
+		expect(unload()).toBe(true);
+		session.tabs[session.tabs.length - 1].dirty = false;
+		expect(unload()).toBe(false);
+	});
+
+	it("also counts an unkeyed panel while it is mounted, and lets go when it is not", async () => {
+		const w = mountInDwc(ExplorerPanel, { props: { target: edit("0:/macros/a.g") } });
+		await vi.waitFor(() => expect(w.text()).toContain("G1 X10"));
+		type(w, "x");
+		await nextTick();
+		expect(unload()).toBe(true);
+		w.unmount();
+		expect(unload()).toBe(false);
+	});
+});
+
+describe("ExplorerPanel save detection", () => {
+	it("does not read closing one tab as another tab having been saved", async () => {
+		const w = await mountPanel({ target: edit("0:/macros/a.g") });
+		await vi.waitFor(() => expect(w.text()).toContain("G1 X10"));
+		type(w, "x"); // a.g is dirty and stays mounted in the background
+		await w.setProps({ target: edit("0:/macros/b.g") });
+		await vi.waitFor(() => expect(panelTabs(w).map((t) => t.filename)).toContain("0:/macros/b.g"));
+
+		const vm = w.vm as unknown as { closeTab: (id: number) => void; discardClose: () => void };
+		const a = panelTabs(w).find((t) => t.filename === "0:/macros/a.g") as unknown as { id: number };
+		vm.closeTab(a.id);
+		vm.discardClose();
+		await nextTick();
+
+		expect(panelTabs(w).map((t) => t.filename)).toEqual([undefined, "0:/macros/b.g"]);
+		expect(panelTabs(w).every((t) => (t.saves ?? 0) === 0)).toBe(true);
 		w.unmount();
 	});
 });

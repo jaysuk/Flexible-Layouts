@@ -503,8 +503,9 @@ async function save(): Promise<boolean> {
 	if (instance === null || saving.value) return false;
 	saving.value = true;
 	try {
-		const content = instance.flush().toString();
-		await machineStore.upload({ filename: props.filename, content: new Blob([content]) }, false, false, false, false);
+		const saved = instance.flush();
+		await machineStore.upload({ filename: props.filename, content: new Blob([saved.toString()]) }, false, false, false, false);
+		originalDoc = saved; // Revert now means "back to what is on the card", not "back to before the first save"
 		setDirty(false);
 		if (isMenu) void loadMenuSiblings();
 		uiStore.makeNotification(LogLevel.success, basename(props.filename),

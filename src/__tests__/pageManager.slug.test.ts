@@ -11,6 +11,7 @@ vi.mock("@/stores/menu", () => ({
 }));
 
 import { createEmptyDocument, createEmptyPage, type LayoutDocument } from "../model/document";
+import { explorerSession } from "../model/explorerSession";
 import { mergeImported } from "../model/io";
 import {
 	createCustomPage, deleteCustomPage, registerExistingCustomPages, unregisterAllCustomPages,
@@ -177,5 +178,17 @@ describe("importing pages whose readable addresses can collide", () => {
 		imported.nav.customCategories = [{ key: "flx-mine", name: "Mine" }];
 		const merged = mergeImported(createEmptyDocument(), imported, { replaceExisting: true });
 		expect(merged.nav.customCategories).toEqual([{ key: "flx-mine", name: "Mine" }]);
+	});
+});
+
+describe("registerExistingCustomPages and Explorer panel sessions", () => {
+	it("drops the sessions of panels the loaded layout does not have, which is every document swap", () => {
+		const doc = load({ [`${P}notes`]: "Notes" });
+		doc.pages[`${P}notes`].items = [{ i: "explorer-1", x: 0, y: 0, w: 4, h: 4, widget: { type: "label" } }] as never;
+		const kept = explorerSession("panel:explorer-1");
+		const gone = explorerSession("panel:from-the-old-layout");
+		registerExistingCustomPages();
+		expect(explorerSession("panel:explorer-1")).toBe(kept);
+		expect(explorerSession("panel:from-the-old-layout")).not.toBe(gone);
 	});
 });
