@@ -1317,6 +1317,11 @@ export interface GridItemModel {
 	widget: Widget;
 	/** Optional title shown in the edit-mode header; falls back to the widget's catalog label. */
 	title?: string;
+	/**
+	 * Icon (an `mdi-*` name) for this panel's header, replacing the widget type's default - so several
+	 * panels of the same type (e.g. three Macro lists) can be told apart at a glance.
+	 */
+	icon?: string;
 	/** Hover tooltip (native title attribute) shown over the whole panel in view mode. */
 	tooltip?: string;
 	colors?: PanelColors;

@@ -991,10 +991,10 @@ function openProperties(id: string) {
 	propertiesOpen.value = true;
 }
 
-function saveProperties(payload: { widget: Widget; conditions: Array<ConditionRule>; colors: PanelColors; typography: Typography; fit: boolean | undefined; autoHeight: boolean | undefined; tooltip: string | undefined; lockWhilePrinting: boolean | undefined; panelChrome: boolean | undefined; geometry: { x: number; y: number; w: number; h: number } }) {
+function saveProperties(payload: { widget: Widget; conditions: Array<ConditionRule>; colors: PanelColors; typography: Typography; fit: boolean | undefined; autoHeight: boolean | undefined; icon: string | undefined; tooltip: string | undefined; lockWhilePrinting: boolean | undefined; panelChrome: boolean | undefined; geometry: { x: number; y: number; w: number; h: number } }) {
 	layout.value = layout.value.map((it) =>
 		it.i === editingId.value
-			? { ...it, widget: payload.widget, conditions: payload.conditions, colors: payload.colors, typography: payload.typography, fit: payload.fit, autoHeight: payload.autoHeight, tooltip: payload.tooltip, lockWhilePrinting: payload.lockWhilePrinting, panelChrome: payload.panelChrome, ...payload.geometry }
+			? { ...it, widget: payload.widget, conditions: payload.conditions, colors: payload.colors, typography: payload.typography, fit: payload.fit, autoHeight: payload.autoHeight, icon: payload.icon, tooltip: payload.tooltip, lockWhilePrinting: payload.lockWhilePrinting, panelChrome: payload.panelChrome, ...payload.geometry }
 			: it);
 	persist();
 	commit();

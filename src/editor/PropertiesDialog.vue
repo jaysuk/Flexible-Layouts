@@ -3,7 +3,7 @@
 			  @update:model-value="emit('update:modelValue', $event)">
 		<v-card v-if="draft">
 			<v-card-title class="d-flex align-center">
-				<v-icon class="me-2">{{ described.icon }}</v-icon>
+				<v-icon class="me-2">{{ icon || described.icon }}</v-icon>
 				{{ $t("plugins.flexibleLayouts.properties.title") }}
 				<span class="text-medium-emphasis text-truncate ms-2">— {{ described.title }}</span>
 				<v-chip size="x-small" label class="ms-2 flex-type-chip" :title="$t('plugins.flexibleLayouts.properties.widgetType')">{{ typeLabel }}</v-chip>
@@ -1429,6 +1429,10 @@
 				<v-switch v-model="autoHeight" color="primary" density="compact" hide-details class="mt-1"
 						  :label="$t('plugins.flexibleLayouts.typography.autoHeight')" />
 				<div class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.typography.autoHeightHint") }}</div>
+				<!-- Per-panel icon override: tell apart several panels of the same type at a glance. -->
+				<div class="text-caption text-medium-emphasis mt-3 mb-1">{{ $t("plugins.flexibleLayouts.properties.icon") }}</div>
+				<IconPicker v-model="icon" :fallback="described.icon" :label="described.icon" />
+				<div class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.properties.iconHint") }}</div>
 				<v-text-field persistent-placeholder v-model="tooltip" class="mt-3" density="compact" variant="outlined" hide-details clearable
 							  :label="$t('plugins.flexibleLayouts.properties.tooltip')" />
 				<div class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.properties.tooltipHint") }}</div>
@@ -1481,7 +1485,7 @@ import WidgetView from "../widgets/WidgetView.vue";
 const props = defineProps<{ modelValue: boolean; item: GridItemModel | null }>();
 const emit = defineEmits<{
 	"update:modelValue": [boolean];
-	save: [{ widget: Widget; conditions: Array<ConditionRule>; colors: PanelColors; typography: Typography; fit: boolean | undefined; autoHeight: boolean | undefined; tooltip: string | undefined; lockWhilePrinting: boolean | undefined; panelChrome: boolean | undefined; geometry: { x: number; y: number; w: number; h: number } }];
+	save: [{ widget: Widget; conditions: Array<ConditionRule>; colors: PanelColors; typography: Typography; fit: boolean | undefined; autoHeight: boolean | undefined; icon: string | undefined; tooltip: string | undefined; lockWhilePrinting: boolean | undefined; panelChrome: boolean | undefined; geometry: { x: number; y: number; w: number; h: number } }];
 }>();
 
 const machineStore = useMachineStore();
@@ -1556,6 +1560,7 @@ const typography = ref<Typography>({});
 const fit = ref<boolean | undefined>(undefined);
 const autoHeight = ref<boolean | undefined>(undefined);
 const tooltip = ref<string>("");
+const icon = ref<string>("");
 const lockWhilePrinting = ref<boolean>(false);
 const panelChrome = ref<boolean>(true);
 const geom = ref({ x: 0, y: 0, w: 2, h: 2 });
@@ -1578,6 +1583,7 @@ watch(
 			fit.value = props.item.fit ?? false;
 			autoHeight.value = props.item.autoHeight ?? false;
 			tooltip.value = props.item.tooltip ?? "";
+			icon.value = props.item.icon ?? "";
 			// Default reflects the widget-type policy (motion/tool widgets default on) until set explicitly.
 			lockWhilePrinting.value = props.item.lockWhilePrinting ?? defaultLockForWidget(props.item.widget);
 			panelChrome.value = props.item.panelChrome ?? defaultChromeForWidget(props.item.widget);
@@ -2044,6 +2050,7 @@ function save() {
 			typography: typography.value,
 			fit: fit.value,
 			autoHeight: autoHeight.value,
+			icon: (icon.value ?? "").trim() || undefined,
 			tooltip: tooltip.value.trim() || undefined,
 			lockWhilePrinting: lockWhilePrinting.value,
 			panelChrome: draft.value.type === "builtinPanel" ? undefined : panelChrome.value,

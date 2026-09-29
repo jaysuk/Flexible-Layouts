@@ -156,7 +156,7 @@ function reportWidgetError(message: string): void {
 
 const meta = computed(() => {
 	const described = describeWidget(props.item.widget);
-	return { title: props.item.title || described.title, icon: described.icon };
+	return { title: props.item.title || described.title, icon: props.item.icon || described.icon };
 });
 
 // Re-render (clear a caught error) when the widget's config changes, so fixing it in the

@@ -26,7 +26,7 @@
 		</v-menu>
 
 		<!-- Manual entry for any mdi-* name not in the curated list. -->
-		<v-text-field :model-value="modelValue" density="compact" variant="outlined" hide-details
+		<v-text-field :model-value="modelValue" density="compact" variant="outlined" hide-details clearable
 					  class="flex-grow-1" :label="label ?? $t('plugins.flexibleLayouts.pages.icon')"
 					  @update:model-value="emit('update:modelValue', $event)" />
 	</div>
@@ -37,10 +37,13 @@ import { computed, ref } from "vue";
 
 import { ICON_LIST } from "./iconList";
 
-const props = defineProps<{ modelValue: string; label?: string }>();
+const props = withDefaults(defineProps<{
+	modelValue: string;
+	label?: string;
+	/** Icon shown on the picker button while nothing is chosen. */
+	fallback?: string;
+}>(), { fallback: "mdi-view-dashboard-outline" });
 const emit = defineEmits<{ "update:modelValue": [string] }>();
-
-const fallback = "mdi-view-dashboard-outline";
 const open = ref(false);
 const search = ref("");
 
