@@ -104,12 +104,16 @@
 			<!-- Drag to resize - only while editing, matching HeaderWidgets.vue's own item-resize handles
 				 (same pointer-capture idiom, see onDrawerResizePointerDown above). -->
 			<div v-if="editMode" class="fl-drawer-resizer" @pointerdown="onDrawerResizePointerDown" />
-			<v-list nav density="compact">
-				<template v-for="group in navGroups" :key="group.category.key">
-					<v-list-subheader>{{ $t(group.category.captionKey) }}</v-list-subheader>
+			<!-- One collapsible group per category, like stock DWC's drawer. -->
+			<v-list v-model:opened="openedCategories" nav density="compact" open-strategy="multiple">
+				<v-list-group v-for="group in navGroups" :key="group.category.key" :value="group.category.key">
+					<template #activator="{ props: activatorProps }">
+						<v-list-item v-bind="activatorProps"
+								 :prepend-icon="group.category.icon" :title="$t(group.category.captionKey)" />
+					</template>
 					<v-list-item v-for="item in group.items" :key="item.path"
 								 :to="item.path" :prepend-icon="item.icon" :title="resolveItemTitle(item)" />
-				</template>
+				</v-list-group>
 			</v-list>
 
 			<template v-if="editMode" #append>
@@ -602,6 +606,32 @@ function setStatusHidden(hidden: boolean) {
 // Nav entries for the drawer: DWC's menu minus globally-hidden and plugin-hidden pages, in the
 // user's saved order (shared with the phone hub - see useNavGroups.ts).
 const navGroups = useNavGroups();
+
+// Categories the user folded away. Tracking the collapsed set (not the open one) keeps every category
+// open by default, including ones a plugin registers later, and a fold survives the list changing.
+// Remembered per browser in localStorage (like the drawer width below).
+const COLLAPSED_CATEGORIES_KEY = "flexibleLayouts.collapsedNavCategories";
+function loadCollapsedCategories(): string[] {
+	try {
+		const raw = JSON.parse(localStorage.getItem(COLLAPSED_CATEGORIES_KEY) || "[]");
+		if (Array.isArray(raw)) { return raw.filter((k): k is string => typeof k === "string"); }
+	} catch { /* storage unavailable or corrupt */ }
+	return [];
+}
+const collapsedCategories = ref<string[]>(loadCollapsedCategories());
+const openedCategories = computed<string[]>({
+	get: () => navGroups.value.map((g) => g.category.key).filter((k) => !collapsedCategories.value.includes(k)),
+	set: (opened) => {
+		// Only categories currently listed can change state; a fold on one that is temporarily
+		// empty/hidden is kept rather than forgotten.
+		const listed = navGroups.value.map((g) => g.category.key);
+		collapsedCategories.value = [
+			...collapsedCategories.value.filter((k) => !listed.includes(k)),
+			...listed.filter((k) => !opened.includes(k)),
+		];
+		try { localStorage.setItem(COLLAPSED_CATEGORIES_KEY, JSON.stringify(collapsedCategories.value)); } catch { /* ignore */ }
+	},
+});
 
 const headerWidgetsRef = ref<InstanceType<typeof HeaderWidgets> | null>(null);
 

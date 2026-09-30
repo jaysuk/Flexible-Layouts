@@ -71,6 +71,13 @@ Vue 3 + Vuetify plugin for DuetWebControl (drag-and-drop layout customisation fo
   component PER PATH (`/` and `/Dashboard`), because Vue only animates a swap between two component types, and the hub
   decision is made from the record, not the router's current route, or the hub sliding out turns into the dashboard mid-slide.
   Edit mode has no hub and no slide (the drawer is how you leave).
+- **Side drawer categories are collapsible** (`FlexShell.vue`), like stock DWC's `builtin.vue`: one `v-list-group` per
+  `useNavGroups()` category with a clickable icon+caption activator. The state is the *collapsed* set, not the open one
+  (`openedCategories` is a computed over it), so every category - including one a plugin registers later - starts open, and
+  it is persisted in `localStorage` (`flexibleLayouts.collapsedNavCategories`, try/catch like the drawer width). The setter
+  keeps a fold on a category that is temporarily not listed. Not ported from stock: single-child category flattening, and the
+  `main-menu-category`/`main-menu-route` theme colours (the theme editor offers them, the drawer doesn't apply them yet).
+  The phone hub is unaffected (it lists tiles, not groups).
 - **Explorer split view (two files side by side)** (`model/explorerPanes.ts`, `ExplorerPanel.vue`). The state machine is
   `dwc-gcode-editor`'s `workspace.ts` (`splitRight`/`moveTab`/`collapseEmptyGroup`, needs editor > 0.12.0); `explorerPanes.ts` builds a
   `WorkspaceState` around the session's OWN tab objects (so `dirty`/`draft` stay live), applies one op and writes `groupId`,
