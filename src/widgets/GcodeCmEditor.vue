@@ -38,6 +38,9 @@
 			<span v-if="!isMenu && diagnosticCount !== null" class="text-caption text-medium-emphasis ml-1">
 				{{ diagnosticCount }}
 			</span>
+			<v-btn :disabled="loading" :color="editorShowWhitespace ? 'primary' : undefined" :variant="editorShowWhitespace ? 'tonal' : undefined"
+				   icon="mdi-format-pilcrow" :aria-pressed="editorShowWhitespace" :title="$t('plugins.flexibleLayouts.gcodeEditor.showWhitespace')"
+				   @click="setEditorShowWhitespace(!editorShowWhitespace)" />
 			<v-btn icon="mdi-palette" :title="$t('plugins.flexibleLayouts.gcodeEditor.colors')" @click="colorSettingsOpen = true" />
 			<v-btn :disabled="loading" icon="mdi-keyboard-outline" title="Keyboard shortcuts (F1)" @click="openShortcuts" />
 			<v-btn v-if="!isMenu" :disabled="loading" :color="stepperOpen ? 'primary' : undefined" icon="mdi-motion-play-outline"
@@ -109,11 +112,12 @@ import {
 	singleScenarioSet, updateActiveScenario, type ScenarioSet,
 } from "dwc-gcode-core/stepper/scenarioSet";
 import {
-	alignLineComments, buildDocFromString, canAutoCheck, checkDocument, codeAtCursor, createEditorInstance,
-	createThemeController, gcodeCompletion, gcodeCurrentLine, gcodeLanguage, gcodeLintUi, gcodeLiveCheck,
+	alignLineComments, buildDocFromString, canAutoCheck, checkDocument, codeAtCursor, convertTabsToSpaces,
+	createEditorInstance, createIndentationController, createThemeController, createWhitespaceController, gcodeCompletion, gcodeCurrentLine, gcodeLanguage, gcodeLintUi, gcodeLiveCheck,
 	gcodeViewStatePersistence,
 	gcodeQuickSearchKeymap, gcodeSearch, gcodeShortcutsHelp, isInsideExpression, menuLanguage, menuLiveLinter, openExpressionQuickSearch,
-	openGcodeQuickSearch, openSearchPanel, openShortcutsHelp, saveKeymap, setCurrentLine, type EditorInstance, type ThemeController,
+	openGcodeQuickSearch, openSearchPanel, openShortcutsHelp, saveKeymap, setCurrentLine, type EditorInstance,
+	type IndentationController, type ThemeController, type WhitespaceController,
 } from "dwc-gcode-editor";
 import type { Text } from "@codemirror/state";
 
@@ -125,6 +129,7 @@ import EditorColorSettingsDialog from "./EditorColorSettingsDialog.vue";
 import GcodeStepperPanel from "./GcodeStepperPanel.vue";
 import { defaultMachineIO } from "../model/configBackup/machineIO";
 import { editorColorScheme, loadEditorColorScheme } from "../model/editorColorSettings";
+import { editorShowWhitespace, editorTabWidth, setEditorShowWhitespace } from "../model/editorIndentSettings";
 import { sharedViewStates } from "../model/editorViewState";
 import { isMenuFile } from "../model/editorPreference";
 import { MENU_DIRECTORY } from "../model/display12864/menuSource";
@@ -218,6 +223,10 @@ const editorInstance = shallowRef<EditorInstance | null>(null);
 // component is mounted fresh per filename (see ExplorerPanel.vue's tab-per-file model), so
 // load() only ever runs once and this is only ever set once.
 let themeController: ThemeController | null = null;
+// Same reasoning for the tab width and the show-whitespace toggle: each is a Compartment bound to this one
+// view, driven by the shared settings refs (../model/editorIndentSettings) through the watches below.
+let indentationController: IndentationController | null = null;
+let whitespaceController: WhitespaceController | null = null;
 // Snapshot of the document as loaded, for revert() - a real CM6 Text, not a string (ChangeSpec's
 // `insert` field accepts one directly, no round-trip needed).
 let originalDoc: Text | null = null;
@@ -306,11 +315,14 @@ const viewStates = sharedViewStates();
 // A menu file has no G-code completion, comments-by-command or F4 picker, so the help leaves those out.
 const SHORTCUTS_HIDDEN = isMenu ? ["quickSearch", "completion", "blockComment"] : [];
 
-function editorExtensions(theme: ThemeController) {
+function editorExtensions(theme: ThemeController, indentation: IndentationController, whitespace: WhitespaceController) {
 	return [
 		lineNumbers(),
 		isMenu ? menuLanguage : gcodeLanguage,
 		theme.extension,
+		// The Tab key inserts this many spaces, existing tabs are drawn this wide, and save converts them.
+		indentation.extension,
+		whitespace.extension,
 		...(isMenu ? [] : [gcodeCompletion()]),
 		gcodeLintUi(),
 		lintGutter(),
@@ -486,8 +498,12 @@ async function load(): Promise<void> {
 		editorInstance.value?.destroy();
 		if (hostEl.value === null) return;
 		themeController = createThemeController(settingsStore.darkTheme);
+		indentationController = createIndentationController(editorTabWidth.value);
+		whitespaceController = createWhitespaceController(editorShowWhitespace.value);
 		originalDoc = doc;
-		editorInstance.value = createEditorInstance({ doc, parent: hostEl.value, extensions: editorExtensions(themeController) });
+		editorInstance.value = createEditorInstance({
+			doc, parent: hostEl.value, extensions: editorExtensions(themeController, indentationController, whitespaceController),
+		});
 		// Applied right after creation, in the same synchronous block, so there's no visible flash of
 		// the fixed theme before the loaded custom colors (if any) take over.
 		themeController.setCustomColors(editorInstance.value.view, editorColorScheme.value);
@@ -523,6 +539,9 @@ async function save(): Promise<boolean> {
 	if (instance === null || saving.value) return false;
 	saving.value = true;
 	try {
+		// Tabs go in as spaces, at the width set in Settings: the editor shows the converted text (one undo
+		// step), and that is what is uploaded. Before flush, so the flushed document is the converted one.
+		convertTabsToSpaces(instance.view, editorTabWidth.value);
 		const saved = instance.flush();
 		await machineStore.upload({ filename: props.filename, content: new Blob([saved.toString()]) }, false, false, false, false);
 		originalDoc = saved; // Revert now means "back to what is on the card", not "back to before the first save"
@@ -644,6 +663,16 @@ watch([stepperOpen, stepperView], ([open, view], [wasOpen, oldView]) => {
 watch(() => settingsStore.darkTheme, (dark) => {
 	const instance = editorInstance.value;
 	if (instance !== null && themeController !== null) themeController.setDark(instance.view, dark);
+});
+
+// Settings > G-code editor: the tab width and the show-whitespace toggle apply to every open editor at once.
+watch(editorTabWidth, (width) => {
+	const instance = editorInstance.value;
+	if (instance !== null && indentationController !== null) indentationController.setTabWidth(instance.view, width);
+});
+watch(editorShowWhitespace, (shown) => {
+	const instance = editorInstance.value;
+	if (instance !== null && whitespaceController !== null) whitespaceController.setShown(instance.view, shown);
 });
 
 // Live, site-wide colour updates: a Save from ANY open tab's settings dialog (this instance's own, or

@@ -238,6 +238,12 @@
 					<v-btn size="small" variant="text" @click="reloadPage">{{ $t("plugins.flexibleLayouts.gcodeEditor.reloadNow") }}</v-btn>
 				</template>
 			</v-alert>
+			<!-- Applies to every open editor at once, and to the Tab key, existing tabs and saving alike. -->
+			<v-select :model-value="editorTabWidth" :items="tabWidthChoices" density="compact" hide-details class="mt-2" style="max-width: 16rem"
+					  :label="$t('plugins.flexibleLayouts.gcodeEditor.tabWidth')" @update:model-value="setEditorTabWidth" />
+			<p class="text-body-small text-medium-emphasis mt-1 mb-2">
+				{{ $t("plugins.flexibleLayouts.gcodeEditor.tabWidthHint", { n: editorTabWidth }) }}
+			</p>
 
 			<v-divider class="my-4" />
 			<div class="text-title-small mb-1 text-error">{{ $t("plugins.flexibleLayouts.reset.sectionTitle") }}</div>
@@ -336,6 +342,7 @@ import { buildReport, cleanReleaseNotes, copyReport, downloadReport, fetchReleas
 import { PLUGIN_MANIFEST_ID } from "../model/constants";
 import { activateFlLayout, deactivateFlLayout, isFlLayoutActive } from "../model/layoutState";
 import { isExplorerReplaceEnabled, isNewGcodeEditorEnabled, setExplorerReplaceEnabled, setNewGcodeEditorEnabled } from "../model/editorPreference";
+import { editorTabWidth, setEditorTabWidth } from "../model/editorIndentSettings";
 import { syncExplorerReplacement } from "../page/explorerReplacement";
 import { setStockMobileNav, stockMobileNav } from "../model/mobileNav";
 import { editMode } from "../model/editorState";
@@ -721,6 +728,7 @@ function onToggleStockMobileNav(value: boolean | null): void {
 
 // --- G-code editor choice ------------------------------------------------------------------------
 const newEditorEnabled = ref(isNewGcodeEditorEnabled());
+const tabWidthChoices = [1, 2, 3, 4, 5, 6, 7, 8];
 const replaceExplorer = ref(isExplorerReplaceEnabled());
 // The Explorer override is applied on the spot where DWC can change route overrides at run time; on a build
 // that can't (it installs them once, with the layout) the change only shows after a reload, and this says so.

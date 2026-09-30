@@ -8,6 +8,7 @@ import { dwc, lastCode, mountInDwc, patchModel, sentCodes, setUiFrozen } from "d
 
 import GcodeCmEditor from "../widgets/GcodeCmEditor.vue";
 import { resetEditorColorSettingsForTests } from "../model/editorColorSettings";
+import { setEditorShowWhitespace, setEditorTabWidth } from "../model/editorIndentSettings";
 
 // This harness's happy-dom `localStorage` is a non-functional stub (`localStorage.setItem` is not a
 // function - same environment gap duet-gcode-postprocessor's own executionIndex.test.ts documents and
@@ -220,6 +221,113 @@ describe("GcodeCmEditor", () => {
 			expect(document.body.textContent).toContain("Linear move");
 		});
 		wrapper.unmount();
+	});
+
+	describe("tabs and spaces", () => {
+		const pressTab = (view: EditorView): void => {
+			view.contentDOM.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true }));
+		};
+		const whitespaceButton = (wrapper: ReturnType<typeof mountInDwc>) =>
+			wrapper.findAll("button").find((b) => b.attributes("title") === "plugins.flexibleLayouts.gcodeEditor.showWhitespace");
+
+		afterEach(() => {
+			setEditorTabWidth(4);
+			setEditorShowWhitespace(false);
+		});
+
+		it("the Tab key types 4 spaces by default", async () => {
+			const wrapper = mountInDwc(GcodeCmEditor, { props: { filename: "0:/gcodes/tab4.g" } });
+			await vi.waitFor(() => expect(wrapper.text()).toContain("G1 X10 Y10"));
+			const view = (wrapper.vm as unknown as ExposedVm).editorInstance.view;
+			view.dispatch({ selection: { anchor: 0 } });
+			pressTab(view);
+			expect(view.state.doc.toString()).toBe("    G28\nG1 X10 Y10\n");
+			wrapper.unmount();
+		});
+
+		it("changing the tab width in Settings changes the Tab key in an editor that is already open", async () => {
+			const wrapper = mountInDwc(GcodeCmEditor, { props: { filename: "0:/gcodes/tab2.g" } });
+			await vi.waitFor(() => expect(wrapper.text()).toContain("G1 X10 Y10"));
+			const view = (wrapper.vm as unknown as ExposedVm).editorInstance.view;
+			view.dispatch({ selection: { anchor: 0 } });
+			setEditorTabWidth(2);
+			await wrapper.vm.$nextTick();
+			pressTab(view);
+			expect(view.state.doc.toString()).toBe("  G28\nG1 X10 Y10\n");
+			wrapper.unmount();
+		});
+
+		it("an editor opened after the width was changed starts with that width", async () => {
+			setEditorTabWidth(3);
+			const wrapper = mountInDwc(GcodeCmEditor, { props: { filename: "0:/gcodes/tab3.g" } });
+			await vi.waitFor(() => expect(wrapper.text()).toContain("G1 X10 Y10"));
+			const view = (wrapper.vm as unknown as ExposedVm).editorInstance.view;
+			view.dispatch({ selection: { anchor: 0 } });
+			pressTab(view);
+			expect(view.state.doc.toString()).toBe("   G28\nG1 X10 Y10\n");
+			wrapper.unmount();
+		});
+
+		it("saving converts tabs to spaces at the configured width - in the upload AND in the editor", async () => {
+			const before = fileContent;
+			fileContent = "if true\n\tG28\n\t\tG1 X10\nM117 \"a\tb\"\n";
+			uploaded.length = 0;
+			try {
+				const wrapper = mountInDwc(GcodeCmEditor, { props: { filename: "0:/gcodes/tabs.g" } });
+				await vi.waitFor(() => expect(wrapper.text()).toContain("G1 X10"));
+				const vm = wrapper.vm as unknown as ExposedVm;
+				await expect(vm.save()).resolves.toBe(true);
+				const expected = "if true\n    G28\n        G1 X10\nM117 \"a\tb\"\n"; // the tab inside the quoted string is content
+				expect(uploaded.at(-1)?.content).toBe(expected);
+				expect(vm.editorInstance.view.state.doc.toString()).toBe(expected);
+				expect(wrapper.emitted("dirty")?.at(-1)).toEqual([false]);
+
+				setEditorTabWidth(2);
+				vm.editorInstance.view.dispatch({ changes: { from: 0, insert: "\t; two\n" } });
+				await vm.save();
+				expect(uploaded.at(-1)?.content.startsWith("  ; two\n")).toBe(true);
+				wrapper.unmount();
+			} finally {
+				fileContent = before;
+			}
+		});
+
+		it("the toolbar button shows and hides the spaces and tabs, in every open editor", async () => {
+			const before = fileContent;
+			fileContent = "G1\tX1 Y2\n";
+			try {
+				const a = mountInDwc(GcodeCmEditor, { props: { filename: "0:/gcodes/ws-a.g" } });
+				const b = mountInDwc(GcodeCmEditor, { props: { filename: "0:/gcodes/ws-b.g" } });
+				await vi.waitFor(() => expect(a.text()).toContain("X1 Y2"));
+				await vi.waitFor(() => expect(b.text()).toContain("X1 Y2"));
+				expect(a.find(".cm-highlightSpace").exists()).toBe(false);
+				expect(whitespaceButton(a)!.attributes("aria-pressed")).toBe("false");
+
+				await whitespaceButton(a)!.trigger("click");
+				await a.vm.$nextTick();
+				expect(a.find(".cm-highlightSpace").exists()).toBe(true);
+				expect(a.find(".cm-highlightTab").exists()).toBe(true);
+				expect(b.find(".cm-highlightSpace").exists()).toBe(true); // the other open editor follows
+				expect(whitespaceButton(a)!.attributes("aria-pressed")).toBe("true");
+
+				await whitespaceButton(a)!.trigger("click");
+				await a.vm.$nextTick();
+				expect(a.find(".cm-highlightSpace").exists()).toBe(false);
+				expect(b.find(".cm-highlightSpace").exists()).toBe(false);
+				a.unmount();
+				b.unmount();
+			} finally {
+				fileContent = before;
+			}
+		});
+
+		it("an editor opened while the toggle is on shows whitespace straight away", async () => {
+			setEditorShowWhitespace(true);
+			const wrapper = mountInDwc(GcodeCmEditor, { props: { filename: "0:/gcodes/ws-open.g" } });
+			await vi.waitFor(() => expect(wrapper.text()).toContain("G1 X10 Y10"));
+			expect(wrapper.find(".cm-highlightSpace").exists()).toBe(true);
+			wrapper.unmount();
+		});
 	});
 
 	it("opens the search panel via the toolbar button", async () => {
