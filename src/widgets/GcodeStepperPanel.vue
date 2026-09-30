@@ -75,6 +75,7 @@
 				<v-expansion-panel-text>
 					<StepperScenarioPanel :inputs="inputs" :referenced="referenced" :pending-path="status === 'paused' ? pendingPath : null"
 										  :scenario-names="scenarioNames" :active-scenario="activeScenario" :cursor-line="cursorLine"
+										  :machine-endstops="machineEndstops"
 										  @update:inputs="(next: SimulationInputs) => emit('update:inputs', next)"
 										  @select-scenario="(name: string) => emit('select-scenario', name)"
 										  @add-scenario="(name: string) => emit('add-scenario', name)"
@@ -139,6 +140,7 @@
  */
 import { computed, ref, watch } from "vue";
 import type { MessageBoxAnswer, MessageBoxPrompt } from "dwc-gcode-core";
+import type { EndstopModel } from "dwc-gcode-core/stepper/machineState";
 import type { ReferencedInput, SimulationInputs, StepView } from "dwc-gcode-core/stepper/simulation";
 
 import StepperReadout from "./StepperReadout.vue";
@@ -167,6 +169,8 @@ const props = defineProps<{
 	scenarioNames: ReadonlyArray<string>;
 	activeScenario: string;
 	cursorLine: number | null;
+	/** The connected machine's endstops (`endstopsFromObjectModel`), for the scenario editor to show. */
+	machineEndstops?: Readonly<Record<string, EndstopModel>>;
 }>();
 const emit = defineEmits<{
 	"update:currentStep": [number];

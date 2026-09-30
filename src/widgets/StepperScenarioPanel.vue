@@ -227,30 +227,33 @@
 				Endstops for G1 H1 homing moves
 			</v-btn>
 			<span v-if="endstopCount > 0" class="text-caption text-medium-emphasis">{{ endstopCount }} set</span>
+			<span v-if="machineEndstopCount > 0" class="text-caption text-medium-emphasis" data-scenario-endstops-machine>from the machine</span>
 			<v-tooltip location="bottom" max-width="26rem">
 				<template #activator="{ props: tip }">
 					<v-icon v-bind="tip" icon="mdi-information-outline" size="14" class="scenario-info" />
 				</template>
 				A <code>G1 H1</code> move runs until the axis's endstop triggers; the axis is then set to its minimum
-				(a low-end endstop) or maximum (high end) and marked homed. That is configuration, not in the file, so
-				say it here. Left blank an endstop triggers at the end the move heads toward, with RRF's own defaults
-				(minimum 0, maximum 200). "Never triggers" lets the move finish at its target with the axis still unhomed.
+				(a low-end endstop) or maximum (high end) and marked homed. That is configuration, not in the file, so it
+				is read from the machine's object model (<code>move.axes[].min/max</code>, <code>sensors.endstops[].highEnd</code>)
+				when there is one. Anything you set here overrides it for this scenario. Left blank with no machine
+				value, an endstop triggers at the end the move heads toward, with RRF's own defaults (minimum 0, maximum
+				200). "Never triggers" lets the move finish at its target with the axis still unhomed.
 			</v-tooltip>
 		</div>
 		<div v-if="endstopsOpen" class="d-flex flex-wrap ga-2 mb-3" data-scenario-endstops>
 			<div v-for="letter in startAxes" :key="letter" class="endstop-capsule" :data-scenario-endstop="letter">
 				<span class="axis-capsule__letter">{{ letter }}</span>
-				<v-select :items="ENDSTOP_ENDS" :model-value="endOf(letter)" density="compact" hide-details variant="plain"
+				<v-select :items="endItems(letter)" :model-value="endOf(letter)" density="compact" hide-details variant="plain"
 						  :aria-label="`Endstop end for ${letter}`" style="width: 10.5rem"
 						  @update:model-value="(v: string) => commitEnd(letter, v)" />
 				<div class="mini-field">
 					<span class="mini-field__label">Min</span>
-					<ScenarioValueField :model-value="endstopNumberText(letter, 'min')" variant="plain" hide-details placeholder="0"
+					<ScenarioValueField :model-value="endstopNumberText(letter, 'min')" variant="plain" hide-details :placeholder="limitPlaceholder(letter, 'min')"
 										:aria-label="`Axis minimum ${letter}`" @commit="(text: string) => commitEndstopNumber(letter, 'min', text)" />
 				</div>
 				<div class="mini-field">
 					<span class="mini-field__label">Max</span>
-					<ScenarioValueField :model-value="endstopNumberText(letter, 'max')" variant="plain" hide-details placeholder="200"
+					<ScenarioValueField :model-value="endstopNumberText(letter, 'max')" variant="plain" hide-details :placeholder="limitPlaceholder(letter, 'max')"
 										:aria-label="`Axis maximum ${letter}`" @commit="(text: string) => commitEndstopNumber(letter, 'max', text)" />
 				</div>
 				<v-btn :icon="triggers(letter) ? 'mdi-check-circle-outline' : 'mdi-close-circle-outline'" size="x-small" variant="text"
@@ -359,6 +362,7 @@ import {
 	withEndstop, withStartAxis, withStartHomed, withStartLine, withStartMode, withStartValue,
 	type ReferencedInput, type ReferencedInputKind, type SimulationInputs,
 } from "dwc-gcode-core/stepper/simulation";
+import { DEFAULT_AXIS_MAXIMUM, DEFAULT_AXIS_MINIMUM, type EndstopModel } from "dwc-gcode-core/stepper/machineState";
 import { parseSimulatedValueInput } from "dwc-gcode-core/stepper/simulatedValues";
 
 import ScenarioValueField from "./ScenarioValueField.vue";
@@ -374,6 +378,9 @@ const props = defineProps<{
 	activeScenario: string;
 	/** The 1-based line the editor's cursor is on, offered as "start here" - null when unknown. */
 	cursorLine: number | null;
+	/** What the connected machine says about its endstops (`endstopsFromObjectModel`): the defaults a
+	 *  `G1 H1` move uses, shown here so it is clear what a blank field means. Overridden by `inputs`. */
+	machineEndstops?: Readonly<Record<string, EndstopModel>>;
 }>();
 const emit = defineEmits<{
 	"update:inputs": [SimulationInputs];
@@ -420,14 +427,25 @@ function commitStartLine(text: string): void {
 }
 
 // ── endstops for G1 H1 ──
-const ENDSTOP_ENDS: ReadonlyArray<{ title: string; value: string }> = [
-	{ title: "Auto (way the move heads)", value: "auto" },
-	{ title: "Low end (minimum)", value: "low" },
-	{ title: "High end (maximum)", value: "high" },
-	{ title: "No endstop", value: "none" },
-];
+const MACHINE_END_TITLES = { low: "Machine: low end (minimum)", high: "Machine: high end (maximum)", none: "Machine: no endstop" } as const;
+/** The options for one axis. The first (`auto`, i.e. no override) is what the machine reports, or - with
+ *  no machine value - the way the move heads. */
+function endItems(letter: string): ReadonlyArray<{ title: string; value: string }> {
+	const machineEnd = props.machineEndstops?.[letter]?.end;
+	return [
+		{ title: machineEnd === undefined ? "Auto (way the move heads)" : MACHINE_END_TITLES[machineEnd], value: "auto" },
+		{ title: "Low end (minimum)", value: "low" },
+		{ title: "High end (maximum)", value: "high" },
+		{ title: "No endstop", value: "none" },
+	];
+}
+/** What a blank min/max field means: the machine's limit, else RRF's own default. */
+function limitPlaceholder(letter: string, key: "min" | "max"): string {
+	return String(props.machineEndstops?.[letter]?.[key] ?? (key === "min" ? DEFAULT_AXIS_MINIMUM : DEFAULT_AXIS_MAXIMUM));
+}
 const endstopsOpen = ref(false);
 const endstopCount = computed(() => Object.keys(props.inputs.start.endstops ?? {}).length);
+const machineEndstopCount = computed(() => Object.keys(props.machineEndstops ?? {}).length);
 const endOf = (letter: string): string => props.inputs.start.endstops?.[letter]?.end ?? "auto";
 const triggers = (letter: string): boolean => props.inputs.start.endstops?.[letter]?.triggers !== false;
 function commitEnd(letter: string, value: string): void {

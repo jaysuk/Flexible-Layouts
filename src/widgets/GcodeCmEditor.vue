@@ -50,7 +50,7 @@
 		<GcodeStepperPanel v-if="stepperOpen && !loading" :current-step="stepperStep" :total-steps="stepperTotalSteps"
 							:line="stepperDisplayLine" :view="stepperView" :status="stepperStatus" :pending-path="stepperPendingPath"
 							:message-box-prompt="stepperMessageBoxPrompt" :error-message="stepperErrorMessage"
-							:inputs="inputs" :referenced="referencedInputs" :message-box-answers="messageBoxAnswersList"
+							:inputs="inputs" :referenced="referencedInputs" :machine-endstops="machineEndstops" :message-box-answers="messageBoxAnswersList"
 								:scenario-names="scenarioNames(scenarioSet)" :active-scenario="scenarioSet.active" :cursor-line="cursorLine" class="mx-2 mb-2"
 							@update:current-step="stepperStep = $event" @update:inputs="updateInputs" @select-scenario="selectScenarioByName" @add-scenario="addNamedScenario"
 								@duplicate-scenario="duplicateActiveScenario" @rename-scenario="renameActiveScenario" @delete-scenario="deleteActiveScenario" @resolve-path="resolveSimulatedPath"
@@ -98,6 +98,7 @@ import { EditorView, lineNumbers } from "@codemirror/view";
 import type { MessageBoxAnswer, MessageBoxPrompt } from "dwc-gcode-core";
 import type { ExecutionIndex } from "dwc-gcode-core/stepper/executionIndex";
 import { messageBoxKey } from "dwc-gcode-core/stepper/messageBoxAnswers";
+import { endstopsFromObjectModel } from "dwc-gcode-core/stepper/objectModelEndstops";
 import { parseSimulatedValueInput } from "dwc-gcode-core/stepper/simulatedValues";
 import {
 	describeStep, findReferencedInputs, formatEvalValue, runSimulation, sourceLines,
@@ -383,10 +384,16 @@ function rebuildExecutionIndex(): void {
 	}, 0);
 }
 
+// The endstops a G1 H1 homing move meets come from the connected machine's object model (which end each
+// endstop is at, and the axis limits), under whatever the scenario sets itself. Read as a value, so the
+// walk re-runs only when they actually change - not on every live model update.
+const machineEndstops = computed(() => endstopsFromObjectModel(machineStore.model));
+watch(() => JSON.stringify(machineEndstops.value), () => scheduleRebuild());
+
 function rebuildNow(instance: EditorInstance): void {
 	const text = instance.view.state.doc.toString();
 	const objectModelVersion = trackedObjectModelVersion(machineStore.model);
-	const index = runSimulation(text, inputs.value, { objectModelVersion });
+	const index = runSimulation(text, inputs.value, { objectModelVersion, machineEndstops: machineEndstops.value });
 	executionIndex.value = index;
 	// The source lines (for the evaluated-line display) and the values the file reads (offered as fields
 	// in the scenario editor) each cost another parse of the text, and this also runs at load with the
