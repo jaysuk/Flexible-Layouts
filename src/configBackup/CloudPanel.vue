@@ -391,7 +391,6 @@ import {
 import type { BackupDestinationId, DuetCloudSession } from "dwc-config-backup-core";
 import { loadCredentialsFromSd, parseCredentialBundle, writeCredentialsToSd } from "dwc-config-backup-core";
 import { defaultMachineIO } from "../model/configBackup/machineIO";
-import { getAutoRunOnConfigSave, withAutoRunOnConfigSave } from "../model/configBackup/autoRunOnSave";
 import { useLazyDialog } from "../composables/useLazyDialog";
 import UnattendedBackupDialog from "./UnattendedBackupDialog.vue";
 import { DESTINATION_IDS, DESTINATION_LABEL_KEYS } from "../model/configBackup/constants";
@@ -609,7 +608,7 @@ const nudgeOverdue = ref(nudgeSaved.overdue);
 const nudgeOverdueDays = ref(nudgeSaved.overdueDays);
 const nudgeAutoRun = ref(nudgeSaved.autoRun);
 const nudgeAutoRunDestination = ref<BackupDestinationId | null>(nudgeSaved.autoRunDestination);
-const nudgeAutoRunOnSave = ref(getAutoRunOnConfigSave(nudgeSaved));
+const nudgeAutoRunOnSave = ref(nudgeSaved.autoRunOnConfigSave === true);
 
 // Which destinations an unattended auto-run can complete without a prompt (SCHEDULED-BACKUPS-PLAN.md
 // §4.2). Mirrors the same set in autoBackupNudges.ts - kept here rather than imported so the two
@@ -639,11 +638,12 @@ const autoRunEncryptionConflict = computed(() => {
 });
 
 function saveNudgeSettings(): void {
-	setAutoBackupNudgeSettings(withAutoRunOnConfigSave({
+	setAutoBackupNudgeSettings({
 		configSaved: nudgeConfigSaved.value, newMachine: nudgeNewMachine.value,
 		overdue: nudgeOverdue.value, overdueDays: nudgeOverdueDays.value || 1,
 		autoRun: nudgeAutoRun.value, autoRunDestination: nudgeAutoRunDestination.value,
-	}, nudgeAutoRunOnSave.value));
+		autoRunOnConfigSave: nudgeAutoRunOnSave.value,
+	});
 }
 
 // --- Duet backup service -----------------------------------------------------------------------------

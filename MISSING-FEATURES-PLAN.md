@@ -17,7 +17,7 @@ override (§B5), no hotkey on the emergency stop (§B2), tabs **and** a limited 
 | --- | --- | --- |
 | §A0 docs + stale comment | done | `docs/config-backup.md` "Automatic backups"; `runBackup.ts` header rewritten. |
 | §A1 run on the idle edge | done | Shares the in-flight guard and a one-hour cooldown *between auto-run attempts* (not the overdue-check timer, which would have blocked the very case it exists for: overdue at connect while printing, then the print ends). Auto-run only - the nudge was already shown. |
-| §A2 back up after a `config.g` save | done | 10-minute debounce; held-back nudge falls back if it can't run. The flag is read/written through `configBackup/autoRunOnSave.ts` because the published core does not type it: the core's settings blob is merged over defaults on read and stored verbatim, so it round-trips today. The typed optional `autoRunOnConfigSave` is added in `dwc-config-backup-core` (uncommitted there; needs a release + bump to drop the helper). |
+| §A2 back up after a `config.g` save | done | 10-minute debounce; held-back nudge falls back if it can't run. The flag is the typed optional `autoRunOnConfigSave` on the core's `AutoBackupNudgeSettings` (released in `dwc-config-backup-core` 0.2.1; FL depends on `^0.2.1`). |
 | §A3 manual-failure alert | decided | No toast for manual runs - recorded in `dwc-config-backup-core/SCHEDULED-BACKUPS-PLAN.md` §9. |
 | §A4 multiple destinations | not built | As the plan recommends, until someone asks. |
 | §A5 unattended script | done | The generator is pure and lives in FL (`unattendedScript.ts`, no FL/DWC imports) so it can move into the core - it could not be released from here. Tested by actually running the script against a fake Duet for both firmware flavours. |

@@ -26,7 +26,7 @@
     "@peculiar/asn1-schema": "^2.10.0",
     "@peculiar/asn1-x509": "^2.10.0",
     "clipper-lib": "^6.4.2",
-    "dwc-config-backup-core": "^0.2.0",
+    "dwc-config-backup-core": "^0.2.1",
     "dwc-gcode-core": "^1.32.0",
     "dwc-gcode-editor": "github:jaysuk/dwc-gcode-editor#v0.14.0",
     "dwc-plugin-runtime": "^0.8.8",

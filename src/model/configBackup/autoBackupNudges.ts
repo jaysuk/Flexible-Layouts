@@ -53,7 +53,6 @@ import { useMachineStore } from "@/stores/machine";
 import i18n from "@/i18n";
 
 import { collectForBackup, runBackup } from "./runBackup";
-import { getAutoRunOnConfigSave } from "./autoRunOnSave";
 import { CONFIG_BACKUP_ROUTE_PATH, DESTINATION_LABEL_KEYS } from "./constants";
 
 type FileUploadedHandler = (e: { filename: string }) => void;
@@ -119,7 +118,7 @@ export function installAutoBackupNudges(): void {
 
 	/** Backing up after a config.g save is on AND could run unattended (auto-run on, eligible destination). */
 	function configSaveBackupArmed(settings = getAutoBackupNudgeSettings()): boolean {
-		return settings.autoRun && getAutoRunOnConfigSave(settings) && autoRunDestinationEligible(settings.autoRunDestination);
+		return settings.autoRun && settings.autoRunOnConfigSave === true && autoRunDestinationEligible(settings.autoRunDestination);
 	}
 
 	function runAfterConfigSave(): void {

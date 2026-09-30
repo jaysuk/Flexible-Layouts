@@ -161,10 +161,7 @@ Vue 3 + Vuetify plugin for DuetWebControl (drag-and-drop layout customisation fo
 - **The unattended-backup script** (`model/configBackup/unattendedScript.ts`) is pure string generation with no FL/DWC imports, so
   it can move into `dwc-config-backup-core`. `test/unattendedScript.test.ts` actually RUNS the generated script in Node against
   `test/fixtures/fakeDuet.ts` for both firmware flavours (the kit's mock Duet serves no files). The board password is read from an
-  environment variable and must never appear in the script. `autoRunOnConfigSave` is read/written through
-  `configBackup/autoRunOnSave.ts`: `dwc-config-backup-core` 0.2.1 types the field (optional, default false), but this repo still
-  depends on `^0.2.0` and the helper works with either (the settings blob round-trips extra keys). Bump the dependency to
-  `^0.2.1` and the helper can then go.
+  environment variable and must never appear in the script. `autoRunOnConfigSave` is a typed optional field of the core's `AutoBackupNudgeSettings` (0.2.1+); a stored blob that predates it reads as off.
 - **Shared logic gets extracted once a second consumer needs it**, not duplicated — e.g.
   `util/shapes.ts`'s `buttonShapeToParams()` (shared by `CommandButtonWidget.vue` and
   `HotspotWidget.vue`'s shaped regions), `composables/useWidgetPreviewFrame.ts` (shared by

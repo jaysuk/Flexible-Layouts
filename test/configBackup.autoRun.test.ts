@@ -15,7 +15,6 @@ vi.mock("../src/model/configBackup/runBackup", () => ({ collectForBackup, runBac
 import Events from "@/utils/events";
 
 import { CONFIG_SAVE_DEBOUNCE_MS, installAutoBackupNudges, uninstallAutoBackupNudges } from "../src/model/configBackup/autoBackupNudges";
-import { getAutoRunOnConfigSave, withAutoRunOnConfigSave } from "../src/model/configBackup/autoRunOnSave";
 
 const T = (k: string) => `plugins.flexibleLayouts.configBackup.${k}`;
 const NUDGE = (k: string) => `plugins.flexibleLayouts.configBackup.nudge.${k}`;
@@ -349,7 +348,7 @@ describe("auto-run trigger - shortly after config.g is saved (opt-in)", () => {
 	const CONFIG = "0:/sys/config.g";
 	const save = (filename = CONFIG) => Events.emit("fileUploaded", { filename } as never);
 	const armed = (over: Record<string, unknown> = {}) =>
-		setAutoBackupNudgeSettings(withAutoRunOnConfigSave({ configSaved: true, overdue: false, overdueDays: 7, newMachine: false, autoRun: true, autoRunDestination: "dropbox", ...over }, true));
+		setAutoBackupNudgeSettings({ configSaved: true, overdue: false, overdueDays: 7, newMachine: false, autoRun: true, autoRunDestination: "dropbox", autoRunOnConfigSave: true, ...over } as never);
 
 	beforeEach(() => {
 		vi.useFakeTimers();
@@ -484,11 +483,11 @@ describe("auto-run trigger - shortly after config.g is saved (opt-in)", () => {
 
 	it("the flag round-trips through the core's settings blob without needing a migration", () => {
 		armed();
-		expect(getAutoRunOnConfigSave()).toBe(true);
-		setAutoBackupNudgeSettings(withAutoRunOnConfigSave(getAutoBackupNudgeSettings(), false));
-		expect(getAutoRunOnConfigSave()).toBe(false);
+		expect(getAutoBackupNudgeSettings().autoRunOnConfigSave).toBe(true);
+		setAutoBackupNudgeSettings({ ...getAutoBackupNudgeSettings(), autoRunOnConfigSave: false });
+		expect(getAutoBackupNudgeSettings().autoRunOnConfigSave).toBe(false);
 		// an older stored blob that predates the field reads as off
 		setAutoBackupNudgeSettings({ configSaved: true, overdue: true, overdueDays: 7, newMachine: true, autoRun: false, autoRunDestination: null });
-		expect(getAutoRunOnConfigSave()).toBe(false);
+		expect(getAutoBackupNudgeSettings().autoRunOnConfigSave).toBe(false);
 	});
 });
