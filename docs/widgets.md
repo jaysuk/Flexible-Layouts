@@ -19,7 +19,7 @@ Add widgets with **Add widget** while editing. Every widget can additionally be 
 | **Jog control (Pronterface)** | Movement pad with concentric step rings for two planar axes + a Z bar. | axis letters, XY/Z step rings (right-click a ring to change it), feedrates, home buttons, motors-off, per-axis invert, title |
 | **CNC / Octopus jog** | EstlCam-style 8-way pad: 4 cardinal + 4 diagonal arms (diagonals move both axes at once), concentric rings = jog distances with a colour-keyed distance legend, a centre **Home-all** hub + per-axis home row, a Z bar, and an optional position (DRO) header. | axis letters / invert, XY/Z distance rings, feedrates, toggles for diagonals / distance legend / DRO / Z / homing / feedrate / motors-off, title |
 | **Input field** | Runs a command template with the entered value (`{value}`), or sets an RRF `global` variable. | mode, command template / global name, number vs text, default |
-| **Slider** | Sends a command template (`{value}`) as you drag, and optionally tracks a live OM value. Fan %, speed/flow factor, brightness, RPM… | live value path (+scale/offset), min/max/step, command, unit, send-while-dragging, colour |
+| **Slider** | Follows DWC's slider settings (lock button, numeric entry) like the Fan slider and Spindle. Sends a command template (`{value}`) as you drag, and optionally tracks a live OM value. Fan %, speed/flow factor, brightness, RPM… | live value path (+scale/offset), min/max/step, command, unit, send-while-dragging, colour |
 | **Toggle / switch** | Stateful on/off bound to an OM value, sending separate on/off commands. ATX power (`M80`/`M81`), pins (`M42`), a `global` bool… | state path, on/off commands, switch vs button, colour |
 | **Stepper (+/−)** | Buttons that nudge a value by a step. Relative sends `±step` each press; absolute sends the new total. Babystep, target temp, factors… | mode, live value path, step/min/max, decimals, command, unit, colour |
 | **Value read-out** | Shows one object-model value as a number, label or gauge. | OM path, display mode, unit, precision, gauge bounds, scale/offset, on/off text, value→text map, label position |
@@ -114,6 +114,8 @@ that **recolour**, **hide** or **disable** the widget. Each rule is an OM path, 
 - **value → text map** — map exact values (e.g. status codes) to labels, checked before numeric
   formatting
 - **unit / precision** and gauge **min / max**
+- **length in millimetres** — tick this for a value that is a length and it is shown in inches (unit text becomes "in") when DWC's
+  Settings > General > Units is set to imperial. The position widgets (DRO, work offsets, WCS table) always follow that setting.
 
 ## Header widgets
 

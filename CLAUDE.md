@@ -27,7 +27,9 @@ Vue 3 + Vuetify plugin for DuetWebControl (drag-and-drop layout customisation fo
   `<template v-else-if="draft.type === 'X'">` block per widget type — add new per-widget config UI
   there, in the same block-per-type style. Reusable dialogs/pickers (file picker, image picker, icon
   picker, colour picker) are their own small components under `src/editor/`.
-- **i18n**: `src/i18n/en.json`, one flat namespace, all keys under `plugins.flexibleLayouts.*`.
+- **i18n**: `src/i18n/en.json` + `de.json`, one flat namespace, all keys under `plugins.flexibleLayouts.*`. `test/i18n.test.ts`
+  fails if `de.json` and `en.json` differ in keys, `{placeholders}` or plural `|` separators, so every new English string needs a
+  German one in the same change. Missing locales fall back to English.
 - **`<script setup>` convention**: this codebase relies on Vue's automatic prop exposure — a template
   can reference a prop by bare name (`widget.foo`) even though the script only ever captures
   `const props = defineProps<...>()`. Some widgets additionally do `const widget = props.widget;` in
@@ -120,6 +122,11 @@ Vue 3 + Vuetify plugin for DuetWebControl (drag-and-drop layout customisation fo
   re-run by a watch because DWC loads settings after plugins. `mergeImported` gives an imported page whose slug collides with
   a different-titled local page a new address (same slug + same title = the page coming back, overwrites). The importers
   (`io.ts`, `btncmd.ts`) still mint UUIDs on purpose; the migration slugs them once merged.
+- **Display units and slider preferences follow DWC's settings.** `util/units.ts` (`useLengthUnits`) turns DWC's `displayUnits` into
+  inches for the DRO, WCS, WCS table, Octopus DRO and a value widget flagged `lengthMm` - display only: the firmware and every
+  command stay in millimetres, so typed inches are converted back before they reach G-code. `widgets/LockableSlider.vue` wraps
+  `v-slider` with DWC's `lockableSliders` lock button and `numericInputs` number field (Slider, Fan and Spindle widgets use it).
+  Jog step rings are configured in mm and stay mm; only their tooltips add the inch equivalent.
 - **Shared logic gets extracted once a second consumer needs it**, not duplicated — e.g.
   `util/shapes.ts`'s `buttonShapeToParams()` (shared by `CommandButtonWidget.vue` and
   `HotspotWidget.vue`'s shaped regions), `composables/useWidgetPreviewFrame.ts` (shared by

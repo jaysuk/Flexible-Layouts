@@ -153,6 +153,9 @@
 							</v-text-field>
 						</v-col>
 					</v-row>
+					<v-switch v-model="draft.lengthMm" color="primary" density="compact" hide-details class="mt-1"
+							  :label="$t('plugins.flexibleLayouts.properties.lengthMm')"
+							  :title="$t('plugins.flexibleLayouts.properties.lengthMmHint')" />
 					<v-row v-if="draft.display === 'gauge'" dense class="mt-1">
 						<v-col cols="6">
 							<v-text-field persistent-placeholder v-model.number="draft.min" type="number" density="compact"

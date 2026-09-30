@@ -1,6 +1,6 @@
 <template>
 	<div class="wt-root fill-height d-flex flex-column px-2 py-1" :class="{ 'wt-frozen': disabledNow }">
-		<span v-if="widget.label" class="wt-label text-truncate flex-shrink-0">{{ widget.label }}</span>
+		<span v-if="widget.label || imperial" class="wt-label text-truncate flex-shrink-0">{{ widget.label }}<span v-if="imperial" class="wt-unit"> ({{ unit }})</span></span>
 		<UnhomedWarning :axes="unhomedNow" class="flex-shrink-0 mb-1" />
 
 		<div class="wt-table-wrap flex-grow-1">
@@ -54,7 +54,7 @@
 		<div v-if="widget.showRotation !== false" class="wt-rotation mt-2 flex-shrink-0">
 			<div v-if="rotationActive" class="wt-rotation-warning">
 				<v-icon size="14" class="mr-1">mdi-alert</v-icon>
-				{{ $t("plugins.flexibleLayouts.wcsTable.rotationActive", { angle: fmt(rotation!.angle), x: fmt(rotation!.centre[0]), y: fmt(rotation!.centre[1]) }) }}
+				{{ $t("plugins.flexibleLayouts.wcsTable.rotationActive", { angle: rotation!.angle.toFixed(props.widget.precision ?? 2), x: fmt(rotation!.centre[0]), y: fmt(rotation!.centre[1]) }) }}
 			</div>
 			<div v-else-if="rotation === null" class="text-caption text-medium-emphasis">
 				{{ $t("plugins.flexibleLayouts.wcsTable.rotationUnsupported") }}
@@ -62,9 +62,9 @@
 			<div v-if="rotation !== null" class="d-flex ga-1 align-center flex-wrap mt-1">
 				<v-text-field v-model.number="rotAngle" type="number" step="any" density="compact" variant="outlined" hide-details
 							  class="wt-rot-field" :label="$t('plugins.flexibleLayouts.wcsTable.angle')" :disabled="disabledNow" />
-				<v-text-field v-model.number="rotCentreX" type="number" step="any" density="compact" variant="outlined" hide-details
+				<v-text-field v-model.number="rotCentreXDisplay" type="number" step="any" density="compact" variant="outlined" hide-details
 							  class="wt-rot-field" :label="$t('plugins.flexibleLayouts.wcsTable.centreX')" :disabled="disabledNow" />
-				<v-text-field v-model.number="rotCentreY" type="number" step="any" density="compact" variant="outlined" hide-details
+				<v-text-field v-model.number="rotCentreYDisplay" type="number" step="any" density="compact" variant="outlined" hide-details
 							  class="wt-rot-field" :label="$t('plugins.flexibleLayouts.wcsTable.centreY')" :disabled="disabledNow" />
 				<v-btn size="small" variant="tonal" :color="overrideColor || widget.color || 'primary'" :disabled="disabledNow" @click="applyRotation">
 					{{ $t("plugins.flexibleLayouts.wcsTable.applyRotation") }}
@@ -86,6 +86,7 @@ import { LogLevel, useUiStore } from "@/stores/ui";
 import type { Widget } from "../model/document";
 import { resolveOmPath } from "../util/omPath";
 import { unhomedAxes } from "../util/homedCheck";
+import { useLengthUnits } from "../util/units";
 import UnhomedWarning from "./UnhomedWarning.vue";
 
 const props = defineProps<{ widget: Extract<Widget, { type: "wcsTable" }>; overrideColor?: string; disabled?: boolean }>();
@@ -99,7 +100,9 @@ const wcsItems = WCS.map((g, i) => ({ title: g, value: i }));
 const rows = WCS.map((code, index) => ({ code, index }));
 
 const disabledNow = computed(() => props.disabled || uiStore.uiFrozen);
-const precision = computed(() => props.widget.precision ?? 2);
+// Offsets are millimetres in the object model and in every command; shown (and typed) in inches when DWC's
+// display units say so.
+const { imperial, unit, toDisplay, toMm, format } = useLengthUnits();
 const axes = computed(() => (props.widget.axes?.length ? props.widget.axes : ["X", "Y", "Z"]).map((a) => a.toUpperCase()));
 const unhomedNow = computed(() => unhomedAxes(machineStore.model, axes.value));
 
@@ -120,7 +123,7 @@ function offset(wcsIndex: number, axisLetter: string): number {
 }
 
 function fmt(v: number): string {
-	return v.toFixed(precision.value);
+	return format(v, props.widget.precision);
 }
 
 // A cell being actively typed into shows the user's in-progress text rather than snapping back to
@@ -148,11 +151,12 @@ function selectWcs(index: number): void {
 // worked example) the value given IS the offset itself, not "current position now reads this".
 function commitOffset(wcsIndex: number, axisLetter: string, text: string): void {
 	const key = cellKey(wcsIndex, axisLetter);
-	const value = Number(text);
-	if (!Number.isFinite(value)) {
+	const typed = Number(text);
+	if (!Number.isFinite(typed)) {
 		draftEdits.value.delete(key);
 		return;
 	}
+	const value = Number(toMm(typed).toFixed(6));
 	run(`G10 L2 P${wcsIndex + 1} ${axisLetter}${value}`);
 	draftEdits.value.delete(key);
 }
@@ -185,6 +189,15 @@ const rotationActive = computed(() => !!rotation.value && Math.abs(rotation.valu
 const rotAngle = ref(0);
 const rotCentreX = ref(0);
 const rotCentreY = ref(0);
+// The centre is stored in millimetres (it goes straight into G68); the fields show the display unit.
+function displayCentre(get: () => number, set: (mm: number) => void) {
+	return computed({
+		get: () => Number(toDisplay(get()).toFixed(imperial.value ? 4 : 3)),
+		set: (v: number) => set(toMm(Number(v))),
+	});
+}
+const rotCentreXDisplay = displayCentre(() => rotCentreX.value, (mm) => { rotCentreX.value = mm; });
+const rotCentreYDisplay = displayCentre(() => rotCentreY.value, (mm) => { rotCentreY.value = mm; });
 // Seed the edit fields from the live rotation once it first becomes known, then leave them alone -
 // otherwise every poll tick would stomp on whatever the operator is mid-way through typing.
 const seeded = ref(false);
@@ -209,6 +222,7 @@ function clearRotation(): void {
 .wt-root { min-height: 0; }
 .wt-frozen { opacity: 0.5; pointer-events: none; }
 .wt-label { font-size: 0.8em; font-weight: 600; opacity: 0.85; }
+.wt-unit { font-weight: 400; opacity: 0.7; }
 .wt-table-wrap { min-height: 0; overflow: auto; }
 .wt-table { border-collapse: collapse; width: 100%; font-size: 0.8em; }
 .wt-table th { text-align: left; font-weight: 600; opacity: 0.7; padding: 2px 4px; position: sticky; top: 0; background: rgb(var(--v-theme-surface)); }

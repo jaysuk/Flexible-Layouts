@@ -18,7 +18,7 @@
  * `window.DWC.Vuetify.useDisplay` as a plain runtime property access instead - never a static
  * import - is what makes the fallback below actually reachable on an older DWC rather than moot.
  */
-import { onMounted, onUnmounted, ref, type Ref } from "vue";
+import { computed, onMounted, onUnmounted, ref, type Ref } from "vue";
 
 function useMediaQuery(query: string): Ref<boolean> {
 	// matchMedia is synchronous and valid at any time in the browser, so seed the ref with the real
@@ -49,6 +49,8 @@ interface VuetifyDisplaySubset {
 	smAndUp: Ref<boolean>;
 	mdAndUp: Ref<boolean>;
 	lgAndUp: Ref<boolean>;
+	/** Vuetify's own touch-display breakpoint; absent from the subset when a host doesn't provide it. */
+	mobile?: Ref<boolean>;
 }
 
 /** Reads window.DWC.Vuetify.useDisplay as a plain property access (see module doc comment for why
@@ -64,13 +66,16 @@ function tryRealVuetifyDisplay(): VuetifyDisplaySubset | null {
 export function useFlexDisplay() {
 	const real = tryRealVuetifyDisplay();
 	if (real) {
-		return { smAndUp: real.smAndUp, mdAndUp: real.mdAndUp, lgAndUp: real.lgAndUp };
+		return { smAndUp: real.smAndUp, mdAndUp: real.mdAndUp, lgAndUp: real.lgAndUp, mobile: real.mobile ?? computed(() => !real.mdAndUp.value) };
 	}
+	const mdAndUp = useMediaQuery("(min-width: 960px)");
 	return {
+		/** Touch-sized display: below md, where DWC also swaps the drawer for the hub. */
+		mobile: computed(() => !mdAndUp.value),
 		/** >= 600px */
 		smAndUp: useMediaQuery("(min-width: 600px)"),
 		/** >= 960px - DWC treats this as the desktop/drawer threshold */
-		mdAndUp: useMediaQuery("(min-width: 960px)"),
+		mdAndUp,
 		/** >= 1280px */
 		lgAndUp: useMediaQuery("(min-width: 1280px)"),
 	};

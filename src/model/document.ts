@@ -83,6 +83,11 @@ export type Widget =
 		 * Applied after scale/offset. Safe mini-parser (+ - * / parentheses only) - see util/mathExpr.
 		 */
 		expression?: string;
+		/**
+		 * The value (after scale/offset/expression) is a length in millimetres: show it in inches when DWC's
+		 * display units are imperial (unit text becomes "in", precision gains two places). Gauge min/max stay in mm.
+		 */
+		lengthMm?: boolean;
 		/** Render booleans / 0-1 as text. */
 		boolOn?: string;
 		boolOff?: string;

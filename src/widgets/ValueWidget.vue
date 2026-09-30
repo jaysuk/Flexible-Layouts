@@ -45,10 +45,14 @@ import type { Widget } from "../model/document";
 import { resolveColor } from "../util/color";
 import { evalMathExpr } from "../util/mathExpr";
 import { resolveOmPath } from "../util/omPath";
+import { useLengthUnits } from "../util/units";
 
 const props = defineProps<{ widget: Extract<Widget, { type: "value" }>; overrideColor?: string }>();
 
 const machineStore = useMachineStore();
+const { imperial, digits, toDisplay } = useLengthUnits();
+// Only a widget flagged as a millimetre length converts; everything else is shown exactly as before.
+const asInches = computed(() => props.widget.lengthMm === true && imperial.value);
 
 const effectiveColor = computed(() => props.overrideColor || props.widget.color);
 
@@ -94,7 +98,7 @@ const formatted = computed(() => {
 	}
 	const num = numericValue.value;
 	if (num !== undefined) {
-		return num.toFixed(w.precision ?? 1);
+		return asInches.value ? toDisplay(num).toFixed(digits(w.precision ?? 1)) : num.toFixed(w.precision ?? 1);
 	}
 	if (typeof v === "boolean") {
 		return v ? "on" : "off";
@@ -102,7 +106,12 @@ const formatted = computed(() => {
 	return String(v);
 });
 
-const unitSuffix = computed(() => (props.widget.unit ? ` ${props.widget.unit}` : ""));
+const unitSuffix = computed(() => {
+	if (asInches.value) {
+		return " in";
+	}
+	return props.widget.unit ? ` ${props.widget.unit}` : "";
+});
 
 const valueStyle = computed(() =>
 	effectiveColor.value ? { color: resolveColor(effectiveColor.value) } : {});

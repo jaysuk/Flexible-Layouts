@@ -32,7 +32,7 @@
 							  :style="{ fill: 'currentColor', opacity: s.opacity }"
 							  @click="jog(s.axis, s.signed, feedFor(s.axis))"
 							  @contextmenu.prevent="editStep('xy', s.ringIndex)">
-							<title>{{ s.axis }}{{ s.signed > 0 ? "+" : "" }}{{ fmt(s.signed) }} mm{{ blockedAxes.has(s.axis.toUpperCase()) ? ` — ${$t('plugins.flexibleLayouts.jog.blockedUnhomed')}` : "" }}</title>
+							<title>{{ s.axis }}{{ s.signed > 0 ? "+" : "" }}{{ stepTitle(s.signed) }}{{ blockedAxes.has(s.axis.toUpperCase()) ? ` — ${$t('plugins.flexibleLayouts.jog.blockedUnhomed')}` : "" }}</title>
 						</path>
 					</g>
 					<!-- ring step values, laid along the upper-right gap like Pronterface -->
@@ -71,7 +71,7 @@
 				<button v-for="(s, k) in zStepList" :key="'zp' + k" type="button" class="jog-zbtn"
 						:class="{ 'jog-zbtn-blocked': zBlocked }"
 						:style="zBtnStyle" :disabled="disabledNow"
-						:title="`${zAxisLetter} +${fmt(s)} mm`"
+						:title="`${zAxisLetter} +${stepTitle(s)}`"
 						@click="jog(zAxisLetter, zSign * s, zFeed)" @contextmenu.prevent="editStep('z', k)">
 					<v-icon v-if="k === 0" size="x-small">mdi-chevron-up</v-icon>
 					<span class="jog-zval">{{ fmt(s) }}</span>
@@ -85,7 +85,7 @@
 				<button v-for="(z, i) in zStepsDown" :key="'zn' + z.k" type="button" class="jog-zbtn"
 						:class="{ 'jog-zbtn-blocked': zBlocked }"
 						:style="zBtnStyle" :disabled="disabledNow"
-						:title="`${zAxisLetter} -${fmt(z.s)} mm`"
+						:title="`${zAxisLetter} -${stepTitle(z.s)}`"
 						@click="jog(zAxisLetter, -zSign * z.s, zFeed)" @contextmenu.prevent="editStep('z', z.k)">
 					<span class="jog-zval">{{ fmt(z.s) }}</span>
 					<v-icon v-if="i === zStepsDown.length - 1" size="x-small">mdi-chevron-down</v-icon>
@@ -113,6 +113,7 @@ import { resolveColor } from "../util/color";
 import { polar, sectorPath as _sectorPath } from "../util/shapes";
 import { unhomedAxes } from "../util/homedCheck";
 import { resolveOmPath } from "../util/omPath";
+import { useLengthUnits } from "../util/units";
 import UnhomedWarning from "./UnhomedWarning.vue";
 
 const props = defineProps<{
@@ -209,6 +210,8 @@ function f(n: number): string {
 function sectorPath(a0: number, a1: number, rIn: number, rOut: number): string {
 	return _sectorPath(C, C, a0, a1, rIn, rOut);
 }
+// Configured steps are millimetres (that is what is sent); the tooltip adds the inch equivalent in imperial mode.
+const { stepTitle } = useLengthUnits();
 function fmt(v: number): string {
 	return Number(Math.abs(v).toFixed(4)).toString();
 }

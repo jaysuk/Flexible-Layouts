@@ -6,8 +6,8 @@
       <span class="spn-state" :class="`spn-state--${state}`">{{ state }}</span>
     </div>
     <div class="d-flex align-center ga-2 mb-1">
-      <v-slider v-model="rpm" :min="min" :max="max" :step="stepSize" density="compact" hide-details thumb-size="14"
-                :color="(overrideColor || widget.color) || 'primary'" :disabled="disabledNow" />
+      <LockableSlider v-model="rpm" :min="min" :max="max" :step="stepSize"
+                      :color="(overrideColor || widget.color) || 'primary'" :disabled="disabledNow" />
       <span class="spn-rpm">{{ rpmText }}</span>
     </div>
     <div class="d-flex ga-1">
@@ -29,6 +29,7 @@ import { LogLevel, useUiStore } from "@/stores/ui";
 
 import type { Widget } from "../model/document";
 import { resolveOmPath } from "../util/omPath";
+import LockableSlider from "./LockableSlider.vue";
 
 const props = defineProps<{ widget: Extract<Widget, { type: "spindle" }>; overrideColor?: string; disabled?: boolean }>();
 const machineStore = useMachineStore();

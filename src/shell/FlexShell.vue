@@ -12,6 +12,11 @@
 					   :aria-label="$t('layout.backToHub')" @click="router.push('/')" />
 				<v-app-bar-nav-icon v-else-if="showDrawerToggle" :size="isLargeButtons ? 'large' : undefined" @click="drawer = !drawer" />
 
+				<!-- Only inside the FindMyDuet Android app (a WebView that injects `window.app`): hand control back to its
+					 list of discovered boards, as stock DWC's app bar does. -->
+				<v-btn v-if="canListDevices" icon="mdi-devices" variant="text" :size="isLargeButtons ? 'large' : undefined"
+					   :title="$t('layout.listDevices')" :aria-label="$t('layout.listDevices')" @click="listDevices" />
+
 				<img v-if="headerLogo" :src="headerLogo" class="header-logo ms-2 me-2" alt="" />
 				<div v-else class="text-truncate machine-name ms-2 me-2" :title="headerTitle || machineName">
 					{{ headerTitle || machineName }}
@@ -109,7 +114,7 @@
 				 nested groups would vanish and leave category headers that navigate nowhere. Like stock, list the
 				 leaf pages flat instead; the grouped list below is the regular drawer. -->
 			<v-list v-if="railMode" nav density="compact">
-				<v-list-item v-for="item in railItems" :key="item.path" class="menu-route-item"
+				<v-list-item v-for="item in railItems" :key="item.path" class="menu-route-item" v-hint="resolveItemTitle(item)"
 							 :to="item.path" :prepend-icon="item.icon" :title="resolveItemTitle(item)">
 					<template v-if="resolveBadge(item)" #append>
 						<NavMenuBadge :badge="resolveBadge(item)!" />
@@ -120,7 +125,7 @@
 			<v-list v-else v-model:opened="openedCategories" nav density="compact" open-strategy="multiple">
 				<template v-for="group in navGroups" :key="group.category.key">
 					<!-- A category whose only page reads the same as the category (Settings > Settings) is just that page. -->
-					<v-list-item v-if="isFlattened(group)" class="menu-route-item"
+					<v-list-item v-if="isFlattened(group)" class="menu-route-item" v-hint="resolveItemTitle(group.items[0])"
 								 :to="group.items[0].path" :prepend-icon="group.items[0].icon" :title="resolveItemTitle(group.items[0])">
 						<template v-if="resolveBadge(group.items[0])" #append>
 							<NavMenuBadge :badge="resolveBadge(group.items[0])!" />
@@ -128,10 +133,10 @@
 					</v-list-item>
 					<v-list-group v-else :value="group.category.key">
 						<template #activator="{ props: activatorProps }">
-							<v-list-item v-bind="activatorProps" class="menu-category-item"
+							<v-list-item v-bind="activatorProps" class="menu-category-item" v-hint="$t(group.category.captionKey)"
 										 :prepend-icon="group.category.icon" :title="$t(group.category.captionKey)" />
 						</template>
-						<v-list-item v-for="item in group.items" :key="item.path" class="menu-route-item"
+						<v-list-item v-for="item in group.items" :key="item.path" class="menu-route-item" v-hint="resolveItemTitle(item)"
 									 :to="item.path" :prepend-icon="item.icon" :title="resolveItemTitle(item)">
 							<template v-if="resolveBadge(item)" #append>
 								<NavMenuBadge :badge="resolveBadge(item)!" />
@@ -359,6 +364,14 @@ const { smAndUp, mdAndUp } = useFlexDisplay();
 // Mirror the built-in shell: the manual connect button only matters in the dev server (production
 // auto-connects), so gate it on DEV like static.vue does.
 const showConnectButton = import.meta.env.DEV;
+
+// The FindMyDuet Android app hosts DWC in a WebView and injects a `window.app` bridge; stock DWC's utils/nativeApp.ts
+// wraps it, but that module isn't part of the plugin API, so the two calls it makes are mirrored here.
+const nativeApp = (window as { app?: { listDevices?: () => void } }).app;
+const canListDevices = typeof nativeApp?.listDevices === "function";
+function listDevices(): void {
+	nativeApp?.listDevices?.();
+}
 
 const pageManagerOpen = ref(false);
 const themeEditorOpen = ref(false);

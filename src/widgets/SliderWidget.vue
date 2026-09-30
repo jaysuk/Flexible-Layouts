@@ -5,9 +5,8 @@
       <v-spacer />
       <span class="sl-val">{{ displayValue }}{{ widget.unit || "" }}</span>
     </div>
-    <v-slider :model-value="position" :min="min" :max="max" :step="step" :color="(overrideColor || widget.color) || 'primary'"
-              density="compact" hide-details thumb-size="14" :disabled="disabledNow"
-              @update:model-value="onInput" @end="onEnd" />
+    <LockableSlider :model-value="position" :min="min" :max="max" :step="step" :color="(overrideColor || widget.color) || 'primary'"
+                    :disabled="disabledNow" :suffix="widget.unit" @update:model-value="onInput" @end="onEnd" />
   </div>
 </template>
 
@@ -19,6 +18,7 @@ import { LogLevel, useUiStore } from "@/stores/ui";
 
 import type { Widget } from "../model/document";
 import { resolveOmPath } from "../util/omPath";
+import LockableSlider from "./LockableSlider.vue";
 
 const props = defineProps<{ widget: Extract<Widget, { type: "slider" }>; overrideColor?: string; disabled?: boolean }>();
 

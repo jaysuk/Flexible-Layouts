@@ -22,6 +22,7 @@ import { useSettingsStore } from "@/stores/settings";
 import { configureHost } from "dwc-config-backup-core";
 
 import en from "./i18n/en.json";
+import de from "./i18n/de.json";
 import { BUILTIN_PAGES } from "./model/builtinPages";
 import { existingRoutePaths } from "./model/routeRecords";
 import { LAYOUT_ID, PLUGIN_MANIFEST_ID } from "./model/constants";
@@ -47,7 +48,7 @@ import VectorImportPage from "./vectorImport/VectorImportPage.vue";
 
 const PLUGIN_ID = "flexibleLayouts";
 
-registerPluginMessages(PLUGIN_ID, { en });
+registerPluginMessages(PLUGIN_ID, { en, de });
 
 // Configure the shared backup core before anything can touch stored credentials. The namespace is
 // this plugin's historical one and must not change - existing installs have credentials saved under

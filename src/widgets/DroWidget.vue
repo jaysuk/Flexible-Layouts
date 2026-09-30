@@ -2,6 +2,7 @@
   <div class="dro-root fill-height d-flex flex-column pa-1">
     <div class="d-flex align-center mb-1 flex-shrink-0">
       <span v-if="widget.title" class="dro-title text-truncate">{{ widget.title }}</span>
+      <span v-if="imperial" class="dro-unit ms-1">{{ unit }}</span>
       <v-spacer />
       <v-btn-toggle v-model="coord" density="compact" variant="outlined" mandatory divided>
         <v-btn size="x-small" value="work">{{ $t("plugins.flexibleLayouts.dro.work") }}</v-btn>
@@ -29,12 +30,14 @@ import { useMachineStore } from "@/stores/machine";
 import type { Widget } from "../model/document";
 import { resolveColor } from "../util/color";
 import { resolveOmPath } from "../util/omPath";
+import { useLengthUnits } from "../util/units";
 
 const props = defineProps<{ widget: Extract<Widget, { type: "dro" }>; overrideColor?: string; disabled?: boolean }>();
 const machineStore = useMachineStore();
 
 const coord = ref<"work" | "machine">(props.widget.coord ?? "work");
-const precision = computed(() => props.widget.precision ?? 2);
+// Positions are millimetres in the object model; shown in inches when DWC's display units say so.
+const { imperial, unit, format } = useLengthUnits();
 
 // Same "conditional rule overrides the widget's own static colour" idiom as HeaterWidget's reading.
 const effectiveColor = computed(() => props.overrideColor || props.widget.color);
@@ -50,7 +53,7 @@ const axes = computed(() => {
     .filter((a) => a && (want.length ? want.includes((a.letter ?? "").toUpperCase()) : a.visible !== false))
     .map((a) => {
       const v = coord.value === "machine" ? a.machinePosition : a.userPosition;
-      return { letter: a.letter ?? "?", homed: !!a.homed, pos: typeof v === "number" ? v.toFixed(precision.value) : "—" };
+      return { letter: a.letter ?? "?", homed: !!a.homed, pos: typeof v === "number" ? format(v, props.widget.precision) : "—" };
     });
 });
 </script>
@@ -58,6 +61,7 @@ const axes = computed(() => {
 <style scoped>
 .dro-root { min-height: 0; }
 .dro-title { font-size: 0.8em; font-weight: 600; opacity: 0.85; }
+.dro-unit { font-size: 0.7em; opacity: 0.6; }
 .dro-body { min-height: 0; overflow-y: auto; }
 .dro-row { display: flex; align-items: baseline; gap: 6px; padding: 1px 2px; }
 .dro-letter { font-weight: 700; width: 1.4em; }

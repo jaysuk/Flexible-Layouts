@@ -159,6 +159,8 @@
 		"firmwareUpdate": "Firmware update"
 	},
 	"properties": {
+		"lengthMm": "Length in millimetres",
+		"lengthMmHint": "Show this value in inches when DWC is set to imperial units. Leave off for anything that is not a length.",
 		"title": "Widget settings",
 		"embeddableNoSchema": "This plugin widget has no configurable options.",
 		"label": "Label",
@@ -611,6 +613,8 @@
 		"none": "No matching global variables."
 	},
 	"slider": {
+		"lock": "Lock slider",
+		"unlock": "Unlock slider",
 		"omPath": "Live value path (optional)",
 		"step": "Step",
 		"scale": "OM ×scale",

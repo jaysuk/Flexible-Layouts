@@ -3,6 +3,7 @@
     <UnhomedWarning :axes="unhomedNow" class="flex-shrink-0 mb-1" />
     <div class="d-flex align-center mb-1 flex-shrink-0">
       <span v-if="widget.label" class="wcs-label text-truncate">{{ widget.label }}</span>
+      <span v-if="imperial" class="wcs-unit ms-1">{{ unit }}</span>
       <v-spacer />
       <v-select :model-value="activeWcs" :items="wcsItems" density="compact" variant="outlined" hide-details
                 class="wcs-select" :disabled="disabledNow" @update:model-value="selectWcs" />
@@ -49,6 +50,7 @@ import { LogLevel, useUiStore } from "@/stores/ui";
 import type { Widget } from "../model/document";
 import { resolveOmPath } from "../util/omPath";
 import { unhomedAxes } from "../util/homedCheck";
+import { useLengthUnits } from "../util/units";
 import UnhomedWarning from "./UnhomedWarning.vue";
 
 const props = defineProps<{ widget: Extract<Widget, { type: "wcs" }>; overrideColor?: string; disabled?: boolean }>();
@@ -60,7 +62,8 @@ const WCS = ["G54", "G55", "G56", "G57", "G58", "G59", "G59.1", "G59.2", "G59.3"
 const wcsItems = WCS.map((g, i) => ({ title: g, value: i }));
 const disabledNow = computed(() => props.disabled || uiStore.uiFrozen);
 const showMachine = computed(() => props.widget.showMachine !== false);
-const precision = computed(() => props.widget.precision ?? 2);
+// Positions are millimetres in the object model; shown (and typed) in inches when DWC's display units say so.
+const { imperial, unit, format, toMm } = useLengthUnits();
 const wantAxes = computed(() => (props.widget.axes?.length ? props.widget.axes : ["X", "Y", "Z"]).map((a) => a.toUpperCase()));
 const unhomedNow = computed(() => unhomedAxes(machineStore.model, wantAxes.value));
 
@@ -73,7 +76,7 @@ interface RawAxis { letter?: string; machinePosition?: number | null; userPositi
 const axisRows = computed(() => {
   const arr = resolveOmPath(machineStore.model, "move.axes");
   if (!Array.isArray(arr)) { return [] as Array<{ letter: string; work: string; machine: string }>; }
-  const fmt = (v: unknown): string => (typeof v === "number" ? v.toFixed(precision.value) : "—");
+  const fmt = (v: unknown): string => (typeof v === "number" ? format(v, props.widget.precision) : "—");
   return wantAxes.value.map((letter) => {
     const a = (arr as Array<RawAxis>).find((x) => (x?.letter ?? "").toUpperCase() === letter);
     return { letter, work: fmt(a?.userPosition), machine: fmt(a?.machinePosition) };
@@ -106,8 +109,10 @@ function startEdit(letter: string): void {
 }
 function commitEdit(letter: string, text: string): void {
   editingAxis.value = null;
-  const value = Number(text);
-  if (!Number.isFinite(value)) { return; }
+  const typed = Number(text);
+  if (!Number.isFinite(typed)) { return; }
+  // G-code is always millimetres, whatever the display unit.
+  const value = Number(toMm(typed).toFixed(6));
   run(`G10 L20 P${activeWcs.value + 1} ${letter}${value}`);
 }
 </script>
@@ -116,6 +121,7 @@ function commitEdit(letter: string, text: string): void {
 .wcs-root { min-height: 0; }
 .wcs-frozen { opacity: 0.5; pointer-events: none; }
 .wcs-label { font-size: 0.8em; font-weight: 600; opacity: 0.85; }
+.wcs-unit { font-size: 0.7em; opacity: 0.6; }
 .wcs-select { max-width: 96px; }
 .wcs-body { min-height: 0; overflow-y: auto; }
 .wcs-row { display: flex; align-items: baseline; gap: 6px; padding: 1px 2px; }
