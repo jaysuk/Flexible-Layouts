@@ -21,13 +21,13 @@
         <span v-if="widget.allowEdit === false" class="gl-ro text-truncate" :style="readingStyle" :title="r.live">{{ r.live }}</span>
 
         <!-- boolean: immediate toggle -->
-        <v-switch v-else-if="r.kind === 'boolean'" :model-value="r.value === true" color="primary"
+        <v-switch v-else-if="r.kind === 'boolean'" :model-value="r.value === true" :aria-label="r.name" color="primary"
                   density="compact" hide-details :disabled="disabledNow" class="gl-switch"
                   @update:model-value="setBool(r.name, $event === true)" />
 
         <!-- everything else: text field + set -->
         <template v-else>
-          <v-text-field :model-value="draft(r)" density="compact" variant="outlined" hide-details
+          <v-text-field :model-value="draft(r)" :aria-label="r.name" density="compact" variant="outlined" hide-details
                         :disabled="disabledNow" class="gl-field"
                         :hint="r.kind === 'array' || r.kind === 'object' ? '{ … }' : undefined"
                         @update:model-value="drafts[r.name] = $event"

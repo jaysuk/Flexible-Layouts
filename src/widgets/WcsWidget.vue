@@ -5,7 +5,7 @@
       <span v-if="widget.label" class="wcs-label text-truncate">{{ widget.label }}</span>
       <span v-if="imperial" class="wcs-unit ms-1">{{ unit }}</span>
       <v-spacer />
-      <v-select :model-value="activeWcs" :items="wcsItems" density="compact" variant="outlined" hide-details
+      <v-select :model-value="activeWcs" :aria-label="$t('plugins.flexibleLayouts.a11y.workOffset')" :items="wcsItems" density="compact" variant="outlined" hide-details
                 class="wcs-select" :disabled="disabledNow" @update:model-value="selectWcs" />
     </div>
 

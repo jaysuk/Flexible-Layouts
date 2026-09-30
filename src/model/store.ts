@@ -6,11 +6,12 @@
  * survives settings export/import). `registerDocument()` is called once at plugin init to seed
  * the default; the composable below is the read/write surface for components.
  */
-import { computed, type ComputedRef } from "vue";
+import { computed, ref, type ComputedRef } from "vue";
 
 import { useSettingsStore } from "@/stores/settings";
 
 import {
+	type AutoSwitchRule,
 	type Breakpoint,
 	createEmptyDocument,
 	createEmptyPage,
@@ -24,6 +25,27 @@ import {
 } from "./document";
 
 const PLUGIN_KEY = "flexibleLayouts";
+const SHOWING_KEY = "flexibleLayouts.showingProfile";
+
+/**
+ * Which profile THIS browser is showing, when that differs from the shared default (MISSING-FEATURES-PLAN §B5).
+ *
+ * `activeProfile` in the shared document is one value for every browser that opens the machine, so an automatic switch
+ * that wrote it would flip every connected client, rewrite the settings file on each change, and let two clients
+ * ping-pong. Automatic switching therefore only sets THIS override (localStorage). A manual switch still writes the
+ * shared pointer as it always did - and clears this override, so the device shows what was just chosen.
+ * Null = follow the shared pointer. An id that no longer exists is ignored.
+ */
+export const deviceProfileOverride = ref<string | null>((() => {
+	try { return localStorage.getItem(SHOWING_KEY) || null; } catch { return null; }
+})());
+
+export function setDeviceProfileOverride(id: string | null): void {
+	deviceProfileOverride.value = id;
+	try {
+		if (id) { localStorage.setItem(SHOWING_KEY, id); } else { localStorage.removeItem(SHOWING_KEY); }
+	} catch { /* storage blocked */ }
+}
 const DOC_KEY = "document";
 const PROFILES_KEY = "profiles";
 const ACTIVE_KEY = "activeProfile";
@@ -73,7 +95,17 @@ export function ensureProfiles(): { profiles: Record<string, LayoutDocument>; ac
 		}
 		c[ACTIVE_KEY] = active;
 	}
-	return { profiles, active };
+	// `active` is what THIS device shows: its own override if that profile still exists, else the shared pointer.
+	const shown = deviceProfileOverride.value;
+	return { profiles, active: shown && profiles[shown] ? shown : active };
+}
+
+/** The SHARED default profile - what every browser without its own override shows, and what a backup records. */
+export function getSharedActiveProfileId(): string {
+	const c = container();
+	const { profiles } = ensureProfiles();
+	const shared = c[ACTIVE_KEY] as string | undefined;
+	return shared && profiles[shared] ? shared : (Object.keys(profiles)[0] ?? "default");
 }
 
 /** Seed the profiles structure. Called once at plugin init. */
@@ -110,7 +142,8 @@ export function setLiveDocument(doc: LayoutDocument): void {
 
 /** Deep snapshot of every profile + the active pointer — the payload of the SD-card backup. */
 export function snapshotAllProfiles(): { profiles: Record<string, LayoutDocument>; active: string } {
-	const { profiles, active } = ensureProfiles();
+	const { profiles } = ensureProfiles();
+	const active = getSharedActiveProfileId(); // a backup records the shared default, never this device's override
 	const clone = JSON.parse(JSON.stringify(profiles)) as Record<string, LayoutDocument>;
 	// Keep the backup tidy: drop transient grid fields that may have been re-added since load.
 	for (const doc of Object.values(clone)) {
@@ -132,11 +165,13 @@ export function getActiveProfileId(): string {
 	return ensureProfiles().active;
 }
 
+/** A MANUAL switch: sets the shared default (as it always did) and drops this device's override so it follows. */
 export function setActiveProfileId(id: string): void {
 	const c = container();
 	const { profiles } = ensureProfiles();
 	if (profiles[id]) {
 		c[ACTIVE_KEY] = id;
+		setDeviceProfileOverride(null);
 	}
 }
 
@@ -172,6 +207,20 @@ export function duplicateProfile(id: string, name: string): string {
 	doc.meta.name = name;
 	profiles[newId] = doc;
 	return newId;
+}
+
+/** Set (or clear) when a profile should take over automatically - see model/autoProfile.ts. */
+export function setProfileAutoSwitch(id: string, rule: AutoSwitchRule | undefined): void {
+	const { profiles } = ensureProfiles();
+	const doc = profiles[id];
+	if (!doc) {
+		return;
+	}
+	if (rule) {
+		doc.meta.autoSwitch = rule;
+	} else {
+		delete doc.meta.autoSwitch;
+	}
 }
 
 export function renameProfile(id: string, name: string): void {

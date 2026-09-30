@@ -10,7 +10,7 @@
 					   :title="$t('plugins.flexibleLayouts.io.importPanelHelp')" @click="pickPanel">
 					{{ $t("plugins.flexibleLayouts.io.importPanel") }}
 				</v-btn>
-				<v-btn icon="mdi-close" variant="text" density="comfortable"
+				<v-btn :aria-label="$t('plugins.flexibleLayouts.a11y.close')" icon="mdi-close" variant="text" density="comfortable"
 					   @click="emit('update:modelValue', false)" />
 			</v-card-title>
 			<input ref="panelInput" type="file" accept=".json,application/json" class="d-none" @change="onPanelFile" />

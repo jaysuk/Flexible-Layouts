@@ -18,8 +18,8 @@ import type { Widget } from "../model/document";
 const CHROME_OFF_TYPES = new Set<Widget["type"]>([
 	"codeButton", "jog", "octopusJog", "slider", "toggle", "stepper", "input",
 	"label", "hotspot", "web", "note", "thumbnail",
-	"group", "profileSwitch", "themeToggle", "pluginPage", "embeddable",
-	"codeInput", "editModeToggle", "uploadButton", "accessChip", "emergencyStop",
+	"group", "tabs", "profileSwitch", "themeToggle", "pluginPage", "embeddable",
+	"codeInput", "editModeToggle", "uploadButton", "accessChip", "emergencyStop", "fullscreen",
 ]);
 
 /** Per-type default. Built-in DWC panels are already PanelCard-based, so they're never re-wrapped. */

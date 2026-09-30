@@ -5,7 +5,7 @@
 				<v-icon class="me-2">mdi-swap-horizontal</v-icon>
 				{{ $t("plugins.flexibleLayouts.canAddress.title") }}
 				<v-spacer />
-				<v-btn icon="mdi-close" variant="text" density="comfortable" @click="close" />
+				<v-btn :aria-label="$t('plugins.flexibleLayouts.a11y.close')" icon="mdi-close" variant="text" density="comfortable" @click="close" />
 			</v-card-title>
 
 			<v-card-text style="max-height: 72vh;">

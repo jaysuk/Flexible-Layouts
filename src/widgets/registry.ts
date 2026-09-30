@@ -135,9 +135,11 @@ export const FREEFORM_WIDGETS: ReadonlyArray<FreeformCatalogEntry> = [
 
 	// Layout & app
 	{ type: "group",      labelKey: "widgets.group",      icon: "mdi-group",              defaultSize: { w: 6, h: 6 }, category: "layout" },
+	{ type: "tabs",       labelKey: "widgets.tabs",       icon: "mdi-tab",                defaultSize: { w: 8, h: 9 }, category: "layout" },
 	{ type: "globals",    labelKey: "widgets.globals",    icon: "mdi-variable",           defaultSize: { w: 5, h: 6 }, category: "layout" },
 	{ type: "profileSwitch", labelKey: "widgets.profileSwitch", icon: "mdi-layers-triple", defaultSize: { w: 3, h: 2 }, category: "layout" },
 	{ type: "themeToggle", labelKey: "widgets.themeToggle", icon: "mdi-theme-light-dark", defaultSize: { w: 3, h: 2 }, category: "layout" },
+	{ type: "fullscreen",  labelKey: "widgets.fullscreen",  icon: "mdi-fullscreen",         defaultSize: { w: 5, h: 2 }, category: "layout" },
 	{ type: "codeInput", labelKey: "widgets.codeInput", icon: "mdi-console-line", defaultSize: { w: 5, h: 1 }, category: "layout" },
 	{ type: "editModeToggle", labelKey: "widgets.editModeToggle", icon: "mdi-pencil-ruler", defaultSize: { w: 2, h: 1 }, category: "layout" },
 	{ type: "uploadButton", labelKey: "widgets.uploadButton", icon: "mdi-upload", defaultSize: { w: 2, h: 1 }, category: "layout" },
@@ -196,6 +198,11 @@ export function describeWidget(widget: Widget): { title: string; icon: string } 
 			return {
 				title: widget.title || i18n.global.t("plugins.flexibleLayouts.widgets.group"),
 				icon: "mdi-group",
+			};
+		case "tabs":
+			return {
+				title: widget.title || i18n.global.t("plugins.flexibleLayouts.widgets.tabs"),
+				icon: "mdi-tab",
 			};
 		case "octopusJog":
 			return {
@@ -310,6 +317,8 @@ export function describeWidget(widget: Widget): { title: string; icon: string } 
 			return { title: i18n.global.t("plugins.flexibleLayouts.widgets.accessChip"), icon: "mdi-shield-account" };
 		case "emergencyStop":
 			return { title: i18n.global.t("plugins.flexibleLayouts.widgets.emergencyStop"), icon: "mdi-flash" };
+		case "fullscreen":
+			return { title: i18n.global.t("plugins.flexibleLayouts.widgets.fullscreen"), icon: "mdi-fullscreen" };
 		case "filamentMonitor":
 			return { title: widget.title || i18n.global.t("plugins.flexibleLayouts.widgets.filamentMonitor"), icon: "mdi-printer-3d-nozzle-alert-outline" };
 		case "surfacing":

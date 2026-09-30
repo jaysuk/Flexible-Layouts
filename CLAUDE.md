@@ -8,7 +8,9 @@ Vue 3 + Vuetify plugin for DuetWebControl (drag-and-drop layout customisation fo
   with a runner-detection error unrelated to code; always use the `npm test` script for a full run.
   A single file works fine directly: `npx vitest run path/to/file.test.ts`.
 - **Typecheck**: needs a local DuetWebControl checkout — `DWC_DIR=<path-to-DuetWebControl> npm run typecheck`.
-  Bare `npm run typecheck` fails without `DWC_DIR` set.
+  Bare `npm run typecheck` fails without `DWC_DIR` set. The check resolves `dwc-gcode-core` (and other shared packages) from
+  **that checkout's** `node_modules`, not this repo's - a stale copy there (e.g. 1.31.0 while this repo needs 1.32.0) shows up as
+  "has no exported member" errors in the stepper files that are not real; `npm install` in the DWC checkout first.
 - **Build verification**: `DWC_DIR=<path> npm run verify-build` — produces `FlexibleLayouts-<ver>.zip`
   (the installable plugin package) **and** `FlexibleLayouts-<ver>-srcmap.zip` (debug sourcemaps, held
   back from the main archive) in the repo root. Both are gitignored (`*.zip`) — safe to leave, or
@@ -127,6 +129,42 @@ Vue 3 + Vuetify plugin for DuetWebControl (drag-and-drop layout customisation fo
   command stay in millimetres, so typed inches are converted back before they reach G-code. `widgets/LockableSlider.vue` wraps
   `v-slider` with DWC's `lockableSliders` lock button and `numericInputs` number field (Slider, Fan and Spindle widgets use it).
   Jog step rings are configured in mm and stay mm; only their tooltips add the inch equivalent.
+- **Per-device state never goes in the shared document.** DWC stores `plugins.flexibleLayouts` on the board, so every browser
+  that opens the machine shares it. Anything that is "how THIS browser looks" lives in `localStorage` (try/catch, like the drawer
+  width): sound/vibration (`util/sound.ts`), hotkey switches (`model/hotkeys.ts`), fullscreen/kiosk/keep-awake
+  (`model/screenState.ts`), which tab is showing and whether a panel is folded (`model/containerState.ts`, keyed by the placed
+  item's id via `ITEM_ID_KEY`), the "showing profile" override (`deviceProfileOverride` in `store.ts`; `getActiveProfileId()` is
+  what THIS device shows, `getSharedActiveProfileId()` is the shared default and what a backup records; a manual switch writes
+  the shared pointer and clears the override, an automatic one - `model/autoProfile.ts`, edge-triggered, first match wins - only
+  sets the override). The tests assert the document is untouched.
+- **Container walkers go through `childItemLists` / `mapChildItemLists` / `forEachItemWidget` (`model/document.ts`)** - the one place
+  that knows which widget types nest items (`group`, `tabs`). Visiting, id regeneration (`reidItem`, which also renews a tabs
+  widget's tab ids), runtime-field stripping, dependency capture and Explorer-session pruning all use them; a new container type
+  only has to be taught there. Do not add another `type === "group"` special case.
+- **A hotkey, a paste or a cue must never be a side door.** `model/hotkeys.ts` registers a widget's own `activate()` (via
+  `composables/useHotkey.ts`) so print lock, access lock, confirm and debounce still apply; it stands down while typing, with a
+  dialog open, on repeat, and (by default) while editing. `model/widgetClipboard.ts` uses the DOM `copy`/`cut`/`paste` events, not
+  `navigator.clipboard` (absent over the plain HTTP DWC is usually served on); a paste is ONE `commit()`. Audio cues
+  (`composables/useCueOnRise.ts`, `model/soundCues.ts`) fire on a RISING EDGE only, baseline on mount, and go through `playCue`
+  (mute/volume); browsers keep the `AudioContext` suspended until a gesture.
+- **Accessibility is enforced by tests, not goodwill.** `test/a11y/a11y.test.ts` runs axe-core over every registered widget and
+  its Properties dialog (colour-contrast is off in happy-dom); `A11Y_ALLOWLIST` may only shrink and a stale entry fails.
+  `scripts/check-icon-buttons.mjs` (also run by a test) fails on an icon-only `<v-btn>` with no `aria-label`/`title`/text. Under
+  the test kit `attachTo` renders nothing into the host, so audit `wrapper.html()` re-parented into a real element (and guard
+  against a vacuous pass). Click targets that are not `<button>`s (jog sectors, shaped buttons, shaped hotspots) use
+  `v-svg-button` (`util/svgButton.ts`): role, name, tab stop, Enter/Space firing the element's OWN click handler; jog pads are one
+  tab stop with `ringNavigation` arrows. Panel headers are keyboard "grab handles" (Enter, arrows, Shift+arrows) that
+  `FlexPage` applies as one undo step and announces in an `aria-live` region.
+- **Starter layouts are a registry** (`model/starterLayouts.ts`): one entry per page, built from `createDefaultWidget` so schema
+  changes flow in; always a NEW page (optionally its own profile), never a change to an existing one. `test/starterLayouts.test.ts`
+  checks every entry against the widget catalogue, the 12-column grid and `migrateDocument`.
+- **The unattended-backup script** (`model/configBackup/unattendedScript.ts`) is pure string generation with no FL/DWC imports, so
+  it can move into `dwc-config-backup-core`. `test/unattendedScript.test.ts` actually RUNS the generated script in Node against
+  `test/fixtures/fakeDuet.ts` for both firmware flavours (the kit's mock Duet serves no files). The board password is read from an
+  environment variable and must never appear in the script. `autoRunOnConfigSave` is read/written through
+  `configBackup/autoRunOnSave.ts`: `dwc-config-backup-core` 0.2.1 types the field (optional, default false), but this repo still
+  depends on `^0.2.0` and the helper works with either (the settings blob round-trips extra keys). Bump the dependency to
+  `^0.2.1` and the helper can then go.
 - **Shared logic gets extracted once a second consumer needs it**, not duplicated — e.g.
   `util/shapes.ts`'s `buttonShapeToParams()` (shared by `CommandButtonWidget.vue` and
   `HotspotWidget.vue`'s shaped regions), `composables/useWidgetPreviewFrame.ts` (shared by
@@ -187,6 +225,10 @@ Vue 3 + Vuetify plugin for DuetWebControl (drag-and-drop layout customisation fo
 
 ## Known gotchas
 
+- **Never script-edit source files with Python's default `open()` on Windows.** It is cp1252, so a `§`, `—` or `…` you insert is
+  written as a lone Latin-1 byte and the file stops being valid UTF-8 (this happened once, in `autoBackupNudges.ts`). Read and write
+  bytes and decode/encode as UTF-8, or use the Edit tool. `git ls-files -m -o --exclude-standard` + a UTF-8 decode check finds any
+  damage.
 - `dwc-plugin-runtime`'s `formatReleaseNotesHtml()` (an external, `node_modules` package) never
   converts `[text](url)` Markdown links into `<a>` tags — they render as literal bracket/paren text.
   `src/util/releaseNotes.ts`'s `linkifyReleaseNotes()` wraps it with a regex fix (safe because the

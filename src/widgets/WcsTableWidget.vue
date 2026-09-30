@@ -25,6 +25,7 @@
 						</td>
 						<td v-for="a in axes" :key="a">
 							<input class="wt-offset" type="number" step="any" :disabled="disabledNow"
+								   :aria-label="$t('plugins.flexibleLayouts.a11y.axisOffset', { axis: a, name: widget.names?.[row.index] || row.index })"
 								   :value="editValue(row.index, a)"
 								   @change="commitOffset(row.index, a, ($event.target as HTMLInputElement).value)" />
 						</td>
@@ -41,10 +42,10 @@
 
 		<div v-if="widget.showCopy !== false" class="d-flex ga-1 align-center mt-2 flex-shrink-0 flex-wrap">
 			<span class="text-caption text-medium-emphasis">{{ $t("plugins.flexibleLayouts.wcsTable.copy") }}</span>
-			<v-select v-model="copyFrom" :items="wcsItems" density="compact" variant="outlined" hide-details
+			<v-select v-model="copyFrom" :aria-label="$t('plugins.flexibleLayouts.a11y.copyFrom')" :items="wcsItems" density="compact" variant="outlined" hide-details
 					  class="wt-copy-select" :disabled="disabledNow" />
 			<v-icon size="16">mdi-arrow-right</v-icon>
-			<v-select v-model="copyTo" :items="wcsItems" density="compact" variant="outlined" hide-details
+			<v-select v-model="copyTo" :aria-label="$t('plugins.flexibleLayouts.a11y.copyTo')" :items="wcsItems" density="compact" variant="outlined" hide-details
 					  class="wt-copy-select" :disabled="disabledNow" />
 			<v-btn size="small" variant="tonal" :color="overrideColor || widget.color || 'primary'" :disabled="disabledNow || copyFrom === copyTo" @click="copyOffsets">
 				{{ $t("plugins.flexibleLayouts.wcsTable.copyButton") }}

@@ -21,6 +21,15 @@ Click **Edit** in the top bar to start; **Done** to finish.
 - Each panel has header buttons to **configure** (⚙), **duplicate** (⧉), **lock** (🔒), **back up**
   (💾), **edit contents** (for groups) and **delete** (🗑).
 - **Undo / redo** with **Ctrl+Z / Ctrl+Y**.
+- **Copy, cut, paste and duplicate** the selected panels (tick the checkbox on each panel's header) with
+  **Ctrl+C / Ctrl+X / Ctrl+V / Ctrl+D**, or the buttons in the toolbar - pasted panels get new ids, keep their layout
+  relative to each other, land in the first free gap and are **one undo step**. The copy is also written to the system
+  clipboard as JSON, so you can paste it into another browser, another profile or another machine (or, on a touch device
+  with no keyboard, use **Paste from text…**). Panels that embed a plugin you don't have show a warning. The shortcuts only
+  act while you are editing, and never while you are typing in a field or a dialog is open.
+- **Move and resize from the keyboard:** Tab to a panel's header, press **Enter** to pick it up, then the **arrow keys** move
+  it one cell and **Shift + arrows** resize it; **Enter** or **Escape** puts it down. Each step is announced to screen
+  readers, and the whole move is one undo step.
 - **Add widget** opens the palette: filter by **category** chips (Controls, Machine, Read-outs,
   Dashboard, Layout, Built-in panels, Plugin pages) or **search**, then click a tile to add it
   (see [widgets.md](widgets.md)).
@@ -95,6 +104,95 @@ Open **Manage pages** (the edit toolbar, the drawer, or *Settings → Flexible L
   live `M291` - and its OK / Cancel buttons list the `M292` they would send and take the box down. It lists every problem in the menu (RepRapFirmware stops loading a
   menu at the first one), and the editor underlines the same problems in the text.
 
+## Starter layouts
+
+**Add widget → …** is not the only way to begin: *Layout & sharing → Browse starter layouts…* (and the first-run
+welcome) offers ready-made pages - **Printer dashboard**, **Print monitor** (big progress, thumbnail, times, temperatures,
+webcam, pause / resume / cancel and an emergency stop - made for a wall display), **Touchscreen simple** (a few large
+buttons), **Laser** and **CNC**. The ones that fit your machine (by its mode, or DWC's *Dashboard mode* setting) are listed
+first. A starter is always added as a **new page** (optionally in its own new profile) and never changes an existing one;
+everything on it can be edited afterwards.
+
+## Keyboard shortcuts on buttons
+
+A **command button** or **toggle** can have a keyboard shortcut - open its ⚙ properties and click the **Keyboard shortcut**
+field, then press the keys. It needs **Ctrl** (⌘ on a Mac) or **Alt**, or can be an **F-key**; combinations the browser or
+common editing already uses (Ctrl+W, Ctrl+C, F5, F12…) are refused, and a shortcut already used by another widget on the page
+is flagged. A small key badge on the button is optional.
+
+A shortcut does exactly what a click does: the **print lock**, the **access lock**, a **condition that disables** the widget,
+a **confirm** dialog and the **debounce** all still apply (a locked widget just says it is locked). Shortcuts are bound only
+while their widget is on screen - a widget on another page, or hidden by a condition, does not respond - and they stand down
+while you are typing, while a dialog is open, on key repeat and (unless you turn that on) while editing the layout. The
+emergency-stop widget deliberately has no shortcut. *Settings → Flexible Layouts → Keyboard shortcuts* switches them on/off for
+this browser.
+
+## Sound and vibration
+
+Off by default, and **per browser** - nothing is stored in the shared layout. *Settings → Flexible Layouts → Sound and
+vibration* has a master mute, a volume, a **Test sound** button, and a switch per event: **a job finishes**, **a job is
+cancelled or the machine halts**, **the job is paused**, **a filament monitor faults**, **a heater faults**, **an M291 message
+box appears** - each with its own cue (chime, double beep, alarm, low buzz) and, on a device that can vibrate, an optional
+vibration. Cues fire on the change, not while a condition merely persists, and not for whatever state the machine was already in
+when the page loaded. Browsers refuse audio until you have clicked or tapped the page once (the settings say so), and a
+background tab may delay them.
+
+Per widget: a **condition** can also *play a sound* when it becomes true (optionally repeating every N seconds while it holds,
+at least 5 and capped), the **alert** widget can sound when it appears, and a button or toggle can **vibrate briefly** when
+pressed. None of this ever sends a command.
+
+## Tabs and folding panels
+
+The **Tabs** widget is a container with several tabs, each holding its own mini-grid (use *Edit contents* on it). A tab can be
+shown **only when a condition holds** (a "Probing" tab only on a CNC machine), the tab bar can sit **top, bottom or left**, and
+on a phone it scrolls sideways. Only the tab that is showing is rendered, so the charts and webcams on the others are not
+running. Which tab you last looked at is remembered **per device** (not in the layout).
+
+A **group** or **tabs** panel can be made **foldable**: a chevron in its title hides the contents. Whether it is folded is
+also per device. The grid does not close up on its own, so panels below only move up to fill the gap if the folding panel has
+**Auto height** switched on in its ⚙ properties.
+
+## Fullscreen, kiosk and keeping the screen on
+
+The **Fullscreen / kiosk** widget has three controls, all **per device**:
+
+- **Fullscreen** (hidden where the browser can't do it - iPhone Safari; use *Share → Add to Home Screen* there).
+- **Kiosk mode** hides the top bar and side menu, leaving a small dim button in the corner to leave. Add `?kiosk=1` to the
+  address to start in it. With an **access lock** configured, leaving kiosk asks for the **Admin password**, so a wall display
+  can't be un-kiosked by a passer-by (`?kiosk=0` goes through the same check).
+- **Keep screen awake** uses the browser's Wake Lock. It only works over **https** - on the usual plain-`http` DWC the switch is
+  disabled and says why; the **TLS setup** helper in the settings tab can enable https.
+
+## Automatic profile switching
+
+A profile can **take over automatically**: click the robot button on it in *Layout profiles* and choose *when the machine is in
+a mode (FFF / CNC / Laser)*, *a print is running*, or *a condition holds*, optionally *go back to the previous profile when it
+ends*. Switch it on for a browser with *Switch profiles automatically on this device*.
+
+It is **per device**: this browser gets its own "showing" profile and the shared default is never rewritten, so a wall tablet can
+follow the print while everyone else keeps their layout (a manual switch still sets the shared default, as before). Rules are
+checked on a **change** - the mode changing, a print starting or ending, a condition flipping - and once when the machine first
+loads, not continuously, so switching by hand afterwards sticks until the next change. If several profiles match, the first in
+the list wins. Automatic switching is system-initiated and so ignores the Admin lock (that is the point on a locked-down display).
+
+## Accessibility
+
+Flexible Layouts aims to be usable without a mouse or sight. Every icon-only button has a name; the jog pads, shaped buttons and
+shaped hotspots are keyboard-operable (Tab in, **arrow keys** choose the direction and ring, **Enter / Space** press); moving and
+resizing panels works from the keyboard; alerts and message boxes are announced (errors and warnings assertively); state is never
+shown by colour alone (indicators also say on/off, statuses carry text and icons); the colour settings warn when text and
+background fall under a 4.5:1 contrast; focus returns to where it was when a dialog closes; and the small transitions stop under
+"reduce motion". This is checked automatically (an axe run over every widget and its properties dialog, plus a check that no
+icon-only button lacks a name). If you find something that doesn't work with your assistive technology, please report it.
+
+| Where | Keys |
+|-------|------|
+| Anywhere | **Tab / Shift+Tab** move focus; **Enter / Space** press a button |
+| Editing | **Ctrl+Z / Y** undo / redo · **Ctrl+C / X / V / D** copy / cut / paste / duplicate · on a panel header **Enter** then **arrows** move, **Shift+arrows** resize, **Enter / Esc** drop |
+| Jog pads | **← →** go round the pad · **↑ ↓** go to the outer / inner ring · **Home / End** outermost / innermost ring · **Enter / Space** move |
+| Buttons and toggles | the shortcut you set in ⚙ properties |
+| Shortcut recorder | press the keys · **Backspace** clears · **Esc** cancels · **Tab** moves on |
+
 ## Phones
 
 Below tablet width the top bar gets a **status bar toggle** and, while printing, a **progress ring**
@@ -115,7 +213,8 @@ to inheriting.
 **Layout profiles** keep several complete interfaces (e.g. one for FFF, one for CNC) that you switch
 between from the top bar (a quick switcher appears once you have more than one). Manage them from
 **Layout profiles** in the settings tab. Importing and single-document operations act on the
-**active** profile.
+**active** profile. A profile can also switch itself in - see
+[Automatic profile switching](#automatic-profile-switching).
 
 ## Backup & share
 

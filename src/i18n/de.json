@@ -70,7 +70,32 @@
 		"seedHelp": "Mit einer leeren Seite beginnen oder von den Panels ausgehen, die diese Seite derzeit zeigt, um sie neu anzuordnen.",
 		"seedUseCurrent": "Aktuelles Layout verwenden",
 		"seedStartBlank": "Leer beginnen",
-		"addWidgetHelp": "Öffnet die Widget-Palette, um dieser Seite ein Panel hinzuzufügen."
+		"addWidgetHelp": "Öffnet die Widget-Palette, um dieser Seite ein Panel hinzuzufügen.",
+		"clipboard": {
+			"copy": "Ausgewählte Panels kopieren (Strg+C)",
+			"cut": "Ausgewählte Panels ausschneiden (Strg+X)",
+			"paste": "Panels einfügen (Strg+V)",
+			"pasteText": "Aus Text einfügen…",
+			"duplicate": "Ausgewählte Panels duplizieren (Strg+D)",
+			"didCopy": "{count} Panel kopiert | {count} Panels kopiert",
+			"didCut": "{count} Panel ausgeschnitten | {count} Panels ausgeschnitten",
+			"didPaste": "{count} Panel eingefügt | {count} Panels eingefügt",
+			"missingPlugins": "Die eingefügten Panels benötigen Plugins, die hier nicht installiert sind: {plugins}",
+			"newer": "Diese Zwischenablage stammt aus einer neueren Version von Flexible Layouts. Aktualisiere das Plugin, um sie einzufügen.",
+			"invalid": "Dieser Text ist kein kopiertes Panel.",
+			"pasteDialogTitle": "Panels einfügen",
+			"pasteDialogHint": "Füge Panels ein, die in einem anderen Browser, Profil oder auf einer anderen Maschine kopiert wurden. Hier kopierte Panels lassen sich auch mit der Einfügen-Schaltfläche einfügen."
+		},
+		"kb": {
+			"hint": "Drücke Enter, um dieses Panel aufzunehmen, und verschiebe es dann mit den Pfeiltasten. Mit Umschalt plus Pfeiltasten änderst du die Größe.",
+			"grabbedLabel": "Aufgenommen. Pfeiltasten verschieben, Umschalt plus Pfeiltasten ändern die Größe, Enter oder Escape legt es ab.",
+			"grabbed": "{name} aufgenommen. Pfeiltasten verschieben es, Umschalt plus Pfeiltasten ändern die Größe, Enter oder Escape legt es ab.",
+			"moved": "{name} nach Spalte {col}, Zeile {row} verschoben.",
+			"resized": "{name} ist jetzt {w} breit und {h} hoch.",
+			"atEdge": "{name} kann in diese Richtung nicht weiter.",
+			"locked": "{name} ist gesperrt - entsperre es, um es zu verschieben oder die Größe zu ändern.",
+			"dropped": "Abgelegt."
+		}
 	},
 	"widget": {
 		"panelError": "Das Panel „{name}“ konnte hier nicht angezeigt werden.",
@@ -156,7 +181,9 @@
 		"preflight": "Vorabprüfung",
 		"probeRoutines": "Tastroutinen",
 		"toolpath": "Werkzeugweg",
-		"firmwareUpdate": "Firmware-Update"
+		"firmwareUpdate": "Firmware-Update",
+		"fullscreen": "Vollbild / Kiosk",
+		"tabs": "Tabs"
 	},
 	"properties": {
 		"lengthMm": "Länge in Millimetern",
@@ -313,7 +340,8 @@
 		"lte": "≤",
 		"contains": "enthält Text",
 		"truthy": "ist gesetzt / wahr",
-		"falsy": "ist nicht gesetzt / falsch"
+		"falsy": "ist nicht gesetzt / falsch",
+		"thenSound": "Dann einen Ton abspielen"
 	},
 	"inputModifier": {
 		"title": "Eingabe-Modifikator",
@@ -388,7 +416,8 @@
 		"background": "Hintergrund",
 		"header": "Kopfleiste",
 		"text": "Text",
-		"help": "Überschreibt Hintergrund-, Kopfleisten- und Textfarbe dieses Panels. Eine nicht gesetzte Farbe folgt dem aktuellen Design."
+		"help": "Überschreibt Hintergrund-, Kopfleisten- und Textfarbe dieses Panels. Eine nicht gesetzte Farbe folgt dem aktuellen Design.",
+		"lowContrast": "Text- und Hintergrundfarbe haben nur ein Kontrastverhältnis von {ratio}:1. Text braucht mindestens 4,5:1, um gut lesbar zu sein - besonders für Menschen mit eingeschränktem Sehvermögen."
 	},
 	"activate": {
 		"title": "Flexible Layouts verwenden?",
@@ -450,7 +479,39 @@
 		"create": "Erstellen",
 		"delete": "Profil löschen",
 		"deleteConfirm": "Das Profil „{name}“ und alles darin löschen? Das lässt sich nicht rückgängig machen.",
-		"manageHelp": "Getrennte Layout-Profile erstellen und zwischen ihnen wechseln (z. B. eines pro Maschine oder Aufgabe)."
+		"manageHelp": "Getrennte Layout-Profile erstellen und zwischen ihnen wechseln (z. B. eines pro Maschine oder Aufgabe).",
+		"auto": {
+			"enable": "Profile auf diesem Gerät automatisch wechseln",
+			"enableHint": "Ein Profil kann übernehmen, wenn die Maschine in einem bestimmten Modus ist, ein Druck läuft oder eine Bedingung gilt (mit der Roboter-Schaltfläche an jedem Profil einstellbar). Das betrifft nur diesen Browser - andere Browser behalten das gemeinsame Profil, und nichts Gemeinsames wird neu geschrieben.",
+			"last": "Letzter automatischer Wechsel: {name} um {time} ({why}).",
+			"differs": "Dieses Gerät zeigt ein automatisch gewähltes Profil. Das gemeinsame Standardprofil ist {shared}.",
+			"follow": "Gemeinsames Standardprofil verwenden",
+			"edit": "Automatisches Wechseln für dieses Profil",
+			"ruleTitle": "Automatisches Wechseln: {name}",
+			"when": "Übernehmen, wenn",
+			"mode": "Maschinenmodus",
+			"returnWhenEnds": "Danach zum vorherigen Profil zurückkehren",
+			"returnHint": "Nur wenn in der Zwischenzeit niemand das Profil gewechselt hat.",
+			"ruleNote": "Geprüft, wenn sich der Maschinenmodus ändert, ein Druck beginnt oder endet oder sich die Bedingung ändert - nicht laufend, sodass ein späterer manueller Wechsel bestehen bleibt. Passen mehrere Profile, gewinnt das erste in der Liste. Der automatische Wechsel ignoriert die Admin-Sperre: Das ist auf einem Wanddisplay der Sinn der Sache.",
+			"switched": "Zu Profil „{name}“ gewechselt",
+			"kind": {
+				"none": "Nie (nur manuell)",
+				"machineMode": "Die Maschine ist in einem Modus",
+				"printing": "Ein Druck läuft",
+				"condition": "Eine Bedingung gilt"
+			},
+			"reason": {
+				"machineMode": "Maschinenmodus {value}",
+				"printing": "ein Druck hat begonnen",
+				"condition": "die Bedingung wurde erfüllt",
+				"ended": "die vorherige Bedingung ist beendet"
+			},
+			"summary": {
+				"machineMode": "Automatisch: Maschinenmodus {value}",
+				"printing": "Automatisch: während des Drucks",
+				"condition": "Automatisch: wenn eine Bedingung gilt"
+			}
+		}
 	},
 	"responsive": {
 		"desktop": "Desktop-Layout",
@@ -663,7 +724,8 @@
 		"sevSuccess": "Erfolg",
 		"sevWarning": "Warnung",
 		"sevError": "Fehler",
-		"hidden": "Nur angezeigt, wenn die Bedingung erfüllt ist"
+		"hidden": "Nur angezeigt, wenn die Bedingung erfüllt ist",
+		"sound": "Ton abspielen, wenn sie erscheint"
 	},
 	"webcam": {
 		"url": "Bild- / Stream-URL",
@@ -1063,7 +1125,9 @@
 		"items": "Anzeigen",
 		"onColor": "Farbe bei an",
 		"offColor": "Farbe bei aus",
-		"operatorHint": "Lass den Operator leer, um die ursprüngliche An/Aus-Regel des Eintrags zu verwenden (ein wahrer Live-Wert zählt als an)."
+		"operatorHint": "Lass den Operator leer, um die ursprüngliche An/Aus-Regel des Eintrags zu verwenden (ein wahrer Live-Wert zählt als an).",
+		"on": "an",
+		"off": "aus"
 	},
 	"sparkline": {
 		"series": "Reihen"
@@ -1847,7 +1911,9 @@
 			"autoRunDestinationHint": "Aufgelistet werden nur Ziele, die ohne jede Rückfrage sichern können. Google Drive und ein lokaler Download erfordern immer dein Zutun, daher können sie nicht automatisch laufen.",
 			"autoRunIneligibleReason": "erfordert jedes Mal dein Zutun",
 			"autoRunEncryptedReason": "Verschlüsselung an – Passwort nicht gespeichert",
-			"autoRunEncryptionConflict": "Bei {destination} ist die Verschlüsselung pro Sicherung eingeschaltet, und das Sicherungspasswort wird nie gespeichert – daher kann eine automatische Sicherung dorthin nicht laufen. Schalte die Verschlüsselung für {destination} im Tab „Erstellen“ aus oder wähle ein anderes Ziel."
+			"autoRunEncryptionConflict": "Bei {destination} ist die Verschlüsselung pro Sicherung eingeschaltet, und das Sicherungspasswort wird nie gespeichert – daher kann eine automatische Sicherung dorthin nicht laufen. Schalte die Verschlüsselung für {destination} im Tab „Erstellen“ aus oder wähle ein anderes Ziel.",
+			"autoRunOnSave": "Zusätzlich automatisch sichern, nachdem config.g gespeichert wurde",
+			"autoRunOnSaveHint": "Wartet etwa 10 Minuten nach dem letzten Speichern (damit keine halb bearbeitete Konfiguration gesichert wird) und sichert dann, wenn die Maschine im Leerlauf ist. Geht das nicht, erhältst du stattdessen die übliche Erinnerung. Nur solange DWC geöffnet ist."
 		},
 		"autoRun": {
 			"startedTitle": "Automatische Sicherung gestartet",
@@ -1858,6 +1924,35 @@
 			"failedBody": "Sicherung nach {destination} nicht möglich – {message}",
 			"failedRepeatedlyTitle": "Automatische Sicherungen schlagen wiederholt fehl",
 			"failedRepeatedlyBody": "Die letzten {count} automatischen Sicherungen nach {destination} sind fehlgeschlagen – {message}. Prüfe die Verbindungseinstellungen dieses Ziels."
+		},
+		"unattended": {
+			"heading": "Unbeaufsichtigte Backups (ein Skript für cron / Aufgabenplanung)",
+			"cardNote": "Ein Browser kann nur sichern, solange DWC geöffnet ist, und ein Duet kann von sich aus keinen Server aufrufen. Um zeitgesteuert ohne geöffnete Seite zu sichern, führe ein kleines Skript auf einem Rechner aus, der immer läuft.",
+			"open": "Unbeaufsichtigtes Backup einrichten…",
+			"title": "Unbeaufsichtigtes Backup einrichten",
+			"intro": "Das erzeugt ein einzelnes, eigenständiges Skript (Node 18 oder neuer, nichts zu installieren), das die Ordner sys, macros und filaments deines Boards in datierte Ordner auf dem ausführenden Rechner kopiert, die neuesten behält und bei einem Fehler mit einem Fehlercode endet, damit dein Planer es bemerkt. Plane es dann mit cron, Aufgabenplanung oder systemd ein.",
+			"warningTitle": "Bevor du es nutzt",
+			"warnPrivate": "Die Dateien werden unverändert kopiert, und config.g und andere können WLAN- und Maschinenkennwörter enthalten - halte den Backup-Ordner privat.",
+			"warnNoRedaction": "Nichts wird geschwärzt oder verschlüsselt, und nichts wird irgendwohin hochgeladen. (Die eigenen Backups des Plugins bieten Schwärzung, Verschlüsselung und Cloud-Ziele.)",
+			"warnPassword": "Das Board-Kennwort wird nie ins Skript geschrieben: Es wird beim Ausführen aus einer Umgebungsvariable gelesen.",
+			"warnRestore": "Das Skript kann nichts wiederherstellen - die Wiederherstellung bleibt in diesem Plugin (Reiter Wiederherstellen) mit einem von ihm erstellten Backup, oder du kopierst Dateien von Hand zurück.",
+			"host": "Board-Adresse",
+			"protocol": "Protokoll",
+			"flavour": "Board-Typ",
+			"flavours": {
+				"standalone": "Standalone (WLAN-/Ethernet-Board)",
+				"sbc": "SBC (Raspberry Pi o. Ä.)"
+			},
+			"detected": "diese Maschine",
+			"keep": "Neueste behalten",
+			"passwordEnv": "Kennwort-Variable",
+			"outDir": "Backup-Ordner",
+			"download": "Skript herunterladen",
+			"copyScript": "Skript kopieren",
+			"copied": "Kopiert",
+			"scheduleHeading": "Zeitgesteuert ausführen",
+			"scheduleHint": "Speichere das Skript als {file} und nutze dann eine dieser Varianten (Pfad anpassen).",
+			"copySnippet": "Kopieren"
 		}
 	},
 	"canAddress": {
@@ -2078,5 +2173,150 @@
 		"showUptime": "Laufzeit anzeigen",
 		"showNetwork": "Netzwerk anzeigen",
 		"showProbes": "Taster anzeigen"
+	},
+	"a11y": {
+		"close": "Schließen",
+		"delete": "Löschen",
+		"clear": "Zurücksetzen",
+		"moveUp": "Nach oben",
+		"moveDown": "Nach unten",
+		"refresh": "Aktualisieren",
+		"decrease": "Verringern",
+		"increase": "Erhöhen",
+		"pickColor": "Farbe wählen",
+		"toggle": "Umschalten",
+		"workOffset": "Werkstück-Koordinatensystem",
+		"copyFrom": "Kopieren von",
+		"copyTo": "Kopieren nach",
+		"axisOffset": "{axis}-Versatz, {name}",
+		"profile": "Profil",
+		"stepSize": "Schrittweite",
+		"value": "Wert",
+		"progress": "Fortschritt",
+		"slider": "Schieberegler",
+		"brightness": "Helligkeit",
+		"whiteChannel": "Weißkanal"
+	},
+	"starters": {
+		"title": "Start-Layouts",
+		"help": "Fertige Seiten als Ausgangspunkt. Jede wird als neue Seite hinzugefügt - nichts Bestehendes wird verändert - und alle Widgets darauf lassen sich danach bearbeiten.",
+		"browse": "Start-Layouts durchsuchen…",
+		"welcomeButton": "Mit einem Start-Layout beginnen",
+		"add": "Diese Seite hinzufügen",
+		"recommended": "Passt zu dieser Maschine",
+		"asProfile": "In einem neuen Profil anlegen",
+		"asProfileHint": "Erstellt ein eigenes Profil mit dem Namen des Start-Layouts und wechselt dorthin, sodass dein aktuelles Layout unverändert bleibt.",
+		"fff": {
+			"title": "Drucker-Dashboard",
+			"desc": "Status, Bett- und Düsenheizung, Bauteillüfter, Bewegung, Makros, Extrusion und ein Temperaturdiagramm."
+		},
+		"print": {
+			"title": "Druckmonitor",
+			"desc": "Großer Fortschritt, Job-Vorschaubild, Zeiten, Temperaturen und Webcam mit Pause, Fortsetzen, Abbrechen und Not-Aus. Gedacht für ein Wanddisplay."
+		},
+		"touch": {
+			"title": "Touchscreen einfach",
+			"desc": "Wenige große Tasten - Referenzfahrt, Vorheizen, Abkühlen, Lüfter und Motoren aus - und ein Not-Aus."
+		},
+		"laser": {
+			"title": "Laser",
+			"desc": "Positionsanzeige, Werkstück-Nullpunkte, Referenzfahrt, Nullpunkt setzen, Laserleistung und Bewegung."
+		},
+		"cnc": {
+			"title": "CNC",
+			"desc": "Live-Position, Referenzfahrt und Werkstück-Nullpunkt, Spindel Ein/Aus und Drehzahl sowie das Bewegungs-Panel."
+		}
+	},
+	"screen": {
+		"fullscreen": "Vollbild",
+		"exitFullscreen": "Vollbild beenden",
+		"kiosk": "Kiosk-Modus",
+		"exitKiosk": "Kiosk beenden",
+		"keepAwake": "Bildschirm anlassen",
+		"awakeUnavailable": {
+			"insecure": "Den Bildschirm anzulassen erfordert eine sichere (https-)Verbindung, DWC wird aber über einfaches http ausgeliefert. Der TLS-Assistent von Flexible Layouts kann https aktivieren.",
+			"unsupported": "Dieser Browser kann den Bildschirm nicht anlassen."
+		},
+		"note": "Diese Schaltflächen ändern nur, wie dieser Browser die Seite darstellt. Sie werden pro Gerät gespeichert und gehören nicht zum gemeinsamen Layout. Auf dem iPhone ist Vollbild nicht verfügbar - nutze stattdessen Teilen > Zum Home-Bildschirm, um DWC als App zu starten.",
+		"showFullscreen": "Vollbild-Schaltfläche anzeigen",
+		"showKiosk": "Kiosk-Schaltfläche anzeigen",
+		"kioskFullscreen": "Kiosk-Modus wechselt auch in den Vollbildmodus",
+		"showKeepAwake": "Schalter „Bildschirm anlassen“ anzeigen"
+	},
+	"hotkey": {
+		"label": "Tastenkürzel",
+		"none": "Keines",
+		"recording": "Tasten drücken…",
+		"hint": "Hier klicken und dann die Tasten drücken. Benötigt Strg oder Alt (oder eine F-Taste). Rücktaste löscht.",
+		"clear": "Tastenkürzel entfernen",
+		"badge": "Tastenkürzel am Widget anzeigen",
+		"duplicate": "Ein anderes Widget auf dieser Seite nutzt dieses Kürzel bereits - nur das erste wird ausgeführt.",
+		"locked": "Dieses Kürzel ist gerade gesperrt (Druck läuft, Zugriffsstufe oder eine Bedingung).",
+		"problem": {
+			"invalid": "Diese Taste kann nicht als Kürzel verwendet werden.",
+			"needsModifier": "Füge Strg oder Alt hinzu oder nutze eine F-Taste - eine einzelne Taste wäre nur Tippen.",
+			"reserved": "Der Browser oder ein gängiger Bearbeitungsbefehl nutzt diese Kombination bereits. Wähle eine andere."
+		},
+		"settingsTitle": "Tastenkürzel",
+		"settingsHint": "Schaltflächen und Umschalter können ein Tastenkürzel haben (in den Eigenschaften des Widgets einstellbar). Diese Schalter gelten nur für diesen Browser.",
+		"enabled": "Tastenkürzel aktivieren",
+		"whileEditing": "Auch beim Bearbeiten des Layouts reagieren"
+	},
+	"sound": {
+		"title": "Ton und Vibration",
+		"hint": "Optionale Signale für Ereignisse an der Maschine. Alles ist aus, bis du es einschaltest, und die Einstellungen gelten nur für diesen Browser - ein Werkstatt-Tablet kann stumm bleiben, während ein Handy vibriert.",
+		"unsupported": "Dieser Browser kann keine Töne abspielen.",
+		"needsGesture": "Klicke oder tippe einmal irgendwo auf die Seite, um den Ton zu aktivieren - Browser erlauben Audio erst danach.",
+		"enabled": "Ton an",
+		"volume": "Lautstärke",
+		"testSound": "Ton testen",
+		"eventsHeading": "Ein Signal abspielen, wenn…",
+		"cue": "Signal",
+		"none": "Kein Ton",
+		"test": "Dieses Signal abspielen",
+		"repeat": "Wiederholen alle",
+		"repeatOnce": "Einmal",
+		"vibrate": "Vibrieren",
+		"haptics": "Vibration an",
+		"testVibration": "Vibration testen",
+		"hapticTap": "Beim Drücken kurz vibrieren",
+		"noHaptics": "Dieses Gerät kann nicht vibrieren, daher sind die Vibrationsoptionen ausgeblendet.",
+		"backgroundNote": "Ein Tab im Hintergrund erfährt weiterhin von Maschinenereignissen, aber der Browser kann sie verzögern - Signale kommen daher nicht garantiert sofort.",
+		"cues": {
+			"chime": "Glockenton",
+			"double": "Doppelpiepton",
+			"alarm": "Alarm",
+			"error": "Tiefer Summton"
+		},
+		"events": {
+			"jobFinished": "ein Job fertig ist",
+			"jobStopped": "ein Job abgebrochen wird oder die Maschine anhält",
+			"pauseRequested": "der Job pausiert wird (durch die Firmware oder jemanden)",
+			"filamentError": "ein Filamentsensor einen Fehler meldet",
+			"heaterFault": "eine Heizung einen Fehler hat",
+			"messageBox": "ein Nachrichtenfenster (M291) erscheint"
+		}
+	},
+	"container": {
+		"expand": "Ausklappen",
+		"collapse": "Einklappen",
+		"noTabs": "Derzeit ist kein Tab verfügbar.",
+		"tabEmpty": "Dieser Tab ist leer - füge über „Inhalt bearbeiten“ Widgets hinzu.",
+		"collapsible": "Kann eingeklappt werden",
+		"collapsibleHint": "Fügt dem Titel eine Einklapp-Schaltfläche hinzu. Ob eingeklappt ist, wird pro Gerät gemerkt und nicht im Layout gespeichert. Darunterliegende Panels rücken nur nach oben, wenn bei diesem Panel „Automatische Höhe“ aktiv ist."
+	},
+	"tabsEditor": {
+		"title": "Tabs bearbeiten",
+		"position": "Position der Tab-Leiste",
+		"tabs": "Tabs",
+		"addTab": "Tab hinzufügen",
+		"tabName": "Tab-Name",
+		"defaultTabName": "Tab",
+		"showWhen": "Nur anzeigen, wenn eine Bedingung erfüllt ist",
+		"pos": {
+			"top": "Oben",
+			"bottom": "Unten",
+			"left": "Links"
+		}
 	}
 }

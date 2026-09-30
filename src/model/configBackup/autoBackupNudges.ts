@@ -25,6 +25,18 @@
  * Firmware-update-starting was investigated (machineStore.boardBeingUpdated flips the instant M997 is
  * issued) but deliberately left out - a plugin can only observe that reactively, not gate/block DWC's
  * update flow, so it would be a same-instant race rather than a real "back up before" guarantee.
+ *
+ * A third trigger is opt-in (`autoRunOnConfigSave`, default off): a while after `config.g` is SAVED. It waits for the
+ * last save of a burst to settle (`CONFIG_SAVE_DEBOUNCE_MS`, well past the 5-minute nudge rate-limit, which is not a
+ * debounce) so a half-edited config is not what gets backed up, then runs if the destination is eligible and the machine
+ * is idle - otherwise it falls back to the ordinary "config.g saved" nudge. Backups are additive history, so a poor one is
+ * superseded by the next.
+ *
+ * Auto-run has a second trigger besides connecting: the machine becoming **idle** after a busy spell
+ * (a print or job finishing). Without it, a backup that came due mid-print - which falls back to the plain
+ * nudge - would wait for the next reconnect. Both triggers share `autoRunInFlight` and the
+ * `AUTO_RUN_COOLDOWN_MS` gap between auto-run attempts, so they can never overlap or double up. Only strictly
+ * `idle` counts (SCHEDULED-BACKUPS-PLAN.md §9 Q3): a paused print is not an opening.
  */
 import { watch } from "vue";
 
@@ -41,6 +53,7 @@ import { useMachineStore } from "@/stores/machine";
 import i18n from "@/i18n";
 
 import { collectForBackup, runBackup } from "./runBackup";
+import { getAutoRunOnConfigSave } from "./autoRunOnSave";
 import { CONFIG_BACKUP_ROUTE_PATH, DESTINATION_LABEL_KEYS } from "./constants";
 
 type FileUploadedHandler = (e: { filename: string }) => void;
@@ -58,6 +71,12 @@ const AUTO_RUN_SCOPE: BackupScope = { system: true, macros: true, filaments: tru
  * overdue threshold (a day at the very least) yet far above reconnect-flap rates. */
 const OVERDUE_RECHECK_COOLDOWN_MS = 60 * 60 * 1000;
 
+/** Shortest gap between two auto-run *attempts*, whichever trigger starts them (connect or idle edge). */
+const AUTO_RUN_COOLDOWN_MS = OVERDUE_RECHECK_COOLDOWN_MS;
+
+/** Quiet time after the LAST config.g save before the opt-in backup-after-save runs. */
+export const CONFIG_SAVE_DEBOUNCE_MS = 10 * 60 * 1000;
+
 let fileUploadedHandler: FileUploadedHandler | null = null;
 let stopConnectWatch: (() => void) | null = null;
 let lastConfigSaveNudgeAt = 0;
@@ -66,6 +85,9 @@ let lastConfigSaveNudgeAt = 0;
  * reconnect. */
 let firstConnectHandled = false;
 let lastOverdueCheckAt = 0;
+let lastAutoRunAttemptAt = 0;
+let stopIdleWatch: (() => void) | null = null;
+let configSaveTimer: ReturnType<typeof setTimeout> | null = null;
 /** Guards against a second overlapping auto-run if `checkOnConnect` re-entered before the first
  * (async) run resolved. */
 let autoRunInFlight = false;
@@ -81,10 +103,9 @@ export function installAutoBackupNudges(): void {
 	const uiStore = useUiStore();
 	const machineStore = useMachineStore();
 
-	fileUploadedHandler = (e) => {
-		const settings = getAutoBackupNudgeSettings();
-		if (!settings.configSaved) { return; }
-		if (!e.filename.toLowerCase().endsWith("/config.g")) { return; }
+	/** The ordinary reminder that config.g changed - rate-limited, and only if that reminder is switched on. */
+	function raiseConfigSavedNudge(): void {
+		if (!getAutoBackupNudgeSettings().configSaved) { return; }
 		const now = Date.now();
 		if (now - lastConfigSaveNudgeAt < CONFIG_SAVE_COOLDOWN_MS) { return; }
 		lastConfigSaveNudgeAt = now;
@@ -94,6 +115,33 @@ export function installAutoBackupNudges(): void {
 			i18n.global.t("plugins.flexibleLayouts.configBackup.nudge.configSavedBody"),
 			CONFIG_BACKUP_ROUTE_PATH,
 		);
+	}
+
+	/** Backing up after a config.g save is on AND could run unattended (auto-run on, eligible destination). */
+	function configSaveBackupArmed(settings = getAutoBackupNudgeSettings()): boolean {
+		return settings.autoRun && getAutoRunOnConfigSave(settings) && autoRunDestinationEligible(settings.autoRunDestination);
+	}
+
+	function runAfterConfigSave(): void {
+		const settings = getAutoBackupNudgeSettings();
+		if (machineStore.isConnected && configSaveBackupArmed(settings) && isMachineIdle(machineStatus())) {
+			void runAutomaticBackup(settings.autoRunDestination!);
+			return;
+		}
+		// Could not run now (busy, offline, or switched off in the meantime): leave the ordinary nudge.
+		raiseConfigSavedNudge();
+	}
+
+	fileUploadedHandler = (e) => {
+		if (!e.filename.toLowerCase().endsWith("/config.g")) { return; }
+		if (configSaveBackupArmed()) {
+			// (Re)start the quiet-time countdown; only the last save of a burst gets backed up. The nudge is held back
+			// - it fires only if the backup then cannot run.
+			if (configSaveTimer) { clearTimeout(configSaveTimer); }
+			configSaveTimer = setTimeout(() => { configSaveTimer = null; runAfterConfigSave(); }, CONFIG_SAVE_DEBOUNCE_MS);
+			return;
+		}
+		raiseConfigSavedNudge();
 	};
 	// Cast: DWC's Events emitter is strictly typed against its own ~30 known event shapes; this
 	// plugin only ever subscribes to one of them, never invents a new event type.
@@ -118,6 +166,7 @@ export function installAutoBackupNudges(): void {
 	async function runAutomaticBackup(destination: BackupDestinationId): Promise<void> {
 		if (autoRunInFlight) { return; }
 		autoRunInFlight = true;
+		lastAutoRunAttemptAt = Date.now();
 		uiStore.log(
 			LogLevel.info,
 			t("autoRun.startedTitle"),
@@ -208,8 +257,11 @@ export function installAutoBackupNudges(): void {
 		// and the machine is strictly idle (§4.3 step 3 - never start walking the filesystem mid-print).
 		// If the machine is busy we fall through to the plain nudge.
 		if (settings.autoRun && autoRunDestinationEligible(settings.autoRunDestination) && isMachineIdle(machineStatus())) {
-			void runAutomaticBackup(settings.autoRunDestination);
-			return;
+			// A reconnect right after an idle-edge attempt must not retry it straight away.
+			if (Date.now() - lastAutoRunAttemptAt >= AUTO_RUN_COOLDOWN_MS || lastAutoRunAttemptAt === 0) {
+				void runAutomaticBackup(settings.autoRunDestination);
+				return;
+			}
 		}
 
 		if (settings.overdue) {
@@ -224,11 +276,33 @@ export function installAutoBackupNudges(): void {
 	// Fires on the first connect and on every later reconnect - the cooldown inside checkOnConnect,
 	// not this watch, is what stops a flap storm re-triggering things.
 	stopConnectWatch = watch(() => machineStore.isConnected, (connected) => { if (connected) { checkOnConnect(); } }, { immediate: true });
+
+	/** The second auto-run trigger: the machine has just gone from busy to idle. Auto-run only - the plain
+	 * nudge was already shown when the overdue state was first seen, so this never adds another toast. */
+	function checkOnIdle(): void {
+		if (!machineStore.isConnected) { return; }
+		if (autoRunInFlight) { return; }
+		if (lastAutoRunAttemptAt !== 0 && Date.now() - lastAutoRunAttemptAt < AUTO_RUN_COOLDOWN_MS) { return; }
+		const settings = getAutoBackupNudgeSettings();
+		if (!settings.autoRun || !autoRunDestinationEligible(settings.autoRunDestination)) { return; }
+		if (!isBackupOverdue(getLastBackupAt(), settings.overdueDays)) { return; }
+		void runAutomaticBackup(settings.autoRunDestination);
+	}
+	stopIdleWatch = watch(machineStatus, (status, previous) => {
+		// A real busy -> idle edge only: `previous` must be a known, non-idle status (so the first status
+		// after connecting, or an undefined blip, never counts) and `status` strictly idle.
+		if (previous === undefined || isMachineIdle(previous)) { return; }
+		if (!isMachineIdle(status)) { return; }
+		checkOnIdle();
+	});
 }
 
 export function uninstallAutoBackupNudges(): void {
 	if (fileUploadedHandler) { Events.off("fileUploaded", fileUploadedHandler as never); fileUploadedHandler = null; }
 	if (stopConnectWatch) { stopConnectWatch(); stopConnectWatch = null; }
+	if (stopIdleWatch) { stopIdleWatch(); stopIdleWatch = null; }
+	if (configSaveTimer) { clearTimeout(configSaveTimer); configSaveTimer = null; }
+	lastAutoRunAttemptAt = 0;
 	firstConnectHandled = false;
 	lastOverdueCheckAt = 0;
 	lastConfigSaveNudgeAt = 0;

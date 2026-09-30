@@ -59,8 +59,10 @@
 	<UploadButtonWidget v-else-if="widget.type === 'uploadButton'" :widget="widget" />
 	<AccessChipWidget v-else-if="widget.type === 'accessChip'" :widget="widget" :override-color="overrideColor" />
 	<EmergencyStopWidget v-else-if="widget.type === 'emergencyStop'" :widget="widget" />
+	<FullscreenWidget v-else-if="widget.type === 'fullscreen'" :widget="widget" :override-color="overrideColor" />
 	<FilamentMonitorWidget v-else-if="widget.type === 'filamentMonitor'" :widget="widget" />
 	<GroupWidget v-else-if="widget.type === 'group'" :widget="widget" />
+	<TabsWidget v-else-if="widget.type === 'tabs'" :widget="widget" />
 	<PluginPageWidget v-else-if="widget.type === 'pluginPage'" :widget="widget" />
 	<EmbeddableWidget v-else-if="widget.type === 'embeddable'" :widget="widget" />
 	<WebWidget v-else-if="widget.type === 'web'" :widget="widget" />
@@ -74,6 +76,7 @@
 import { computed, onBeforeUnmount, provide, watch } from "vue";
 
 import type { Widget } from "../model/document";
+import { ITEM_ID_KEY } from "../util/itemContext";
 import { WIDGET_PATCH_KEY } from "../util/widgetPatch";
 import { acquireVerboseQueries, pathNeedsVerboseQueries, releaseVerboseQueries } from "../model/verboseFields";
 import AlertWidget from "./AlertWidget.vue";
@@ -92,6 +95,7 @@ import FilesWidget from "./FilesWidget.vue";
 import GaugeClusterWidget from "./GaugeClusterWidget.vue";
 import GlobalsWidget from "./GlobalsWidget.vue";
 import GroupWidget from "./GroupWidget.vue";
+import TabsWidget from "./TabsWidget.vue";
 import HeaterWidget from "./HeaterWidget.vue";
 import HotspotWidget from "./HotspotWidget.vue";
 import HttpWidget from "./HttpWidget.vue";
@@ -118,6 +122,7 @@ import CodeInputWidget from "./CodeInputWidget.vue";
 import EditModeToggleWidget from "./EditModeToggleWidget.vue";
 import UploadButtonWidget from "./UploadButtonWidget.vue";
 import EmergencyStopWidget from "./EmergencyStopWidget.vue";
+import FullscreenWidget from "./FullscreenWidget.vue";
 import FilamentMonitorWidget from "./FilamentMonitorWidget.vue";
 import AccessChipWidget from "./AccessChipWidget.vue";
 import ThumbnailWidget from "./ThumbnailWidget.vue";
@@ -153,6 +158,8 @@ const emit = defineEmits<{ patchWidget: [id: string, patch: Record<string, unkno
 if (props.itemId !== undefined) {
 	const itemId = props.itemId;
 	provide(WIDGET_PATCH_KEY, (patch) => emit("patchWidget", itemId, patch));
+	// A container rendered as a free-mode group child keeps its own per-device state under its own item id.
+	provide(ITEM_ID_KEY, itemId);
 }
 
 // Not every Widget variant has an omPath (most don't), hence the duck-typed read - matches how

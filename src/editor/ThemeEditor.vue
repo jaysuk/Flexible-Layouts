@@ -6,7 +6,7 @@
 				<v-icon class="me-2">mdi-palette</v-icon>
 				{{ $t("plugins.flexibleLayouts.theme.title") }}
 				<v-spacer />
-				<v-btn icon="mdi-close" variant="text" density="comfortable"
+				<v-btn :aria-label="$t('plugins.flexibleLayouts.a11y.close')" icon="mdi-close" variant="text" density="comfortable"
 					   @click="emit('update:modelValue', false)" />
 			</v-card-title>
 
@@ -22,7 +22,7 @@
 							  :label="$t('plugins.flexibleLayouts.theme.darkBase')" @update:model-value="apply" />
 
 					<div v-for="token in tokens" :key="token" class="d-flex align-center mb-2 ga-3">
-						<input type="color" class="flex-color-input" :value="theme.colors[token] || fallback(token)"
+						<input type="color" class="flex-color-input" :aria-label="$t(`plugins.flexibleLayouts.colors.${token}`)" :value="theme.colors[token] || fallback(token)"
 							   @input="setColor(token, ($event.target as HTMLInputElement).value)" />
 						<span class="text-body-2 flex-grow-1">{{ $t(`plugins.flexibleLayouts.colors.${token}`) }}</span>
 						<v-btn v-if="theme.colors[token]" icon="mdi-close" size="x-small" variant="text"
@@ -46,21 +46,21 @@
 				</div>
 				<div class="text-caption text-medium-emphasis mb-2">{{ $t("plugins.flexibleLayouts.theme.customColorsHint") }}</div>
 				<div v-for="(c, i) in customColors" :key="i" class="d-flex align-center mb-2 ga-3">
-					<input type="color" class="flex-color-input" :value="c.value"
+					<input type="color" class="flex-color-input" :aria-label="c.name || $t('plugins.flexibleLayouts.theme.colorName')" :value="c.value"
 						   @input="c.value = ($event.target as HTMLInputElement).value" />
 					<v-text-field v-model="c.name" density="compact" variant="outlined" hide-details class="flex-grow-1"
 								  :label="$t('plugins.flexibleLayouts.theme.colorName')" />
-					<v-btn icon="mdi-close" size="x-small" variant="text" color="error" @click="removeCustomColor(i)" />
+					<v-btn :aria-label="$t('plugins.flexibleLayouts.a11y.delete')" icon="mdi-close" size="x-small" variant="text" color="error" @click="removeCustomColor(i)" />
 				</div>
 
 				<!-- Top bar styling (per profile, independent of the theme toggle) -->
 				<v-divider class="my-4" />
 				<div class="text-title-small mb-2">{{ $t("plugins.flexibleLayouts.theme.headerTitle") }}</div>
 				<div class="d-flex align-center mb-2 ga-3">
-					<input type="color" class="flex-color-input" :value="header.color || '#1e1e1e'"
+					<input type="color" class="flex-color-input" :aria-label="$t('plugins.flexibleLayouts.theme.headerColor')" :value="header.color || '#1e1e1e'"
 						   @input="setHeader('color', ($event.target as HTMLInputElement).value)" />
 					<span class="text-body-2 flex-grow-1">{{ $t("plugins.flexibleLayouts.theme.headerColor") }}</span>
-					<v-btn v-if="header.color" icon="mdi-close" size="x-small" variant="text"
+					<v-btn :aria-label="$t('plugins.flexibleLayouts.a11y.clear')" v-if="header.color" icon="mdi-close" size="x-small" variant="text"
 						   @click="setHeader('color', undefined)" />
 				</div>
 				<v-text-field :model-value="header.title" density="compact" variant="outlined" hide-details clearable

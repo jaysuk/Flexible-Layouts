@@ -1,12 +1,12 @@
 <template>
-	<v-dialog :model-value="modelValue" max-width="560" scrollable
+	<v-dialog :model-value="modelValue" max-width="560" scrollable :attach="props.attach"
 			  @update:model-value="emit('update:modelValue', $event)">
 		<v-card>
 			<v-card-title class="d-flex align-center">
 				<v-icon class="me-2">mdi-share-variant</v-icon>
 				{{ $t("plugins.flexibleLayouts.io.title") }}
 				<v-spacer />
-				<v-btn icon="mdi-close" variant="text" density="comfortable" @click="close" />
+				<v-btn :aria-label="$t('plugins.flexibleLayouts.a11y.close')" icon="mdi-close" variant="text" density="comfortable" @click="close" />
 			</v-card-title>
 
 			<v-card-text style="max-height: 70vh;">
@@ -123,8 +123,8 @@
 
 					<div class="text-title-small mb-2">{{ $t("plugins.flexibleLayouts.io.samplesHeading") }}</div>
 					<div class="text-caption text-medium-emphasis mb-2">{{ $t("plugins.flexibleLayouts.io.samplesHelp") }}</div>
-					<v-btn variant="tonal" prepend-icon="mdi-saw-blade" @click="onLoadCnc">
-						{{ $t("plugins.flexibleLayouts.io.sampleCnc") }}
+					<v-btn variant="tonal" prepend-icon="mdi-view-dashboard-edit-outline" @click="startersOpen = true">
+						{{ $t("plugins.flexibleLayouts.starters.browse") }}
 					</v-btn>
 				</template>
 
@@ -175,12 +175,12 @@
 				</v-btn>
 			</v-card-actions>
 		</v-card>
+		<StarterPicker v-model="startersOpen" :attach="props.attach" @created="close" />
 	</v-dialog>
 </template>
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from "vue";
-import { useRouter } from "vue-router";
 
 import i18n from "@/i18n";
 import { LogLevel, useUiStore } from "@/stores/ui";
@@ -189,11 +189,13 @@ import { convertBtnCmd, isBtnCmdFile } from "../model/btncmd";
 import type { LayoutDocument } from "../model/document";
 import { applyImportedDocument, exportLayout, exportPage, getPreImportBackup, listDocumentPages, pageToImportDocument, panelToImportDocument, type ParsedImport, parseLayoutFile, parsePageFile, parsePanelFile, restorePreImportBackup } from "../model/io";
 import { writeHistorySnapshot } from "../model/sdBackup";
-import { loadCncPreset } from "../model/presets";
 import { useLayoutStore } from "../model/store";
 import { describeWidget } from "../widgets/registry";
+import StarterPicker from "./StarterPicker.vue";
 
-const props = defineProps<{ modelValue: boolean }>();
+// `attach` is a plain pass-through to v-dialog / StarterPicker, left unset in real use (tests only).
+const props = defineProps<{ modelValue: boolean; attach?: boolean | string }>();
+const startersOpen = ref(false);
 const emit = defineEmits<{ "update:modelValue": [boolean] }>();
 
 // Pre-import safety backup ("undo last import"); refreshed each time the dialog opens.
@@ -295,7 +297,6 @@ async function importGalleryItem(item: GalleryItem): Promise<void> {
 
 const store = useLayoutStore();
 const uiStore = useUiStore();
-const router = useRouter();
 
 const fileInput = ref<HTMLInputElement | null>(null);
 const pending = ref<ParsedImport | null>(null);
@@ -438,9 +439,4 @@ function close() {
 	emit("update:modelValue", false);
 }
 
-function onLoadCnc() {
-	const path = loadCncPreset();
-	close();
-	router.push(path);
-}
 </script>

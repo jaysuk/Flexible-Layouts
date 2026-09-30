@@ -1,8 +1,11 @@
 <template>
   <div class="mb-root fill-height d-flex flex-column justify-center pa-2" :class="{ 'mb-frozen': disabledNow }">
     <template v-if="box">
-      <div v-if="box.title" class="mb-title text-truncate">{{ box.title }}</div>
-      <div class="mb-msg">{{ box.message }}</div>
+      <!-- A firmware message box needs an answer, so it is announced assertively when it appears. -->
+      <div role="alert" class="mb-announce">
+        <div v-if="box.title" class="mb-title text-truncate">{{ box.title }}</div>
+        <div class="mb-msg">{{ box.message }}</div>
+      </div>
 
       <!-- numeric / string input -->
       <v-text-field v-if="isInput" v-model="input" :type="box.mode === 7 ? 'text' : 'number'"
@@ -26,7 +29,7 @@
       </div>
     </template>
 
-    <div v-else class="text-medium-emphasis text-caption text-center">
+    <div v-else class="text-medium-emphasis text-caption text-center" role="status">
       <v-icon size="small" class="mb-1">mdi-message-outline</v-icon>
       <div>{{ $t("plugins.flexibleLayouts.messageBox.idle") }}</div>
     </div>

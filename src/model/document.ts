@@ -25,6 +25,12 @@ export type Widget =
 	| { type: "builtinPanel"; component: string }
 	| {
 		type: "codeButton";
+		/** A brief vibration when pressed, on devices that have one and have haptics on (util/sound.ts). */
+		haptic?: boolean;
+		/** Keyboard shortcut in canonical form (`Mod+Shift+H`, `F7`) - see model/hotkeys.ts. Runs the same click path. */
+		hotkey?: string;
+		/** Show the shortcut in the button's corner (view mode). */
+		hotkeyBadge?: boolean;
 		/** G/M-code for action "gcode" (default). */
 		code: string;
 		label: string;
@@ -122,6 +128,24 @@ export type Widget =
 		 *   free-position presets; never set on old groups, so back-compat is guaranteed.
 		 */
 		layoutMode?: "grid" | "free";
+		/** The header gets a fold/unfold chevron. Whether it is folded is per-device state, never saved here. */
+		collapsible?: boolean;
+	}
+	| {
+		/**
+		 * A container with several tabs, each holding its own mini-grid of widgets. A NEW type rather than an overload
+		 * of `group`: group export/import and `.dwcpanel.json` rely on `group.items` being one list. An older Flexible
+		 * Layouts renders the "unsupported widget" placeholder for it. Which tab is showing is per-device state.
+		 */
+		type: "tabs";
+		title?: string;
+		tabs: Array<TabDef>;
+		cols?: number;
+		rowHeight?: number;
+		/** Where the tab bar sits. Default "top". */
+		tabPosition?: "top" | "bottom" | "left";
+		/** The header gets a fold/unfold chevron (per-device state, never saved here). */
+		collapsible?: boolean;
 	}
 	| {
 		/** Embed a page or tab registered by another DWC plugin. */
@@ -311,6 +335,12 @@ export type Widget =
 		/** Stateful on/off control bound to an OM value, sending separate on/off commands. */
 		type: "toggle";
 		label?: string;
+		/** A brief vibration when flipped, on devices that have one and have haptics on (util/sound.ts). */
+		haptic?: boolean;
+		/** Keyboard shortcut in canonical form - toggles the switch (see model/hotkeys.ts). */
+		hotkey?: string;
+		/** Show the shortcut in the widget's corner (view mode). */
+		hotkeyBadge?: boolean;
 		/** OM path whose truthiness drives the on/off state. */
 		omPath?: string;
 		onCommand?: string;
@@ -386,6 +416,10 @@ export type Widget =
 		severity?: "info" | "success" | "warning" | "error";
 		message?: string;
 		icon?: string;
+		/** Play this cue when the alert appears (util/sound.ts). */
+		sound?: string;
+		/** Repeat the cue every N seconds while the alert stays up (>= 5, capped). Unset = once. */
+		soundRepeat?: number;
 	}
 	| {
 		/** Webcam / snapshot image with optional periodic refresh. */
@@ -916,6 +950,19 @@ export type Widget =
 		type: "emergencyStop";
 	}
 	| {
+		/**
+		 * Per-device screen controls: fullscreen, kiosk mode (no app bar / drawer) and keep-screen-awake. None of it is
+		 * stored in the shared layout - see model/screenState.ts. Each control shows unless switched off.
+		 */
+		type: "fullscreen";
+		showFullscreen?: boolean;
+		showKiosk?: boolean;
+		showKeepAwake?: boolean;
+		/** Entering kiosk also goes fullscreen where the browser allows it (default on). */
+		kioskFullscreen?: boolean;
+		color?: string;
+	}
+	| {
 		/** Live status of every configured filament monitor (`sensors.filamentMonitors`), one row per extruder. */
 		type: "filamentMonitor";
 		title?: string;
@@ -1205,7 +1252,7 @@ export function createDefaultWidget(type: WidgetType): Widget {
 				title: "Sensors",
 				columns: 2,
 				items: [
-					{ label: "Z probe", omPath: "sensors.probes[0].value[0]", trueColor: "success", falseColor: "grey", trueIcon: "mdi-circle", falseIcon: "mdi-circle" },
+					{ label: "Z probe", omPath: "sensors.probes[0].value[0]", trueColor: "success", falseColor: "grey", trueIcon: "mdi-circle", falseIcon: "mdi-circle-outline" },
 				],
 			};
 		case "hotspot":
@@ -1247,10 +1294,20 @@ export function createDefaultWidget(type: WidgetType): Widget {
 			return { type: "accessChip" };
 		case "emergencyStop":
 			return { type: "emergencyStop" };
+		case "fullscreen":
+			return { type: "fullscreen" };
 		case "filamentMonitor":
 			return { type: "filamentMonitor" };
 		case "group":
 			return { type: "group", title: "Custom panel", items: [], cols: 12, rowHeight: 30 };
+		case "tabs":
+			return {
+				type: "tabs", title: "", cols: 12, rowHeight: 30,
+				tabs: [
+					{ id: newItemId(), title: "Tab 1", items: [] },
+					{ id: newItemId(), title: "Tab 2", items: [] },
+				],
+			};
 		case "builtinPanel":
 		default:
 			return { type: "builtinPanel", component: "MovementPanel" };
@@ -1322,6 +1379,21 @@ export interface ConditionRule {
 	hide?: boolean;
 	/** Disable the widget (buttons/inputs) while this rule matches. */
 	disable?: boolean;
+	/** Play this cue (`chime`, `double`, `alarm`, `error`) when the rule BECOMES true - see util/sound.ts. */
+	sound?: string;
+	/** Repeat the cue every N seconds while the rule stays true (>= 5, capped). Unset = once. */
+	soundRepeat?: number;
+}
+
+/** One tab of a `tabs` container. */
+export interface TabDef {
+	/** Unique within its widget; remembered per device as "the tab that was showing". */
+	id: string;
+	title: string;
+	icon?: string;
+	items: Array<GridItemModel>;
+	/** Show the tab only while this rule holds (same rules as conditions), e.g. a "Probing" tab in CNC mode only. */
+	showWhen?: ConditionRule;
 }
 
 /** One placed widget: grid geometry (x/y/w/h in grid units) + the widget descriptor + extras. */
@@ -1445,6 +1517,16 @@ export interface LayoutDependency {
 	reason: string;
 }
 
+/**
+ * When THIS profile should take over on its own (MISSING-FEATURES-PLAN §B5). Evaluated only on an edge - the machine
+ * mode changing, a print starting or ending, a condition flipping - never as a level, so a manual switch made afterwards
+ * sticks until the next edge. With several profiles the first matching one, in profile order, wins.
+ */
+export type AutoSwitchRule =
+	| { on: "machineMode"; value: "FFF" | "CNC" | "Laser"; returnWhenEnds?: boolean }
+	| { on: "printing"; returnWhenEnds?: boolean }
+	| { on: "condition"; rule: ConditionRule; returnWhenEnds?: boolean };
+
 /** The full persisted document. */
 export interface LayoutDocument {
 	schemaVersion: number;
@@ -1453,6 +1535,8 @@ export interface LayoutDocument {
 		author?: string;
 		dwcVersion?: string;
 		machineMode?: string;
+		/** Take over automatically when this holds. Used only on devices that have turned automatic switching on. */
+		autoSwitch?: AutoSwitchRule;
 	};
 	theme: {
 		enabled: boolean;
@@ -1712,22 +1796,54 @@ export function backfillWidgetDefaults(widget: Widget): void {
 	fillMissingDefaults(widget as unknown as Record<string, unknown>, defaults as unknown as Record<string, unknown>);
 }
 
-/** Visit every widget: page items (+ responsive variants), nested group children, and header items. */
+/**
+ * Every list of child grid items a container widget owns - the ONE place that knows which widget types nest
+ * other items (today `group`). Walkers (visiting, id regeneration, runtime-field stripping, dependency capture,
+ * Explorer-session pruning) go through this or `mapChildItemLists`, so a new container type only has to be
+ * taught here. Returns the live arrays, not copies.
+ */
+export function childItemLists(widget: Widget | undefined): Array<Array<GridItemModel>> {
+	if (widget?.type === "group") {
+		return Array.isArray(widget.items) ? [widget.items] : [];
+	}
+	if (widget?.type === "tabs") {
+		return (Array.isArray(widget.tabs) ? widget.tabs : []).map((tab) => tab?.items).filter((items): items is Array<GridItemModel> => Array.isArray(items));
+	}
+	return [];
+}
+
+/** Replace every child item list of a container widget with `fn(list)`. Mutates `widget` in place. */
+export function mapChildItemLists(widget: Widget | undefined, fn: (items: Array<GridItemModel>) => Array<GridItemModel>): void {
+	if (widget?.type === "group") {
+		widget.items = fn(Array.isArray(widget.items) ? widget.items : []);
+	} else if (widget?.type === "tabs" && Array.isArray(widget.tabs)) {
+		for (const tab of widget.tabs) {
+			if (tab) {
+				tab.items = fn(Array.isArray(tab.items) ? tab.items : []);
+			}
+		}
+	}
+}
+
+/** Visit the widget of every item in a list, and of every item nested inside a container widget. */
+export function forEachItemWidget(items: Array<GridItemModel> | undefined, visit: (widget: Widget) => void): void {
+	if (!Array.isArray(items)) {
+		return;
+	}
+	for (const item of items) {
+		if (!item || !item.widget) {
+			continue;
+		}
+		visit(item.widget);
+		for (const children of childItemLists(item.widget)) {
+			forEachItemWidget(children, visit);
+		}
+	}
+}
+
+/** Visit every widget: page items (+ responsive variants), nested container children, and header items. */
 export function forEachWidget(doc: LayoutDocument, visit: (widget: Widget) => void): void {
-	const visitItems = (items?: Array<GridItemModel>): void => {
-		if (!Array.isArray(items)) {
-			return;
-		}
-		for (const item of items) {
-			if (!item || !item.widget) {
-				continue;
-			}
-			visit(item.widget);
-			if (item.widget.type === "group") {
-				visitItems((item.widget as Extract<Widget, { type: "group" }>).items);
-			}
-		}
-	};
+	const visitItems = (items?: Array<GridItemModel>): void => forEachItemWidget(items, visit);
 	for (const page of Object.values(doc.pages ?? {})) {
 		if (!page) {
 			continue;
@@ -1754,8 +1870,8 @@ export function stripItemRuntimeFields(item: GridItemModel): void {
 	for (const key of TRANSIENT_ITEM_KEYS) {
 		delete (item as unknown as Record<string, unknown>)[key];
 	}
-	if (item.widget?.type === "group") {
-		for (const child of (item.widget as Extract<Widget, { type: "group" }>).items ?? []) {
+	for (const children of childItemLists(item.widget)) {
+		for (const child of children) {
 			stripItemRuntimeFields(child);
 		}
 	}
@@ -1816,12 +1932,16 @@ export function migrateDocument(raw: unknown): LayoutDocument {
 	return next;
 }
 
-/** Deep-clone a grid item with fresh ids (recursing into group children). */
+/** Deep-clone a grid item with fresh ids (recursing into container children). */
 export function reidItem(item: GridItemModel): GridItemModel {
 	const clone: GridItemModel = JSON.parse(JSON.stringify(item));
 	clone.i = newItemId();
-	if (clone.widget.type === "group") {
-		clone.widget.items = clone.widget.items.map(reidItem);
+	mapChildItemLists(clone.widget, (items) => items.map(reidItem));
+	if (clone.widget.type === "tabs") {
+		// Tab ids only have to be unique within their widget, but a copy should not share them with its source.
+		for (const tab of clone.widget.tabs) {
+			tab.id = newItemId();
+		}
 	}
 	return clone;
 }

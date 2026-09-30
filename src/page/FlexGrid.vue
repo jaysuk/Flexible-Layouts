@@ -18,6 +18,9 @@
 						  @duplicate="emit('duplicate', item.i)" @toggle-lock="emit('toggleLock', item.i)"
 						  @toggle-select="emit('toggleSelect', item.i)"
 						  @auto-height="(h: number) => emit('autoHeight', item.i, h)"
+						  @grab="emit('grab', item.i)"
+						  @nudge="(dx: number, dy: number, dw: number, dh: number) => emit('nudge', item.i, dx, dy, dw, dh)"
+						  @nudge-end="emit('nudgeEnd')"
 						  @patch-widget="(patch: Record<string, unknown>) => emit('patchWidget', item.i, patch)" />
 		</GridItem>
 	</GridLayout>
@@ -52,6 +55,9 @@ const emit = defineEmits<{
 	toggleLock: [string];
 	toggleSelect: [string];
 	autoHeight: [string, number];
+	grab: [string];
+	nudge: [id: string, dx: number, dy: number, dw: number, dh: number];
+	nudgeEnd: [];
 	patchWidget: [string, Record<string, unknown>];
 	/** Fired continuously while an item is being dragged (group-drag live follow). */
 	itemMove: [i: string, x: number, y: number];

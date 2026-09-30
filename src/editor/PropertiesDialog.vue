@@ -1,5 +1,6 @@
 <template>
-	<v-dialog :model-value="modelValue" max-width="520" scrollable
+	<v-dialog :model-value="modelValue" max-width="520" scrollable :attach="props.attach"
+			  :aria-label="$t('plugins.flexibleLayouts.properties.title')"
 			  @update:model-value="emit('update:modelValue', $event)">
 		<v-card v-if="draft">
 			<v-card-title class="d-flex align-center">
@@ -8,7 +9,7 @@
 				<span class="text-medium-emphasis text-truncate ms-2">— {{ described.title }}</span>
 				<v-chip size="x-small" label class="ms-2 flex-type-chip" :title="$t('plugins.flexibleLayouts.properties.widgetType')">{{ typeLabel }}</v-chip>
 				<v-spacer />
-				<v-btn icon="mdi-close" variant="text" density="comfortable"
+				<v-btn :aria-label="$t('plugins.flexibleLayouts.a11y.close')" icon="mdi-close" variant="text" density="comfortable"
 					   @click="emit('update:modelValue', false)" />
 			</v-card-title>
 
@@ -69,6 +70,11 @@
 								  variant="outlined" hide-details clearable class="mt-2" suffix="ms"
 								  :label="$t('plugins.flexibleLayouts.properties.debounce')"
 								  :hint="$t('plugins.flexibleLayouts.properties.debounceHint')" persistent-hint />
+					<HotkeyField v-model="draft.hotkey" :taken="takenHotkeys" class="mt-3" />
+					<v-switch v-if="draft.hotkey" v-model="draft.hotkeyBadge" color="primary" hide-details density="compact"
+							  :label="$t('plugins.flexibleLayouts.hotkey.badge')" />
+					<v-switch v-if="hapticsAvailable" v-model="draft.haptic" color="primary" hide-details density="compact"
+							  :label="$t('plugins.flexibleLayouts.sound.hapticTap')" />
 
 					<!-- Shape options -->
 					<v-expansion-panels class="mt-3" variant="accordion">
@@ -212,7 +218,7 @@
 												  :label="$t('plugins.flexibleLayouts.properties.mapValue')" />
 									<v-text-field persistent-placeholder v-model="m.text" density="compact" variant="outlined" hide-details
 												  :label="$t('plugins.flexibleLayouts.properties.mapText')" />
-									<v-btn icon="mdi-delete" size="x-small" variant="text" color="error" @click="draft.map.splice(mi, 1)" />
+									<v-btn :aria-label="$t('plugins.flexibleLayouts.a11y.delete')" icon="mdi-delete" size="x-small" variant="text" color="error" @click="draft.map.splice(mi, 1)" />
 								</div>
 							</v-expansion-panel-text>
 						</v-expansion-panel>
@@ -293,7 +299,7 @@
 						<div class="d-flex ga-2 align-center">
 							<OmPathField v-model="s.omPath" class="flex-grow-1"
 										 :label="$t('plugins.flexibleLayouts.properties.omPath')" />
-							<v-btn icon="mdi-delete" size="small" variant="text" color="error" @click="draft.series.splice(i, 1)" />
+							<v-btn :aria-label="$t('plugins.flexibleLayouts.a11y.delete')" icon="mdi-delete" size="small" variant="text" color="error" @click="draft.series.splice(i, 1)" />
 						</div>
 						<div class="d-flex ga-2 mt-2">
 							<v-text-field persistent-placeholder v-model="s.label" density="compact" variant="outlined" hide-details
@@ -578,6 +584,11 @@
 									  :label="$t('plugins.flexibleLayouts.toggle.labelPosition')" />
 						</v-col>
 					</v-row>
+					<HotkeyField v-model="draft.hotkey" :taken="takenHotkeys" class="mt-3" />
+					<v-switch v-if="draft.hotkey" v-model="draft.hotkeyBadge" color="primary" hide-details density="compact"
+							  :label="$t('plugins.flexibleLayouts.hotkey.badge')" />
+					<v-switch v-if="hapticsAvailable" v-model="draft.haptic" color="primary" hide-details density="compact"
+							  :label="$t('plugins.flexibleLayouts.sound.hapticTap')" />
 				</template>
 
 				<!-- Stepper -->
@@ -656,7 +667,7 @@
 						<div class="d-flex ga-2">
 							<v-select persistent-placeholder v-model="s.operator" :items="operatorOptions" density="compact" variant="outlined" hide-details style="max-width:130px" :label="$t('plugins.flexibleLayouts.conditions.operator')" />
 							<v-text-field persistent-placeholder v-if="needsValue(s.operator)" v-model="s.value" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.conditions.value')" />
-							<v-btn icon="mdi-delete" size="small" variant="text" color="error" @click="draft.states.splice(i, 1)" />
+							<v-btn :aria-label="$t('plugins.flexibleLayouts.a11y.delete')" icon="mdi-delete" size="small" variant="text" color="error" @click="draft.states.splice(i, 1)" />
 						</div>
 						<div class="d-flex ga-2 mt-2">
 							<v-text-field persistent-placeholder v-model="s.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" />
@@ -682,6 +693,8 @@
 						<v-col cols="6"><v-select persistent-placeholder v-model="draft.severity" :items="severityOptions" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.alert.severity')" /></v-col>
 						<v-col cols="6"><v-text-field persistent-placeholder v-model="draft.icon" density="compact" variant="outlined" hide-details label="mdi-…" /></v-col>
 					</v-row>
+					<CueSelect v-model:cue="draft.sound" v-model:repeat="draft.soundRepeat" show-repeat class="mt-2"
+							   :label="$t('plugins.flexibleLayouts.alert.sound')" />
 				</template>
 
 				<!-- Webcam -->
@@ -819,7 +832,7 @@
 						<div class="d-flex ga-2">
 							<v-text-field persistent-placeholder v-model="r.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" style="max-width:9rem" />
 							<OmPathField v-model="r.omPath" class="flex-grow-1" :label="$t('plugins.flexibleLayouts.conditions.omPath')" />
-							<v-btn icon="mdi-delete" size="small" variant="text" color="error" @click="draft.rows.splice(i, 1)" />
+							<v-btn :aria-label="$t('plugins.flexibleLayouts.a11y.delete')" icon="mdi-delete" size="small" variant="text" color="error" @click="draft.rows.splice(i, 1)" />
 						</div>
 						<div class="d-flex ga-2 mt-2">
 							<v-text-field persistent-placeholder v-model="r.unit" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.unit')" style="max-width:8rem" />
@@ -1108,7 +1121,7 @@
 						<div class="d-flex ga-2">
 							<v-text-field persistent-placeholder v-model="g.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" style="max-width:8rem" />
 							<OmPathField v-model="g.omPath" class="flex-grow-1" :label="$t('plugins.flexibleLayouts.conditions.omPath')" />
-							<v-btn icon="mdi-delete" size="small" variant="text" color="error" @click="draft.gauges.splice(i, 1)" />
+							<v-btn :aria-label="$t('plugins.flexibleLayouts.a11y.delete')" icon="mdi-delete" size="small" variant="text" color="error" @click="draft.gauges.splice(i, 1)" />
 						</div>
 						<div class="d-flex ga-2 mt-2">
 							<v-text-field persistent-placeholder v-model.number="g.min" type="number" density="compact" variant="outlined" hide-details label="Min" style="max-width:5rem" />
@@ -1143,7 +1156,7 @@
 						<div class="d-flex ga-2">
 							<v-text-field persistent-placeholder v-model="it.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" style="max-width:8rem" />
 							<OmPathField v-model="it.omPath" class="flex-grow-1" :label="$t('plugins.flexibleLayouts.conditions.omPath')" />
-							<v-btn icon="mdi-delete" size="small" variant="text" color="error" @click="draft.items.splice(i, 1)" />
+							<v-btn :aria-label="$t('plugins.flexibleLayouts.a11y.delete')" icon="mdi-delete" size="small" variant="text" color="error" @click="draft.items.splice(i, 1)" />
 						</div>
 						<div class="d-flex ga-2 mt-2">
 							<v-select persistent-placeholder v-model="it.operator" :items="operatorOptions" clearable density="compact"
@@ -1175,7 +1188,7 @@
 						<div class="d-flex ga-2">
 							<OmPathField v-model="s.omPath" class="flex-grow-1" :label="$t('plugins.flexibleLayouts.conditions.omPath')" />
 							<ColorSelect v-model="s.color" density="compact" variant="outlined" hide-details style="max-width:8rem" :label="$t('plugins.flexibleLayouts.properties.color')" />
-							<v-btn icon="mdi-delete" size="small" variant="text" color="error" @click="draft.series.splice(i, 1)" />
+							<v-btn :aria-label="$t('plugins.flexibleLayouts.a11y.delete')" icon="mdi-delete" size="small" variant="text" color="error" @click="draft.series.splice(i, 1)" />
 						</div>
 					</v-sheet>
 					<v-row dense>
@@ -1230,7 +1243,7 @@
 						<div class="d-flex ga-2">
 							<v-text-field persistent-placeholder v-model="r.label" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.properties.label')" style="max-width:8rem" />
 							<v-text-field persistent-placeholder v-model="r.command" density="compact" variant="outlined" hide-details label="Command" class="flex-grow-1" />
-							<v-btn icon="mdi-delete" size="small" variant="text" color="error" @click="draft.regions.splice(i, 1)" />
+							<v-btn :aria-label="$t('plugins.flexibleLayouts.a11y.delete')" icon="mdi-delete" size="small" variant="text" color="error" @click="draft.regions.splice(i, 1)" />
 						</div>
 						<div class="d-flex ga-2 mt-2">
 							<v-text-field persistent-placeholder v-model.number="r.x" type="number" density="compact" variant="outlined" hide-details label="X%" style="max-width:5rem" />
@@ -1292,6 +1305,20 @@
 					</v-row>
 				</template>
 
+				<!-- Fullscreen / kiosk / keep awake -->
+				<template v-else-if="draft.type === 'fullscreen'">
+					<div class="text-body-2 text-medium-emphasis mb-2">{{ $t("plugins.flexibleLayouts.screen.note") }}</div>
+					<v-switch :model-value="draft.showFullscreen !== false" color="primary" density="compact" hide-details
+							  :label="$t('plugins.flexibleLayouts.screen.showFullscreen')" @update:model-value="draft.showFullscreen = $event === true" />
+					<v-switch :model-value="draft.showKiosk !== false" color="primary" density="compact" hide-details
+							  :label="$t('plugins.flexibleLayouts.screen.showKiosk')" @update:model-value="draft.showKiosk = $event === true" />
+					<v-switch :model-value="draft.kioskFullscreen !== false" color="primary" density="compact" hide-details
+							  :disabled="draft.showKiosk === false"
+							  :label="$t('plugins.flexibleLayouts.screen.kioskFullscreen')" @update:model-value="draft.kioskFullscreen = $event === true" />
+					<v-switch :model-value="draft.showKeepAwake !== false" color="primary" density="compact" hide-details
+							  :label="$t('plugins.flexibleLayouts.screen.showKeepAwake')" @update:model-value="draft.showKeepAwake = $event === true" />
+				</template>
+
 				<!-- Built-in panel: optional title override -->
 				<template v-else-if="draft.type === 'builtinPanel'">
 					<div class="text-body-2 text-medium-emphasis">
@@ -1336,7 +1363,7 @@
 												  :label="$t('plugins.flexibleLayouts.inputModifier.from')" />
 									<v-text-field persistent-placeholder v-model="m.to" density="compact" variant="outlined" hide-details
 												  :label="$t('plugins.flexibleLayouts.inputModifier.to')" />
-									<v-btn icon="mdi-delete" size="x-small" variant="text" color="error" @click="draft.modifier.map.splice(mi, 1)" />
+									<v-btn :aria-label="$t('plugins.flexibleLayouts.a11y.delete')" icon="mdi-delete" size="x-small" variant="text" color="error" @click="draft.modifier.map.splice(mi, 1)" />
 								</div>
 							</v-expansion-panel-text>
 						</v-expansion-panel>
@@ -1362,7 +1389,7 @@
 					<div class="d-flex ga-2 align-center">
 						<OmPathField v-model="rule.omPath" class="flex-grow-1"
 									 :label="$t('plugins.flexibleLayouts.conditions.omPath')" />
-						<v-btn icon="mdi-delete" size="small" variant="text" color="error"
+						<v-btn :aria-label="$t('plugins.flexibleLayouts.a11y.delete')" icon="mdi-delete" size="small" variant="text" color="error"
 							   @click="removeRule(i)" />
 					</div>
 					<div class="d-flex ga-2 mt-2">
@@ -1382,6 +1409,8 @@
 						<v-switch v-model="rule.disable" color="primary" density="compact" hide-details
 								  :label="$t('plugins.flexibleLayouts.conditions.thenDisable')" />
 					</div>
+					<CueSelect v-model:cue="rule.sound" v-model:repeat="rule.soundRepeat" show-repeat class="mt-2"
+							   :label="$t('plugins.flexibleLayouts.conditions.thenSound')" />
 				</v-sheet>
 
 				<!-- Per-panel colour overrides -->
@@ -1391,11 +1420,14 @@
 					<span class="text-title-small">{{ $t("plugins.flexibleLayouts.panelColors.title") }}</span>
 					<HelpTip class="ms-1" :text="$t('plugins.flexibleLayouts.panelColors.help')" />
 				</div>
+				<v-alert v-if="lowContrastText" type="warning" variant="tonal" density="compact" class="mb-2 contrast-warning">
+					{{ $t("plugins.flexibleLayouts.panelColors.lowContrast", { ratio: contrastText }) }}
+				</v-alert>
 				<div v-for="field in colorFields" :key="field.key" class="d-flex align-center mb-2 ga-3">
-					<input type="color" class="flex-color-input" :value="colors[field.key] || '#888888'"
+					<input type="color" class="flex-color-input" :aria-label="$t(`plugins.flexibleLayouts.${field.labelKey}`)" :value="colors[field.key] || '#888888'"
 						   @input="setPanelColor(field.key, ($event.target as HTMLInputElement).value)" />
 					<span class="text-body-2 flex-grow-1">{{ $t(`plugins.flexibleLayouts.${field.labelKey}`) }}</span>
-					<v-btn v-if="colors[field.key]" icon="mdi-close" size="x-small" variant="text"
+					<v-btn :aria-label="$t('plugins.flexibleLayouts.a11y.clear')" v-if="colors[field.key]" icon="mdi-close" size="x-small" variant="text"
 						   @click="clearPanelColor(field.key)" />
 				</div>
 
@@ -1476,8 +1508,12 @@ import { XYZ_PROBE_MACRO_FOLDER } from "../util/xyzProbe";
 import { OM_VALUE_PRESETS, type OmPreset, resolveOmPath } from "../util/omPath";
 import { defaultLockForWidget } from "../util/printLock";
 import { defaultChromeForWidget } from "../util/panelChrome";
+import { contrastRatio, lowContrast } from "../util/color";
 import { describeWidget } from "../widgets/registry";
 import ColorSelect from "./ColorSelect.vue";
+import HotkeyField from "./HotkeyField.vue";
+import CueSelect from "./CueSelect.vue";
+import { hapticsSupported } from "../util/sound";
 import HotspotRegionEditor from "./HotspotRegionEditor.vue";
 import IconPicker from "./IconPicker.vue";
 import OmPathField from "./OmPathField.vue";
@@ -1485,7 +1521,9 @@ import SdImagePicker from "./SdImagePicker.vue";
 import GcodeFilePickerDialog from "../widgets/GcodeFilePickerDialog.vue";
 import WidgetView from "../widgets/WidgetView.vue";
 
-const props = defineProps<{ modelValue: boolean; item: GridItemModel | null }>();
+// `attach` is a plain pass-through to v-dialog's own prop, left unset in real use; tests pass `attach: true` to
+// keep the dialog in the local DOM tree where the wrapper can see it (see GcodeFilePickerDialog.vue).
+const props = defineProps<{ modelValue: boolean; item: GridItemModel | null; attach?: boolean | string; takenHotkeys?: Array<string> }>();
 const emit = defineEmits<{
 	"update:modelValue": [boolean];
 	save: [{ widget: Widget; conditions: Array<ConditionRule>; colors: PanelColors; typography: Typography; fit: boolean | undefined; autoHeight: boolean | undefined; icon: string | undefined; tooltip: string | undefined; lockWhilePrinting: boolean | undefined; panelChrome: boolean | undefined; geometry: { x: number; y: number; w: number; h: number } }];
@@ -1660,6 +1698,9 @@ const colorFields: Array<{ key: keyof PanelColors; labelKey: string }> = [
 	{ key: "header", labelKey: "panelColors.header" },
 	{ key: "text", labelKey: "panelColors.text" },
 ];
+// Text on background: warn under WCAG AA (4.5:1) - only when both are literal colours we can measure.
+const lowContrastText = computed(() => lowContrast(colors.value.text, colors.value.background));
+const contrastText = computed(() => (contrastRatio(colors.value.text, colors.value.background) ?? 0).toFixed(1));
 function setPanelColor(key: keyof PanelColors, value: string) {
 	colors.value[key] = value;
 }
@@ -1828,6 +1869,8 @@ const globalsModeOptions = computed(() => [
 ]);
 
 // Toggle / stepper config options
+// Vibration is feature-detected: the "haptic tap" switch only exists where the device can vibrate.
+const hapticsAvailable = hapticsSupported();
 const toggleVariantOptions = computed(() => [
 	{ title: t("toggle.variantSwitch"), value: "switch" },
 	{ title: t("toggle.variantButton"), value: "button" },
@@ -1935,7 +1978,7 @@ function addGauge(): void {
 	if (draft.value?.type === "gaugeCluster") { (draft.value.gauges ??= []).push({ label: "", omPath: "", min: 0, max: 100, unit: "", color: "primary" }); }
 }
 function addIndicator(): void {
-	if (draft.value?.type === "indicators") { (draft.value.items ??= []).push({ label: "", omPath: "", trueColor: "success", falseColor: "grey", trueIcon: "mdi-circle", falseIcon: "mdi-circle" }); }
+	if (draft.value?.type === "indicators") { (draft.value.items ??= []).push({ label: "", omPath: "", trueColor: "success", falseColor: "grey", trueIcon: "mdi-circle", falseIcon: "mdi-circle-outline" }); }
 }
 function addSparkSeries(): void {
 	if (draft.value?.type === "sparkline") { (draft.value.series ??= []).push({ omPath: "", color: "primary" }); }

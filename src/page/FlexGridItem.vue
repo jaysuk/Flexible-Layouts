@@ -8,8 +8,10 @@
 			 what the grid item's drag-allow-from targets, so dragging only starts from this bar. -->
 		<!-- Compact: only drag + configure + delete + an overflow menu stay inline (the rest moved into
 			 the menu), and the bar grows to its content (overhanging) so a widget can be made very narrow. -->
-		<div v-if="editMode" class="flex-item-header flex-drag-handle"
-			 :class="{ 'has-header-color': !!item.colors?.header, 'is-selected-head': selected }">
+		<div v-if="editMode" class="flex-item-header flex-drag-handle" role="group" tabindex="0"
+			 :aria-label="`${meta.title}. ${grabbed ? $t('plugins.flexibleLayouts.editor.kb.grabbedLabel') : $t('plugins.flexibleLayouts.editor.kb.hint')}`"
+			 :class="{ 'has-header-color': !!item.colors?.header, 'is-selected-head': selected, 'is-grabbed': grabbed }"
+			 @keydown="onHeaderKeydown" @blur="dropGrab">
 			<v-icon size="small" class="me-1">mdi-drag</v-icon>
 			<v-icon size="small" class="me-1">{{ meta.icon }}</v-icon>
 			<span class="flex-item-title text-truncate">{{ meta.title }}</span>
@@ -28,7 +30,7 @@
 				<v-list density="compact">
 					<v-list-item :prepend-icon="selected ? 'mdi-checkbox-marked' : 'mdi-checkbox-blank-outline'"
 								 :title="$t('plugins.flexibleLayouts.editor.selectItem')" @click="emit('toggleSelect')" />
-					<v-list-item v-if="item.widget.type === 'group'" prepend-icon="mdi-view-grid-plus"
+					<v-list-item v-if="item.widget.type === 'group' || item.widget.type === 'tabs'" prepend-icon="mdi-view-grid-plus"
 								 :title="$t('plugins.flexibleLayouts.group.editContents')" @click="emit('editContents')" />
 					<v-list-item :prepend-icon="item.locked ? 'mdi-lock' : 'mdi-lock-open-variant'"
 								 :title="item.locked ? $t('plugins.flexibleLayouts.editor.unlock') : $t('plugins.flexibleLayouts.editor.lock')"
@@ -115,10 +117,12 @@ import { buildReport, downloadReport } from "dwc-plugin-runtime";
 
 import type { GridItemModel } from "../model/document";
 import { PLUGIN_MANIFEST_ID } from "../model/constants";
-import { evaluateConditions } from "../util/conditions";
+import { evaluateConditions, evaluateConditionSounds } from "../util/conditions";
+import { useCueOnRise } from "../composables/useCueOnRise";
 import { accessLockedFor } from "../model/access";
 import { effectiveChromeForItem } from "../util/panelChrome";
 import { effectiveLockForItem, isPrintingStatus } from "../util/printLock";
+import { ITEM_ID_KEY } from "../util/itemContext";
 import { WIDGET_PATCH_KEY } from "../util/widgetPatch";
 import { describeWidget } from "../widgets/registry";
 import ScaleToFit from "../widgets/ScaleToFit.vue";
@@ -126,11 +130,47 @@ import WidgetErrorBoundary from "../widgets/WidgetErrorBoundary.vue";
 import WidgetView from "../widgets/WidgetView.vue";
 
 const props = defineProps<{ item: GridItemModel; editMode: boolean; rowHeight?: number; selected?: boolean; pageLock?: boolean }>();
-const emit = defineEmits<{ remove: []; edit: []; editContents: []; export: []; duplicate: []; toggleLock: []; toggleSelect: []; autoHeight: [number]; patchWidget: [Record<string, unknown>] }>();
+const emit = defineEmits<{ remove: []; edit: []; editContents: []; export: []; duplicate: []; toggleLock: []; toggleSelect: []; autoHeight: [number]; patchWidget: [Record<string, unknown>]; nudge: [dx: number, dy: number, dw: number, dh: number]; nudgeEnd: []; grab: [] }>();
+
+// ---- keyboard alternative to dragging (edit mode) ---------------------------------------------------------------
+// Focus the header, press Enter to pick the panel up, then the arrow keys move it one cell (Shift + arrows resize it by
+// one), Enter or Escape puts it down. The page applies each step and announces it; the whole session is ONE undo step.
+const grabbed = ref(false);
+function dropGrab(): void {
+	if (grabbed.value) {
+		grabbed.value = false;
+		emit("nudgeEnd");
+	}
+}
+const ARROW_STEP: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+function onHeaderKeydown(e: KeyboardEvent): void {
+	if (e.target !== e.currentTarget) { return; } // a key pressed on the cog/delete/menu buttons is theirs
+	if (!grabbed.value) {
+		if (e.key === "Enter" || e.key === " ") {
+			e.preventDefault();
+			grabbed.value = true;
+			emit("grab");
+		}
+		return;
+	}
+	if (e.key === "Enter" || e.key === " " || e.key === "Escape") {
+		e.preventDefault();
+		dropGrab();
+		return;
+	}
+	const step = ARROW_STEP[e.key];
+	if (!step) { return; }
+	e.preventDefault();
+	if (e.shiftKey) { emit("nudge", 0, 0, step[0], step[1]); } else { emit("nudge", step[0], step[1], 0, 0); }
+}
+// Leaving edit mode (or the panel going away) must not strand a half-finished session.
+watch(() => props.editMode, (on) => { if (!on) { dropGrab(); } });
 
 // A widget instance can update its own persisted config (e.g. a probe diameter it remembers next
 // time) without going through the Properties dialog - see util/widgetPatch.ts's doc comment.
 provide(WIDGET_PATCH_KEY, (patch) => emit("patchWidget", patch));
+// Container widgets key their per-device state (selected tab, folded) on this item's id.
+provide(ITEM_ID_KEY, props.item.i);
 
 // Give every placed widget its own component-settings scope keyed by the grid item's GUID, so a
 // built-in DWC panel rendered inside (which calls useComponentSettings with no explicit id) derives
@@ -165,6 +205,9 @@ const widgetKey = computed(() => JSON.stringify(props.item.widget));
 
 // Reactive condition effects (colour / hide / disable) driven by the live object model.
 const effects = computed(() => evaluateConditions(machineStore.model, props.item.conditions));
+
+// A rule's cue sounds when it BECOMES true (view mode only; never while editing) - see composables/useCueOnRise.ts.
+useCueOnRise(() => evaluateConditionSounds(machineStore.model, props.item.conditions), () => !props.editMode);
 
 // Lock-while-printing: block interaction during a print so the machine can't be moved unexpectedly.
 // Active only in view mode (edit must always be usable). The page-level flag forces it for every
@@ -347,6 +390,16 @@ onBeforeUnmount(() => {
 	min-height: 28px;
 	opacity: 0.7;
 	transition: opacity 0.12s ease, background 0.12s ease;
+}
+/* Keyboard focus, and the "picked up" state while arrow keys move/resize the panel. */
+.flex-item-header:focus-visible {
+	outline: 2px solid rgb(var(--v-theme-primary));
+	outline-offset: -2px;
+}
+.flex-item-header.is-grabbed {
+	outline: 3px solid rgb(var(--v-theme-primary));
+	outline-offset: -3px;
+	background: rgba(var(--v-theme-primary), 0.18);
 }
 .flex-item-header:hover {
 	opacity: 1;

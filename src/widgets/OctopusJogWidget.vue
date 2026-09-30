@@ -31,25 +31,30 @@
 		<div class="d-flex flex-grow-1 ga-2 oct-body">
 			<!-- 8-arm SVG -->
 			<div class="oct-xy">
-				<svg :viewBox="`0 0 ${VB} ${VB}`" preserveAspectRatio="xMidYMid meet" class="oct-svg">
+				<svg ref="octSvg" :viewBox="`0 0 ${VB} ${VB}`" preserveAspectRatio="xMidYMid meet" class="oct-svg">
 					<g :style="{ color: sectorFill }">
-						<!-- Cardinal sectors -->
-						<path v-for="s in cardinalSectors" :key="s.id" :d="s.d"
+						<!-- Cardinal sectors. The whole pad is ONE tab stop: arrow keys go round the eight arms and in/out
+							 the rings, Enter/Space press the focused sector. -->
+						<path v-for="s in cardinalSectors" :key="s.id" :d="s.d" :data-sector="s.id"
+							  v-svg-button="{ label: cardinalLabel(s), disabled: disabledNow || blockedAxes.has(s.axis.toUpperCase()), tabindex: rovingSector === s.id ? 0 : -1 }"
 							  class="oct-sector" :class="{ 'oct-ring-highlight': hoveredRing === s.ringIndex, 'oct-sector-blocked': blockedAxes.has(s.axis.toUpperCase()) }"
 							  :style="{ fill: ringColor(s.ringIndex), opacity: s.opacity }"
 							  @click="jogSingle(s.axis, s.signed)"
+							  @keydown="onSectorKeydown($event, s.id)" @focus="rovingId = s.id"
 							  @contextmenu.prevent="editStep('xy', s.ringIndex)">
-							<title>{{ s.axis }}{{ s.signed > 0 ? '+' : '' }}{{ stepTitle(s.signed) }}{{ blockedAxes.has(s.axis.toUpperCase()) ? ` — ${$t('plugins.flexibleLayouts.jog.blockedUnhomed')}` : "" }}</title>
+							<title>{{ cardinalLabel(s) }}</title>
 						</path>
 
 						<!-- Diagonal sectors (optional) -->
 						<template v-if="widget.showDiagonals !== false">
-							<path v-for="s in diagonalSectors" :key="s.id" :d="s.d"
+							<path v-for="s in diagonalSectors" :key="s.id" :d="s.d" :data-sector="s.id"
+								  v-svg-button="{ label: diagonalLabel(s), disabled: disabledNow || diagonalBlocked, tabindex: rovingSector === s.id ? 0 : -1 }"
 								  class="oct-sector oct-sector-diag" :class="{ 'oct-ring-highlight': hoveredRing === s.ringIndex, 'oct-sector-blocked': diagonalBlocked }"
 								  :style="{ fill: ringColor(s.ringIndex), opacity: s.opacity }"
 								  @click="jogXY(s.xSign, s.ySign, s.step)"
+								  @keydown="onSectorKeydown($event, s.id)" @focus="rovingId = s.id"
 								  @contextmenu.prevent="editStep('xy', s.ringIndex)">
-								<title>{{ xAxisLetter }}{{ s.xSign > 0 ? '+' : '' }}{{ fmt(s.step) }} {{ yAxisLetter }}{{ s.ySign > 0 ? '+' : '' }}{{ stepTitle(s.step) }}{{ diagonalBlocked ? ` — ${$t('plugins.flexibleLayouts.jog.blockedUnhomed')}` : "" }}</title>
+								<title>{{ diagonalLabel(s) }}</title>
 							</path>
 						</template>
 
@@ -63,6 +68,7 @@
 
 						<!-- Centre hub: home all -->
 						<g v-if="widget.showHome !== false" class="oct-hub" :style="{ color: sectorFill }"
+						   v-svg-button="{ label: $t('plugins.flexibleLayouts.jog.homeAll'), disabled: disabledNow }"
 						   @click="homeAll">
 							<title>{{ $t("plugins.flexibleLayouts.jog.homeAll") }}</title>
 							<circle :cx="C" :cy="C" :r="RHUB" class="oct-hub-bg" />
@@ -133,7 +139,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, nextTick, onMounted, ref } from "vue";
 
 import { getNumericInput } from "@/composables/useInputDialog";
 import i18n from "@/i18n";
@@ -144,6 +150,7 @@ import type { Widget } from "../model/document";
 import { resolveColor } from "../util/color";
 import { polar, sectorPath } from "../util/shapes";
 import { unhomedAxes } from "../util/homedCheck";
+import { ringNavigation, vSvgButton } from "../util/svgButton";
 import { resolveOmPath } from "../util/omPath";
 import { useLengthUnits } from "../util/units";
 import UnhomedWarning from "./UnhomedWarning.vue";
@@ -378,6 +385,42 @@ function jog(letter: string, signed: number, feed: number): void {
 	if (blockedAxes.value.has(letter.toUpperCase())) { warnBlocked(letter); return; }
 	const amount = Number(signed.toFixed(4));
 	void machineStore.sendCode(`M120\nG91\nG1 ${quote(letter)}${amount} F${feed}\nM121`);
+}
+
+// ---- keyboard access to the eight-arm pad ---------------------------------------------------------------------
+const octSvg = ref<SVGElement | null>(null);
+const rovingId = ref<string | null>(null);
+const allSectorIds = computed(() => [...cardinalSectors.value.map((s) => s.id), ...(props.widget.showDiagonals !== false ? diagonalSectors.value.map((s) => s.id) : [])]);
+/** The pad's single tab stop: the last sector focused, else the first. */
+const rovingSector = computed(() => (allSectorIds.value.includes(rovingId.value ?? "") ? rovingId.value : allSectorIds.value[0]));
+/** The arms in clockwise order (up, up-right, right, ...), each listing its rings from the outside in. */
+const sectorDirections = computed(() => {
+	const arm = (prefix: string) => (ids: Array<string>) => ids.filter((id) => id.startsWith(prefix));
+	const cardIds = cardinalSectors.value.map((s) => s.id);
+	const diagIds = props.widget.showDiagonals !== false ? diagonalSectors.value.map((s) => s.id) : [];
+	const out: Array<Array<string>> = [];
+	const cards = cardinals.value.map((c) => arm(`c-${c.key}-`)(cardIds));
+	const diags = diagonalDefs.value.map((d) => arm(`d-${d.key}-`)(diagIds));
+	for (let i = 0; i < cards.length; i++) {
+		out.push(cards[i]);
+		if (diags[i]?.length) { out.push(diags[i]); }
+	}
+	return out;
+});
+function cardinalLabel(s: { axis: string; signed: number }): string {
+	const base = `${s.axis}${s.signed > 0 ? "+" : ""}${stepTitle(s.signed)}`;
+	return blockedAxes.value.has(s.axis.toUpperCase()) ? `${base} — ${i18n.global.t("plugins.flexibleLayouts.jog.blockedUnhomed")}` : base;
+}
+function diagonalLabel(s: { xSign: number; ySign: number; step: number }): string {
+	const base = `${xAxisLetter.value}${s.xSign > 0 ? "+" : ""}${fmt(s.step)} ${yAxisLetter.value}${s.ySign > 0 ? "+" : ""}${stepTitle(s.step)}`;
+	return diagonalBlocked.value ? `${base} — ${i18n.global.t("plugins.flexibleLayouts.jog.blockedUnhomed")}` : base;
+}
+function onSectorKeydown(e: KeyboardEvent, id: string): void {
+	const next = ringNavigation(sectorDirections.value, id, e.key);
+	if (!next) { return; }
+	e.preventDefault();
+	rovingId.value = next;
+	void nextTick(() => octSvg.value?.querySelector<SVGElement>(`[data-sector="${next}"]`)?.focus());
 }
 
 function jogSingle(axis: string, signed: number): void {

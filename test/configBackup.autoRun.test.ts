@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { flushPromises } from "@vue/test-utils";
 import { dwc, loadObjectModel, setConnected, setModel } from "dwc-plugin-test-kit";
 import {
-	addBackedUpMachineKey, configureHost, getBackupFailureStreak, getLastBackupAttempt, resetForTests, resetHostConfigForTests,
+	addBackedUpMachineKey, configureHost, getAutoBackupNudgeSettings, getBackupFailureStreak, getLastBackupAttempt, resetForTests, resetHostConfigForTests,
 	setAutoBackupNudgeSettings, setEncryptPreference, setLastBackupAt, setLastBackupAttempt,
 } from "dwc-config-backup-core";
 
@@ -12,7 +12,10 @@ const collectForBackup = vi.hoisted(() => vi.fn());
 const runBackup = vi.hoisted(() => vi.fn());
 vi.mock("../src/model/configBackup/runBackup", () => ({ collectForBackup, runBackup }));
 
-import { installAutoBackupNudges, uninstallAutoBackupNudges } from "../src/model/configBackup/autoBackupNudges";
+import Events from "@/utils/events";
+
+import { CONFIG_SAVE_DEBOUNCE_MS, installAutoBackupNudges, uninstallAutoBackupNudges } from "../src/model/configBackup/autoBackupNudges";
+import { getAutoRunOnConfigSave, withAutoRunOnConfigSave } from "../src/model/configBackup/autoRunOnSave";
 
 const T = (k: string) => `plugins.flexibleLayouts.configBackup.${k}`;
 const NUDGE = (k: string) => `plugins.flexibleLayouts.configBackup.nudge.${k}`;
@@ -224,5 +227,268 @@ describe("auto-run trigger - re-checks on reconnect, rate-limited", () => {
 		dwc.notifications.length = 0;
 		await reconnect();
 		expect(notificationTitles()).not.toContain(NUDGE("newMachineTitle")); // but not again
+	});
+});
+
+// §A1: a backup that came due mid-print (so only the plain nudge could be shown) is taken as soon as the
+// machine goes from busy to idle, instead of waiting for the next reconnect.
+describe("auto-run trigger - runs when the machine becomes idle", () => {
+	function setStatus(status: string) {
+		setModel({ ...loadObjectModel(), state: { status } });
+	}
+
+	beforeEach(() => {
+		vi.useFakeTimers({ toFake: ["Date"] });
+		setAutoBackupNudgeSettings({ configSaved: true, overdue: true, overdueDays: 7, newMachine: false, autoRun: true, autoRunDestination: "dropbox" });
+		makeOverdue();
+	});
+	afterEach(() => vi.useRealTimers());
+
+	async function connectBusy() {
+		setStatus("processing");
+		installAutoBackupNudges();
+		setConnected(true);
+		await flushPromises();
+		expect(runBackup).not.toHaveBeenCalled(); // mid-print: only the nudge
+	}
+
+	it("fires once on processing -> idle", async () => {
+		await connectBusy();
+		setStatus("idle");
+		await flushPromises();
+		expect(runBackup).toHaveBeenCalledTimes(1);
+		expect(runBackup.mock.calls[0][1]).toMatchObject({ destination: "dropbox" });
+	});
+
+	it("does not fire on busy -> busy, or on paused (not strictly idle)", async () => {
+		await connectBusy();
+		setStatus("paused");
+		await flushPromises();
+		setStatus("processing");
+		await flushPromises();
+		expect(runBackup).not.toHaveBeenCalled();
+	});
+
+	it("does not fire when the status was never busy (undefined -> idle)", async () => {
+		setModel({ ...loadObjectModel(), state: {} });
+		installAutoBackupNudges();
+		setConnected(true);
+		await flushPromises();
+		setStatus("idle");
+		await flushPromises();
+		expect(runBackup).not.toHaveBeenCalled();
+	});
+
+	it("shares its cooldown with the connect trigger", async () => {
+		setStatus("idle");
+		installAutoBackupNudges();
+		setConnected(true);
+		await flushPromises();
+		expect(runBackup).toHaveBeenCalledTimes(1); // connect trigger ran (and failed to clear "overdue" - mocked)
+
+		vi.setSystemTime(Date.now() + 5 * 60 * 1000);
+		setStatus("processing");
+		await flushPromises();
+		setStatus("idle");
+		await flushPromises();
+		expect(runBackup).toHaveBeenCalledTimes(1); // inside the hour: skipped
+
+		vi.setSystemTime(Date.now() + 61 * 60 * 1000);
+		setStatus("processing");
+		await flushPromises();
+		setStatus("idle");
+		await flushPromises();
+		expect(runBackup).toHaveBeenCalledTimes(2);
+	});
+
+	it("a reconnect shortly after an idle-edge run does not start a second one", async () => {
+		await connectBusy();
+		setStatus("idle");
+		await flushPromises();
+		expect(runBackup).toHaveBeenCalledTimes(1);
+
+		vi.setSystemTime(Date.now() + 5 * 60 * 1000);
+		setConnected(false);
+		await flushPromises();
+		setConnected(true);
+		await flushPromises();
+		expect(runBackup).toHaveBeenCalledTimes(1);
+	});
+
+	it("never fires when disabled, ineligible, or not overdue", async () => {
+		setAutoBackupNudgeSettings({ configSaved: true, overdue: true, overdueDays: 7, newMachine: false, autoRun: false, autoRunDestination: "dropbox" });
+		await connectBusy();
+		setStatus("idle");
+		await flushPromises();
+		expect(runBackup).not.toHaveBeenCalled();
+
+		uninstallAutoBackupNudges();
+		setAutoBackupNudgeSettings({ configSaved: true, overdue: true, overdueDays: 7, newMachine: false, autoRun: true, autoRunDestination: "drive" });
+		setConnected(false);
+		await flushPromises();
+		await connectBusy();
+		setStatus("idle");
+		await flushPromises();
+		expect(runBackup).not.toHaveBeenCalled();
+
+		uninstallAutoBackupNudges();
+		setAutoBackupNudgeSettings({ configSaved: true, overdue: true, overdueDays: 7, newMachine: false, autoRun: true, autoRunDestination: "dropbox" });
+		setLastBackupAt(new Date().toISOString());
+		setConnected(false);
+		await flushPromises();
+		await connectBusy();
+		setStatus("idle");
+		await flushPromises();
+		expect(runBackup).not.toHaveBeenCalled();
+	});
+});
+
+// §A2: an opt-in backup a while after config.g is saved. Waits for the LAST save of a burst to settle, runs only if
+// the destination is eligible and the machine idle, and otherwise leaves the ordinary "config.g saved" nudge.
+describe("auto-run trigger - shortly after config.g is saved (opt-in)", () => {
+	const CONFIG = "0:/sys/config.g";
+	const save = (filename = CONFIG) => Events.emit("fileUploaded", { filename } as never);
+	const armed = (over: Record<string, unknown> = {}) =>
+		setAutoBackupNudgeSettings(withAutoRunOnConfigSave({ configSaved: true, overdue: false, overdueDays: 7, newMachine: false, autoRun: true, autoRunDestination: "dropbox", ...over }, true));
+
+	beforeEach(() => {
+		vi.useFakeTimers();
+		setLastBackupAt(new Date().toISOString()); // NOT overdue: only the save trigger can start a run here
+	});
+	afterEach(() => vi.useRealTimers());
+
+	async function start() {
+		installAutoBackupNudges();
+		setConnected(true);
+		await flushPromises();
+		dwc.notifications.length = 0;
+	}
+	const advance = async (ms: number) => { await vi.advanceTimersByTimeAsync(ms); await flushPromises(); };
+
+	it("is off by default: a config.g save just raises the ordinary nudge, as before", async () => {
+		setAutoBackupNudgeSettings({ configSaved: true, overdue: false, overdueDays: 7, newMachine: false, autoRun: true, autoRunDestination: "dropbox" });
+		await start();
+		save();
+		expect(notificationTitles()).toContain(NUDGE("configSavedTitle"));
+		await advance(CONFIG_SAVE_DEBOUNCE_MS * 2);
+		expect(runBackup).not.toHaveBeenCalled();
+	});
+
+	it("when armed, waits out the quiet time, then runs once, and holds the nudge back", async () => {
+		armed();
+		await start();
+		save();
+		expect(notificationTitles()).not.toContain(NUDGE("configSavedTitle"));
+		await advance(CONFIG_SAVE_DEBOUNCE_MS - 1000);
+		expect(runBackup).not.toHaveBeenCalled();
+		await advance(1500);
+		expect(runBackup).toHaveBeenCalledTimes(1);
+		expect(runBackup.mock.calls[0][1]).toMatchObject({ destination: "dropbox" });
+		expect(notificationTitles()).not.toContain(NUDGE("configSavedTitle"));
+	});
+
+	it("a burst of saves is ONE backup, timed from the last save", async () => {
+		armed();
+		await start();
+		save();
+		await advance(CONFIG_SAVE_DEBOUNCE_MS / 2);
+		save();
+		await advance(CONFIG_SAVE_DEBOUNCE_MS / 2 + 1000); // the first save's window has passed, the second's has not
+		expect(runBackup).not.toHaveBeenCalled();
+		await advance(CONFIG_SAVE_DEBOUNCE_MS / 2);
+		expect(runBackup).toHaveBeenCalledTimes(1);
+	});
+
+	it("the debounce is longer than the 5-minute nudge rate-limit (which is not a debounce)", () => {
+		expect(CONFIG_SAVE_DEBOUNCE_MS).toBeGreaterThanOrEqual(10 * 60 * 1000);
+	});
+
+	it("falls back to the ordinary nudge when the machine is busy at the time", async () => {
+		armed();
+		await start();
+		save();
+		setModel({ ...loadObjectModel(), state: { status: "processing" } });
+		await advance(CONFIG_SAVE_DEBOUNCE_MS + 1000);
+		expect(runBackup).not.toHaveBeenCalled();
+		expect(notificationTitles()).toContain(NUDGE("configSavedTitle"));
+	});
+
+	it("falls back to the nudge if it was switched off during the wait", async () => {
+		armed();
+		await start();
+		save();
+		setAutoBackupNudgeSettings({ configSaved: true, overdue: false, overdueDays: 7, newMachine: false, autoRun: true, autoRunDestination: "dropbox" });
+		await advance(CONFIG_SAVE_DEBOUNCE_MS + 1000);
+		expect(runBackup).not.toHaveBeenCalled();
+		expect(notificationTitles()).toContain(NUDGE("configSavedTitle"));
+	});
+
+	it("does not arm without auto-run, or for an ineligible destination or an encrypted one", async () => {
+		for (const over of [{ autoRun: false }, { autoRunDestination: "local" }, { autoRunDestination: "drive" }, { autoRunDestination: null }]) {
+			resetForTests();
+			configureHost({ storageNamespace: "flexibleLayouts.configBackup" });
+			armed(over);
+			runBackup.mockClear();
+			await start();
+			dwc.notifications.length = 0;
+			save();
+			expect(notificationTitles()).toContain(NUDGE("configSavedTitle")); // immediate, ordinary
+			await advance(CONFIG_SAVE_DEBOUNCE_MS * 2);
+			expect(runBackup).not.toHaveBeenCalled();
+			uninstallAutoBackupNudges();
+		}
+		resetForTests();
+		configureHost({ storageNamespace: "flexibleLayouts.configBackup" });
+		armed();
+		setEncryptPreference("dropbox", true);
+		await start();
+		dwc.notifications.length = 0;
+		save();
+		expect(notificationTitles()).toContain(NUDGE("configSavedTitle"));
+	});
+
+	it("ignores every file except config.g", async () => {
+		armed();
+		await start();
+		save("0:/sys/other.g");
+		save("0:/macros/config.g.bak");
+		await advance(CONFIG_SAVE_DEBOUNCE_MS * 2);
+		expect(runBackup).not.toHaveBeenCalled();
+		expect(notificationTitles()).not.toContain(NUDGE("configSavedTitle"));
+	});
+
+	it("the overdue and save triggers cannot double up (they share the in-flight guard)", async () => {
+		makeOverdue();
+		armed();
+		let release: () => void = () => {};
+		runBackup.mockImplementation(() => new Promise((res) => { release = () => res({ ok: true, built: { manifest: {} }, redacted: false }); }));
+		installAutoBackupNudges();
+		setConnected(true); // the overdue trigger starts a (slow) run
+		await flushPromises();
+		expect(runBackup).toHaveBeenCalledTimes(1);
+		save();
+		await advance(CONFIG_SAVE_DEBOUNCE_MS + 1000);
+		expect(runBackup).toHaveBeenCalledTimes(1); // still in flight: no second one
+		release();
+		await flushPromises();
+	});
+
+	it("uninstalling cancels a pending backup", async () => {
+		armed();
+		await start();
+		save();
+		uninstallAutoBackupNudges();
+		await advance(CONFIG_SAVE_DEBOUNCE_MS * 2);
+		expect(runBackup).not.toHaveBeenCalled();
+	});
+
+	it("the flag round-trips through the core's settings blob without needing a migration", () => {
+		armed();
+		expect(getAutoRunOnConfigSave()).toBe(true);
+		setAutoBackupNudgeSettings(withAutoRunOnConfigSave(getAutoBackupNudgeSettings(), false));
+		expect(getAutoRunOnConfigSave()).toBe(false);
+		// an older stored blob that predates the field reads as off
+		setAutoBackupNudgeSettings({ configSaved: true, overdue: true, overdueDays: 7, newMachine: true, autoRun: false, autoRunDestination: null });
+		expect(getAutoRunOnConfigSave()).toBe(false);
 	});
 });

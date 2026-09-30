@@ -212,6 +212,19 @@
 			</div>
 
 			<v-divider class="my-4" />
+			<SoundSettings />
+
+			<v-divider class="my-4" />
+			<div class="text-title-small mb-1">{{ $t("plugins.flexibleLayouts.hotkey.settingsTitle") }}</div>
+			<p class="text-body-small text-medium-emphasis mt-0 mb-2">
+				{{ $t("plugins.flexibleLayouts.hotkey.settingsHint") }}
+			</p>
+			<v-switch :model-value="hotkeysEnabled" color="primary" density="compact" hide-details
+					  :label="$t('plugins.flexibleLayouts.hotkey.enabled')" @update:model-value="setHotkeysEnabled($event === true)" />
+			<v-switch :model-value="hotkeysWhileEditing" color="primary" density="compact" hide-details :disabled="!hotkeysEnabled"
+					  :label="$t('plugins.flexibleLayouts.hotkey.whileEditing')" @update:model-value="setHotkeysWhileEditing($event === true)" />
+
+			<v-divider class="my-4" />
 			<div class="text-title-small mb-1">{{ $t("plugins.flexibleLayouts.mobileNav.title") }}</div>
 			<p class="text-body-small text-medium-emphasis mt-0 mb-2">
 				{{ $t("plugins.flexibleLayouts.mobileNav.hint") }}
@@ -345,6 +358,8 @@ import { isExplorerReplaceEnabled, isNewGcodeEditorEnabled, setExplorerReplaceEn
 import { editorTabWidth, setEditorTabWidth } from "../model/editorIndentSettings";
 import { syncExplorerReplacement } from "../page/explorerReplacement";
 import { setStockMobileNav, stockMobileNav } from "../model/mobileNav";
+import { hotkeysEnabled, hotkeysWhileEditing, setHotkeysEnabled, setHotkeysWhileEditing } from "../model/hotkeys";
+import SoundSettings from "./SoundSettings.vue";
 import { editMode } from "../model/editorState";
 import { applying, checking, dismissCurrentUpdate, dismissedVersion, pendingReload, runUpdateCheck, setUpdateChecksEnabled, undismissUpdate, updateChecksEnabled, updateDiagnostics, updateState as update, applyUpdateNow } from "../model/updateCheck";
 import { useLayoutStore } from "../model/store";

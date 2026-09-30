@@ -23,7 +23,7 @@
 		</div>
 
 		<WidgetPalette v-if="paletteMounted" v-model="paletteOpen" @add="onAddWidget" @add-item="onAddItem" />
-		<PropertiesDialog v-if="propertiesMounted" v-model="propertiesOpen" :item="editingItem" @save="onSaveProperties" />
+		<PropertiesDialog v-if="propertiesMounted" v-model="propertiesOpen" :item="editingItem" :taken-hotkeys="takenHotkeys" @save="onSaveProperties" />
 	</div>
 </template>
 
@@ -31,6 +31,7 @@
 import { computed, onBeforeUnmount, ref } from "vue";
 
 import {
+	forEachItemWidget,
 	type ConditionRule,
 	type GridItemModel,
 	type PanelColors,
@@ -220,6 +221,15 @@ const propertiesOpen = ref(false);
 const propertiesMounted = useLazyDialog(propertiesOpen);
 const editingId = ref<string | null>(null);
 const editingItem = ref<GridItemModel | null>(null);
+/** Shortcuts already used by the OTHER pinned header widgets, so the dialog can flag a duplicate. */
+const takenHotkeys = computed(() => {
+	const found: Array<string> = [];
+	forEachItemWidget(headerItems().filter((it) => it.i !== editingId.value), (w) => {
+		const hk = (w as { hotkey?: string }).hotkey;
+		if (hk) { found.push(hk); }
+	});
+	return found;
+});
 function openProperties(id: string): void {
 	const item = headerItems().find((it) => it.i === id);
 	if (!item) {

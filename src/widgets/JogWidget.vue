@@ -25,14 +25,17 @@
 			<!-- XY concentric rings. The hub home-button is drawn INSIDE the SVG so it scales and
 				 stays aligned with the click sectors at any aspect ratio. -->
 			<div class="jog-xy">
-				<svg :viewBox="`0 0 ${VB} ${VB}`" preserveAspectRatio="xMidYMid meet" class="jog-svg">
+				<svg ref="xySvg" :viewBox="`0 0 ${VB} ${VB}`" preserveAspectRatio="xMidYMid meet" class="jog-svg">
 					<g :style="{ color: sectorFill }">
-						<path v-for="s in xySectors" :key="s.id" :d="s.d"
+						<!-- One tab stop for the whole pad (arrow keys pick the direction and ring); Enter/Space press it. -->
+						<path v-for="s in xySectors" :key="s.id" :d="s.d" :data-sector="s.id"
+							  v-svg-button="{ label: sectorLabel(s), disabled: disabledNow || blockedAxes.has(s.axis.toUpperCase()), tabindex: rovingSector === s.id ? 0 : -1 }"
 							  class="jog-sector" :class="{ 'jog-sector-blocked': blockedAxes.has(s.axis.toUpperCase()) }"
 							  :style="{ fill: 'currentColor', opacity: s.opacity }"
 							  @click="jog(s.axis, s.signed, feedFor(s.axis))"
+							  @keydown="onSectorKeydown($event, s.id)" @focus="rovingId = s.id"
 							  @contextmenu.prevent="editStep('xy', s.ringIndex)">
-							<title>{{ s.axis }}{{ s.signed > 0 ? "+" : "" }}{{ stepTitle(s.signed) }}{{ blockedAxes.has(s.axis.toUpperCase()) ? ` — ${$t('plugins.flexibleLayouts.jog.blockedUnhomed')}` : "" }}</title>
+							<title>{{ sectorLabel(s) }}</title>
 						</path>
 					</g>
 					<!-- ring step values, laid along the upper-right gap like Pronterface -->
@@ -43,6 +46,7 @@
 						  text-anchor="middle" dominant-baseline="central">{{ d.text }}</text>
 					<!-- centre hub: home-all -->
 					<g v-if="widget.showHome !== false" class="jog-hub" :style="{ color: sectorFill }"
+					   v-svg-button="{ label: $t('plugins.flexibleLayouts.jog.homeAll'), disabled: disabledNow }"
 					   @click="homeAll">
 						<title>{{ $t("plugins.flexibleLayouts.jog.homeAll") }}</title>
 						<circle :cx="C" :cy="C" :r="RHUB" class="jog-hub-bg" />
@@ -101,7 +105,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from "vue";
+import { computed, nextTick, onMounted, ref } from "vue";
 
 import { getNumericInput } from "@/composables/useInputDialog";
 import i18n from "@/i18n";
@@ -112,6 +116,7 @@ import type { Widget } from "../model/document";
 import { resolveColor } from "../util/color";
 import { polar, sectorPath as _sectorPath } from "../util/shapes";
 import { unhomedAxes } from "../util/homedCheck";
+import { ringNavigation, vSvgButton } from "../util/svgButton";
 import { resolveOmPath } from "../util/omPath";
 import { useLengthUnits } from "../util/units";
 import UnhomedWarning from "./UnhomedWarning.vue";
@@ -277,6 +282,25 @@ const dirLabels = computed(() =>
 function quote(letter: string): string {
 	return /[a-z]/.test(letter) ? `'${letter}` : letter;
 }
+// ---- keyboard access to the ring pad --------------------------------------------------------------------
+const xySvg = ref<SVGElement | null>(null);
+const rovingId = ref<string | null>(null);
+/** The sector that is the pad's single tab stop: the last one focused, else the first. */
+const rovingSector = computed(() => (xySectors.value.some((s) => s.id === rovingId.value) ? rovingId.value : xySectors.value[0]?.id));
+/** Clockwise directions, each listing its rings from the outside in - what ringNavigation walks. */
+const sectorDirections = computed(() => cardinals.value.map((card) => xySectors.value.filter((s) => s.id.startsWith(`${card.key}-`)).map((s) => s.id)));
+function sectorLabel(s: { axis: string; signed: number }): string {
+	const base = `${s.axis}${s.signed > 0 ? "+" : ""}${stepTitle(s.signed)}`;
+	return blockedAxes.value.has(s.axis.toUpperCase()) ? `${base} — ${i18n.global.t("plugins.flexibleLayouts.jog.blockedUnhomed")}` : base;
+}
+function onSectorKeydown(e: KeyboardEvent, id: string): void {
+	const next = ringNavigation(sectorDirections.value, id, e.key);
+	if (!next) { return; }
+	e.preventDefault();
+	rovingId.value = next;
+	void nextTick(() => xySvg.value?.querySelector<SVGElement>(`[data-sector="${next}"]`)?.focus());
+}
+
 function jog(letter: string, signed: number, feed: number): void {
 	if (disabledNow.value || !letter) {
 		return;

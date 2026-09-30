@@ -5,7 +5,7 @@
 				<v-icon class="me-2">mdi-file-find-outline</v-icon>
 				{{ $t("plugins.flexibleLayouts.filePicker.title") }}
 				<v-spacer />
-				<v-btn icon="mdi-close" variant="text" density="comfortable" @click="close" />
+				<v-btn :aria-label="$t('plugins.flexibleLayouts.a11y.close')" icon="mdi-close" variant="text" density="comfortable" @click="close" />
 			</v-card-title>
 
 			<div v-if="canGoUp" class="gfp-bar">

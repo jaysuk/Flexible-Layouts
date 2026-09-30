@@ -43,7 +43,7 @@
 							<v-col cols="3"><v-select v-model="t.type" :items="toolTypeItems" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.preflight.toolType')" @update:model-value="saveToolTable" /></v-col>
 							<v-col cols="2"><v-text-field v-model.number="t.diameter" type="number" :min="0" :step="0.01" density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.preflight.toolDiameter')" @change="saveToolTable" /></v-col>
 							<v-col cols="1" class="d-flex align-center justify-end">
-								<v-btn size="x-small" variant="text" icon @click="removeTool(i)"><v-icon size="16">mdi-delete-outline</v-icon></v-btn>
+								<v-btn :aria-label="$t('plugins.flexibleLayouts.a11y.delete')" size="x-small" variant="text" icon @click="removeTool(i)"><v-icon size="16">mdi-delete-outline</v-icon></v-btn>
 							</v-col>
 						</v-row>
 					</div>

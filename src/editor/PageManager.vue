@@ -6,7 +6,7 @@
 				<v-icon class="me-2">mdi-file-tree</v-icon>
 				{{ $t("plugins.flexibleLayouts.pages.title") }}
 				<v-spacer />
-				<v-btn icon="mdi-close" variant="text" density="comfortable"
+				<v-btn :aria-label="$t('plugins.flexibleLayouts.a11y.close')" icon="mdi-close" variant="text" density="comfortable"
 					   @click="emit('update:modelValue', false)" />
 			</v-card-title>
 
@@ -81,9 +81,9 @@
 								 viewport instead of just squeezing the title. -->
 							<template #append>
 								<div class="d-flex align-center">
-									<v-btn icon="mdi-arrow-up" size="x-small" variant="text" density="comfortable"
+									<v-btn :aria-label="$t('plugins.flexibleLayouts.a11y.moveUp')" icon="mdi-arrow-up" size="x-small" variant="text" density="comfortable"
 										   :disabled="index === 0" @click="move(group.key, index, -1)" />
-									<v-btn icon="mdi-arrow-down" size="x-small" variant="text" density="comfortable"
+									<v-btn :aria-label="$t('plugins.flexibleLayouts.a11y.moveDown')" icon="mdi-arrow-down" size="x-small" variant="text" density="comfortable"
 										   :disabled="index === group.items.length - 1" @click="move(group.key, index, 1)" />
 									<v-btn :icon="hidden(item.path) ? 'mdi-eye-off' : 'mdi-eye'" size="x-small"
 										   variant="text" density="comfortable"

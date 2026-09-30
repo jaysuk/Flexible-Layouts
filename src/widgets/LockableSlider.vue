@@ -10,10 +10,11 @@
 
 		<!-- DWC's "numeric inputs" setting: a typed value instead of a drag handle, so a stray touch can't move it. -->
 		<v-text-field v-if="numeric" type="number" density="compact" variant="outlined" hide-details class="ls-number"
+					  :aria-label="label || $t('plugins.flexibleLayouts.a11y.slider')"
 					  :model-value="text" :min="min" :max="max" :step="step" :suffix="suffix" :disabled="disabled"
 					  @focus="editing = true" @update:model-value="(v: string) => (text = String(v))"
 					  @keydown.enter="commit" @blur="commit" />
-		<v-slider v-else :model-value="modelValue" :min="min" :max="max" :step="step" :color="color || 'primary'"
+		<v-slider v-else :aria-label="label || $t('plugins.flexibleLayouts.a11y.slider')" :model-value="modelValue" :min="min" :max="max" :step="step" :color="color || 'primary'"
 				  density="compact" hide-details thumb-size="14" :disabled="disabled" :readonly="lockable && locked"
 				  @update:model-value="(v: number) => emit('update:modelValue', v)" @end="(v: number) => emit('end', v)" />
 	</div>
@@ -42,6 +43,8 @@ const props = defineProps<{
 	disabled?: boolean;
 	/** Shown after the number in numeric mode ("%", "rpm"). */
 	suffix?: string;
+	/** The control's accessible name; falls back to a generic "Slider". */
+	label?: string;
 }>();
 const emit = defineEmits<{ (e: "update:modelValue", v: number): void; (e: "end", v: number): void }>();
 

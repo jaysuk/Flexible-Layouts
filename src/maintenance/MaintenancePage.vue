@@ -203,7 +203,7 @@
 							<v-switch :model-value="row.rule.enabled" density="compact" hide-details class="mnt-rule-switch"
 									  :title="$t('plugins.flexibleLayouts.maintenance.reminderToggle')"
 									  @update:model-value="(v) => onToggleRule(row.rule.id, v === true)" />
-							<v-btn icon="mdi-delete" size="x-small" variant="text" density="compact" @click="onDeleteRule(row.rule.id)" />
+							<v-btn :aria-label="$t('plugins.flexibleLayouts.a11y.delete')" icon="mdi-delete" size="x-small" variant="text" density="compact" @click="onDeleteRule(row.rule.id)" />
 						</div>
 					</div>
 

@@ -5,7 +5,7 @@
 				<v-icon class="me-2">mdi-help-circle</v-icon>
 				Config backup &amp; restore
 				<v-spacer />
-				<v-btn icon="mdi-close" variant="text" density="comfortable" @click="close" />
+				<v-btn :aria-label="$t('plugins.flexibleLayouts.a11y.close')" icon="mdi-close" variant="text" density="comfortable" @click="close" />
 			</v-card-title>
 
 			<v-card-text ref="body" style="max-height: 72vh;">

@@ -1,11 +1,35 @@
 # Missing-features plan — scheduled backups (what is really left) + the "nobody asked yet" list
 
-Status: **proposed, not started.** Same convention as `CAM-LASER-PLAN.md` and the `*-PLAN.md` files in the sibling
+Status: **implemented** (see "What was built" below for each item, including where it deviates from the plan). Same convention as
+`CAM-LASER-PLAN.md` and the `*-PLAN.md` files in the sibling
 `dwc-config-backup-core` repo: grounded in the code as it is today, phased, each phase shippable on its own.
 
 Origin: a feature audit of FL against stock DuetWebControl (see the git history around this file). The four
 regressions it found (imperial display units, German locale, slider lock / numeric-entry settings, native-app
 "back to device list" + drawer hints) are already fixed; this document covers everything else.
+
+## What was built
+
+The open questions were answered with the plan's own recommendations: strict-`idle` only (§A1), a per-device "showing profile"
+override (§B5), no hotkey on the emergency stop (§B2), tabs **and** a limited collapse (§B3), and every audio event opt-in (§B1).
+
+| Item | State | Notes / deviations |
+| --- | --- | --- |
+| §A0 docs + stale comment | done | `docs/config-backup.md` "Automatic backups"; `runBackup.ts` header rewritten. |
+| §A1 run on the idle edge | done | Shares the in-flight guard and a one-hour cooldown *between auto-run attempts* (not the overdue-check timer, which would have blocked the very case it exists for: overdue at connect while printing, then the print ends). Auto-run only - the nudge was already shown. |
+| §A2 back up after a `config.g` save | done | 10-minute debounce; held-back nudge falls back if it can't run. The flag is read/written through `configBackup/autoRunOnSave.ts` because the published core does not type it: the core's settings blob is merged over defaults on read and stored verbatim, so it round-trips today. The typed optional `autoRunOnConfigSave` is added in `dwc-config-backup-core` (uncommitted there; needs a release + bump to drop the helper). |
+| §A3 manual-failure alert | decided | No toast for manual runs - recorded in `dwc-config-backup-core/SCHEDULED-BACKUPS-PLAN.md` §9. |
+| §A4 multiple destinations | not built | As the plan recommends, until someone asks. |
+| §A5 unattended script | done | The generator is pure and lives in FL (`unattendedScript.ts`, no FL/DWC imports) so it can move into the core - it could not be released from here. Tested by actually running the script against a fake Duet for both firmware flavours. |
+| §A6 port to standalone plugins | tracking | Out of this repo. |
+| §B1 audio and haptics | done | Global events, per-widget cues (condition `sound`, alert `sound`), `haptic` tap on buttons/toggles. |
+| §B2 hotkeys | done | Plus a per-device master switch and "also while editing". |
+| §B3 tabs / collapse | tabs done; collapse limited | Step 0 walker refactor landed first. **Collapse hides the body per device; the panels below only close up if the panel has Auto height on.** The grid runs with `vertical-compact` off, so a height change pushes panels down but never pulls them up; a view-only reflow would have meant feeding FlexGrid a derived layout that its `v-model` could write back into the saved one. |
+| §B4 copy / paste | done | "Move/copy to page…" (the stretch item) is not built: paste already reaches any page. |
+| §B5 auto profile switching | done | Option 1 (per-device override). |
+| §B6 fullscreen / kiosk / keep awake | done | |
+| §B7 starter layouts | done | Previews are schematic tiles positioned from each starter's real grid geometry, **not** live mounted widgets: five pages of pollers, webcams and timers just to look at is the wrong trade. |
+| §B8 accessibility | steps 1-8 done | axe harness runs over every widget and Properties dialog (its colour-contrast rule needs a layout engine, so it is left to the e2e run, which has no axe spec yet). |
 
 ## §0 A correction to the audit, before anything else
 

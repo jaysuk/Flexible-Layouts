@@ -5,7 +5,7 @@
       <v-spacer />
       <span v-if="widget.showValue !== false" class="pr-val">{{ pctText }}%</span>
     </div>
-    <v-progress-linear :model-value="pct" :color="(overrideColor || widget.color) || 'primary'" height="10" rounded />
+    <v-progress-linear :model-value="pct" :aria-label="widget.label || $t('plugins.flexibleLayouts.a11y.progress')" :color="(overrideColor || widget.color) || 'primary'" height="10" rounded />
   </div>
 </template>
 

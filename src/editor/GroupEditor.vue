@@ -6,7 +6,7 @@
 				<v-icon class="me-2">mdi-group</v-icon>
 				{{ $t("plugins.flexibleLayouts.group.editTitle") }}
 				<v-spacer />
-				<v-btn icon="mdi-close" variant="text" density="comfortable"
+				<v-btn :aria-label="$t('plugins.flexibleLayouts.a11y.close')" icon="mdi-close" variant="text" density="comfortable"
 					   @click="emit('update:modelValue', false)" />
 			</v-card-title>
 
@@ -18,8 +18,10 @@
 						   @click="paletteOpen = true">
 						{{ $t("plugins.flexibleLayouts.editor.addWidget") }}
 					</v-btn>
+					<v-switch v-if="!gridOnly" :model-value="!!draft.collapsible" color="primary" density="compact" hide-details class="flex-grow-0"
+							  :label="$t('plugins.flexibleLayouts.container.collapsible')" @update:model-value="draft.collapsible = $event === true ? true : undefined" />
 					<!-- Mode toggle -->
-					<v-btn-toggle
+					<v-btn-toggle v-if="!gridOnly"
 						:model-value="draft.layoutMode ?? 'grid'"
 						mandatory density="compact" variant="outlined"
 						@update:model-value="(v: string) => { if (draft) draft.layoutMode = v as 'grid' | 'free'; }"
@@ -165,7 +167,9 @@ import { useLazyDialog } from "../composables/useLazyDialog";
 
 type GroupWidget = Extract<Widget, { type: "group" }>;
 
-const props = defineProps<{ modelValue: boolean; group: GroupWidget | null }>();
+// `gridOnly` hides the grid/free switch and the fold option: a tab's contents are always a plain grid, and a tab
+// has no header of its own to fold.
+const props = defineProps<{ modelValue: boolean; group: GroupWidget | null; gridOnly?: boolean }>();
 const emit = defineEmits<{ "update:modelValue": [boolean]; save: [GroupWidget] }>();
 
 const draft = ref<GroupWidget | null>(null);

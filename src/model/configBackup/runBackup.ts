@@ -1,7 +1,7 @@
 /**
  * Headless backup pipeline (SCHEDULED-BACKUPS-PLAN.md §4.1), extracted out of
- * `BackupCreatePanel.vue`'s old `onCreate()` so a future automatic trigger (Phase 3, not built yet)
- * can run a backup without a Vue component to hang off, and without ever blocking on a dialog.
+ * `BackupCreatePanel.vue`'s old `onCreate()` so the automatic trigger (`autoBackupNudges.ts`, Phase 3 -
+ * shipped) can run a backup without a Vue component to hang off, and without ever blocking on a dialog.
  *
  * Split into two functions rather than one "collect through send" function:
  *
@@ -24,20 +24,20 @@
  * `config.publicRepoConfirmed`, or the persisted `hasAcknowledgedUnredacted()` flag), it returns
  * `{ ok: false, reason: "needsInput", needsInputKind, ... }` instead. The interactive Create tab
  * resolves each prompt itself (showing its existing dialogs) and calls `runBackup` again with the
- * answer folded in, re-using the same `collected` from `collectForBackup`; a future scheduler
- * (Phase 3) instead treats a destination that would need input as ineligible for an unattended run
+ * answer folded in, re-using the same `collected` from `collectForBackup`; the automatic trigger
+ * instead treats a destination that would need input as ineligible for an unattended run
  * (SCHEDULED-BACKUPS-PLAN.md §4.2) and falls back to the existing nudge, without ever getting here.
  *
  * Google Drive is the one destination whose "prompt" (interactive OAuth sign-in) is NOT modelled as
  * `needsInput` - it stays inline (`sendToDrive` below), unchanged from before the refactor, because a
  * manual click is itself a user gesture that's fine to pop a sign-in window from. §4.2 excludes Drive
  * from unattended eligibility entirely at the scheduler level (a static, per-destination table lookup,
- * not a runtime signal from this module) - Phase 3's scheduler simply never calls `runBackup` with
+ * not a runtime signal from this module) - the automatic trigger simply never calls `runBackup` with
  * `destination: "drive"`, so this module doesn't need its own gate for it.
  *
  * `setLastBackupAt()`/`addBackedUpMachineKey()` (success) and `setLastBackupAttempt()` (every real
  * attempt, success or failure - SCHEDULED-BACKUPS-PLAN.md §4.4) are recorded IN HERE, not by the
- * caller, so a manual backup today and a future automatic one record both identically.
+ * caller, so a manual backup and an automatic one record both identically.
  */
 import {
 	buildArchive, buildLiveDirectories, buildMachineIdentity, collectAll, DEFAULT_MAX_FILE_BYTES,
@@ -131,7 +131,7 @@ export type RunBackupResult =
 			ok: false;
 			reason: "needsInput";
 			/** Which prompt is blocking progress - so an interactive caller knows which dialog to show,
-			 * and a future scheduler can tell "needs a password" apart from "needs a repo confirm" when
+			 * and the automatic trigger can tell "needs a password" apart from "needs a repo confirm" when
 			 * deciding a destination isn't eligible for an unattended run (SCHEDULED-BACKUPS-PLAN.md §4.2). */
 			needsInputKind: "encryptPassword" | "unredacted" | "publicRepo";
 			message: string;
@@ -280,7 +280,7 @@ async function sendToGithub(
  * device-flow ladder - by the time this returns, sign-in (if it was even needed at all) is already
  * done. Kept as its own inline, blocking async function (not modelled as `runBackup`'s `needsInput`)
  * for the same reason the old GIS `signIn()` was: a manual click is itself a user gesture, and the
- * future scheduler (SCHEDULED-BACKUPS-PLAN.md §4.2) excludes "drive" from unattended eligibility
+ * automatic trigger (SCHEDULED-BACKUPS-PLAN.md §4.2) excludes "drive" from unattended eligibility
  * entirely at the call-site level, so it never reaches this function in the first place. */
 async function sendToDrive(built: BuiltArchive, identity: MachineIdentity): Promise<void> {
 	const token = await getGoogleDriveAccessToken();

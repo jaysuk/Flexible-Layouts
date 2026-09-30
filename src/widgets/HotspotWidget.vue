@@ -12,7 +12,7 @@
         <svg v-if="isShaped(r)" class="hs-region-svg" :class="{ 'hs-region-svg--edit': editMode }"
              :style="regionStyle(r)" viewBox="0 0 100 100" :preserveAspectRatio="shapeAspect(r)">
           <title>{{ r.label || r.command }}</title>
-          <path :d="regionPathD(r)" class="hs-region-path" @click="fire(r)" />
+          <path :d="regionPathD(r)" class="hs-region-path" v-svg-button="{ label: r.label || r.command || '', disabled: disabledNow }" @click="fire(r)" />
         </svg>
         <button v-else type="button" class="hs-region"
                 :class="{ 'hs-region--edit': editMode }" :disabled="disabledNow"
@@ -34,6 +34,7 @@ import { LogLevel, useUiStore } from "@/stores/ui";
 import type { Widget } from "../model/document";
 import { editMode } from "../model/editorState";
 import { buttonShapeToParams, shapePath, shapePreservesAspect } from "../util/shapes";
+import { vSvgButton } from "../util/svgButton";
 
 type HotspotRegion = NonNullable<Extract<Widget, { type: "hotspot" }>["regions"]>[number];
 

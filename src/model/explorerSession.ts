@@ -17,7 +17,7 @@
 import { reactive } from "vue";
 import type { GroupId } from "dwc-gcode-editor";
 
-import type { GridItemModel, LayoutDocument, Widget } from "./document";
+import { childItemLists, type GridItemModel, type LayoutDocument } from "./document";
 
 export interface ExplorerTab {
 	id: number;
@@ -120,7 +120,7 @@ export function pruneExplorerSessions(doc: LayoutDocument): void {
 		for (const item of items ?? []) {
 			if (!item) continue;
 			live.add(item.i);
-			if (item.widget?.type === "group") visit((item.widget as Extract<Widget, { type: "group" }>).items);
+			for (const children of childItemLists(item.widget)) visit(children);
 		}
 	};
 	for (const page of Object.values(doc.pages ?? {})) {

@@ -22,7 +22,7 @@
 
       <!-- Colour picker: native swatch (opens the OS colour picker) + quick presets -->
       <div class="d-flex align-center ga-2 flex-shrink-0">
-        <input type="color" class="np-swatch" :value="pickerHex" @input="pickerHex = ($event.target as HTMLInputElement).value" />
+        <input type="color" class="np-swatch" :aria-label="$t('plugins.flexibleLayouts.a11y.pickColor')" :value="pickerHex" @input="pickerHex = ($event.target as HTMLInputElement).value" />
         <div class="np-presets">
           <button v-for="p in PRESETS" :key="p" type="button" class="np-preset" :style="{ background: p }"
                   :title="p" @click="pickerHex = p" />
@@ -32,14 +32,14 @@
       <!-- White channel (RGBW only) -->
       <div v-if="isRGBW" class="d-flex align-center ga-2 mt-1 flex-shrink-0">
         <span class="text-caption" style="width:1.2em">W</span>
-        <v-slider v-model="wValue" :min="0" :max="255" :step="1" density="compact" hide-details thumb-size="12" />
+        <v-slider v-model="wValue" :aria-label="$t('plugins.flexibleLayouts.a11y.whiteChannel')" :min="0" :max="255" :step="1" density="compact" hide-details thumb-size="12" />
         <span class="text-caption np-num">{{ wValue }}</span>
       </div>
 
       <!-- Brightness -->
       <div class="d-flex align-center ga-2 mt-1 flex-shrink-0">
         <v-icon size="small">mdi-brightness-6</v-icon>
-        <v-slider v-model="brightness" :min="0" :max="255" :step="1" density="compact" hide-details thumb-size="12" />
+        <v-slider v-model="brightness" :aria-label="$t('plugins.flexibleLayouts.a11y.brightness')" :min="0" :max="255" :step="1" density="compact" hide-details thumb-size="12" />
         <span class="text-caption np-num">{{ brightness }}</span>
       </div>
 

@@ -1,7 +1,7 @@
 <template>
   <div class="ps-root fill-height d-flex flex-column justify-center px-2">
     <span v-if="widget.label" class="ps-label text-truncate">{{ widget.label }}</span>
-    <v-select v-if="widget.variant !== 'buttons'" :model-value="active" :items="items" density="compact"
+    <v-select v-if="widget.variant !== 'buttons'" :model-value="active" :aria-label="widget.label || $t('plugins.flexibleLayouts.a11y.profile')" :items="items" density="compact"
               variant="outlined" hide-details @update:model-value="switchTo" />
     <div v-else class="d-flex flex-wrap ga-1 mt-1">
       <v-btn v-for="p in profiles" :key="p.id" size="small" :variant="p.id === active ? 'flat' : 'tonal'"

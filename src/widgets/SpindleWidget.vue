@@ -6,7 +6,7 @@
       <span class="spn-state" :class="`spn-state--${state}`">{{ state }}</span>
     </div>
     <div class="d-flex align-center ga-2 mb-1">
-      <LockableSlider v-model="rpm" :min="min" :max="max" :step="stepSize"
+      <LockableSlider :label="widget.label" v-model="rpm" :min="min" :max="max" :step="stepSize"
                       :color="(overrideColor || widget.color) || 'primary'" :disabled="disabledNow" />
       <span class="spn-rpm">{{ rpmText }}</span>
     </div>

@@ -6,7 +6,7 @@
 				<v-icon class="me-2">mdi-file-tree</v-icon>
 				{{ $t("plugins.flexibleLayouts.omPicker.title") }}
 				<v-spacer />
-				<v-btn icon="mdi-close" variant="text" density="comfortable"
+				<v-btn :aria-label="$t('plugins.flexibleLayouts.a11y.close')" icon="mdi-close" variant="text" density="comfortable"
 					   @click="emit('update:modelValue', false)" />
 			</v-card-title>
 

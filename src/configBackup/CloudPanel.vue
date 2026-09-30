@@ -137,11 +137,29 @@
 							  variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.configBackup.nudge.autoRunDestinationLabel')"
 							  :hint="$t('plugins.flexibleLayouts.configBackup.nudge.autoRunDestinationHint')" persistent-hint
 							  style="max-width: 360px;" class="mt-2 ms-8" @update:model-value="saveNudgeSettings" />
+					<v-checkbox v-if="nudgeAutoRun" v-model="nudgeAutoRunOnSave" density="compact" hide-details class="ms-8 auto-run-on-save"
+								:label="$t('plugins.flexibleLayouts.configBackup.nudge.autoRunOnSave')" @update:model-value="saveNudgeSettings" />
+					<div v-if="nudgeAutoRun" class="text-caption text-medium-emphasis ms-16">{{ $t("plugins.flexibleLayouts.configBackup.nudge.autoRunOnSaveHint") }}</div>
 					<v-alert v-if="autoRunEncryptionConflict" type="warning" variant="tonal" density="compact" class="mt-2 ms-8">
 						{{ autoRunEncryptionConflict }}
 					</v-alert>
 				</v-card-text>
 			</v-card>
+
+			<!-- Truly unattended backups: a browser can't run with no tab open, so hand the user a script for cron / Task Scheduler. -->
+			<v-card variant="outlined" class="mb-4 unattended-card">
+				<v-card-text>
+					<div class="d-flex align-center ga-2 mb-1">
+						<v-icon size="18">mdi-script-text-play-outline</v-icon>
+						<span class="text-body-2 font-weight-medium">{{ $t("plugins.flexibleLayouts.configBackup.unattended.heading") }}</span>
+					</div>
+					<div class="text-caption text-medium-emphasis mb-2">{{ $t("plugins.flexibleLayouts.configBackup.unattended.cardNote") }}</div>
+					<v-btn size="small" variant="tonal" prepend-icon="mdi-script-text-play-outline" class="unattended-open" @click="unattendedOpen = true">
+						{{ $t("plugins.flexibleLayouts.configBackup.unattended.open") }}
+					</v-btn>
+				</v-card-text>
+			</v-card>
+			<UnattendedBackupDialog v-if="unattendedMounted" v-model="unattendedOpen" />
 
 			<v-alert v-if="encryptionEnabled && !sessionUnlocked" type="info" variant="tonal" density="compact" class="mb-4">
 				{{ $t("plugins.flexibleLayouts.configBackup.encryption.destinationsLockedNote") }}
@@ -373,6 +391,9 @@ import {
 import type { BackupDestinationId, DuetCloudSession } from "dwc-config-backup-core";
 import { loadCredentialsFromSd, parseCredentialBundle, writeCredentialsToSd } from "dwc-config-backup-core";
 import { defaultMachineIO } from "../model/configBackup/machineIO";
+import { getAutoRunOnConfigSave, withAutoRunOnConfigSave } from "../model/configBackup/autoRunOnSave";
+import { useLazyDialog } from "../composables/useLazyDialog";
+import UnattendedBackupDialog from "./UnattendedBackupDialog.vue";
 import { DESTINATION_IDS, DESTINATION_LABEL_KEYS } from "../model/configBackup/constants";
 import { reconnectGoogleDrive, resolveDriveRefreshTokenOnSave } from "../model/configBackup/googleDriveAuth";
 import GoogleDriveSignInDialog from "./GoogleDriveSignInDialog.vue";
@@ -575,6 +596,10 @@ async function onImportFileSelected(ev: Event): Promise<void> {
 	unlockDialogOpen.value = true; // still locked - prompt straight away so it's actually usable
 }
 
+// --- Unattended backup script (§A5) -------------------------------------------------------------------
+const unattendedOpen = ref(false);
+const unattendedMounted = useLazyDialog(unattendedOpen);
+
 // --- Automatic backup reminders ---------------------------------------------------------------------
 
 const nudgeSaved = getAutoBackupNudgeSettings();
@@ -584,6 +609,7 @@ const nudgeOverdue = ref(nudgeSaved.overdue);
 const nudgeOverdueDays = ref(nudgeSaved.overdueDays);
 const nudgeAutoRun = ref(nudgeSaved.autoRun);
 const nudgeAutoRunDestination = ref<BackupDestinationId | null>(nudgeSaved.autoRunDestination);
+const nudgeAutoRunOnSave = ref(getAutoRunOnConfigSave(nudgeSaved));
 
 // Which destinations an unattended auto-run can complete without a prompt (SCHEDULED-BACKUPS-PLAN.md
 // §4.2). Mirrors the same set in autoBackupNudges.ts - kept here rather than imported so the two
@@ -613,11 +639,11 @@ const autoRunEncryptionConflict = computed(() => {
 });
 
 function saveNudgeSettings(): void {
-	setAutoBackupNudgeSettings({
+	setAutoBackupNudgeSettings(withAutoRunOnConfigSave({
 		configSaved: nudgeConfigSaved.value, newMachine: nudgeNewMachine.value,
 		overdue: nudgeOverdue.value, overdueDays: nudgeOverdueDays.value || 1,
 		autoRun: nudgeAutoRun.value, autoRunDestination: nudgeAutoRunDestination.value,
-	});
+	}, nudgeAutoRunOnSave.value));
 }
 
 // --- Duet backup service -----------------------------------------------------------------------------

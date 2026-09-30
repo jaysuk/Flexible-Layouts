@@ -8,7 +8,7 @@
       <v-icon size="small" class="me-1">{{ dark ? "mdi-weather-night" : "mdi-weather-sunny" }}</v-icon>
       <span class="tt-label text-truncate">{{ widget.label || dynamicLabel }}</span>
       <v-spacer />
-      <v-switch :model-value="dark" color="primary" density="compact" hide-details @update:model-value="set($event === true)" />
+      <v-switch :model-value="dark" :aria-label="widget.label || dynamicLabel" color="primary" density="compact" hide-details @update:model-value="set($event === true)" />
     </template>
   </div>
 </template>

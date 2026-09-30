@@ -7,6 +7,7 @@
  */
 import type { ConditionRule } from "../model/document";
 import { resolveOmPath } from "./omPath";
+import { isCueName } from "./cueNames";
 
 export interface ConditionEffects {
 	/** Colour token to apply, or undefined to keep the widget's own colour. */
@@ -66,6 +67,34 @@ export function evaluateRule(model: unknown, rule: ConditionRule | undefined): b
 		return true;
 	}
 	return ruleMatches(resolveOmPath(model, rule.omPath), rule);
+}
+
+/** A cue a matching rule wants sounding. `key` identifies the activation (see composables/useCueOnRise.ts). */
+export interface ConditionSound {
+	key: string;
+	cue: string;
+	repeatSeconds?: number;
+}
+
+/**
+ * The cues of the rules that match right now. Separate from `evaluateConditions` because a sound is an EVENT (it
+ * matters when a rule becomes true), not a state like colour/hide/disable - callers feed this to `useCueOnRise`.
+ */
+export function evaluateConditionSounds(model: unknown, rules: Array<ConditionRule> | undefined): Array<ConditionSound> {
+	const out: Array<ConditionSound> = [];
+	(rules ?? []).forEach((rule, index) => {
+		if (!rule.omPath || !rule.sound || !isCueName(rule.sound)) {
+			return;
+		}
+		if (ruleMatches(resolveOmPath(model, rule.omPath), rule)) {
+			out.push({
+				key: `rule:${index}:${rule.omPath}:${rule.operator}:${rule.value ?? ""}:${rule.sound}`,
+				cue: rule.sound,
+				repeatSeconds: rule.soundRepeat,
+			});
+		}
+	});
+	return out;
 }
 
 export function evaluateConditions(model: unknown, rules: Array<ConditionRule> | undefined): ConditionEffects {

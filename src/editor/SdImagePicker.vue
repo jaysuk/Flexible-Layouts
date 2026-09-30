@@ -11,7 +11,7 @@
 				<v-btn icon="mdi-arrow-up" size="small" variant="text" :disabled="!canGoUp || loading"
 					   :title="$t('plugins.flexibleLayouts.sdImage.up')" @click="goUp" />
 				<div class="text-body-2 text-truncate flex-grow-1" :title="currentDir">{{ currentDir }}</div>
-				<v-btn icon="mdi-refresh" size="small" variant="text" :disabled="loading" @click="load" />
+				<v-btn :aria-label="$t('plugins.flexibleLayouts.a11y.refresh')" icon="mdi-refresh" size="small" variant="text" :disabled="loading" @click="load" />
 			</div>
 			<v-divider />
 

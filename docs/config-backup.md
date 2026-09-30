@@ -184,10 +184,66 @@ default) go further and show an actual dismissible toast, click-through straight
 - a machine that's never been backed up before connects (only once at least one backup exists for
   *some* machine, so this doesn't also fire alongside the "no backup yet" case on a fresh install)
 
-These are always a one-click reminder, **never** a silent upload or download - clicking one just opens
-this page, same as clicking the button yourself. A firmware-update trigger was considered and left out:
+By themselves these are always a one-click reminder - clicking one just opens this page, same as clicking
+the button yourself. The one exception is the opt-in **Automatic backups** described below. A firmware-update trigger was considered and left out:
 the plugin can only observe DWC's update flow reactively (once M997 has already been sent), not gate or
 block it, so it wouldn't be a reliable "back up before" guarantee.
+
+### Automatic backups (opt-in)
+
+In the Configuration tab, under "Automatic reminders", **Back up automatically when overdue** turns the
+"overdue" reminder into a real backup. It is **off by default** and runs only when *all* of these hold:
+
+- a backup is overdue (same threshold as the reminder),
+- the machine is **strictly idle** - a paused print does not count, and nothing ever starts mid-print,
+- the chosen destination can finish without asking you anything.
+
+| Destination | Automatic backup |
+| --- | --- |
+| Duet cloud, GitHub, Dropbox, WebDAV | Yes |
+| Local download | Never (a browser download needs a click) |
+| Google Drive | Never (interactive sign-in every time) |
+| Any destination with **encryption** turned on | Blocked - the backup password is never stored |
+
+It is checked when DWC connects (and on every reconnect), and again when the machine **finishes a print or other
+job and becomes idle** - so a backup that came due mid-print is taken as soon as the printer is free. Checks are
+rate-limited to once an hour, so a flapping connection or a run of short jobs cannot trigger repeated backups.
+
+Optionally, **Also back up automatically a while after config.g is saved** (off by default; it appears once automatic backups
+are on) adds a third trigger: about **10 minutes after the last save** of `config.g` - it waits for an editing session to
+settle so a half-edited config isn't what gets backed up - it takes a backup if the machine is idle. If it can't (a print is
+running, DWC lost the connection, or you switched it off in the meantime) you get the usual "config.g saved" reminder instead;
+when it is going to run, that reminder is held back so you aren't told twice. Backups are additive history at the destination,
+so a poor one is simply superseded by the next.
+
+**It only runs while a DWC tab is open.** A browser plugin cannot run with no tab, and RepRapFirmware macros cannot
+make outbound network calls, so this is opportunistic, not a scheduler. If the destination would need a prompt
+(for example unredacted content that has not been acknowledged), you get the ordinary reminder instead.
+Progress, success and failures appear as toasts (click-through to this page); after repeated failures the
+message escalates. The Create tab always shows the last attempt.
+
+### Truly unattended backups (a script)
+
+A browser plugin cannot run with no tab open, and RepRapFirmware macros cannot make outbound network calls, so a backup that
+happens with nothing open has to run somewhere else. The Configuration tab's **Set up an unattended backup...** helper
+generates that for you: **one self-contained script** (`duet-backup.mjs`, Node 18 or newer, nothing to install) with your
+board's address baked in, plus ready-to-paste **cron**, **Windows Task Scheduler** (`schtasks`) and **systemd** timer snippets
+for any machine that is always on.
+
+The script connects the way DWC does (the standalone REST interface, or the DuetSoftwareFramework API on an SBC - detected from
+this machine and changeable), copies `0:/sys`, `0:/macros` and `0:/filaments` (subfolders included) into a dated folder,
+keeps the newest N (default 14), and **exits non-zero on any failure** (1 failed, 2 wrong password, 3 no free session) so
+your scheduler notices. A run downloads into a temporary `.partial` folder that is renamed only when complete, so a failed run
+never leaves a half backup that retention would count or delete a good one.
+
+What it deliberately does **not** do, and the helper says so:
+
+- **No redaction** - files are copied exactly as they are, and `config.g` etc. can contain WiFi and machine passwords, so keep
+  the destination folder private.
+- **No encryption, no cloud upload.** (The plugin's own backups do redaction, encryption and the cloud destinations.)
+- **No restore.** Restore stays in the plugin (the Restore tab) or is done by copying files back yourself.
+- **The board password is never in the script** - it is read from an environment variable (default `DUET_PASSWORD`) when it
+  runs. The snippets show where to put it for each scheduler.
 
 Every restored file is **read back immediately after upload and compared against what was sent** -
 text files byte-for-byte, binary files by size and hash - before being reported as successfully

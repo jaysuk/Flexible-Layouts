@@ -1,6 +1,6 @@
 <template>
 	<v-app>
-		<v-app-bar :elevation="2" :color="appBarColor" :height="appBarHeight">
+		<v-app-bar v-if="!kioskActive" :elevation="2" :color="appBarColor" :height="appBarHeight">
 			<!-- Grouped so the floating "+" below can anchor to this block's own right edge, wherever
 				 that ends up (it shifts with the logo/machine-name width and whether the connect button
 				 and profile switcher are showing) - without becoming a flex sibling itself, so it never
@@ -105,7 +105,7 @@
 			<EmergencyButton v-if="showEmergencyStopNow" class="me-2" :large="isLargeButtons" />
 		</v-app-bar>
 
-		<v-navigation-drawer v-model="drawer" :temporary="!mdAndUp" :width="drawerWidth"
+		<v-navigation-drawer v-if="!kioskActive" v-model="drawer" :temporary="!mdAndUp" :width="drawerWidth"
 							 :rail="railMode" :expand-on-hover="railMode">
 			<!-- Drag to resize - only while editing, matching HeaderWidgets.vue's own item-resize handles
 				 (same pointer-capture idiom, see onDrawerResizePointerDown above). -->
@@ -175,6 +175,12 @@
 			</template>
 		</v-navigation-drawer>
 
+		<!-- Kiosk mode (this device only): the bar and drawer are gone, so this small, dim control is the way out - and
+			 leaving asks for the Admin password when an access lock is configured (model/screenState.ts). -->
+		<v-btn v-if="kioskActive" class="fl-kiosk-exit" icon="mdi-monitor-off" size="small" variant="flat"
+			   :title="$t('plugins.flexibleLayouts.screen.exitKiosk')" :aria-label="$t('plugins.flexibleLayouts.screen.exitKiosk')"
+			   @click="leaveKiosk" />
+
 		<v-main>
 			<!-- Editable, hideable status region. Defaults to the stock status panels (fallback);
 				 turns into an editable grid the moment the user adds a widget to it. -->
@@ -220,7 +226,8 @@
 		<ThemeEditor v-model="themeEditorOpen" />
 		<ImportExportDialog v-model="ioOpen" />
 		<ProfilesDialog v-model="profilesOpen" />
-		<HelpDialog v-model="helpOpen" :first-run="helpFirstRun" />
+		<HelpDialog v-model="helpOpen" :first-run="helpFirstRun" @open-starters="helpOpen = false; startersOpen = true" />
+		<StarterPicker v-model="startersOpen" />
 		<WhatsNewDialog v-model="whatsNewOpen" :entries="whatsNewEntries" />
 		<PasswordDialog />
 
@@ -329,6 +336,11 @@ import ThemeEditor from "../editor/ThemeEditor.vue";
 import ImportExportDialog from "../editor/ImportExportDialog.vue";
 import ProfilesDialog from "../editor/ProfilesDialog.vue";
 import HelpDialog from "../editor/HelpDialog.vue";
+import StarterPicker from "../editor/StarterPicker.vue";
+import { applyKioskQuery, exitFullscreen, exitKiosk, kioskActive, restoreKeepAwake, watchFullscreen } from "../model/screenState";
+import { installHotkeys, uninstallHotkeys } from "../model/hotkeys";
+import { installAutoProfile, uninstallAutoProfile } from "../model/autoProfile";
+import { installFocusReturn } from "../util/focusReturn";
 import WhatsNewDialog from "../editor/WhatsNewDialog.vue";
 import PasswordDialog from "../editor/PasswordDialog.vue";
 
@@ -379,6 +391,7 @@ const ioOpen = ref(false);
 const profilesOpen = ref(false);
 const helpOpen = ref(false);
 const helpFirstRun = ref(false);
+const startersOpen = ref(false);
 const whatsNewOpen = ref(false);
 const whatsNewEntries = ref<Awaited<ReturnType<typeof fetchWhatsNewHistory>>>([]);
 const cacheStore = useCacheStore();
@@ -405,8 +418,39 @@ function onPluginUnloaded(id: string): void {
 	}
 }
 
+let stopFocusReturn: (() => void) | null = null;
+onUnmounted(() => { stopFocusReturn?.(); stopFocusReturn = null; });
+
+async function leaveKiosk(): Promise<void> {
+	if (await exitKiosk()) {
+		await exitFullscreen();
+	}
+}
+
 // Show the welcome once per browser the first time the custom shell renders.
 onMounted(() => {
+	// Per-device screen state: `?kiosk=1` / `?kiosk=0`, a remembered "keep awake", and fullscreen tracking.
+	applyKioskQuery();
+	restoreKeepAwake();
+	watchFullscreen();
+	// Keyboard focus goes back to where it was when a dialog closes (Vuetify only does that for dialogs with an activator).
+	stopFocusReturn = installFocusReturn();
+	// Automatic profile switching (per device, off unless this browser turned it on): see model/autoProfile.ts.
+	installAutoProfile({
+		navigate: (path) => { void router.push(path).catch(() => { /* already there */ }); },
+		currentPath: () => router.currentRoute.value.path,
+		onSwitched: (log) => uiStore.log(
+			LogLevel.info,
+			i18n.global.t("plugins.flexibleLayouts.profiles.auto.switched", { name: log.profileName }),
+			i18n.global.t(`plugins.flexibleLayouts.profiles.auto.reason.${log.reason.kind}`, { value: log.reason.value ?? "" }),
+		),
+	});
+	// One keydown listener for every widget's keyboard shortcut (widgets bind/unbind as they mount).
+	installHotkeys({
+		isEditing: () => editMode.value,
+		onLocked: () => uiStore.log(LogLevel.info, i18n.global.t("plugins.flexibleLayouts.hotkey.locked")),
+	});
+
 	const seen = (cacheStore.plugins as Record<string, Record<string, unknown>>)?.flexibleLayouts?.seenWelcome;
 	if (!seen) {
 		helpFirstRun.value = true;
@@ -617,6 +661,8 @@ function declineRestore(): void {
 
 let stopConnWatch: (() => void) | undefined;
 onUnmounted(() => stopConnWatch?.());
+onUnmounted(() => uninstallHotkeys());
+onUnmounted(() => uninstallAutoProfile());
 
 // Profile switcher (reactive via the Pinia-backed document; document identity flips on switch).
 const profiles = computed(() => { void layoutStore.document.value; return listProfiles(); });
@@ -790,6 +836,18 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.fl-kiosk-exit {
+	position: fixed;
+	right: 12px;
+	bottom: 12px;
+	z-index: 2100;
+	opacity: 0.3;
+	transition: opacity 0.15s ease;
+}
+.fl-kiosk-exit:hover,
+.fl-kiosk-exit:focus-visible {
+	opacity: 1;
+}
 /* The menu-category / menu-link theme colours (Theme & colours > Menu categories / Menu links), as in stock. */
 .menu-category-item:not(.v-list-item--active) :deep(.v-list-item-title),
 .menu-category-item:not(.v-list-item--active) :deep(.v-list-item__prepend .v-icon) {
@@ -854,6 +912,17 @@ onUnmounted(() => {
 <!-- Unscoped on purpose: Vue puts these classes on the routed page's own root element, which a scoped block
 	 would not reach. Prefixed `fl-` so they can't meet DWC's own hub-* rules. Same 0.25 s ease as stock. -->
 <style>
+/* Visible keyboard focus for the SVG click targets that are not real buttons (util/svgButton.ts). The stroke is what
+   shows on an SVG path in every browser; the outline covers HTML elements (a shaped button's wrapper). */
+.fl-svg-button:focus { outline: none; }
+.fl-svg-button:focus-visible {
+	outline: 2px solid rgb(var(--v-theme-primary));
+	outline-offset: 1px;
+	stroke: rgb(var(--v-theme-primary));
+	stroke-width: 2px;
+	paint-order: stroke;
+}
+.fl-svg-button[aria-disabled="true"] { cursor: not-allowed; }
 .fl-hub-forward-enter-active,
 .fl-hub-forward-leave-active,
 .fl-hub-back-enter-active,
@@ -877,6 +946,19 @@ onUnmounted(() => {
 	.fl-hub-back-enter-active,
 	.fl-hub-back-leave-active {
 		transition: none;
+	}
+}
+/* Reduced motion: the small fades and slides that are not part of the hub's own (already guarded) transition. */
+@media (prefers-reduced-motion: reduce) {
+	.flex-grid .vgl-item,
+	.flex-grid .vgl-item--placeholder,
+	.gc-linear-fill,
+	.flex-item-header,
+	.fl-kiosk-exit,
+	.flex-page-toolbar,
+	.flex-cmd-btn {
+		transition: none !important;
+		animation: none !important;
 	}
 }
 </style>

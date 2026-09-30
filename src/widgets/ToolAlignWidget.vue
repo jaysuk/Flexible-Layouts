@@ -65,7 +65,7 @@
       <v-btn size="small" variant="tonal" :disabled="disabledNow" @click="nudge('Z', -1)">Z−</v-btn>
       <v-btn size="small" variant="tonal" :disabled="disabledNow" @click="nudge('Z', 1)">Z+</v-btn>
       <v-spacer />
-      <v-select v-model="step" :items="stepItems" item-title="title" item-value="value"
+      <v-select v-model="step" :aria-label="$t('plugins.flexibleLayouts.a11y.stepSize')" :items="stepItems" item-title="title" item-value="value"
                 density="compact" variant="outlined" hide-details class="ta-step" />
     </div>
 

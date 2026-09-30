@@ -1,5 +1,6 @@
 <template>
-	<div class="flex-page" :class="{ 'flex-page--full': pageFullPage }" :style="backgroundStyle">
+	<div class="flex-page" :class="{ 'flex-page--full': pageFullPage }" :style="backgroundStyle"
+		 @pointerdown.capture="claimActiveEditor(editorId)">
 		<!-- Edit toolbar. Shown only while editing; editing is always entered from the shell's top-bar
 			 Edit button (the single entry point), so no standalone edit button floats over the page. -->
 		<div v-if="editMode" class="flex-page-toolbar">
@@ -18,6 +19,10 @@
 				   :title="$t('plugins.flexibleLayouts.pageSettings.buttonHelp')" @click="bgDialogOpen = true">
 				{{ $t("plugins.flexibleLayouts.pageSettings.button") }}
 			</v-btn>
+			<v-btn v-if="editMode" icon="mdi-content-paste" size="small" variant="text" :disabled="!clipboardMemory"
+				   :title="$t('plugins.flexibleLayouts.editor.clipboard.paste')" :aria-label="$t('plugins.flexibleLayouts.editor.clipboard.paste')" @click="pasteFromMemory" />
+			<v-btn v-if="editMode" icon="mdi-clipboard-text-outline" size="small" variant="text"
+				   :title="$t('plugins.flexibleLayouts.editor.clipboard.pasteText')" :aria-label="$t('plugins.flexibleLayouts.editor.clipboard.pasteText')" @click="openPasteDialog" />
 			<v-btn v-if="editMode" icon="mdi-undo" size="small" variant="text" :disabled="!canUndo"
 				   :title="$t('plugins.flexibleLayouts.editor.undo')" @click="undo" />
 			<v-btn v-if="editMode" icon="mdi-redo" size="small" variant="text" :disabled="!canRedo"
@@ -53,7 +58,13 @@
 				{{ $t("plugins.flexibleLayouts.editor.align.selected", { count: selectedCount }) }}
 			</v-chip>
 			<v-btn icon="mdi-select-all" size="small" variant="text"
-				   :title="$t('plugins.flexibleLayouts.editor.align.selectAll')" @click="selectAll" />
+				   :title="$t('plugins.flexibleLayouts.editor.align.selectAll')" :aria-label="$t('plugins.flexibleLayouts.editor.align.selectAll')" @click="selectAll" />
+			<v-btn icon="mdi-content-copy" size="small" variant="text"
+				   :title="$t('plugins.flexibleLayouts.editor.clipboard.copy')" :aria-label="$t('plugins.flexibleLayouts.editor.clipboard.copy')" @click="copySelected" />
+			<v-btn icon="mdi-content-cut" size="small" variant="text"
+				   :title="$t('plugins.flexibleLayouts.editor.clipboard.cut')" :aria-label="$t('plugins.flexibleLayouts.editor.clipboard.cut')" @click="cutSelected" />
+			<v-btn icon="mdi-content-duplicate" size="small" variant="text"
+				   :title="$t('plugins.flexibleLayouts.editor.clipboard.duplicate')" :aria-label="$t('plugins.flexibleLayouts.editor.clipboard.duplicate')" @click="duplicateSelected" />
 			<v-btn icon="mdi-close" size="small" variant="text"
 				   :title="$t('plugins.flexibleLayouts.editor.align.clear')" @click="clearSelection" />
 			<v-divider vertical class="mx-1" />
@@ -127,6 +138,9 @@
 			</v-card>
 		</v-dialog>
 
+		<!-- Spoken feedback for moving/resizing a panel from the keyboard (see onKeyboardNudge). -->
+		<div v-if="editMode" class="fl-sr-only" role="status" aria-live="polite" aria-atomic="true">{{ liveMessage }}</div>
+
 		<!-- Live grid -->
 		<FlexGrid v-if="layout.length > 0" v-model:layout="layout"
 				  :cols="grid.cols" :row-height="grid.rowHeight" :gap="grid.gap ?? 8" :edit-mode="editMode"
@@ -135,6 +149,7 @@
 				  @edit-contents="openGroupEditor" @export-item="exportPanelById"
 				  @duplicate="duplicateItem" @toggle-lock="toggleLock" @toggle-select="toggleSelect"
 				  @auto-height="onAutoHeight" @patch-widget="patchWidget"
+				  @grab="onKeyboardGrab" @nudge="onKeyboardNudge" @nudge-end="onKeyboardNudgeEnd"
 				  @item-move="onGroupDragMove" @item-moved="onGroupDragEnd" />
 
 		<!-- Empty page: render the built-in fallback when not editing, else prompt to add. -->
@@ -180,8 +195,27 @@
 		</template>
 
 		<WidgetPalette v-if="paletteMounted" v-model="paletteOpen" @add="addWidget" @add-item="addItem" />
-		<PropertiesDialog v-if="propertiesMounted" v-model="propertiesOpen" :item="editingItem" @save="saveProperties" />
+		<PropertiesDialog v-if="propertiesMounted" v-model="propertiesOpen" :item="editingItem" :taken-hotkeys="takenHotkeys" @save="saveProperties" />
 		<GroupEditor v-if="groupEditorMounted" v-model="groupEditorOpen" :group="editingGroup" @save="saveGroup" />
+		<TabsEditor v-if="tabsEditorMounted" v-model="tabsEditorOpen" :widget="editingTabs" @save="saveTabs" />
+
+		<!-- Paste from text: the fallback where the keyboard/clipboard events are unavailable (touch, no Ctrl+V) -->
+		<v-dialog v-model="pasteDialogOpen" max-width="520">
+			<v-card>
+				<v-card-title>{{ $t('plugins.flexibleLayouts.editor.clipboard.pasteDialogTitle') }}</v-card-title>
+				<v-card-text>
+					<div class="text-body-2 text-medium-emphasis mb-2">{{ $t('plugins.flexibleLayouts.editor.clipboard.pasteDialogHint') }}</div>
+					<v-textarea v-model="pasteText" rows="6" auto-grow density="compact" variant="outlined" hide-details
+								:aria-label="$t('plugins.flexibleLayouts.editor.clipboard.pasteText')" :error="pasteTextInvalid" spellcheck="false" />
+					<div v-if="pasteTextInvalid" class="text-caption text-error mt-1">{{ $t('plugins.flexibleLayouts.editor.clipboard.invalid') }}</div>
+				</v-card-text>
+				<v-card-actions>
+					<v-spacer />
+					<v-btn variant="text" @click="pasteDialogOpen = false">{{ $t("generic.cancel") }}</v-btn>
+					<v-btn color="primary" :disabled="!pasteText.trim()" @click="confirmPasteText">{{ $t('plugins.flexibleLayouts.editor.clipboard.paste') }}</v-btn>
+				</v-card-actions>
+			</v-card>
+		</v-dialog>
 
 		<!-- Reset-to-default: choose which breakpoint(s) to clear -->
 		<v-dialog v-model="resetDialogOpen" max-width="440">
@@ -258,7 +292,7 @@
 						<v-btn size="small" variant="tonal" prepend-icon="mdi-folder-image" @click="sdPickerOpen = true">
 							{{ $t("plugins.flexibleLayouts.sdImage.choose") }}
 						</v-btn>
-						<v-btn v-if="bgImage" icon="mdi-close" size="x-small" variant="text" @click="setBgImage(null)" />
+						<v-btn :aria-label="$t('plugins.flexibleLayouts.a11y.clear')" v-if="bgImage" icon="mdi-close" size="x-small" variant="text" @click="setBgImage(null)" />
 					</div>
 					<v-select v-if="bgImage" :model-value="bgSize" :items="bgSizeOptions" density="compact"
 							  variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.background.size')"
@@ -294,12 +328,16 @@ import { HelpTip } from "dwc-plugin-runtime";
 
 import i18n from "@/i18n";
 
-import { type Breakpoint, type ConditionRule, type GridItemModel, type PageLayout, type PanelColors, type Typography, type Widget, newItemId, reidItem } from "../model/document";
+import { type Breakpoint, type ConditionRule, type GridItemModel, type PageLayout, type PanelColors, type Typography, type Widget, forEachItemWidget, newItemId, reidItem } from "../model/document";
 import { type AlignMode, alignItems, distributeItems, matchSize, translateItems } from "../model/align";
 import { useLayoutStore } from "../model/store";
 import { useFlexDisplay } from "../composables/useFlexDisplay";
 import { recomputeDependencies } from "../model/dependencies";
-import { exportPanel } from "../model/io";
+import { computeMissing, exportPanel } from "../model/io";
+import {
+	buildClipboardPayload, claimActiveEditor, isActiveEditor, parseClipboardText, placePasted, serializeClipboard,
+	setClipboardMemory, shouldIgnoreClipboardEvent, useClipboardMemory, writeSystemClipboard, type ClipboardPayload,
+} from "../model/widgetClipboard";
 import { attemptToggleEdit, editMode } from "../model/editorState";
 import { can } from "../model/access";
 import { isPrintingStatus } from "../util/printLock";
@@ -309,11 +347,13 @@ import FlexGrid from "./FlexGrid.vue";
 import WidgetPalette from "../editor/WidgetPalette.vue";
 import PropertiesDialog from "../editor/PropertiesDialog.vue";
 import GroupEditor from "../editor/GroupEditor.vue";
+import TabsEditor from "../editor/TabsEditor.vue";
 import ColorSelect from "../editor/ColorSelect.vue";
 import SdImagePicker from "../editor/SdImagePicker.vue";
 import { resolveColor } from "../util/color";
 import { hexLayout, ringLayout } from "../util/shapes";
 import { useMachineStore } from "@/stores/machine";
+import { LogLevel, useUiStore } from "@/stores/ui";
 import { useLazyDialog } from "../composables/useLazyDialog";
 
 const props = defineProps<{
@@ -863,6 +903,56 @@ function onLayoutUpdated() {
 	commit();
 }
 
+// #region Keyboard alternative to drag (edit mode)
+const liveMessage = ref("");
+let announceToggle = false;
+function announce(key: string, params: Record<string, unknown> = {}): void {
+	// A trailing no-break space makes an identical repeat message a change, so a screen reader speaks it again.
+	announceToggle = !announceToggle;
+	liveMessage.value = i18n.global.t(`plugins.flexibleLayouts.editor.kb.${key}`, params) + (announceToggle ? "\u00a0" : "");
+}
+function titleOf(item: GridItemModel): string {
+	return item.title || describeWidget(item.widget).title;
+}
+let nudgePending = false;
+function onKeyboardGrab(id: string): void {
+	const item = layout.value.find((it) => it.i === id);
+	if (!item) { return; }
+	announce(item.locked ? "locked" : "grabbed", { name: titleOf(item) });
+}
+/** One key press: move the panel by (dx, dy) cells or resize it by (dw, dh), kept inside the grid. */
+function onKeyboardNudge(id: string, dx: number, dy: number, dw: number, dh: number): void {
+	const item = layout.value.find((it) => it.i === id);
+	if (!item) { return; }
+	if (item.locked) { announce("locked", { name: titleOf(item) }); return; }
+	const cols = grid.value.cols;
+	const w = Math.min(cols, Math.max(1, item.w + dw));
+	const h = Math.max(1, item.h + dh);
+	const x = Math.min(cols - w, Math.max(0, item.x + dx));
+	const y = Math.max(0, item.y + dy);
+	if (x === item.x && y === item.y && w === item.w && h === item.h) {
+		announce("atEdge", { name: titleOf(item) });
+		return;
+	}
+	layout.value = layout.value.map((it) => (it.i === id ? { ...it, x, y, w, h } : it));
+	persist();
+	nudgePending = true;
+	if (dw || dh) {
+		announce("resized", { name: titleOf(item), w, h });
+	} else {
+		announce("moved", { name: titleOf(item), col: x + 1, row: y + 1 });
+	}
+}
+/** The session ended (Enter/Escape/focus left): everything moved since the grab is ONE undo step. */
+function onKeyboardNudgeEnd(): void {
+	if (nudgePending) {
+		nudgePending = false;
+		commit();
+	}
+	announce("dropped");
+}
+// #endregion
+
 // Auto-height: a panel asked for its cell to fit its content. Apply it to the layout (which reflows
 // the panels below); onLayoutUpdated then persists without recording an undo step.
 let autoHeightPending = false;
@@ -942,8 +1032,11 @@ function addWidget(payload: { widget: Widget; size: { w: number; h: number }; co
 	layout.value = [...layout.value, item];
 	persist();
 	commit();
-	// Freeform widgets need configuring (a blank command/value is useless), so open properties now.
-	if (payload.configure) {
+	// Freeform widgets need configuring (a blank command/value is useless), so open properties now. A tabs
+	// widget's point is its tabs, so it goes straight to the tab editor instead.
+	if (payload.widget.type === "tabs") {
+		openGroupEditor(item.i);
+	} else if (payload.configure) {
 		openProperties(item.i);
 	}
 }
@@ -1007,6 +1100,16 @@ const propertiesMounted = useLazyDialog(propertiesOpen);
 const editingId = ref<string | null>(null);
 const editingItem = ref<GridItemModel | null>(null);
 
+/** Shortcuts already used by OTHER widgets on this page (groups included), so the dialog can flag a duplicate. */
+const takenHotkeys = computed(() => {
+	const found: Array<string> = [];
+	forEachItemWidget(layout.value.filter((it) => it.i !== editingId.value), (w) => {
+		const hk = (w as { hotkey?: string }).hotkey;
+		if (hk) { found.push(hk); }
+	});
+	return found;
+});
+
 function openProperties(id: string) {
 	const item = layout.value.find((it) => it.i === id);
 	if (!item) {
@@ -1050,14 +1153,24 @@ const groupEditorMounted = useLazyDialog(groupEditorOpen);
 const groupId = ref<string | null>(null);
 const editingGroup = ref<Extract<Widget, { type: "group" }> | null>(null);
 
+const tabsEditorOpen = ref(false);
+const tabsEditorMounted = useLazyDialog(tabsEditorOpen);
+const editingTabs = ref<Extract<Widget, { type: "tabs" }> | null>(null);
+
+/** "Edit contents" of a container: a group opens the group editor, a tabs widget its tab editor. */
 function openGroupEditor(id: string) {
 	const item = layout.value.find((it) => it.i === id);
-	if (!item || item.widget.type !== "group") {
+	if (!item) {
 		return;
 	}
 	groupId.value = id;
-	editingGroup.value = item.widget;
-	groupEditorOpen.value = true;
+	if (item.widget.type === "group") {
+		editingGroup.value = item.widget;
+		groupEditorOpen.value = true;
+	} else if (item.widget.type === "tabs") {
+		editingTabs.value = item.widget;
+		tabsEditorOpen.value = true;
+	}
 }
 
 function saveGroup(widget: Extract<Widget, { type: "group" }>) {
@@ -1065,14 +1178,187 @@ function saveGroup(widget: Extract<Widget, { type: "group" }>) {
 	persist();
 	commit();
 }
+function saveTabs(widget: Extract<Widget, { type: "tabs" }>) {
+	layout.value = layout.value.map((it) => (it.i === groupId.value ? { ...it, widget } : it));
+	persist();
+	commit();
+}
 // #endregion
 
-// Keyboard undo/redo while editing this page.
+// #region Copy / cut / paste / duplicate (model/widgetClipboard.ts)
+const uiStore = useUiStore();
+const clipboardMemory = useClipboardMemory();
+const editorId = Symbol("flex-page-editor");
+// The status region is mounted alongside the real page; before the user has pressed on either, the real page owns
+// the shortcuts.
+const isPrimaryEditor = computed(() => !isStatusRegion.value);
+const ownsShortcuts = () => editMode.value && isActiveEditor(editorId, isPrimaryEditor.value);
+
+function selectedItems(): Array<GridItemModel> {
+	return layout.value.filter((it) => selectedIds.value.has(it.i));
+}
+function notify(level: LogLevel, key: string, params?: Record<string, unknown>) {
+	uiStore.log(level, i18n.global.t(`plugins.flexibleLayouts.editor.clipboard.${key}`, params ?? {}));
+}
+function hasTextSelection(): boolean {
+	return (window.getSelection?.()?.toString() ?? "").length > 0;
+}
+
+/** Copy the selection into the in-memory slot; returns the text for the system clipboard. */
+function stashSelection(): string | null {
+	const items = selectedItems();
+	if (items.length === 0) {
+		return null;
+	}
+	const payload = buildClipboardPayload(items);
+	setClipboardMemory(payload);
+	return serializeClipboard(payload);
+}
+function removeSelected() {
+	const drop = selectedIds.value;
+	layout.value = layout.value.filter((it) => !drop.has(it.i));
+	clearSelection();
+	persist();
+	commit();
+}
+
+async function copySelected() {
+	const text = stashSelection();
+	if (text === null) {
+		return;
+	}
+	await writeSystemClipboard(text);
+	notify(LogLevel.info, "didCopy", { count: selectedCount.value });
+}
+async function cutSelected() {
+	const text = stashSelection();
+	if (text === null) {
+		return;
+	}
+	const count = selectedCount.value;
+	await writeSystemClipboard(text);
+	removeSelected();
+	notify(LogLevel.info, "didCut", { count });
+}
+function duplicateSelected() {
+	const items = selectedItems();
+	if (items.length === 0) {
+		return;
+	}
+	pasteFromPayload(buildClipboardPayload(items), false);
+}
+
+function pasteFromPayload(payload: ClipboardPayload, warnMissing = true) {
+	const placed = placePasted(layout.value, payload.items, grid.value.cols);
+	if (placed.length === 0) {
+		return;
+	}
+	layout.value = [...layout.value, ...placed];
+	selectedIds.value = new Set(placed.map((p) => p.i));
+	persist();
+	commit(); // one undo step, however many items
+	notify(LogLevel.success, "didPaste", { count: placed.length });
+	const missing = warnMissing && payload.requires.length > 0 ? computeMissing(payload.requires) : [];
+	if (missing.length > 0) {
+		notify(LogLevel.warning, "missingPlugins", { plugins: missing.map((d) => d.name).join(", ") });
+	}
+}
+function pasteFromMemory() {
+	const payload = clipboardMemory.value;
+	if (payload) {
+		pasteFromPayload(payload);
+	}
+}
+
+const pasteDialogOpen = ref(false);
+const pasteText = ref("");
+const pasteTextInvalid = ref(false);
+function openPasteDialog() {
+	pasteText.value = "";
+	pasteTextInvalid.value = false;
+	pasteDialogOpen.value = true;
+}
+function confirmPasteText() {
+	const parsed = parseClipboardText(pasteText.value);
+	if (!parsed.ok) {
+		pasteTextInvalid.value = true;
+		return;
+	}
+	pasteDialogOpen.value = false;
+	pasteFromPayload(parsed.payload);
+}
+
+// The DOM clipboard events, not navigator.clipboard: no permission prompt, and they work over the plain HTTP that
+// DWC is usually served on. Ctrl+C / Ctrl+X / Ctrl+V therefore also work on a phone with a keyboard.
+function onCopyEvent(e: ClipboardEvent) {
+	if (!ownsShortcuts() || selectedCount.value === 0 || shouldIgnoreClipboardEvent(e.target) || hasTextSelection()) {
+		return;
+	}
+	const text = stashSelection();
+	if (text === null) {
+		return;
+	}
+	e.clipboardData?.setData("text/plain", text);
+	e.preventDefault();
+	notify(LogLevel.info, "didCopy", { count: selectedCount.value });
+}
+function onCutEvent(e: ClipboardEvent) {
+	if (!ownsShortcuts() || selectedCount.value === 0 || shouldIgnoreClipboardEvent(e.target) || hasTextSelection()) {
+		return;
+	}
+	const text = stashSelection();
+	if (text === null) {
+		return;
+	}
+	e.clipboardData?.setData("text/plain", text);
+	e.preventDefault();
+	const count = selectedCount.value;
+	removeSelected();
+	notify(LogLevel.info, "didCut", { count });
+}
+function onPasteEvent(e: ClipboardEvent) {
+	if (!ownsShortcuts() || shouldIgnoreClipboardEvent(e.target)) {
+		return;
+	}
+	const parsed = parseClipboardText(e.clipboardData?.getData("text/plain"));
+	if (parsed.ok) {
+		e.preventDefault();
+		pasteFromPayload(parsed.payload);
+	} else if (parsed.reason === "empty" && clipboardMemory.value) {
+		// The browser gave us no text at all (some contexts withhold it): fall back to what we copied ourselves.
+		e.preventDefault();
+		pasteFromMemory();
+	} else if (parsed.reason === "newer") {
+		e.preventDefault();
+		notify(LogLevel.warning, "newer");
+	}
+	// Anything else is somebody else's clipboard text: leave it alone.
+}
+onMounted(() => {
+	document.addEventListener("copy", onCopyEvent);
+	document.addEventListener("cut", onCutEvent);
+	document.addEventListener("paste", onPasteEvent);
+});
+onBeforeUnmount(() => {
+	document.removeEventListener("copy", onCopyEvent);
+	document.removeEventListener("cut", onCutEvent);
+	document.removeEventListener("paste", onPasteEvent);
+});
+// #endregion
+
+// Keyboard undo/redo/duplicate while editing this page.
 function onKeydown(e: KeyboardEvent) {
 	if (!editMode.value || !(e.ctrlKey || e.metaKey)) {
 		return;
 	}
 	const key = e.key.toLowerCase();
+	if (key === "d" && !e.shiftKey && !e.altKey) {
+		if (ownsShortcuts() && selectedCount.value > 0 && !shouldIgnoreClipboardEvent(e.target)) {
+			e.preventDefault(); // otherwise the browser bookmarks the page
+			duplicateSelected();
+		}
+		return;
+	}
 	if (key === "z" && !e.shiftKey) {
 		e.preventDefault();
 		undo();
@@ -1105,6 +1391,18 @@ onBeforeUnmount(() => {
 }
 .flex-fallback-wrap {
 	position: relative;
+}
+/* Visually hidden but still read by screen readers (the keyboard move/resize announcements). */
+.fl-sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
 }
 .flex-interaction-lock {
 	position: absolute;

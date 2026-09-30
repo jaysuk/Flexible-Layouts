@@ -5,7 +5,7 @@
 				<v-icon class="me-2" color="primary">mdi-party-popper</v-icon>
 				{{ $t("plugins.flexibleLayouts.whatsNew.title") }}
 				<v-spacer />
-				<v-btn icon="mdi-close" variant="text" density="comfortable" @click="open = false" />
+				<v-btn :aria-label="$t('plugins.flexibleLayouts.a11y.close')" icon="mdi-close" variant="text" density="comfortable" @click="open = false" />
 			</v-card-title>
 			<v-divider />
 			<v-card-text class="wn-body pa-4">

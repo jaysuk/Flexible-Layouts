@@ -4,7 +4,7 @@
     <div class="gc-grid flex-grow-1">
       <div v-for="(g, i) in gauges" :key="i" class="gc-item" :class="labelClass">
         <span class="gc-label text-truncate">{{ g.label }}</span>
-        <v-progress-circular v-if="variant === 'circular'" :model-value="g.pct" :size="58" :width="6" :color="g.color || 'primary'">
+        <v-progress-circular v-if="variant === 'circular'" :model-value="g.pct" :aria-label="g.label || $t('plugins.flexibleLayouts.a11y.progress')" :size="58" :width="6" :color="g.color || 'primary'">
           <span class="gc-num">{{ g.text }}</span>
         </v-progress-circular>
         <div v-else class="gc-linear">

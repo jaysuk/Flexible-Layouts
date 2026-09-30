@@ -33,6 +33,9 @@ import { activateFlLayout } from "./model/layoutState";
 import { isCncOrLaserMode } from "./util/machineMode";
 import { installEscapeGuard, uninstallEscapeGuard } from "./model/access";
 import { installAutoBackupNudges, uninstallAutoBackupNudges } from "./model/configBackup/autoBackupNudges";
+import { teardownScreenState } from "./model/screenState";
+import { installSoundCues, uninstallSoundCues } from "./model/soundCues";
+import { installAudioUnlock } from "./util/sound";
 import { installMaintenanceReminderNudge, uninstallMaintenanceReminderNudge } from "./model/reminders/nudge";
 import { installCertExpiryNudge, uninstallCertExpiryNudge } from "./model/tlsSetup/certExpiryNudge";
 import { installErrorCapture } from "dwc-plugin-runtime";
@@ -116,6 +119,11 @@ const uninstallErrorCapture = installErrorCapture();
 // always a one-click toast, never a silent upload/download. See autoBackupNudges.ts.
 installAutoBackupNudges();
 
+// Optional sound / vibration cues for machine events (all off until the user turns them on, per device) - see
+// soundCues.ts. The audio-unlock hook only waits for the first click/tap so the browser will let us play.
+installSoundCues();
+installAudioUnlock();
+
 // TLS certificate expiry reminder - see certExpiryNudge.ts.
 installCertExpiryNudge();
 
@@ -132,6 +140,8 @@ function onPluginUnloaded(id: string): void {
 		uninstallAutoBackupNudges();
 		uninstallCertExpiryNudge();
 		uninstallMaintenanceReminderNudge();
+		teardownScreenState();
+		uninstallSoundCues();
 		Events.off("dwcPluginUnloaded", onPluginUnloaded);
 	}
 }

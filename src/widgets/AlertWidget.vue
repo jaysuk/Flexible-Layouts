@@ -1,6 +1,7 @@
 <template>
   <div class="al-root fill-height d-flex align-center px-1">
-    <v-alert v-if="show" :type="widget.severity || 'warning'" :icon="widget.icon || undefined"
+    <!-- Errors and warnings interrupt a screen reader (role=alert); info and success are polite (role=status). -->
+    <v-alert v-if="show" :type="widget.severity || 'warning'" :icon="widget.icon || undefined" :role="alertRole"
              density="compact" variant="tonal" class="al-box">
       {{ widget.message }}
     </v-alert>
@@ -18,9 +19,12 @@ import { useMachineStore } from "@/stores/machine";
 import type { Widget } from "../model/document";
 import { evaluateRule } from "../util/conditions";
 import { editMode } from "../model/editorState";
+import { useCueOnRise } from "../composables/useCueOnRise";
 
 const props = defineProps<{ widget: Extract<Widget, { type: "alert" }>; disabled?: boolean }>();
 const machineStore = useMachineStore();
+
+const alertRole = computed(() => (props.widget.severity === "info" || props.widget.severity === "success" ? "status" : "alert"));
 
 const show = computed(() => {
   if (!props.widget.omPath) return false;
@@ -30,6 +34,12 @@ const show = computed(() => {
     value: props.widget.value,
   });
 });
+
+// Sound the cue when the alert APPEARS (not on every page load while it is already up); never while editing.
+useCueOnRise(
+  () => (show.value && props.widget.sound ? [{ key: "alert", cue: props.widget.sound, repeatSeconds: props.widget.soundRepeat }] : []),
+  () => !editMode.value,
+);
 </script>
 
 <style scoped>

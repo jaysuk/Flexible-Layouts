@@ -1,7 +1,9 @@
 <template>
 	<!-- Shaped button: render as inline SVG for non-rect shapes so clicks outside the shape
 		 pass through to widgets beneath (for nestling / overlapping layouts). -->
-	<div v-if="isShapedMode" class="fill-height cmd-shaped-outer" :style="outerStyle" @click="onShapeClick">
+	<div v-if="isShapedMode" class="fill-height cmd-shaped-outer" :style="outerStyle"
+		 v-svg-button="{ label: widget.label || widget.code || $t('plugins.flexibleLayouts.widgets.codeButton'), disabled: uiStore.uiFrozen || disabled }"
+		 @click="onShapeClick">
 		<svg class="cmd-shape-svg" :viewBox="`0 0 ${SVG_W} ${SVG_H}`" :preserveAspectRatio="preserveAspect"
 			 :style="svgPointerStyle">
 			<!-- Shape fill + stroke -->
@@ -26,6 +28,8 @@
 			<span v-if="widget.label" class="text-truncate" :style="{ color: labelColor }">{{ widget.label }}</span>
 		</div>
 
+		<HotkeyBadge v-if="widget.hotkeyBadge" :combo="widget.hotkey" />
+
 		<v-dialog v-model="confirmOpen" max-width="400">
 			<v-card>
 				<v-card-title>{{ $t("plugins.flexibleLayouts.widgets.confirmTitle") }}</v-card-title>
@@ -43,7 +47,8 @@
 	</div>
 
 	<!-- Standard rect button (existing behaviour, unchanged) -->
-	<div v-else class="fill-height pa-1">
+	<div v-else class="fill-height pa-1 cmd-rect-root">
+		<HotkeyBadge v-if="widget.hotkeyBadge" :combo="widget.hotkey" />
 		<v-btn :color="overrideColor || widget.color || 'primary'" variant="flat" block
 			   class="fill-height text-none flex-cmd-btn"
 			   :disabled="uiStore.uiFrozen || disabled" :loading="busy" @click="onClick">
@@ -80,6 +85,11 @@ import { LogLevel, useUiStore } from "@/stores/ui";
 import type { Widget } from "../model/document";
 import { resolveColor } from "../util/color";
 import { buttonShapeToParams, shapePath, shapePreservesAspect } from "../util/shapes";
+import { useHotkey } from "../composables/useHotkey";
+import { vSvgButton } from "../util/svgButton";
+import { hapticTap } from "../util/sound";
+import type { HotkeyResult } from "../model/hotkeys";
+import HotkeyBadge from "./HotkeyBadge.vue";
 
 const props = defineProps<{
 	widget: Extract<Widget, { type: "codeButton" }>;
@@ -231,6 +241,7 @@ async function send() {
 
 function onClick() {
 	if (debounced()) { return; }
+	if (props.widget.haptic) { hapticTap(); }
 	if (props.widget.confirm) {
 		confirmOpen.value = true;
 	} else {
@@ -248,9 +259,19 @@ function onShapeClick() {
 	if (uiStore.uiFrozen || props.disabled) { return; }
 	onClick();
 }
+
+// The keyboard shortcut takes exactly the click path: a disabled/print-locked/access-locked button reports "locked"
+// (and is not run), and a confirm dialog or debounce still applies.
+function activateFromHotkey(): HotkeyResult {
+	if (uiStore.uiFrozen || props.disabled) { return "locked"; }
+	onClick();
+	return "ok";
+}
+useHotkey(() => props.widget.hotkey, activateFromHotkey);
 </script>
 
 <style scoped>
+.cmd-rect-root { position: relative; }
 .flex-cmd-btn {
 	min-height: 100%;
 	white-space: normal;

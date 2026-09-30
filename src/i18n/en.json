@@ -70,7 +70,32 @@
 		"seedHelp": "Start with a blank page, or begin from the panels this page currently shows so you can rearrange them.",
 		"seedUseCurrent": "Use current layout",
 		"seedStartBlank": "Start blank",
-		"addWidgetHelp": "Open the widget palette to add a panel to this page."
+		"addWidgetHelp": "Open the widget palette to add a panel to this page.",
+		"clipboard": {
+			"copy": "Copy selected panels (Ctrl+C)",
+			"cut": "Cut selected panels (Ctrl+X)",
+			"paste": "Paste panels (Ctrl+V)",
+			"pasteText": "Paste from text…",
+			"duplicate": "Duplicate selected panels (Ctrl+D)",
+			"didCopy": "Copied {count} panel | Copied {count} panels",
+			"didCut": "Cut {count} panel | Cut {count} panels",
+			"didPaste": "Pasted {count} panel | Pasted {count} panels",
+			"missingPlugins": "The pasted panels need plugins that are not installed here: {plugins}",
+			"newer": "That clipboard was copied from a newer version of Flexible Layouts. Update the plugin to paste it.",
+			"invalid": "That text is not a copied panel.",
+			"pasteDialogTitle": "Paste panels",
+			"pasteDialogHint": "Paste panels copied from another browser, profile or machine. Panels copied here can also be pasted with the Paste button."
+		},
+		"kb": {
+			"hint": "Press Enter to pick this panel up, then use the arrow keys to move it and Shift plus the arrow keys to resize it.",
+			"grabbedLabel": "Picked up. Arrow keys move, Shift plus arrow keys resize, Enter or Escape puts it down.",
+			"grabbed": "{name} picked up. Arrow keys move it, Shift plus arrow keys resize it, Enter or Escape puts it down.",
+			"moved": "{name} moved to column {col}, row {row}.",
+			"resized": "{name} is now {w} wide and {h} high.",
+			"atEdge": "{name} can't go further that way.",
+			"locked": "{name} is locked - unlock it to move or resize it.",
+			"dropped": "Put down."
+		}
 	},
 	"widget": {
 		"panelError": "The “{name}” panel could not be displayed here.",
@@ -156,7 +181,9 @@
 		"preflight": "Preflight checks",
 		"probeRoutines": "Probe routines",
 		"toolpath": "Toolpath",
-		"firmwareUpdate": "Firmware update"
+		"firmwareUpdate": "Firmware update",
+		"fullscreen": "Fullscreen / kiosk",
+		"tabs": "Tabs"
 	},
 	"properties": {
 		"lengthMm": "Length in millimetres",
@@ -313,7 +340,8 @@
 		"lte": "≤",
 		"contains": "contains text",
 		"truthy": "is set / true",
-		"falsy": "is unset / false"
+		"falsy": "is unset / false",
+		"thenSound": "Then play a sound"
 	},
 	"inputModifier": {
 		"title": "Input modifier",
@@ -388,7 +416,8 @@
 		"background": "Background",
 		"header": "Header bar",
 		"text": "Text",
-		"help": "Override this panel's background, header and text colours. Leave a colour unset to follow the current theme."
+		"help": "Override this panel's background, header and text colours. Leave a colour unset to follow the current theme.",
+		"lowContrast": "This text and background colour only have a contrast of {ratio}:1. Text needs at least 4.5:1 to be comfortably readable, especially for people with low vision."
 	},
 	"activate": {
 		"title": "Use Flexible Layouts?",
@@ -450,7 +479,39 @@
 		"create": "Create",
 		"delete": "Delete profile",
 		"deleteConfirm": "Delete the profile “{name}” and everything in it? This can't be undone.",
-		"manageHelp": "Create and switch between separate layout profiles (e.g. one per machine or task)."
+		"manageHelp": "Create and switch between separate layout profiles (e.g. one per machine or task).",
+		"auto": {
+			"enable": "Switch profiles automatically on this device",
+			"enableHint": "A profile can take over when the machine is in a certain mode, a print is running, or a condition holds (set with the robot button on each profile). This affects only this browser - other browsers keep the shared profile, and nothing shared is rewritten.",
+			"last": "Last automatic switch: {name} at {time} ({why}).",
+			"differs": "This device is showing an automatically chosen profile. The shared default is {shared}.",
+			"follow": "Use the shared default",
+			"edit": "Automatic switching for this profile",
+			"ruleTitle": "Automatic switching: {name}",
+			"when": "Take over when",
+			"mode": "Machine mode",
+			"returnWhenEnds": "Go back to the previous profile when it ends",
+			"returnHint": "Only if nobody has switched profile in the meantime.",
+			"ruleNote": "Checked when the machine mode changes, a print starts or ends, or the condition changes - not continuously, so switching manually afterwards sticks. If several profiles match, the first one in the list wins. Automatic switching ignores the Admin lock: that is the point on a wall display.",
+			"switched": "Switched to profile \"{name}\"",
+			"kind": {
+				"none": "Never (manual only)",
+				"machineMode": "The machine is in a mode",
+				"printing": "A print is running",
+				"condition": "A condition holds"
+			},
+			"reason": {
+				"machineMode": "machine mode {value}",
+				"printing": "a print started",
+				"condition": "its condition became true",
+				"ended": "the previous condition ended"
+			},
+			"summary": {
+				"machineMode": "Automatic: machine mode {value}",
+				"printing": "Automatic: while printing",
+				"condition": "Automatic: when a condition holds"
+			}
+		}
 	},
 	"responsive": {
 		"desktop": "Desktop layout",
@@ -663,7 +724,8 @@
 		"sevSuccess": "Success",
 		"sevWarning": "Warning",
 		"sevError": "Error",
-		"hidden": "Shown only when the condition is true"
+		"hidden": "Shown only when the condition is true",
+		"sound": "Play a sound when it appears"
 	},
 	"webcam": {
 		"url": "Image / stream URL",
@@ -1063,7 +1125,9 @@
 		"items": "Indicators",
 		"onColor": "On colour",
 		"offColor": "Off colour",
-		"operatorHint": "Leave the operator blank to use the item’s original on/off rule (a truthy live value counts as on)."
+		"operatorHint": "Leave the operator blank to use the item’s original on/off rule (a truthy live value counts as on).",
+		"on": "on",
+		"off": "off"
 	},
 	"sparkline": {
 		"series": "Series"
@@ -1312,7 +1376,7 @@
 		"unhomedBlocked": "Home the machine before cutting.",
 		"printingBlocked": "Can't cut while a job is running.",
 		"notCutCapable": "You don't have permission to run a cut on this machine.",
-			"notCncMode": "This machine isn't in CNC or Laser mode.",
+		"notCncMode": "This machine isn't in CNC or Laser mode.",
 		"downloadButton": "Download G-code",
 		"runButton": "Cut it",
 		"confirmTitle": "Run this cut?",
@@ -1847,7 +1911,9 @@
 			"autoRunDestinationHint": "Only destinations that can back up without any prompts are listed. Google Drive and a local download always need you to act, so they can't run automatically.",
 			"autoRunIneligibleReason": "needs you to act each time",
 			"autoRunEncryptedReason": "encryption on - password not saved",
-			"autoRunEncryptionConflict": "{destination} has per-backup encryption turned on, and the backup password is never saved - so an automatic backup to it can't run. Turn off encryption for {destination} on the Create tab, or choose a different destination."
+			"autoRunEncryptionConflict": "{destination} has per-backup encryption turned on, and the backup password is never saved - so an automatic backup to it can't run. Turn off encryption for {destination} on the Create tab, or choose a different destination.",
+			"autoRunOnSave": "Also back up automatically a while after config.g is saved",
+			"autoRunOnSaveHint": "Waits about 10 minutes after the last save (so a half-edited config isn't what gets backed up), then backs up if the machine is idle. If it can't, you get the usual reminder instead. Only while DWC is open."
 		},
 		"autoRun": {
 			"startedTitle": "Automatic backup started",
@@ -1858,6 +1924,35 @@
 			"failedBody": "Couldn't back up to {destination} - {message}",
 			"failedRepeatedlyTitle": "Automatic backups keep failing",
 			"failedRepeatedlyBody": "The last {count} automatic backups to {destination} have failed - {message}. Check that destination's connection settings."
+		},
+		"unattended": {
+			"heading": "Unattended backups (a script for cron / Task Scheduler)",
+			"cardNote": "A browser can only back up while DWC is open, and a Duet can't call out to a server itself. To back up on a schedule with nothing open, run a small script on any machine that is always on.",
+			"open": "Set up an unattended backup…",
+			"title": "Set up an unattended backup",
+			"intro": "This makes one self-contained script (Node 18 or newer, nothing to install) that copies your board's sys, macros and filaments folders into dated folders on the machine that runs it, keeps the newest few, and exits with an error if anything goes wrong so your scheduler notices. Then schedule it with cron, Task Scheduler or systemd.",
+			"warningTitle": "Before you use it",
+			"warnPrivate": "The files are copied exactly as they are, and config.g and others can contain WiFi and machine passwords - keep the backup folder private.",
+			"warnNoRedaction": "Nothing is redacted or encrypted, and nothing is uploaded anywhere. (The plugin's own backups do redaction, encryption and cloud destinations.)",
+			"warnPassword": "The board password is never written into the script: it is read from an environment variable when the script runs.",
+			"warnRestore": "There is no restore in the script - restore stays in this plugin (Restore tab), from a backup it made, or by copying files back by hand.",
+			"host": "Board address",
+			"protocol": "Protocol",
+			"flavour": "Board type",
+			"flavours": {
+				"standalone": "Standalone (WiFi / Ethernet board)",
+				"sbc": "SBC (Raspberry Pi etc.)"
+			},
+			"detected": "this machine",
+			"keep": "Keep newest",
+			"passwordEnv": "Password variable",
+			"outDir": "Backup folder",
+			"download": "Download script",
+			"copyScript": "Copy script",
+			"copied": "Copied",
+			"scheduleHeading": "Run it on a schedule",
+			"scheduleHint": "Save the script as {file}, then use one of these (change the path).",
+			"copySnippet": "Copy"
 		}
 	},
 	"canAddress": {
@@ -2078,5 +2173,150 @@
 		"showUptime": "Show uptime",
 		"showNetwork": "Show network",
 		"showProbes": "Show probes"
+	},
+	"a11y": {
+		"close": "Close",
+		"delete": "Delete",
+		"clear": "Clear",
+		"moveUp": "Move up",
+		"moveDown": "Move down",
+		"refresh": "Refresh",
+		"decrease": "Decrease",
+		"increase": "Increase",
+		"pickColor": "Pick a colour",
+		"toggle": "Toggle",
+		"workOffset": "Work coordinate system",
+		"copyFrom": "Copy from",
+		"copyTo": "Copy to",
+		"axisOffset": "{axis} offset, {name}",
+		"profile": "Profile",
+		"stepSize": "Step size",
+		"value": "Value",
+		"progress": "Progress",
+		"slider": "Slider",
+		"brightness": "Brightness",
+		"whiteChannel": "White channel"
+	},
+	"starters": {
+		"title": "Starter layouts",
+		"help": "Ready-made pages to start from. Each one is added as a new page - nothing you already have is changed - and every widget on it can be edited afterwards.",
+		"browse": "Browse starter layouts…",
+		"welcomeButton": "Start from a starter layout",
+		"add": "Add this page",
+		"recommended": "Fits this machine",
+		"asProfile": "Put it in a new profile",
+		"asProfileHint": "Creates a separate profile named after the starter and switches to it, so your current layout stays as it is.",
+		"fff": {
+			"title": "Printer dashboard",
+			"desc": "Status, bed and nozzle heaters, part fan, movement, macros, extrusion and a temperature chart."
+		},
+		"print": {
+			"title": "Print monitor",
+			"desc": "Big progress, job thumbnail, times, temperatures and webcam with pause, resume, cancel and emergency stop. Made for a wall display."
+		},
+		"touch": {
+			"title": "Touchscreen simple",
+			"desc": "A few large buttons - home, preheat, cool down, fan and motors off - and an emergency stop."
+		},
+		"laser": {
+			"title": "Laser",
+			"desc": "Position read-out, work offsets, homing, set zero, laser power and movement."
+		},
+		"cnc": {
+			"title": "CNC",
+			"desc": "Live position, homing and work zero, spindle on/off and speed, and the jog panel."
+		}
+	},
+	"screen": {
+		"fullscreen": "Fullscreen",
+		"exitFullscreen": "Exit fullscreen",
+		"kiosk": "Kiosk mode",
+		"exitKiosk": "Exit kiosk",
+		"keepAwake": "Keep screen awake",
+		"awakeUnavailable": {
+			"insecure": "Keeping the screen awake needs a secure (https) connection, and DWC is being served over plain http. Flexible Layouts' TLS setup helper can enable https.",
+			"unsupported": "This browser cannot keep the screen awake."
+		},
+		"note": "These controls only change how this browser shows the page. They are remembered per device and are not part of the shared layout. On an iPhone, fullscreen is not available - use Share > Add to Home Screen to run DWC as an app instead.",
+		"showFullscreen": "Show the fullscreen button",
+		"showKiosk": "Show the kiosk-mode button",
+		"kioskFullscreen": "Entering kiosk mode also goes fullscreen",
+		"showKeepAwake": "Show the keep-screen-awake switch"
+	},
+	"hotkey": {
+		"label": "Keyboard shortcut",
+		"none": "None",
+		"recording": "Press the keys…",
+		"hint": "Click here, then press the keys. Needs Ctrl or Alt (or an F-key). Backspace clears.",
+		"clear": "Remove the shortcut",
+		"badge": "Show the shortcut on the widget",
+		"duplicate": "Another widget on this page already uses this shortcut - only the first will run.",
+		"locked": "That shortcut is locked right now (printing, access level or a condition).",
+		"problem": {
+			"invalid": "That key can't be used as a shortcut.",
+			"needsModifier": "Add Ctrl or Alt, or use an F-key - a plain key would just be typing.",
+			"reserved": "The browser or a common editing command already uses that combination. Pick another."
+		},
+		"settingsTitle": "Keyboard shortcuts",
+		"settingsHint": "Buttons and toggles can have a keyboard shortcut (set in the widget's properties). These switches apply to this browser only.",
+		"enabled": "Enable keyboard shortcuts",
+		"whileEditing": "Also respond while editing the layout"
+	},
+	"sound": {
+		"title": "Sound and vibration",
+		"hint": "Optional cues for things happening on the machine. Everything is off until you turn it on, and the choices apply to this browser only - a workshop tablet can stay silent while a phone buzzes.",
+		"unsupported": "This browser can't play sounds.",
+		"needsGesture": "Click or tap anywhere on the page once to enable sound - browsers don't allow audio until you have.",
+		"enabled": "Sound on",
+		"volume": "Volume",
+		"testSound": "Test sound",
+		"eventsHeading": "Play a cue when…",
+		"cue": "Cue",
+		"none": "No sound",
+		"test": "Play this cue",
+		"repeat": "Repeat every",
+		"repeatOnce": "Once",
+		"vibrate": "Vibrate",
+		"haptics": "Vibration on",
+		"testVibration": "Test vibration",
+		"hapticTap": "Vibrate briefly when pressed",
+		"noHaptics": "This device can't vibrate, so vibration options are hidden.",
+		"backgroundNote": "A tab in the background still hears about machine events, but the browser may delay them, so cues are not guaranteed to be instant.",
+		"cues": {
+			"chime": "Chime",
+			"double": "Double beep",
+			"alarm": "Alarm",
+			"error": "Low buzz"
+		},
+		"events": {
+			"jobFinished": "a job finishes",
+			"jobStopped": "a job is cancelled or the machine halts",
+			"pauseRequested": "the job is paused (by the firmware or anyone)",
+			"filamentError": "a filament monitor reports a fault",
+			"heaterFault": "a heater faults",
+			"messageBox": "a message box (M291) appears"
+		}
+	},
+	"container": {
+		"expand": "Expand",
+		"collapse": "Collapse",
+		"noTabs": "No tab is available right now.",
+		"tabEmpty": "This tab is empty - add widgets with Edit contents.",
+		"collapsible": "Can be folded",
+		"collapsibleHint": "Adds a fold button to the title. Whether it is folded is remembered on each device, not saved in the layout. Panels below only move up to fill the gap if this panel's Auto height option is on."
+	},
+	"tabsEditor": {
+		"title": "Edit tabs",
+		"position": "Tab bar position",
+		"tabs": "Tabs",
+		"addTab": "Add tab",
+		"tabName": "Tab name",
+		"defaultTabName": "Tab",
+		"showWhen": "Show only when a condition holds",
+		"pos": {
+			"top": "Top",
+			"bottom": "Bottom",
+			"left": "Left"
+		}
 	}
 }

@@ -4,7 +4,7 @@
 			{{ widget.label }}
 		</div>
 		<div class="d-flex ga-1 align-center">
-			<v-text-field v-model="val" :type="widget.inputKind === 'number' ? 'number' : 'text'"
+			<v-text-field v-model="val" :aria-label="widget.label || $t('plugins.flexibleLayouts.a11y.value')" :type="widget.inputKind === 'number' ? 'number' : 'text'"
 						  density="compact" variant="outlined" hide-details
 						  :disabled="uiStore.uiFrozen || disabled" @keyup.enter="send" />
 			<v-btn icon="mdi-send" :color="overrideColor || widget.color || 'primary'" variant="flat" size="small"

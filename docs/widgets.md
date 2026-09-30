@@ -9,7 +9,9 @@ Add widgets with **Add widget** while editing. Every widget can additionally be 
 |--------|------------|
 | **Built-in DWC panel** | Any of DWC's own panels (Status, Tools, Movement, Extrude, Fans, Job control/info/times/progress, the **Job preview** with its 3D preview / layer graph / G-code stream tabs…) reused on any page. |
 | **Plugin page / tab** | A page, settings tab or job-view tab registered by another plugin, embedded inline. Records that plugin as a dependency. |
-| **Custom panel (group)** | A titled container with its own mini-grid of widgets — a reusable sub-layout you can back up and share on its own. Switch a group to **free mode** to position its children precisely (drag / resize / rotate, free overlap, z-order) — this is the canvas for nestled and shaped layouts. |
+| **Custom panel (group)** | A titled container with its own mini-grid of widgets — a reusable sub-layout you can back up and share on its own. Switch a group to **free mode** to position its children precisely (drag / resize / rotate, free overlap, z-order) — this is the canvas for nestled and shaped layouts. It can be made **foldable** (per-device state). |
+| **Tabs** | A container with several tabs, each holding its own mini-grid (**Edit contents**). A tab can be shown only while a condition holds, the bar can sit top / bottom / left, only the showing tab is rendered, and the chosen tab is remembered per device. Foldable like a group. |
+| **Fullscreen / kiosk** | Per-device screen controls: fullscreen, kiosk mode (no top bar / side menu; leaving it asks for the Admin password when an access lock is set) and keep-screen-awake (needs https). Nothing is saved in the shared layout. |
 
 ## Freeform widgets
 
@@ -105,7 +107,13 @@ ready-made jog dial, the **CNC / Octopus jog** widget above is usually the bette
 
 In a widget's ⚙ dialog you can add **conditions** — rules evaluated against the live object model
 that **recolour**, **hide** or **disable** the widget. Each rule is an OM path, an operator
-(`= ≠ > < ≥ ≤`, contains, truthy, falsy) and a value, plus the effect to apply when it matches.
+(`= ≠ > < ≥ ≤`, contains, truthy, falsy) and a value, plus the effect to apply when it matches - and it can also **play a
+sound** (chime, double beep, alarm, low buzz) when it *becomes* true, optionally repeating every N seconds (≥ 5, capped) while
+it holds. The **alert** widget has the same option, and a **command button** or **toggle** can **vibrate briefly** when pressed
+(where the device can); see [Sound and vibration](usage.md#sound-and-vibration).
+
+**Keyboard shortcut** (command button and toggle): set in the ⚙ dialog; it runs the same path as a click, so locks, confirms and
+debounce apply. See [Keyboard shortcuts on buttons](usage.md#keyboard-shortcuts-on-buttons).
 
 ## Value formatting (value widget)
 

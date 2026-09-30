@@ -5,7 +5,7 @@
       <v-spacer />
       <span class="sl-val">{{ displayValue }}{{ widget.unit || "" }}</span>
     </div>
-    <LockableSlider :model-value="position" :min="min" :max="max" :step="step" :color="(overrideColor || widget.color) || 'primary'"
+    <LockableSlider :label="widget.label" :model-value="position" :min="min" :max="max" :step="step" :color="(overrideColor || widget.color) || 'primary'"
                     :disabled="disabledNow" :suffix="widget.unit" @update:model-value="onInput" @end="onEnd" />
   </div>
 </template>

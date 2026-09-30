@@ -1,5 +1,6 @@
 <template>
   <div class="tg-root fill-height d-flex align-center px-2" :class="{ 'tg-frozen': disabledNow }">
+    <HotkeyBadge v-if="widget.hotkeyBadge" :combo="widget.hotkey" />
     <template v-if="widget.variant === 'button'">
       <v-btn :color="isOn ? (overrideColor || widget.color || 'primary') : undefined" :variant="isOn ? 'flat' : 'tonal'"
              block class="text-none fill-height tg-btn" :disabled="disabledNow" @click="toggle">
@@ -14,6 +15,7 @@
            without room to expand inside this widget's own bounds it gets clipped by the grid item's
            ancestor overflow instead. -->
       <v-switch :model-value="isOn" :color="overrideColor || widget.color || 'primary'" :base-color="widget.offColor"
+                :aria-label="widget.label || $t('plugins.flexibleLayouts.a11y.toggle')"
                 density="compact" hide-details class="tg-switch-pad-start"
                 :disabled="disabledNow" @update:model-value="set($event === true)" />
       <v-spacer />
@@ -23,6 +25,7 @@
       <span class="tg-label text-truncate">{{ widget.label }}</span>
       <v-spacer />
       <v-switch :model-value="isOn" :color="overrideColor || widget.color || 'primary'" :base-color="widget.offColor"
+                :aria-label="widget.label || $t('plugins.flexibleLayouts.a11y.toggle')"
                 density="compact" hide-details class="tg-switch-pad-end"
                 :disabled="disabledNow" @update:model-value="set($event === true)" />
     </template>
@@ -37,6 +40,10 @@ import { LogLevel, useUiStore } from "@/stores/ui";
 
 import type { Widget } from "../model/document";
 import { resolveOmPath } from "../util/omPath";
+import { useHotkey } from "../composables/useHotkey";
+import { hapticTap } from "../util/sound";
+import type { HotkeyResult } from "../model/hotkeys";
+import HotkeyBadge from "./HotkeyBadge.vue";
 
 const props = defineProps<{ widget: Extract<Widget, { type: "toggle" }>; overrideColor?: string; disabled?: boolean }>();
 
@@ -72,14 +79,23 @@ function send(code: string | undefined): void {
     uiStore.makeNotification(LogLevel.error, "Command failed", (e as Error)?.message ?? String(e)));
 }
 function set(on: boolean): void {
+  if (props.widget.haptic) hapticTap();
   localOn.value = on;
   send(on ? props.widget.onCommand : props.widget.offCommand);
 }
 function toggle(): void { set(!isOn.value); }
+
+// The keyboard shortcut flips the toggle through the same path as a click; a disabled one reports "locked".
+function activateFromHotkey(): HotkeyResult {
+  if (disabledNow.value) return "locked";
+  toggle();
+  return "ok";
+}
+useHotkey(() => props.widget.hotkey, activateFromHotkey);
 </script>
 
 <style scoped>
-.tg-root { min-height: 0; }
+.tg-root { min-height: 0; position: relative; }
 .tg-frozen { opacity: 0.5; pointer-events: none; }
 .tg-label { font-size: 0.8em; font-weight: 500; }
 .tg-btn { min-height: 100%; }

@@ -6,7 +6,7 @@
       <span v-if="rpm !== null" class="fn-rpm me-2">{{ rpm }} rpm</span>
       <span class="fn-val">{{ displayPct }}%</span>
     </div>
-    <LockableSlider :model-value="position" :min="0" :max="100" :step="1" :color="overrideColor || widget.color || 'primary'"
+    <LockableSlider :label="widget.label" :model-value="position" :min="0" :max="100" :step="1" :color="overrideColor || widget.color || 'primary'"
                     :disabled="disabledNow" suffix="%" @update:model-value="onInput" @end="onEnd" />
   </div>
 </template>

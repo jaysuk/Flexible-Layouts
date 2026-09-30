@@ -25,7 +25,7 @@
       <div v-if="mode === 'length'" class="ex-row">
         <span class="ex-sub">{{ $t("plugins.flexibleLayouts.extruder.speed") }}</span>
         <div class="ex-field">
-          <input v-model.number="feedDisplay" class="ex-num" type="number" :min="feedUnit === 'mmS' ? 0.01 : 1"
+          <input v-model.number="feedDisplay" class="ex-num" type="number" :aria-label="$t('plugins.flexibleLayouts.extruder.speed')" :min="feedUnit === 'mmS' ? 0.01 : 1"
                  :step="feedUnit === 'mmS' ? 0.01 : 1" :inputmode="feedUnit === 'mmS' ? 'decimal' : 'numeric'" />
           <button type="button" class="ex-unit ex-unit-toggle" :disabled="disabledNow"
                   :title="$t('plugins.flexibleLayouts.extruder.unitToggleHint')" @click="toggleFeedUnit">
@@ -39,7 +39,7 @@
         <div class="ex-row">
           <span class="ex-sub">{{ $t("plugins.flexibleLayouts.extruder.flow") }}</span>
           <div class="ex-field">
-            <input v-model.number="flowRate" class="ex-num" type="number" min="0.1" step="0.1" inputmode="decimal" />
+            <input v-model.number="flowRate" class="ex-num" type="number" :aria-label="$t('plugins.flexibleLayouts.extruder.flow')" min="0.1" step="0.1" inputmode="decimal" />
             <span class="ex-unit">mm³/s</span>
           </div>
         </div>

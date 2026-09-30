@@ -1,14 +1,22 @@
 <template>
 	<v-card class="fill-height d-flex flex-column" variant="tonal">
-		<v-card-title v-if="widget.title" class="py-1 text-truncate" style="font-size: 0.95em;">
-			{{ widget.title }}
+		<v-card-title v-if="widget.title || widget.collapsible" class="group-title py-1 d-flex align-center" style="font-size: 0.95em;">
+			<span class="text-truncate flex-grow-1">{{ widget.title || $t("plugins.flexibleLayouts.widgets.group") }}</span>
+			<v-btn v-if="widget.collapsible" size="x-small" variant="text" icon class="group-fold" :aria-expanded="!folded"
+				   :aria-label="folded ? $t('plugins.flexibleLayouts.container.expand') : $t('plugins.flexibleLayouts.container.collapse')"
+				   :title="folded ? $t('plugins.flexibleLayouts.container.expand') : $t('plugins.flexibleLayouts.container.collapse')"
+				   @click="setCollapsed(stateKey, !folded)">
+				<v-icon>{{ folded ? "mdi-chevron-down" : "mdi-chevron-up" }}</v-icon>
+			</v-btn>
 		</v-card-title>
 
 		<!-- FREE-POSITION mode: each child is absolutely positioned by % coords. This is the only place a
 			 widget escapes FlexGridItem's overlay entirely (edit-mode inertness is still handled at the
 			 parent FlexGridItem level via pointer-events, since a group is itself a grid item), so print-
 			 lock and access-lock are applied per child here directly. -->
-		<div v-if="isFree" class="flex-grow-1 free-group-canvas">
+		<div v-if="folded" class="group-folded" />
+
+		<div v-else-if="isFree" class="flex-grow-1 free-group-canvas">
 			<div
 				v-for="child in sortedItems"
 				:key="child.i"
@@ -42,6 +50,8 @@ import { computed, defineAsyncComponent, inject } from "vue";
 import { useMachineStore } from "@/stores/machine";
 
 import { accessLockedFor, can } from "../model/access";
+import { isCollapsed, setCollapsed } from "../model/containerState";
+import { ITEM_ID_KEY } from "../util/itemContext";
 import type { GridItemModel, Widget } from "../model/document";
 import { effectiveLockForItem, isPrintingStatus } from "../util/printLock";
 import { WIDGET_PATCH_KEY } from "../util/widgetPatch";
@@ -52,6 +62,11 @@ import WidgetView from "./WidgetView.vue";
 const FlexGrid = defineAsyncComponent(() => import("../page/FlexGrid.vue"));
 
 const props = defineProps<{ widget: Extract<Widget, { type: "group" }> }>();
+
+// Folded or not is per-device state (model/containerState.ts), keyed by the placed item - never saved in the layout.
+const itemId = inject(ITEM_ID_KEY, undefined);
+const stateKey = computed(() => itemId ?? `group:${props.widget.title ?? ""}:${props.widget.items.length}`);
+const folded = computed(() => !!props.widget.collapsible && isCollapsed(stateKey.value));
 
 // The ambient patcher for THIS group widget's own fields (provided above by whatever rendered this
 // GroupWidget - FlexGridItem.vue at the top level, or another WidgetView if this group is itself

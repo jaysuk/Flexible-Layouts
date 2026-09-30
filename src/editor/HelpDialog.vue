@@ -6,7 +6,7 @@
 				<v-icon class="me-2">mdi-help-circle</v-icon>
 				{{ firstRun ? $t("plugins.flexibleLayouts.help.welcomeTitle") : $t("plugins.flexibleLayouts.help.title") }}
 				<v-spacer />
-				<v-btn icon="mdi-close" variant="text" density="comfortable" @click="close" />
+				<v-btn :aria-label="$t('plugins.flexibleLayouts.a11y.close')" icon="mdi-close" variant="text" density="comfortable" @click="close" />
 			</v-card-title>
 
 			<v-card-text style="max-height: 72vh;">
@@ -14,6 +14,10 @@
 					You're now using the <strong>Flexible Layouts</strong> shell. It lets you build your own
 					DWC interface — rearrange panels, add buttons and read-outs, recolour, and more. Here's the gist:
 				</p>
+				<v-btn v-if="firstRun" color="primary" variant="tonal" prepend-icon="mdi-view-dashboard-edit-outline" class="mb-3"
+					   @click="emit('open-starters')">
+					{{ $t("plugins.flexibleLayouts.starters.welcomeButton") }}
+				</v-btn>
 
 				<v-expansion-panels variant="accordion">
 					<v-expansion-panel title="Editing">
@@ -113,6 +117,24 @@
 						</v-expansion-panel-text>
 					</v-expansion-panel>
 
+					<v-expansion-panel title="Keyboard, sound &amp; screen">
+						<v-expansion-panel-text>
+							<strong>Copy / paste:</strong> tick panels' checkboxes, then <strong>Ctrl+C / X / V / D</strong>
+							(or the toolbar buttons) copy, cut, paste and duplicate them — even into another browser or machine.
+							<strong>Keyboard move:</strong> Tab to a panel's header, <strong>Enter</strong> picks it up, arrows move it,
+							<strong>Shift+arrows</strong> resize it, <strong>Enter / Esc</strong> puts it down.
+							<strong>Shortcuts on buttons:</strong> a command button or toggle can have its own key combination in its
+							settings; it works exactly like a click, so print lock, access lock and confirm dialogs still apply.
+							<strong>Sound &amp; vibration</strong> cues are off until you turn them on (Settings → Flexible Layouts),
+							per browser. The <strong>Fullscreen / kiosk</strong> widget offers fullscreen, a kiosk mode with no
+							top bar (leaving it asks for the Admin password if you set one) and keep-screen-awake (https only).
+							The jog pads are keyboard-operable: <strong>arrows</strong> choose the direction and ring,
+							<strong>Enter / Space</strong> move.
+							<strong>Starter layouts</strong> (Layout &amp; sharing) add ready-made pages, and a profile can switch itself in
+							automatically (the robot button in Layout profiles).
+						</v-expansion-panel-text>
+					</v-expansion-panel>
+
 					<v-expansion-panel title="Smart behaviour &amp; styling">
 						<v-expansion-panel-text>
 							In a widget's settings you can add <strong>conditions</strong> (recolour / hide / disable based on
@@ -198,7 +220,7 @@ import i18n from "@/i18n";
 import { BUILTIN_PANELS, FREEFORM_WIDGETS, WIDGET_CATEGORIES } from "../widgets/registry";
 
 defineProps<{ modelValue: boolean; firstRun?: boolean }>();
-const emit = defineEmits<{ "update:modelValue": [boolean] }>();
+const emit = defineEmits<{ "update:modelValue": [boolean]; "open-starters": [] }>();
 
 const t = (key: string) => i18n.global.t(key);
 

@@ -150,6 +150,12 @@ export function accessLockedFor(widget: { type: string; component?: string }): b
 	if (widget.type === "emergencyStop") {
 		return false;
 	}
+	// Fullscreen / kiosk / keep-awake only change how THIS browser shows the page and send nothing to the
+	// machine, and a locked-down wall display is exactly where they are used. Leaving kiosk is gated by
+	// the Admin password itself (model/screenState.ts), not by locking the button.
+	if (widget.type === "fullscreen") {
+		return false;
+	}
 	if (!can("interact")) {
 		return true;
 	}
