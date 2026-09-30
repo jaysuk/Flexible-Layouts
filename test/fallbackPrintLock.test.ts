@@ -38,8 +38,12 @@ describe("stock fallback print lock", () => {
 		expect(mountFallback().find(".flex-interaction-lock").exists()).toBe(false);
 	});
 
-	it("registers Console and Temperatures as unlocked, Dashboard and Macros as locked", () => {
+	it("registers Console, Temperatures and the Job pages as unlocked, Dashboard and Macros as locked", () => {
 		const locks = Object.fromEntries(BUILTIN_PAGES.map((d) => [d.pageId, d.lockWhilePrinting !== false]));
-		expect(locks).toEqual({ "/Dashboard": true, "/Console": false, "/Temperatures": false, "/Macros": true });
+		expect(locks).toEqual({
+			"/Dashboard": true, "/Console": false, "/Temperatures": false, "/Macros": true,
+			// Print-time pages: pause/babystep/factors must stay usable mid-print.
+			"/Job/Status": false, "/Job/Webcam": false,
+		});
 	});
 });

@@ -129,6 +129,8 @@
 		"editModeToggle": "Edit-mode button (top bar)",
 		"uploadButton": "Upload button (top bar)",
 		"accessChip": "Access-level chip (top bar)",
+		"emergencyStop": "Emergency stop",
+		"filamentMonitor": "Filament monitors",
 		"chart": "Live chart",
 		"chartUnset": "Add a value to chart",
 		"chartDownload": "Download data (CSV)",
@@ -1326,6 +1328,17 @@
 		"coord": "Coordinates",
 		"none": "No axes."
 	},
+	"filamentMonitor": {
+		"none": "No filament monitors configured.",
+		"status": {
+			"ok": "OK",
+			"noDataReceived": "No data",
+			"noFilament": "No filament",
+			"tooLittleMovement": "Too little movement",
+			"tooMuchMovement": "Too much movement",
+			"sensorError": "Sensor error"
+		}
+	},
 	"spindle": {
 		"index": "Spindle #",
 		"forward": "Forward (M3)",
@@ -1481,6 +1494,8 @@
 		"jobControl": "Job Control",
 		"jobInfo": "Job Information",
 		"jobTimes": "Job Times",
+		"jobProgress": "Job progress",
+		"jobView": "Job preview",
 		"webcam": "Webcam",
 		"macros": "Macros",
 		"temperatureChart": "Temperature graph",

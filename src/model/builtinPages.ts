@@ -13,13 +13,16 @@
 import type { Component } from "vue";
 
 import { useMachineStore } from "@/stores/machine";
+import { useSettingsStore } from "@/stores/settings";
 
 import { type GridItemModel, newItemId } from "./document";
-import { isCncOrLaserMode } from "../util/machineMode";
+import { wantsCncLayout } from "../util/machineMode";
 import DashboardFallback from "../page/fallbacks/DashboardFallback.vue";
 import ConsoleFallback from "../page/fallbacks/ConsoleFallback.vue";
 import TemperaturesFallback from "../page/fallbacks/TemperaturesFallback.vue";
 import MacrosFallback from "../page/fallbacks/MacrosFallback.vue";
+import JobStatusFallback from "../page/fallbacks/JobStatusFallback.vue";
+import JobWebcamFallback from "../page/fallbacks/JobWebcamFallback.vue";
 import ExplorerFallback from "../page/fallbacks/ExplorerFallback.vue";
 import { shouldReplaceExplorerPage } from "./editorPreference";
 
@@ -43,15 +46,21 @@ export interface BuiltinPageDef {
 	fullPage?: boolean;
 }
 
+/** CNC or FFF starter layout? Honours DWC's "Dashboard mode" override, like the stock status region does. */
+function seedIsCnc(): boolean {
+	return wantsCncLayout(
+		useMachineStore().model.state.machineMode,
+		(useSettingsStore() as { dashboardMode?: string }).dashboardMode,
+	);
+}
+
 function panel(component: string, x: number, y: number, w: number, h: number): GridItemModel {
 	return { i: newItemId(), x, y, w, h, widget: { type: "builtinPanel", component } };
 }
 
 /** Editable equivalent of the stock dashboard, branched on machine mode. */
 function dashboardSeed(): Array<GridItemModel> {
-	const mode = useMachineStore().model.state.machineMode;
-	const isCnc = isCncOrLaserMode(mode);
-	if (isCnc) {
+	if (seedIsCnc()) {
 		return [
 			panel("MovementPanel", 0, 0, 8, 9),
 			panel("SpindleSpeedPanel", 8, 0, 4, 5),
@@ -66,14 +75,28 @@ function dashboardSeed(): Array<GridItemModel> {
 	];
 }
 
+/** Editable equivalent of the stock Job > Status page, branched on FFF vs CNC (no extrusion factors on CNC). */
+function jobStatusSeed(): Array<GridItemModel> {
+	const isCnc = seedIsCnc();
+	return [
+		panel("JobProgress", 0, 0, 12, 3),
+		panel("JobControlPanel", 0, 3, 3, 6),
+		panel("BabystepPanel", 0, 9, 3, 4),
+		panel("JobInfoPanel", 0, 13, 3, 7),
+		panel("JobViewPanel", 3, 3, 5, 14),
+		panel("JobTimesPanel", 3, 17, 5, 5),
+		panel("SpeedFactorPanel", 8, 3, 4, 4),
+		panel("FansPanel", 8, 7, 4, 7),
+		...(isCnc ? [] : [panel("ExtrusionFactorsPanel", 8, 14, 4, 5)]),
+	];
+}
+
 /**
  * Editable equivalent of the stock persistent status region (Status / Tools / Temperatures, or the
  * CNC equivalents), offered as "use current layout" the first time the status bar is edited.
  */
 export function statusBarSeed(): Array<GridItemModel> {
-	const mode = useMachineStore().model.state.machineMode;
-	const isCnc = isCncOrLaserMode(mode);
-	if (isCnc) {
+	if (seedIsCnc()) {
 		// DWC's stock CNC/Laser status bar (CNCContainerPanel) is just these two side by side - no
 		// MovementPanel/SpindleSpeedPanel here, those belong to the Dashboard page, not the status bar.
 		return [
@@ -93,6 +116,11 @@ const BASE_PAGES: ReadonlyArray<BuiltinPageDef> = [
 	{ paths: ["/Console"], pageId: "/Console", fallback: ConsoleFallback, lockWhilePrinting: false },
 	{ paths: ["/Temperatures"], pageId: "/Temperatures", fallback: TemperaturesFallback, lockWhilePrinting: false },
 	{ paths: ["/Macros"], pageId: "/Macros", fallback: MacrosFallback },
+	// The print-time pages. The stock Status page is mostly controls (pause/resume/cancel, babystep, speed
+	// and fan factors) that must stay usable mid-print, so the fallback is never locked; individual widgets
+	// still lock by their own type (see util/printLock.ts).
+	{ paths: ["/Job/Status"], pageId: "/Job/Status", fallback: JobStatusFallback, seed: jobStatusSeed, lockWhilePrinting: false },
+	{ paths: ["/Job/Webcam"], pageId: "/Job/Webcam", fallback: JobWebcamFallback, seed: () => [panel("WebcamPanel", 0, 0, 12, 16)], lockWhilePrinting: false },
 	// Jobs is intentionally NOT overridden: it's a multi-volume browser that a simple fallback would
 	// break. It remains native; its browser is available as the JobFileList panel. The Explorer is
 	// native too unless the user opts into the replacement below (EXPLORER_PAGE).

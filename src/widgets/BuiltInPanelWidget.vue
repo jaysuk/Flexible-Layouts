@@ -26,6 +26,11 @@
 			<JobControlPanel v-else-if="component === 'JobControlPanel'" />
 			<JobInfoPanel v-else-if="component === 'JobInfoPanel'" />
 			<JobTimesPanel v-else-if="component === 'JobTimesPanel'" />
+			<JobProgress v-else-if="component === 'JobProgress'" />
+			<!-- Preview / layer chart / G-code stream tabs; a card that must be given real height like the charts. -->
+			<div v-else-if="component === 'JobViewPanel'" class="d-flex flex-column fill-height">
+				<JobViewPanel class="flex-grow-1" />
+			</div>
 			<WebcamPanel v-else-if="component === 'WebcamPanel'" />
 			<MacroList v-else-if="component === 'MacroList'" />
 			<!-- Chart canvas is absolutely positioned inside a flex-grow content area, so the card must

@@ -7,7 +7,7 @@ Add widgets with **Add widget** while editing. Every widget can additionally be 
 
 | Widget | What it is |
 |--------|------------|
-| **Built-in DWC panel** | Any of DWC's own panels (Status, Tools, Movement, Extrude, Fans, Job…) reused on any page. |
+| **Built-in DWC panel** | Any of DWC's own panels (Status, Tools, Movement, Extrude, Fans, Job control/info/times/progress, the **Job preview** with its 3D preview / layer graph / G-code stream tabs…) reused on any page. |
 | **Plugin page / tab** | A page, settings tab or job-view tab registered by another plugin, embedded inline. Records that plugin as a dependency. |
 | **Custom panel (group)** | A titled container with its own mini-grid of widgets — a reusable sub-layout you can back up and share on its own. Switch a group to **free mode** to position its children precisely (drag / resize / rotate, free overlap, z-order) — this is the canvas for nestled and shaped layouts. |
 
@@ -71,6 +71,8 @@ ready-made jog dial, the **CNC / Octopus jog** widget above is usually the bette
 | **Surfacing wizard (CNC)** | Generates and runs a facing/surfacing G-code program from area, tool and pass parameters. | width/height, tool Ø, stepover %, depth per pass, total depth, clearance, feed, direction, spindle RPM, confirm |
 | **Tool alignment** | Camera-crosshair alignment: jog each tool onto a fixed camera position, capture XY(+Z) per tool, then compute and apply `G10` offsets relative to a reference tool. | camera URL/overlay, reference tool, enable Z, jog step/feed, camera/start/finish/save commands, invert offsets |
 | **Tool selector** | A button per tool (`T<n>`); active tool highlighted. | label, colour |
+| **Emergency stop** | DWC's own e-stop button (`M112` then `M999`), placeable anywhere. Never access-locked; hidden for Observers when the access settings hide the e-stop. | — |
+| **Filament monitors** | One row per configured filament monitor (`sensors.filamentMonitors`): status chip, plus DWC's extrusion-percentage bar on hover for laser / rotating-magnet monitors. | title |
 | **Fan slider** | Single-fan slider with live % + RPM (`M106 P<n> S…`). | fan #, colour |
 | **Job control** | Pause / resume / cancel (`M25`/`M24`/`M0`) with progress. | show progress, colour |
 | **File picker** | A button per gcode file in a folder; starts it (`M32`-templated). | folder, columns, start command |

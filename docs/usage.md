@@ -25,11 +25,11 @@ Click **Edit** in the top bar to start; **Done** to finish.
   Dashboard, Layout, Built-in panels, Plugin pages) or **search**, then click a tile to add it
   (see [widgets.md](widgets.md)).
 - **Change a panel's icon** in its ⚙ properties (handy when the same panel appears several times).
-- Built-in DWC pages that aren't overridden (Settings, Job…) can't take widgets — you'll see an amber
+- Built-in DWC pages that aren't overridden (Settings, the Jobs browser) can't take widgets — you'll see an amber
   note on those while editing. The File Explorer is one of them unless you opt into the replacement
   (see [Explorer & G-code editor](#explorer--g-code-editor)).
 
-The **Dashboard** and any page you create are editable grids. On a built-in page's first edit you're
+The **Dashboard**, **Console**, **Temperatures**, **Macros**, **Job > Status** and **Job > Webcam** pages, and any page you create, are editable grids. On a built-in page's first edit you're
 offered *Use current layout* (seed it from the stock content) or *Start blank*.
 
 ## Shaped buttons & nestling

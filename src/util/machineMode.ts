@@ -13,3 +13,18 @@ import { MachineMode } from "@duet3d/objectmodel";
 export function isCncOrLaserMode(mode: string | undefined): boolean {
 	return mode === MachineMode.cnc || mode === MachineMode.laser;
 }
+
+/**
+ * Whether the dashboard/status-bar/job seeders should offer the CNC panel set: DWC's Settings > Dashboard mode
+ * override ("FFF" / "CNC") wins, otherwise the machine's own mode decides. The literals are DWC's `DashboardMode`
+ * enum values, kept as strings so this stays free of DWC imports.
+ */
+export function wantsCncLayout(mode: string | undefined, dashboardMode?: string): boolean {
+	if (dashboardMode === "FFF") {
+		return false;
+	}
+	if (dashboardMode === "CNC") {
+		return true;
+	}
+	return isCncOrLaserMode(mode);
+}

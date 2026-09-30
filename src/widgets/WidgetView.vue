@@ -58,6 +58,8 @@
 	<EditModeToggleWidget v-else-if="widget.type === 'editModeToggle'" :widget="widget" />
 	<UploadButtonWidget v-else-if="widget.type === 'uploadButton'" :widget="widget" />
 	<AccessChipWidget v-else-if="widget.type === 'accessChip'" :widget="widget" :override-color="overrideColor" />
+	<EmergencyStopWidget v-else-if="widget.type === 'emergencyStop'" :widget="widget" />
+	<FilamentMonitorWidget v-else-if="widget.type === 'filamentMonitor'" :widget="widget" />
 	<GroupWidget v-else-if="widget.type === 'group'" :widget="widget" />
 	<PluginPageWidget v-else-if="widget.type === 'pluginPage'" :widget="widget" />
 	<EmbeddableWidget v-else-if="widget.type === 'embeddable'" :widget="widget" />
@@ -115,6 +117,8 @@ import ThemeToggleWidget from "./ThemeToggleWidget.vue";
 import CodeInputWidget from "./CodeInputWidget.vue";
 import EditModeToggleWidget from "./EditModeToggleWidget.vue";
 import UploadButtonWidget from "./UploadButtonWidget.vue";
+import EmergencyStopWidget from "./EmergencyStopWidget.vue";
+import FilamentMonitorWidget from "./FilamentMonitorWidget.vue";
 import AccessChipWidget from "./AccessChipWidget.vue";
 import ThumbnailWidget from "./ThumbnailWidget.vue";
 import ToggleWidget from "./ToggleWidget.vue";

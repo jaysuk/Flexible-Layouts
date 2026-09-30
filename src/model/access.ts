@@ -145,6 +145,11 @@ export function accessLockedFor(widget: { type: string; component?: string }): b
 	if (widget.type === "editModeToggle" || widget.type === "accessChip") {
 		return false;
 	}
+	// An emergency stop must work at every level - locking it would defeat its purpose. Observers who
+	// should not see it at all are handled by the widget hiding itself (`hideEmergencyStop`).
+	if (widget.type === "emergencyStop") {
+		return false;
+	}
 	if (!can("interact")) {
 		return true;
 	}

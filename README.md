@@ -22,7 +22,7 @@ multiple switchable interfaces, and share it all as a file.
 ## What you can do
 
 - **Editable pages** — the Dashboard and any pages you create are drag-and-drop grids. Built-in DWC
-  pages (Console, Settings, File Explorer, Job…) are intentionally left as-is.
+  pages (Settings, the Jobs browser) are intentionally left as-is; the Job status/webcam pages are editable, with the G-code preview available as a panel.
 - **Page management** — create / rename / hide / reorder / delete pages, set per-page grid size and
   background, and show a page only when an object-model condition is true.
 - **Widgets** — built-in DWC panels, pages/tabs from other plugins, custom-panel groups, command

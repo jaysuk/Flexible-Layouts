@@ -40,6 +40,8 @@ export const BUILTIN_PANELS: ReadonlyArray<PanelCatalogEntry> = [
 	{ component: "JobControlPanel",      labelKey: "panels.jobControl",      icon: "mdi-play-pause",          defaultSize: { w: 6, h: 6 },  mode: "any" },
 	{ component: "JobInfoPanel",         labelKey: "panels.jobInfo",         icon: "mdi-information-outline",  defaultSize: { w: 6, h: 7 },  mode: "any" },
 	{ component: "JobTimesPanel",        labelKey: "panels.jobTimes",        icon: "mdi-clock-outline",       defaultSize: { w: 6, h: 5 },  mode: "any" },
+	{ component: "JobProgress",         labelKey: "panels.jobProgress",     icon: "mdi-progress-clock",      defaultSize: { w: 12, h: 3 }, mode: "any" },
+	{ component: "JobViewPanel",        labelKey: "panels.jobView",         icon: "mdi-cube-scan",           defaultSize: { w: 8, h: 12 }, mode: "any" },
 	{ component: "WebcamPanel",          labelKey: "panels.webcam",          icon: "mdi-webcam",              defaultSize: { w: 6, h: 8 },  mode: "any" },
 	{ component: "MacroList",            labelKey: "panels.macros",          icon: "mdi-cog-play",            defaultSize: { w: 4, h: 9 },  mode: "any" },
 	{ component: "TemperatureChart",     labelKey: "panels.temperatureChart", icon: "mdi-chart-line",         defaultSize: { w: 8, h: 7 },  mode: "any" },
@@ -94,6 +96,7 @@ export const FREEFORM_WIDGETS: ReadonlyArray<FreeformCatalogEntry> = [
 	{ type: "xyzProbe",   labelKey: "widgets.xyzProbe",   subKey: "widgets.xyzProbeSub",   icon: "mdi-crosshairs-gps",     defaultSize: { w: 5, h: 11 }, category: "machine" },
 	{ type: "probeRoutines", labelKey: "widgets.probeRoutines", icon: "mdi-target", defaultSize: { w: 6, h: 13 }, category: "machine" },
 	{ type: "surfacing",  labelKey: "widgets.surfacing",  icon: "mdi-grid",               defaultSize: { w: 5, h: 11 }, category: "machine" },
+	{ type: "filamentMonitor", labelKey: "widgets.filamentMonitor", icon: "mdi-printer-3d-nozzle-alert-outline", defaultSize: { w: 4, h: 4 }, category: "machine" },
 	{ type: "machineHealth", labelKey: "widgets.machineHealth", icon: "mdi-heart-pulse", defaultSize: { w: 4, h: 14 }, category: "machine" },
 	{ type: "maintenanceWidget", labelKey: "widgets.maintenanceWidget", icon: "mdi-wrench-cog-outline", defaultSize: { w: 4, h: 6 }, category: "machine" },
 	{ type: "preflight",  labelKey: "widgets.preflight",  icon: "mdi-clipboard-check-outline", defaultSize: { w: 6, h: 12 }, category: "machine" },
@@ -138,6 +141,7 @@ export const FREEFORM_WIDGETS: ReadonlyArray<FreeformCatalogEntry> = [
 	{ type: "codeInput", labelKey: "widgets.codeInput", icon: "mdi-console-line", defaultSize: { w: 5, h: 1 }, category: "layout" },
 	{ type: "editModeToggle", labelKey: "widgets.editModeToggle", icon: "mdi-pencil-ruler", defaultSize: { w: 2, h: 1 }, category: "layout" },
 	{ type: "uploadButton", labelKey: "widgets.uploadButton", icon: "mdi-upload", defaultSize: { w: 2, h: 1 }, category: "layout" },
+	{ type: "emergencyStop", labelKey: "widgets.emergencyStop", icon: "mdi-flash", defaultSize: { w: 3, h: 2 }, category: "controls" },
 	{ type: "accessChip", labelKey: "widgets.accessChip", icon: "mdi-shield-account", defaultSize: { w: 2, h: 1 }, category: "layout" },
 ];
 
@@ -304,6 +308,10 @@ export function describeWidget(widget: Widget): { title: string; icon: string } 
 			return { title: i18n.global.t("plugins.flexibleLayouts.widgets.uploadButton"), icon: "mdi-upload" };
 		case "accessChip":
 			return { title: i18n.global.t("plugins.flexibleLayouts.widgets.accessChip"), icon: "mdi-shield-account" };
+		case "emergencyStop":
+			return { title: i18n.global.t("plugins.flexibleLayouts.widgets.emergencyStop"), icon: "mdi-flash" };
+		case "filamentMonitor":
+			return { title: widget.title || i18n.global.t("plugins.flexibleLayouts.widgets.filamentMonitor"), icon: "mdi-printer-3d-nozzle-alert-outline" };
 		case "surfacing":
 			return { title: widget.label || i18n.global.t("plugins.flexibleLayouts.widgets.surfacing"), icon: "mdi-grid" };
 		case "machineHealth":

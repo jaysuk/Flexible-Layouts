@@ -905,6 +905,15 @@ export type Widget =
 		/** The current Access level (Observer/Operator/Admin) - click to log in or lock. */
 		type: "accessChip";
 		color?: string;
+	}
+	| {
+		/** DWC's own emergency-stop button (M112 then M999), as a placeable/resizable widget. */
+		type: "emergencyStop";
+	}
+	| {
+		/** Live status of every configured filament monitor (`sensors.filamentMonitors`), one row per extruder. */
+		type: "filamentMonitor";
+		title?: string;
 	};
 
 /**
@@ -1231,6 +1240,10 @@ export function createDefaultWidget(type: WidgetType): Widget {
 			return { type: "uploadButton" };
 		case "accessChip":
 			return { type: "accessChip" };
+		case "emergencyStop":
+			return { type: "emergencyStop" };
+		case "filamentMonitor":
+			return { type: "filamentMonitor" };
 		case "group":
 			return { type: "group", title: "Custom panel", items: [], cols: 12, rowHeight: 30 };
 		case "builtinPanel":

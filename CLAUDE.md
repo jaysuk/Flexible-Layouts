@@ -75,9 +75,20 @@ Vue 3 + Vuetify plugin for DuetWebControl (drag-and-drop layout customisation fo
   `useNavGroups()` category with a clickable icon+caption activator. The state is the *collapsed* set, not the open one
   (`openedCategories` is a computed over it), so every category - including one a plugin registers later - starts open, and
   it is persisted in `localStorage` (`flexibleLayouts.collapsedNavCategories`, try/catch like the drawer width). The setter
-  keeps a fold on a category that is temporarily not listed. Not ported from stock: single-child category flattening, and the
-  `main-menu-category`/`main-menu-route` theme colours (the theme editor offers them, the drawer doesn't apply them yet).
-  The phone hub is unaffected (it lists tiles, not groups).
+  keeps a fold on a category that is temporarily not listed. Also ported from stock: single-child category flattening (only when
+  the category label equals the page's, like Settings > Settings), the `main-menu-category`/`main-menu-route` theme colours
+  (`menu-category-item`/`menu-route-item` classes), per-page badges, DWC's **icon menu** setting (`railMode`: desktop only and
+  never while editing; a rail hides nested groups, so it lists leaf pages flat, as stock does) and **large buttons**
+  (`isLargeButtons`: the sm breakpoint only, so it never touches the md+ header widgets). The phone hub is unaffected (it lists
+  tiles, not groups).
+- **DWC settings FL reads**: `showStatusPanel`, `showEmergencyStop`, `iconMenu`, `largeButtons`, `dashboardMode` (via
+  `util/machineMode.ts`'s `wantsCncLayout`, used by the page seeders in `builtinPages.ts` - the Vector Import gate stays on the
+  machine's real mode on purpose). `behaviour.switchToJobOnPrintStart` is handled by DWC's own `App.vue`; FL's `jobStartPath`
+  jump is a second `router.push` in the same tick, which vue-router resolves as last-wins, so FL's explicit choice wins
+  without a second history entry.
+- **Job pages are editable**: `/Job/Status` (`JobStatusFallback`, seed `jobStatusSeed`) and `/Job/Webcam`, both
+  `lockWhilePrinting: false` (pause/babystep/factors must work mid-print; individual widgets still lock by type). Stock's
+  `JobViewPanel` (3D preview / layer chart / G-code stream + plugin job-view tabs) and `JobProgress` are catalogue panels.
 - **Explorer split view (two files side by side)** (`model/explorerPanes.ts`, `ExplorerPanel.vue`). The state machine is
   `dwc-gcode-editor`'s `workspace.ts` (`splitRight`/`moveTab`/`collapseEmptyGroup`, needs editor > 0.12.0); `explorerPanes.ts` builds a
   `WorkspaceState` around the session's OWN tab objects (so `dirty`/`draft` stay live), applies one op and writes `groupId`,

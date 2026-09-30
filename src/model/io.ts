@@ -92,7 +92,7 @@ export function exportLayout(opts: ExportOptions = {}): void {
 export interface PageEntry { path: string; label: string; isCustom: boolean }
 const BUILTIN_PAGE_LABELS: Record<string, string> = {
 	"/": "Dashboard", "/Dashboard": "Dashboard", "/Console": "Console", "/Temperatures": "Temperatures",
-	"/Macros": "Macros", "/Jobs": "Jobs", "/Explorer": "Explorer", "__status__": "Status bar",
+	"/Macros": "Macros", "/Job/Status": "Job status", "/Job/Webcam": "Job webcam", "/Jobs": "Jobs", "/Explorer": "Explorer", "__status__": "Status bar",
 };
 export function listDocumentPages(doc: LayoutDocument): Array<PageEntry> {
 	return Object.entries(doc.pages ?? {}).map(([path, page]) => ({

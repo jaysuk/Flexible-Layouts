@@ -1,6 +1,6 @@
 <template>
 	<v-app>
-		<v-app-bar :elevation="2" :color="appBarColor">
+		<v-app-bar :elevation="2" :color="appBarColor" :height="appBarHeight">
 			<!-- Grouped so the floating "+" below can anchor to this block's own right edge, wherever
 				 that ends up (it shifts with the logo/machine-name width and whether the connect button
 				 and profile switcher are showing) - without becoming a flex sibling itself, so it never
@@ -8,9 +8,9 @@
 			<div class="fl-app-bar-left">
 				<!-- Stock phone navigation (opt-in): no drawer toggle below md - a back arrow returns to the hub
 					 instead. Edit mode keeps the drawer, which is where the editing tools live. -->
-				<v-btn v-if="showBackButton" icon="mdi-arrow-left" variant="text"
+				<v-btn v-if="showBackButton" icon="mdi-arrow-left" variant="text" :size="isLargeButtons ? 'large' : undefined"
 					   :aria-label="$t('layout.backToHub')" @click="router.push('/')" />
-				<v-app-bar-nav-icon v-else-if="showDrawerToggle" @click="drawer = !drawer" />
+				<v-app-bar-nav-icon v-else-if="showDrawerToggle" :size="isLargeButtons ? 'large' : undefined" @click="drawer = !drawer" />
 
 				<img v-if="headerLogo" :src="headerLogo" class="header-logo ms-2 me-2" alt="" />
 				<div v-else class="text-truncate machine-name ms-2 me-2" :title="headerTitle || machineName">
@@ -97,23 +97,48 @@
 				</v-card>
 			</v-menu>
 
-			<EmergencyButton v-if="showEmergencyStopNow" class="me-2" />
+			<EmergencyButton v-if="showEmergencyStopNow" class="me-2" :large="isLargeButtons" />
 		</v-app-bar>
 
-		<v-navigation-drawer v-model="drawer" :temporary="!mdAndUp" :width="drawerWidth">
+		<v-navigation-drawer v-model="drawer" :temporary="!mdAndUp" :width="drawerWidth"
+							 :rail="railMode" :expand-on-hover="railMode">
 			<!-- Drag to resize - only while editing, matching HeaderWidgets.vue's own item-resize handles
 				 (same pointer-capture idiom, see onDrawerResizePointerDown above). -->
-			<div v-if="editMode" class="fl-drawer-resizer" @pointerdown="onDrawerResizePointerDown" />
-			<!-- One collapsible group per category, like stock DWC's drawer. -->
-			<v-list v-model:opened="openedCategories" nav density="compact" open-strategy="multiple">
-				<v-list-group v-for="group in navGroups" :key="group.category.key" :value="group.category.key">
-					<template #activator="{ props: activatorProps }">
-						<v-list-item v-bind="activatorProps"
-								 :prepend-icon="group.category.icon" :title="$t(group.category.captionKey)" />
+			<div v-if="editMode && !railMode" class="fl-drawer-resizer" @pointerdown="onDrawerResizePointerDown" />
+			<!-- Rail ("icon menu", DWC's Settings > General): a v-list in rail mode only shows its first level, so
+				 nested groups would vanish and leave category headers that navigate nowhere. Like stock, list the
+				 leaf pages flat instead; the grouped list below is the regular drawer. -->
+			<v-list v-if="railMode" nav density="compact">
+				<v-list-item v-for="item in railItems" :key="item.path" class="menu-route-item"
+							 :to="item.path" :prepend-icon="item.icon" :title="resolveItemTitle(item)">
+					<template v-if="resolveBadge(item)" #append>
+						<NavMenuBadge :badge="resolveBadge(item)!" />
 					</template>
-					<v-list-item v-for="item in group.items" :key="item.path"
-								 :to="item.path" :prepend-icon="item.icon" :title="resolveItemTitle(item)" />
-				</v-list-group>
+				</v-list-item>
+			</v-list>
+			<!-- One collapsible group per category, like stock DWC's drawer. -->
+			<v-list v-else v-model:opened="openedCategories" nav density="compact" open-strategy="multiple">
+				<template v-for="group in navGroups" :key="group.category.key">
+					<!-- A category whose only page reads the same as the category (Settings > Settings) is just that page. -->
+					<v-list-item v-if="isFlattened(group)" class="menu-route-item"
+								 :to="group.items[0].path" :prepend-icon="group.items[0].icon" :title="resolveItemTitle(group.items[0])">
+						<template v-if="resolveBadge(group.items[0])" #append>
+							<NavMenuBadge :badge="resolveBadge(group.items[0])!" />
+						</template>
+					</v-list-item>
+					<v-list-group v-else :value="group.category.key">
+						<template #activator="{ props: activatorProps }">
+							<v-list-item v-bind="activatorProps" class="menu-category-item"
+										 :prepend-icon="group.category.icon" :title="$t(group.category.captionKey)" />
+						</template>
+						<v-list-item v-for="item in group.items" :key="item.path" class="menu-route-item"
+									 :to="item.path" :prepend-icon="item.icon" :title="resolveItemTitle(item)">
+							<template v-if="resolveBadge(item)" #append>
+								<NavMenuBadge :badge="resolveBadge(item)!" />
+							</template>
+						</v-list-item>
+					</v-list-group>
+				</template>
 			</v-list>
 
 			<template v-if="editMode" #append>
@@ -263,7 +288,7 @@ import { useRouter } from "vue-router";
 
 import Events from "@/utils/events";
 import i18n from "@/i18n";
-import { type MenuItem } from "@/stores/menu";
+import { type MenuBadge, type MenuItem } from "@/stores/menu";
 import { useCacheStore } from "@/stores/cache";
 import { useMachineStore } from "@/stores/machine";
 import { useSettingsStore } from "@/stores/settings";
@@ -329,7 +354,7 @@ const canEditLayoutNow = computed(() => can("editLayout"));
 const showEmergencyStopNow = computed(() =>
 	settingsStore.showEmergencyStop && !(currentLevel() === "observer" && getAccess().hideEmergencyStop));
 
-const { mdAndUp } = useFlexDisplay();
+const { smAndUp, mdAndUp } = useFlexDisplay();
 
 // Mirror the built-in shell: the manual connect button only matters in the dev server (production
 // auto-connects), so gate it on DEV like static.vue does.
@@ -717,6 +742,27 @@ function resolveItemTitle(item: MenuItem): string {
 	return item.translated ? item.caption : i18n.global.t(item.caption);
 }
 
+function resolveBadge(item: MenuItem): MenuBadge | null {
+	return item.badge?.() ?? null;
+}
+
+// Flatten a single-page category only when the category label mirrors the page's (Settings > Settings reads as
+// a duplicate; Job > Status carries a distinct meaning even alone) - the same rule as stock's drawer.
+function isFlattened(group: { category: { captionKey: string }; items: Array<MenuItem> }): boolean {
+	return group.items.length === 1 && i18n.global.t(group.category.captionKey) === resolveItemTitle(group.items[0]);
+}
+
+// DWC's "icon menu" setting: a slim icon-only drawer that expands on hover. Desktop only (below md the drawer is a
+// temporary overlay), and not while editing - the edit tools live in the drawer's footer and the resize handle needs
+// its width.
+const railMode = computed(() => settingsStore.iconMenu === true && mdAndUp.value && !editMode.value);
+const railItems = computed(() => navGroups.value.flatMap((g) => g.items));
+
+// DWC's "large buttons" setting: on small touchscreens (the sm breakpoint, e.g. 4.3" panels) the app bar and its
+// buttons grow for easier reach. The pinned header widgets only exist from md up, so this never touches them.
+const isLargeButtons = computed(() => settingsStore.largeButtons === true && smAndUp.value && !mdAndUp.value);
+const appBarHeight = computed(() => isLargeButtons.value ? 80 : 64);
+
 // Leaving the custom shell (user switched back to the built-in layout) must drop edit mode so
 // the next activation starts clean
 onUnmounted(() => {
@@ -731,6 +777,15 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* The menu-category / menu-link theme colours (Theme & colours > Menu categories / Menu links), as in stock. */
+.menu-category-item:not(.v-list-item--active) :deep(.v-list-item-title),
+.menu-category-item:not(.v-list-item--active) :deep(.v-list-item__prepend .v-icon) {
+	color: rgb(var(--v-theme-main-menu-category));
+}
+.menu-route-item:not(.v-list-item--active) :deep(.v-list-item-title),
+.menu-route-item:not(.v-list-item--active) :deep(.v-list-item__prepend .v-icon) {
+	color: rgb(var(--v-theme-main-menu-route));
+}
 .fl-app-bar-left {
 	position: relative;
 	display: flex;
