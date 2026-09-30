@@ -62,8 +62,16 @@
 			</div>
 		</v-alert>
 
-		<v-alert v-else-if="status === 'error' && errorMessage !== null" type="error" variant="tonal" density="compact" class="mt-2">
-			{{ errorMessage }}
+		<v-alert v-else-if="status === 'error' && errorMessage !== null" type="error" variant="tonal" density="compact" class="mt-2"
+				 :data-stepper-failure="errorSimulated ? 'simulated' : undefined">
+			<template v-if="errorSimulated">
+				<strong>Stopped here:</strong> {{ errorMessage }}
+				<div class="text-caption">
+					The scenario made this fail (an endstop or probe set never to trigger), so the macro would stop on
+					this line. Clear it under Scenario to carry on.
+				</div>
+			</template>
+			<template v-else>{{ errorMessage }}</template>
 		</v-alert>
 
 		<StepperReadout :view="view" class="mt-1" />
@@ -75,7 +83,7 @@
 				<v-expansion-panel-text>
 					<StepperScenarioPanel :inputs="inputs" :referenced="referenced" :pending-path="status === 'paused' ? pendingPath : null"
 										  :scenario-names="scenarioNames" :active-scenario="activeScenario" :cursor-line="cursorLine"
-										  :machine-endstops="machineEndstops"
+										  :machine-endstops="machineEndstops" :machine-probe="machineProbe"
 										  @update:inputs="(next: SimulationInputs) => emit('update:inputs', next)"
 										  @select-scenario="(name: string) => emit('select-scenario', name)"
 										  @add-scenario="(name: string) => emit('add-scenario', name)"
@@ -129,7 +137,8 @@
  * The offline stepper for system files and macros: scrub bar + step buttons, what the current step DID
  * (`StepperReadout` - the line as evaluated, every axis's position and how far it moved, the variables),
  * the scenario editor (`StepperScenarioPanel` - the file's named scenarios, starting position and start
- * line, the endstops a `G1 H1` homing move meets, and the object-model / `param.*` / global values to
+ * line, the endstops a `G1 H1`/`G28` homing move meets, the Z probe a `G30`/`G29`/`G38` uses (either can be
+ * set to fail, which stops the walk on that line), and the object-model / `param.*` / global values to
  * test with; it opens itself when the walk pauses on a value it has a field for), and two kinds of
  * "paused, need input" prompt: an unresolved path, or an
  * unanswered blocking `M291` message box, rendered with the buttons/input the real box would show
@@ -140,7 +149,7 @@
  */
 import { computed, ref, watch } from "vue";
 import type { MessageBoxAnswer, MessageBoxPrompt } from "dwc-gcode-core";
-import type { EndstopModel } from "dwc-gcode-core/stepper/machineState";
+import type { EndstopModel, ProbeModel } from "dwc-gcode-core/stepper/machineState";
 import type { ReferencedInput, SimulationInputs, StepView } from "dwc-gcode-core/stepper/simulation";
 
 import StepperReadout from "./StepperReadout.vue";
@@ -158,6 +167,9 @@ const props = defineProps<{
 	pendingPath: string | null;
 	messageBoxPrompt: MessageBoxPrompt | null;
 	errorMessage: string | null;
+	/** True when `errorMessage` is a failure the scenario caused (an endstop or probe set never to
+	 *  trigger) rather than a problem in the file. */
+	errorSimulated?: boolean;
 	/** The scenario being run, and what the file reads (`findReferencedInputs`) to offer values for. */
 	inputs: SimulationInputs;
 	referenced: ReadonlyArray<ReferencedInput>;
@@ -171,6 +183,8 @@ const props = defineProps<{
 	cursorLine: number | null;
 	/** The connected machine's endstops (`endstopsFromObjectModel`), for the scenario editor to show. */
 	machineEndstops?: Readonly<Record<string, EndstopModel>>;
+	/** The connected machine's Z probe (`probeFromObjectModel`), likewise. */
+	machineProbe?: ProbeModel;
 }>();
 const emit = defineEmits<{
 	"update:currentStep": [number];

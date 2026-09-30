@@ -999,6 +999,72 @@ describe("GcodeCmEditor", () => {
 				await vi.waitFor(() => expect(axisText(wrapper, "X")).toContain("-10.000"), { timeout: 3000 });
 				wrapper.unmount();
 			});
+
+			it("a G28 whose endstop is set never to trigger stops the walk there, and says the scenario caused it", async () => {
+				const wrapper = await open("G28 X\nG1 Y5\n", "g28-fail");
+				await vi.waitFor(() => expect(wrapper.text()).toContain("Step 1 / 2"));
+				expect(wrapper.find("[data-stepper-failure]").exists()).toBe(false);
+
+				await toggleScenarioPanel(wrapper);
+				await wrapper.find("[data-scenario-endstops-toggle]").trigger("click");
+				await buttonLabelled(wrapper, "X endstop never triggers").trigger("click");
+				await vi.waitFor(() => expect(wrapper.find('[data-stepper-failure="simulated"]').exists()).toBe(true));
+				expect(wrapper.find("[data-stepper-failure]").text()).toContain("Failed to home axes X");
+				expect(wrapper.text()).toContain("Step 1 / 1"); // the line after it never runs
+				expect(wrapper.find('[data-axis="X"] [aria-label="Homed"]').exists()).toBe(false);
+
+				await buttonLabelled(wrapper, "X endstop never triggers").trigger("click"); // toggled back
+				await vi.waitFor(() => expect(wrapper.find("[data-stepper-failure]").exists()).toBe(false));
+				await vi.waitFor(() => expect(wrapper.text()).toContain("Step 1 / 2"));
+				wrapper.unmount();
+			});
+
+			it("models a G30 probe: Z is set to the trigger height plus the dive height, and homed", async () => {
+				const wrapper = await open("G30\n", "g30");
+				await vi.waitFor(() => expect(wrapper.text()).toContain("Step 1 / 1"));
+				await vi.waitFor(() => expect(axisText(wrapper, "Z")).toContain("5.700")); // RRF's 0.7 trigger + 5 dive
+				expect(wrapper.find('[data-axis="Z"] [aria-label="Homed"]').exists()).toBe(true);
+				wrapper.unmount();
+			});
+
+			it("a probe set never to trigger fails a G30, stopping the walk with RRF's message", async () => {
+				const wrapper = await open("G30\nG1 X5\n", "g30-fail");
+				await vi.waitFor(() => expect(wrapper.text()).toContain("Step 1 / 2"));
+				await toggleScenarioPanel(wrapper);
+				await wrapper.find("[data-scenario-probe-toggle]").trigger("click");
+				await buttonLabelled(wrapper, "Z probe never triggers").trigger("click");
+				await vi.waitFor(() => expect(wrapper.find('[data-stepper-failure="simulated"]').exists()).toBe(true));
+				expect(wrapper.find("[data-stepper-failure]").text()).toContain("Probe was not triggered during probing move");
+				expect(wrapper.text()).toContain("Step 1 / 1");
+				wrapper.unmount();
+			});
+
+			it("takes the probe's trigger and dive heights from the machine's object model, and the scenario overrides them", async () => {
+				patchModel({ sensors: { probes: [{ triggerHeight: 1.5, diveHeights: [4, 4] }] } });
+				const wrapper = await open("G30\n", "g30-machine");
+				await vi.waitFor(() => expect(axisText(wrapper, "Z")).toContain("5.500"));
+
+				await toggleScenarioPanel(wrapper);
+				await wrapper.find("[data-scenario-probe-toggle]").trigger("click");
+				expect(wrapper.find("[data-scenario-probe-machine]").exists()).toBe(true);
+				expect(placeholderOf(wrapper, "Probe trigger height")).toBe("1.5");
+				expect(placeholderOf(wrapper, "Probe dive height")).toBe("4");
+
+				await typeInto(wrapper, "Probe dive height", "10");
+				await vi.waitFor(() => expect(axisText(wrapper, "Z")).toContain("11.500"));
+				wrapper.unmount();
+			});
+
+			it("with no machine to ask, a blank probe field shows RRF's own defaults", async () => {
+				const wrapper = await open("G30\n", "g30-no-machine");
+				await vi.waitFor(() => expect(wrapper.text()).toContain("Step 1 / 1"));
+				await toggleScenarioPanel(wrapper);
+				await wrapper.find("[data-scenario-probe-toggle]").trigger("click");
+				expect(wrapper.find("[data-scenario-probe-machine]").exists()).toBe(false);
+				expect(placeholderOf(wrapper, "Probe trigger height")).toBe("0.7");
+				expect(placeholderOf(wrapper, "Probe dive height")).toBe("5");
+				wrapper.unmount();
+			});
 		});
 
 		it("re-runs the walk when the buffer is edited while stepping", async () => {

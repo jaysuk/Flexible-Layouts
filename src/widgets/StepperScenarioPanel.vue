@@ -224,7 +224,7 @@
 		<div class="d-flex align-center ga-1 mb-2">
 			<v-btn size="small" variant="text" density="compact" :prepend-icon="endstopsOpen ? 'mdi-chevron-down' : 'mdi-chevron-right'"
 				   :aria-expanded="endstopsOpen" data-scenario-endstops-toggle @click="endstopsOpen = !endstopsOpen">
-				Endstops for G1 H1 homing moves
+				Endstops for G1 H1 and G28 homing
 			</v-btn>
 			<span v-if="endstopCount > 0" class="text-caption text-medium-emphasis">{{ endstopCount }} set</span>
 			<span v-if="machineEndstopCount > 0" class="text-caption text-medium-emphasis" data-scenario-endstops-machine>from the machine</span>
@@ -237,7 +237,9 @@
 				is read from the machine's object model (<code>move.axes[].min/max</code>, <code>sensors.endstops[].highEnd</code>)
 				when there is one. Anything you set here overrides it for this scenario. Left blank with no machine
 				value, an endstop triggers at the end the move heads toward, with RRF's own defaults (minimum 0, maximum
-				200). "Never triggers" lets the move finish at its target with the axis still unhomed.
+				200). "Never triggers" lets a <code>G1 H1</code> move finish at its target with the axis still unhomed,
+				and makes a <code>G28</code> that covers the axis fail ("Failed to home axes X"), which stops the walk on
+				that line as it would stop the macro.
 			</v-tooltip>
 		</div>
 		<div v-if="endstopsOpen" class="d-flex flex-wrap ga-2 mb-3" data-scenario-endstops>
@@ -258,8 +260,49 @@
 				</div>
 				<v-btn :icon="triggers(letter) ? 'mdi-check-circle-outline' : 'mdi-close-circle-outline'" size="x-small" variant="text"
 					   density="compact" :color="triggers(letter) ? undefined : 'warning'" :aria-pressed="!triggers(letter)"
-					   :title="`${letter}'s endstop ${triggers(letter) ? 'triggers' : 'never triggers'} during a G1 H1 move - click to toggle`"
+					   :title="`${letter}'s endstop ${triggers(letter) ? 'triggers' : 'never triggers (a G1 H1 misses it, a G28 fails)'} - click to toggle`"
 					   :aria-label="`${letter} endstop never triggers`" @click="emit('update:inputs', withEndstop(inputs, letter, { triggers: triggers(letter) ? false : undefined }))" />
+			</div>
+		</div>
+
+		<div class="d-flex align-center ga-1 mb-2">
+			<v-btn size="small" variant="text" density="compact" :prepend-icon="probeOpen ? 'mdi-chevron-down' : 'mdi-chevron-right'"
+				   :aria-expanded="probeOpen" data-scenario-probe-toggle @click="probeOpen = !probeOpen">
+				Z probe for G30, G29 and G38
+			</v-btn>
+			<span v-if="probeSetCount > 0" class="text-caption text-medium-emphasis">{{ probeSetCount }} set</span>
+			<span v-if="machineProbeSet" class="text-caption text-medium-emphasis" data-scenario-probe-machine>from the machine</span>
+			<v-tooltip location="bottom" max-width="26rem">
+				<template #activator="{ props: tip }">
+					<v-icon v-bind="tip" icon="mdi-information-outline" size="14" class="scenario-info" />
+				</template>
+				A <code>G30</code> probes down at the current X/Y: a plain one sets Z to the trigger height and marks Z homed,
+				and every <code>G30</code> then retracts to the dive height above that. <code>G38.2</code>-<code>G38.5</code>
+				probe towards or away from a target and stop somewhere the file can't say, so those positions become unknown.
+				The heights are read from the machine's object model (<code>sensors.probes[0]</code>: <code>G31 Z</code>,
+				<code>M558 H</code>) when there is one, else RRF's defaults (0.7 and 5). "Never triggers" makes
+				<code>G30</code>, <code>G29</code> and <code>G38.2</code>/<code>G38.4</code> fail ("Probe was not triggered during
+				probing move"), which stops the walk on that line as it would stop the macro; <code>G38.3</code>/<code>G38.5</code>
+				just finish their move.
+			</v-tooltip>
+		</div>
+		<div v-if="probeOpen" class="d-flex flex-wrap ga-2 mb-3" data-scenario-probe>
+			<div class="endstop-capsule">
+				<v-icon icon="mdi-target" size="16" class="ml-2" />
+				<div class="mini-field" style="width: 6.25rem">
+					<span class="mini-field__label">Trigger height</span>
+					<ScenarioValueField :model-value="probeNumberText('triggerHeight')" variant="plain" hide-details :placeholder="probePlaceholder('triggerHeight')"
+										aria-label="Probe trigger height" @commit="(text: string) => commitProbeNumber('triggerHeight', text)" />
+				</div>
+				<div class="mini-field" style="width: 6.25rem">
+					<span class="mini-field__label">Dive height</span>
+					<ScenarioValueField :model-value="probeNumberText('diveHeight')" variant="plain" hide-details :placeholder="probePlaceholder('diveHeight')"
+										aria-label="Probe dive height" @commit="(text: string) => commitProbeNumber('diveHeight', text)" />
+				</div>
+				<v-btn :icon="probeTriggers ? 'mdi-check-circle-outline' : 'mdi-close-circle-outline'" size="x-small" variant="text"
+					   density="compact" :color="probeTriggers ? undefined : 'warning'" :aria-pressed="!probeTriggers"
+					   :title="`The probe ${probeTriggers ? 'triggers' : 'never triggers (G30, G29 and G38.2/G38.4 fail)'} - click to toggle`"
+					   aria-label="Z probe never triggers" @click="emit('update:inputs', withProbe(inputs, { triggers: probeTriggers ? false : undefined }))" />
 			</div>
 		</div>
 
@@ -359,10 +402,13 @@ import { computed, nextTick, onMounted, ref, watch } from "vue";
 import type { EvalValue } from "dwc-gcode-core";
 import {
 	emptySimulationInputs, formatEvalValue, getInputValue, isEmptySimulationInputs, withDeclaredAxis, withInputValue,
-	withEndstop, withStartAxis, withStartHomed, withStartLine, withStartMode, withStartValue,
+	withEndstop, withProbe, withStartAxis, withStartHomed, withStartLine, withStartMode, withStartValue,
 	type ReferencedInput, type ReferencedInputKind, type SimulationInputs,
 } from "dwc-gcode-core/stepper/simulation";
-import { DEFAULT_AXIS_MAXIMUM, DEFAULT_AXIS_MINIMUM, type EndstopModel } from "dwc-gcode-core/stepper/machineState";
+import {
+	DEFAULT_AXIS_MAXIMUM, DEFAULT_AXIS_MINIMUM, DEFAULT_PROBE_DIVE_HEIGHT, DEFAULT_PROBE_TRIGGER_HEIGHT,
+	type EndstopModel, type ProbeModel,
+} from "dwc-gcode-core/stepper/machineState";
 import { parseSimulatedValueInput } from "dwc-gcode-core/stepper/simulatedValues";
 
 import ScenarioValueField from "./ScenarioValueField.vue";
@@ -381,6 +427,9 @@ const props = defineProps<{
 	/** What the connected machine says about its endstops (`endstopsFromObjectModel`): the defaults a
 	 *  `G1 H1` move uses, shown here so it is clear what a blank field means. Overridden by `inputs`. */
 	machineEndstops?: Readonly<Record<string, EndstopModel>>;
+	/** What the connected machine says about its Z probe (`probeFromObjectModel`): the trigger and dive
+	 *  heights a `G30`/`G29`/`G38` uses. Overridden by `inputs`. */
+	machineProbe?: ProbeModel;
 }>();
 const emit = defineEmits<{
 	"update:inputs": [SimulationInputs];
@@ -460,6 +509,26 @@ function commitEndstopNumber(letter: string, key: "min" | "max", text: string): 
 	const n = Number(t);
 	if (t === "") emit("update:inputs", withEndstop(props.inputs, letter, { [key]: undefined }));
 	else if (Number.isFinite(n)) emit("update:inputs", withEndstop(props.inputs, letter, { [key]: n }));
+}
+
+// ── the Z probe for G30 / G29 / G38 ──
+const probeOpen = ref(false);
+const probeSetCount = computed(() => Object.keys(props.inputs.start.probe ?? {}).length);
+const machineProbeSet = computed(() => Object.keys(props.machineProbe ?? {}).length > 0);
+const probeTriggers = computed(() => props.inputs.start.probe?.triggers !== false);
+function probeNumberText(key: "triggerHeight" | "diveHeight"): string {
+	const v = props.inputs.start.probe?.[key];
+	return v === undefined ? "" : String(v);
+}
+/** What a blank field means: the machine's value, else RRF's own default. */
+function probePlaceholder(key: "triggerHeight" | "diveHeight"): string {
+	return String(props.machineProbe?.[key] ?? (key === "triggerHeight" ? DEFAULT_PROBE_TRIGGER_HEIGHT : DEFAULT_PROBE_DIVE_HEIGHT));
+}
+function commitProbeNumber(key: "triggerHeight" | "diveHeight", text: string): void {
+	const t = text.trim();
+	const n = Number(t);
+	if (t === "") emit("update:inputs", withProbe(props.inputs, { [key]: undefined }));
+	else if (Number.isFinite(n)) emit("update:inputs", withProbe(props.inputs, { [key]: n }));
 }
 
 // ── the value the walk is waiting for ──
