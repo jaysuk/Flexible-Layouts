@@ -86,7 +86,7 @@ describe("the text banner on a G-code file", () => {
 		await vi.waitFor(() => expect(w.text()).toContain("G1 X10"));
 		const view = (w.vm as unknown as ExposedVm).editorInstance.view;
 		view.dispatch({ selection: { anchor: 0 } });
-		w.findComponent(AsciiArtDialog).vm.$emit("insert", "Hi");
+		w.findComponent(AsciiArtDialog).vm.$emit("insert", "Hi", "Standard");
 		const doc = view.state.doc.toString();
 		const lines = doc.split("\n");
 		expect(lines[0]).toMatch(/^;/);
@@ -124,7 +124,7 @@ describe("AsciiArtDialog", () => {
 		await type(w, "Hi");
 		await vi.waitFor(() => expect(w.find("[data-ascii-art-preview]").text()).toMatch(/^; /));
 		await insertButton(w).trigger("click");
-		expect(w.emitted("insert")).toEqual([["Hi"]]);
+		expect(w.emitted("insert")).toEqual([["Hi", "Standard"]]);
 		expect(w.emitted("update:modelValue")?.at(-1)).toEqual([false]);
 		w.unmount();
 	});

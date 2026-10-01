@@ -7,7 +7,7 @@ import { useSettingsStore } from "@/stores/settings";
 
 import FirmwareChangesCard from "../../src/firmwareChanges/FirmwareChangesCard.vue";
 import FirmwareChangesDialog from "../../src/firmwareChanges/FirmwareChangesDialog.vue";
-import { firmwareChangeReport } from "../../src/model/firmware/changeCheck";
+import { firmwareChangeReport, rememberReportFiles } from "../../src/model/firmware/changeCheck";
 import { writeFirmwareChangeState } from "../../src/model/firmware/changeState";
 import { axeViolations } from "./axe";
 
@@ -32,8 +32,9 @@ async function audit(html: string, mustContain: string): Promise<string[]> {
 }
 
 describe("axe: firmware changes", () => {
-	it("the report dialog, with findings", async () => {
-		const report = scanImpact([{ path: "0:/sys/config.g", text: "M408 S0\nG1 X1\n" }], "3.6.3", "3.7.0-rc.2", { acknowledged: ["m955-p-uncapped"] });
+	it("the report dialog, with a problem that has no edit and one that is ignored", async () => {
+		const files = [{ path: "0:/sys/config.g", text: "M408 S0\nG1 X1\n" }];
+		const report = rememberReportFiles(scanImpact(files, "3.6.3", "3.7.0-rc.2", { acknowledged: ["m955-p-uncapped"] }), files);
 		const w = mountInDwc(FirmwareChangesDialog, { props: { modelValue: false, attach: true, report } });
 		await w.setProps({ modelValue: true });
 		await flushPromises();
@@ -46,7 +47,17 @@ describe("axe: firmware changes", () => {
 		const w = mountInDwc(FirmwareChangesDialog, { props: { modelValue: false, attach: true, report } });
 		await w.setProps({ modelValue: true });
 		await flushPromises();
-		expect(await audit(w.html(), "firmwareChanges.noFindings")).toEqual([]);
+		expect(await audit(w.html(), "firmwareChanges.verdictClear")).toEqual([]);
+		w.unmount();
+	});
+
+	it("the report dialog, with suggested edits, a choice and a worth-a-look list", async () => {
+		const files = [{ path: "0:/sys/config.g", text: "M955 C0\nM140 P0 H0\nM563 P0 D0 H0\nM575 P1 B57600 S1\n" }];
+		const report = rememberReportFiles(scanImpact(files, "3.6.3", "3.7.0-rc.2"), files);
+		const w = mountInDwc(FirmwareChangesDialog, { props: { modelValue: false, attach: true, report } });
+		await w.setProps({ modelValue: true });
+		await flushPromises();
+		expect(await audit(w.html(), "fw-diff")).toEqual([]);
 		w.unmount();
 	});
 

@@ -893,9 +893,9 @@
 		"hint": "When the firmware version changes, Flexible Layouts checks your own files in sys and macros against the changes it knows about between the two versions, and shows which lines are affected. Only known changes are checked: an empty report is not a guarantee.",
 		"reportTitle": "Firmware changes, {from} to {to}",
 		"toastTitle": "Firmware version changed",
-		"toastBody": "{from} to {to}: {lines} line(s) in {files} file(s) use something that changed. Open Settings to review.",
+		"toastBody": "{from} to {to}: {lines} line(s) in {files} file(s) need changing. Open Settings to review.",
 		"pending": "The firmware changed from {from} to {to} and the report has not been reviewed yet.",
-		"lastScan": "Last check found {lines} line(s) in {files} file(s).",
+		"lastScan": "Last check: {lines} line(s) in {files} file(s) need changing.",
 		"reviewedAgainst": "Your files were last reviewed against firmware {version}.",
 		"noBaseline": "Nothing to compare with yet: the version this machine runs is recorded the first time it connects. To check against an older version, enter it below.",
 		"enabled": "Check my files when the firmware version changes",
@@ -920,6 +920,32 @@
 		"ignoreChange": "Ignore this change",
 		"restore": "Restore",
 		"markReviewed": "Mark all as reviewed",
+		"verdictClear": "Nothing in your files needs changing for {to}.",
+		"verdictProblems": "{lines} line(s) in {files} file(s) need changing",
+		"fixAll": "Apply all safe fixes ({count})",
+		"apply": "Apply",
+		"applying": "Writing to the machine...",
+		"noEdit": "No automatic edit: what to use instead depends on what you want the machine to do.",
+		"worthALookTitle": "Worth a look ({count}): still works, but behaves differently",
+		"limits": "Only known changes are checked, and {more} more cannot be checked from your files.",
+		"detailsTitle": "Details",
+		"undo": "Undo",
+		"undone": "Restored the file as it was.",
+		"applied": {
+			"done": "Changed {files}.",
+			"backup": "The original is saved as {backups}.",
+			"restart": "A change to config.g takes effect after the next restart (M999)."
+		},
+		"applyFailed": {
+			"offline": "Not connected to the machine. Nothing was changed.",
+			"busy": "The machine is not idle. Nothing was changed.",
+			"changed": "{path} has changed since it was checked. Nothing was changed; check again.",
+			"failed": "Could not write to the machine. Nothing was changed."
+		},
+		"undoFailed": {
+			"changed": "{path} has been edited since, so it was not restored.",
+			"failed": "Could not write to the machine."
+		},
 		"copyReport": "Copy report",
 		"copied": "Copied",
 		"kind": {
@@ -939,8 +965,8 @@
 		"preflight": {
 			"title": "Your files and {tag}",
 			"checking": "Checking your files against {tag}...",
-			"found": "{lines} line(s) in {files} file(s) use something that changes between {from} and {tag}.",
-			"none": "No known change between {from} and {tag} appears in your files (only known changes are checked).",
+			"found": "{lines} line(s) in {files} file(s) will need changing for {tag}.",
+			"none": "Nothing in your files needs changing for {tag} (only known changes are checked; {from} is what is running).",
 			"coverage": "{checked} known changes checked, {more} cannot be checked automatically.",
 			"cannotCheck": "Cannot check your files against {tag}: the version could not be read.",
 			"review": "Review",
@@ -1144,6 +1170,7 @@
 		"asciiArt": "Insert a text banner as comments",
 		"asciiArtTitle": "Text banner",
 		"asciiArtText": "Banner text",
+		"asciiArtFont": "Font ({count} available)",
 		"asciiArtHint": "Inserts the text as large letters made of comment lines at the cursor (or in place of the selection).",
 		"asciiArtPreview": "Preview",
 		"asciiArtInsert": "Insert",

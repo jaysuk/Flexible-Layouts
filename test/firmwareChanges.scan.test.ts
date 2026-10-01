@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FileListEntry } from "dwc-config-backup-core";
 
 import {
-	CONCURRENCY, MAX_FILE_BYTES, cachedScanFiles, clearScanCache, directoriesOf, isCandidate, loadMachineFiles, scanFilesYielding, scanMachine,
+	CONCURRENCY, MAX_FILE_BYTES, cachedScanFiles, clearScanCache, directoriesOf, isCandidate, isOwnFile, loadMachineFiles, scanFilesYielding, scanMachine,
 } from "../src/model/firmware/changeScan";
 
 interface Fake {
@@ -66,6 +66,21 @@ describe("what is read", () => {
 		const { io, state } = layout();
 		await loadMachineFiles(io);
 		expect(state.listings.some((d) => d.includes("gcodes"))).toBe(false);
+	});
+
+	it("never reads the plugin's own generated files, whatever else is beside them", async () => {
+		const { io, state } = layout();
+		state.dirs["0:/macros/"].push({ name: "FlexibleLayouts", isDirectory: true });
+		state.dirs["0:/macros/FlexibleLayouts/"] = [{ name: "maintenance-daemon.g" }];
+		state.files["0:/macros/FlexibleLayouts/maintenance-daemon.g"] = "global x = {0,0}\n";
+		state.dirs["0:/sys/"].push({ name: "flexible-layouts.maintenance-state.g" });
+		state.files["0:/sys/flexible-layouts.maintenance-state.g"] = "set global.x = {1,2}\n";
+		const load = await loadMachineFiles(io);
+		expect(load.files.map((f) => f.path).sort()).toEqual(["0:/macros/Heat/bed.g", "0:/macros/warm", "0:/sys/config.g"]);
+		expect(state.listings).not.toContain("0:/macros/FlexibleLayouts/");
+		expect(isOwnFile("0:/sys/flexible-layouts.maintenance-custom-state.g")).toBe(true);
+		expect(isOwnFile("0:/sys/my-flexible-layouts-notes.g")).toBe(false);
+		expect(isOwnFile("0:/macros/Heat/bed.g")).toBe(false);
 	});
 
 	it("skips a file over the size cap and says so", async () => {

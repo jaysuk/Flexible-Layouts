@@ -131,10 +131,10 @@
 							<NavMenuBadge :badge="resolveBadge(group.items[0])!" />
 						</template>
 					</v-list-item>
-					<v-list-group v-else :value="group.category.key">
+					<v-list-group v-else :value="group.category.key" class="fl-nav-group">
 						<template #activator="{ props: activatorProps }">
-							<v-list-item v-bind="activatorProps" class="menu-category-item" v-hint="$t(group.category.captionKey)"
-										 :prepend-icon="group.category.icon" :title="$t(group.category.captionKey)" />
+							<v-list-item v-bind="activatorProps" class="menu-category-item fl-nav-category" v-hint="$t(group.category.captionKey)"
+										 :title="$t(group.category.captionKey)" />
 						</template>
 						<v-list-item v-for="item in group.items" :key="item.path" class="menu-route-item" v-hint="resolveItemTitle(item)"
 									 :to="item.path" :prepend-icon="item.icon" :title="resolveItemTitle(item)">
@@ -852,6 +852,19 @@ onUnmounted(() => {
 .menu-category-item:not(.v-list-item--active) :deep(.v-list-item-title),
 .menu-category-item:not(.v-list-item--active) :deep(.v-list-item__prepend .v-icon) {
 	color: rgb(var(--v-theme-main-menu-category));
+}
+/* Category headers keep the look of the old plain subheader (small, left-aligned, no icon); the only addition is
+   the fold chevron. Pages under a category sit flush left instead of Vuetify's nested-group indent. */
+.fl-nav-group {
+	--v-list-indent: 0px;
+	--v-list-group-prepend: 0px;
+}
+.fl-nav-category {
+	min-height: 32px;
+}
+.fl-nav-category :deep(.v-list-item-title) {
+	font-size: 0.75rem;
+	font-weight: 400;
 }
 .menu-route-item:not(.v-list-item--active) :deep(.v-list-item-title),
 .menu-route-item:not(.v-list-item--active) :deep(.v-list-item__prepend .v-icon) {

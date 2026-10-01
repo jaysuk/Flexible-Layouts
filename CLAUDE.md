@@ -53,7 +53,10 @@ Vue 3 + Vuetify plugin for DuetWebControl (drag-and-drop layout customisation fo
   (`isBoard`, `shouldUseNewGcodeEditor` says yes for `FileKind: "board-config"`): `boardTxtLanguage`/`boardTxtCompletion`/`boardTxtLiveLinter`, the same
   stripped toolbar. Every G-code-only feature (F4, Run, check, stepper, comment tools, the text-banner button, impact squiggles) hangs off
   `isGcode = !isMenu && !isBoard` - a new file kind means a new flag there, not another `!isMenu`. The banner button
-  (`AsciiArtDialog.vue` -> `insertAsciiArt`) writes `;` comment lines, so it is G-code only.
+  (`AsciiArtDialog.vue` -> `insertAsciiArt`) writes `;` comment lines, so it is G-code only. Its font drop-down
+  (`model/bannerFonts.ts`) lists the ~215 ASCII-only FIGlet fonts that `scripts/build-banner-fonts.mjs` (a `preverify-build` step, like the
+  parse worker) packs into ONE asset, `dwc/js/flexible-layouts-banner-fonts.json` (~1.9 MB), fetched on first open and parsed per font on pick;
+  figlet's 9.7 MB full set cannot go in the 3.6 MB IIFE bundle. Fonts over 30 KB and non-ASCII (box-drawing, TOIlet) fonts are left out on purpose.
   The emulator's **Message box** menu shows a sample M291 box (`MenuDisplay.setMessageBox`, core >= 1.30.0): a preview
   has no live M291, so the emulator plays the firmware's part - a recorded `M292` (an OK/Cancel press) takes the box
   down again with `setMessageBox(null)`, after the encoder call returns, as RRF does (clearing it synchronously
@@ -210,6 +213,21 @@ Vue 3 + Vuetify plugin for DuetWebControl (drag-and-drop layout customisation fo
   The same pass found HTTP no longer enabled by default (`network-http-not-enabled-by-default`) and the `M472 R1` nested-delete fix; both shipped in core 1.35.0. The 293 commits the triage closed with a section note were read as diffs on 2026-10-01 (`docs/rrf-triage/d3-line-by-line.md` in core) and `M669`'s per-kinematics
   letters (Hangprinter, five-bar SCARA) are enumerated. So the UI's "known changes" wording and the undetectable count are load-bearing. A mistake found there is fixed in core and arrives via a
   `dwc-gcode-core` bump, never patched in FL.
+  **The report lists what needs changing, not what the scan matched** (core >= 1.36.0, `releases/actions.ts`; FL half `model/firmware/changePlan.ts`).
+  `scanImpact` matches every line that touches a changed command/parameter/path - mostly noise (an ADDED command cannot hurt on an upgrade; `M140 P0 H0`
+  is fine until the heater is also on a tool). `planActions(report, files)` is the second pass: `severityOf` (breaks/differs/info by kind and direction,
+  with an override table), per-event RULES that may read every file (the two-jobs heater conflict is reported once, not once per matching line), and a
+  `fix` of plain `FileEdit`s (`previewEdits` / `applyFileEdits`). The dialog shows `problems` per file with a diff and Apply, `worthALook` collapsed,
+  and everything else (versions, citations, undetectable list, ignored) under Details; the nudge toast, the Settings card's counts, the pre-flight notice
+  and the editor squiggles (`squiggleWanted`) follow the same rule, so a file with only "differs" findings advances the baseline silently. A report's
+  plan needs the text it was made from: `runFirmwareScan` registers it (`rememberReportFiles`, keyed by `toRaw(report)` - a prop or a deep `ref` hands over a
+  reactive Proxy, a different WeakMap key), and a test that builds a report with `scanImpact` must register it too. **A fix rule must be safe to apply to a
+  file that was already migrated** (a scan cannot tell): `M955` without `P` -> add `P0` is; `M575 P1` -> `P2` is not, so it is advice only. A choice (which
+  of two jobs keeps a heater) offers each side and picks neither; `Apply all` takes only `safe` single-option fixes. **`applyFix` is the only place FL
+  writes a config file**: connected and idle, every file re-downloaded and compared with the scanned text, the original kept as `<file>.bak` once per page
+  session, a failed write rolls back, `Undo` refuses over a later edit. Not applied in the pre-flight (the files are right for the running version).
+  Files the plugin generates (`macros/FlexibleLayouts/*`, `sys/flexible-layouts.*`) are never scanned (`isOwnFile`). Core's fix text is English only (like the
+  event descriptions); the dialog's own strings are in `firmwareChanges.*` in both locales. Not yet run against a real board's SD card.
 - **Starter layouts are a registry** (`model/starterLayouts.ts`): one entry per page, built from `createDefaultWidget` so schema
   changes flow in; always a NEW page (optionally its own profile), never a change to an existing one. `test/starterLayouts.test.ts`
   checks every entry against the widget catalogue, the 12-column grid and `migrateDocument`.

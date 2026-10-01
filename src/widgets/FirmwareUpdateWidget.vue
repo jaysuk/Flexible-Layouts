@@ -88,10 +88,10 @@
 							{{ $t("plugins.flexibleLayouts.firmwareChanges.preflight.unavailable") }}
 						</template>
 						<template v-else>
-							<div :class="preflight.report.totals.occurrences > 0 ? 'fuw-warn' : 'text-medium-emphasis'">
-								{{ preflight.report.totals.occurrences > 0
+							<div :class="preflightSummary.lines > 0 ? 'fuw-warn' : 'text-medium-emphasis'">
+								{{ preflightSummary.lines > 0
 									? $t("plugins.flexibleLayouts.firmwareChanges.preflight.found", {
-										lines: preflight.report.totals.occurrences, files: preflight.report.totals.filesAffected,
+										lines: preflightSummary.lines, files: preflightSummary.files,
 										from: preflight.report.from, tag: selectedRelease.tag,
 									})
 									: $t("plugins.flexibleLayouts.firmwareChanges.preflight.none", { from: preflight.report.from, tag: selectedRelease.tag }) }}
@@ -101,7 +101,7 @@
 									checked: preflight.report.totals.eventsCheckable, more: preflight.report.totals.eventsUndetectable,
 								}) }}
 							</div>
-							<v-btn v-if="preflight.report.totals.occurrences > 0" size="x-small" variant="tonal" class="mt-1"
+							<v-btn v-if="preflightSummary.lines > 0" size="x-small" variant="tonal" class="mt-1"
 								   @click="preflightOpen = true">
 								{{ $t("plugins.flexibleLayouts.firmwareChanges.preflight.review") }}
 							</v-btn>
@@ -187,6 +187,7 @@ import { LogLevel, useUiStore } from "@/stores/ui";
 import type { Widget } from "../model/document";
 import FirmwareChangesDialog from "../firmwareChanges/FirmwareChangesDialog.vue";
 import { runFirmwareScan } from "../model/firmware/changeCheck";
+import { planFor, summaryOf } from "../model/firmware/changePlan";
 import { mainBoardFirmwareVersion, normaliseFirmwareVersion } from "../model/firmware/changeState";
 import { setPreflightTarget } from "../model/firmware/impactRange";
 import { duet3dSource } from "../model/firmware/duet3dSource";
@@ -351,6 +352,8 @@ type Preflight =
 	| { state: "unavailable" }
 	| { state: "done"; report: ImpactReport };
 const preflight = ref<Preflight | null>(null);
+/** What the scan says needs changing for the selected release (the dialog's own list, not every line that touches a changed command). */
+const preflightSummary = computed(() => (preflight.value?.state === "done" ? summaryOf(planFor(preflight.value.report)) : { lines: 0, files: 0, events: 0 }));
 const preflightOpen = ref(false);
 let preflightToken = 0;
 
@@ -377,9 +380,9 @@ onBeforeUnmount(() => { preflightToken++; setPreflightTarget(null); });
 /** The warning shown in the confirm step: only when the scan found something, never a reassurance. */
 const preflightNotice = computed(() => {
 	const p = preflight.value;
-	if (p?.state !== "done" || p.report.totals.occurrences === 0) { return ""; }
+	if (p?.state !== "done" || preflightSummary.value.lines === 0) { return ""; }
 	return i18n.global.t("plugins.flexibleLayouts.firmwareChanges.preflight.found", {
-		lines: p.report.totals.occurrences, files: p.report.totals.filesAffected, from: p.report.from, tag: p.report.to,
+		lines: preflightSummary.value.lines, files: preflightSummary.value.files, from: p.report.from, tag: p.report.to,
 	});
 });
 

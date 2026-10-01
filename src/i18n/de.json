@@ -893,9 +893,9 @@
 		"hint": "Ändert sich die Firmware-Version, prüft Flexible Layouts deine eigenen Dateien in sys und macros anhand der bekannten Änderungen zwischen den beiden Versionen und zeigt, welche Zeilen betroffen sind. Geprüft werden nur bekannte Änderungen: ein leerer Bericht ist keine Garantie.",
 		"reportTitle": "Firmware-Änderungen, {from} nach {to}",
 		"toastTitle": "Firmware-Version geändert",
-		"toastBody": "{from} nach {to}: {lines} Zeile(n) in {files} Datei(en) nutzen etwas, das sich geändert hat. Öffne die Einstellungen zur Prüfung.",
+		"toastBody": "{from} nach {to}: {lines} Zeile(n) in {files} Datei(en) müssen geändert werden. Öffne die Einstellungen zur Prüfung.",
 		"pending": "Die Firmware wurde von {from} auf {to} geändert, der Bericht ist noch nicht geprüft.",
-		"lastScan": "Die letzte Prüfung fand {lines} Zeile(n) in {files} Datei(en).",
+		"lastScan": "Letzte Prüfung: {lines} Zeile(n) in {files} Datei(en) müssen geändert werden.",
 		"reviewedAgainst": "Deine Dateien wurden zuletzt gegen die Firmware {version} geprüft.",
 		"noBaseline": "Noch nichts zum Vergleichen: die Version dieser Maschine wird beim ersten Verbinden gespeichert. Für eine Prüfung gegen eine ältere Version gib sie unten ein.",
 		"enabled": "Meine Dateien prüfen, wenn sich die Firmware-Version ändert",
@@ -920,6 +920,32 @@
 		"ignoreChange": "Diese Änderung ignorieren",
 		"restore": "Wiederherstellen",
 		"markReviewed": "Alle als geprüft markieren",
+		"verdictClear": "In deinen Dateien muss für {to} nichts geändert werden.",
+		"verdictProblems": "{lines} Zeile(n) in {files} Datei(en) müssen geändert werden",
+		"fixAll": "Alle sicheren Korrekturen anwenden ({count})",
+		"apply": "Anwenden",
+		"applying": "Schreibe auf die Maschine...",
+		"noEdit": "Keine automatische Änderung: was stattdessen zu verwenden ist, hängt davon ab, was die Maschine tun soll.",
+		"worthALookTitle": "Ansehen lohnt sich ({count}): funktioniert noch, verhält sich aber anders",
+		"limits": "Geprüft werden nur bekannte Änderungen, und {more} weitere lassen sich anhand deiner Dateien nicht prüfen.",
+		"detailsTitle": "Details",
+		"undo": "Rückgängig",
+		"undone": "Die Datei wurde wiederhergestellt.",
+		"applied": {
+			"done": "{files} geändert.",
+			"backup": "Das Original ist als {backups} gesichert.",
+			"restart": "Eine Änderung an config.g gilt erst nach dem nächsten Neustart (M999)."
+		},
+		"applyFailed": {
+			"offline": "Nicht mit der Maschine verbunden. Es wurde nichts geändert.",
+			"busy": "Die Maschine ist nicht im Leerlauf. Es wurde nichts geändert.",
+			"changed": "{path} hat sich seit der Prüfung geändert. Es wurde nichts geändert; bitte erneut prüfen.",
+			"failed": "Schreiben auf die Maschine fehlgeschlagen. Es wurde nichts geändert."
+		},
+		"undoFailed": {
+			"changed": "{path} wurde seitdem bearbeitet und daher nicht wiederhergestellt.",
+			"failed": "Schreiben auf die Maschine fehlgeschlagen."
+		},
 		"copyReport": "Bericht kopieren",
 		"copied": "Kopiert",
 		"kind": {
@@ -939,8 +965,8 @@
 		"preflight": {
 			"title": "Deine Dateien und {tag}",
 			"checking": "Deine Dateien werden gegen {tag} geprüft...",
-			"found": "{lines} Zeile(n) in {files} Datei(en) nutzen etwas, das sich zwischen {from} und {tag} ändert.",
-			"none": "Keine bekannte Änderung zwischen {from} und {tag} kommt in deinen Dateien vor (geprüft werden nur bekannte Änderungen).",
+			"found": "{lines} Zeile(n) in {files} Datei(en) müssen für {tag} geändert werden.",
+			"none": "In deinen Dateien muss für {tag} nichts geändert werden (geprüft werden nur bekannte Änderungen; {from} läuft gerade).",
 			"coverage": "{checked} bekannte Änderungen geprüft, {more} lassen sich nicht automatisch prüfen.",
 			"cannotCheck": "Deine Dateien lassen sich nicht gegen {tag} prüfen: die Version konnte nicht gelesen werden.",
 			"review": "Prüfen",
@@ -1144,6 +1170,7 @@
 		"asciiArt": "Textbanner als Kommentare einfügen",
 		"asciiArtTitle": "Textbanner",
 		"asciiArtText": "Bannertext",
+		"asciiArtFont": "Schriftart ({count} verfügbar)",
 		"asciiArtHint": "Fügt den Text als große Buchstaben aus Kommentarzeilen an der Schreibmarke (oder anstelle der Auswahl) ein.",
 		"asciiArtPreview": "Vorschau",
 		"asciiArtInsert": "Einfügen",

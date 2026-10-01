@@ -20,6 +20,7 @@ import { useMachineStore } from "@/stores/machine";
 import i18n from "@/i18n";
 
 import { firmwareChangeReport, machineStatus, requestFirmwareReport, runFirmwareScan } from "./changeCheck";
+import { planFor, summaryOf } from "./changePlan";
 import {
 	acknowledgeReview, decideCheck, initialBaseline, mainBoardFirmwareVersion, readFirmwareChangeState, writeFirmwareChangeState,
 } from "./changeState";
@@ -67,12 +68,14 @@ export async function checkFirmwareChanges(): Promise<void> {
 		waitingForIdle = false;
 		lastScanAt = Date.now();
 		lastScanKey = key;
-		const { occurrences, filesAffected, eventsHit } = report.totals;
+		// Only what NEEDS changing counts (`planFor`): a command that was merely added, or a heater number that is fine, is not worth a toast.
+		// Lines that merely behave differently stay in the report for whoever opens it; they are not a reason to interrupt.
+		const { lines: occurrences, files: filesAffected, events: eventsHit } = summaryOf(planFor(report));
 		writeFirmwareChangeState({
 			lastScan: { from: baseline, to: running, at: new Date().toISOString(), occurrences, files: filesAffected, events: eventsHit },
 		});
 		if (occurrences === 0) {
-			acknowledgeReview(running); // nothing known is affected: move on without a word
+			acknowledgeReview(running); // nothing needs changing: move on without a word
 			return;
 		}
 		if (readFirmwareChangeState().notifiedKey === key) { return; }

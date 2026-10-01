@@ -148,6 +148,7 @@ import { loadScenarioSet, saveScenarioSet } from "../model/gcode/simulationScena
 import { trackedObjectModelVersion } from "../model/gcode/objectModelVersion";
 import { ignoreChange, readFirmwareChangeState } from "../model/firmware/changeState";
 import { currentImpactRange } from "../model/firmware/impactRange";
+import { squiggleWanted } from "../model/firmware/changePlan";
 
 // DWC's own Path.escapeFilename (src/utils/path.ts) is not in a plugin's externalised import
 // surface (only @/plugins, @/stores/*, and DWC's public component palette are - see this repo's own
@@ -357,7 +358,12 @@ function editorExtensions(theme: ThemeController, indentation: IndentationContro
 		...(isGcode ? [gcodeImpactCheck({
 			getRange: currentImpactRange,
 			path: () => props.filename,
-			isAcknowledged: (id) => readFirmwareChangeState().acknowledged.includes(id),
+			// Ignored, or not worth a squiggle: the same "only what needs attention" rule as the report (`squiggleWanted`).
+			isAcknowledged: (id) => {
+				if (readFirmwareChangeState().acknowledged.includes(id)) { return true; }
+				const range = currentImpactRange();
+				return range !== null && !squiggleWanted(id, range);
+			},
 			onIgnore: (id) => { ignoreChange(id); },
 			ignoreLabel: i18n.global.t("plugins.flexibleLayouts.firmwareChanges.ignoreChange"),
 			changedInLabel: i18n.global.t("plugins.flexibleLayouts.firmwareChanges.changedIn"),
@@ -627,10 +633,10 @@ function alignComments(): void {
 }
 
 // Puts the text in as a banner of `;` comment lines at the cursor (one transaction, one undo step).
-function insertBanner(text: string): void {
+function insertBanner(text: string, font: string): void {
 	const instance = editorInstance.value;
 	if (instance === null) return;
-	insertAsciiArt(instance.view, text);
+	insertAsciiArt(instance.view, text, { font });
 	instance.view.focus();
 }
 

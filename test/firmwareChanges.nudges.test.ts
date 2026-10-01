@@ -137,9 +137,17 @@ describe("a changed firmware version", () => {
 		expect(readFirmwareChangeState().baseline).toBe("3.7.0-rc.2");
 	});
 
+	it("says nothing when the files only use things that were added, or that behave a little differently", async () => {
+		// Array syntax is new on 3.7 (nothing breaks going up), M140 H0 is fine with no other job for the heater, and M575 only needs a look.
+		card.files = { "0:/macros/x.g": "var a = {1,2,3}\n", "0:/sys/config.g": "M140 P0 H0\nM563 P0 D0 H1\nM575 P1 B57600 S1\n" };
+		await connect();
+		expect(titles().filter((t) => t === T("toastTitle"))).toEqual([]);
+		expect(readFirmwareChangeState().baseline).toBe("3.7.0-rc.2"); // advanced silently: nothing needs changing
+	});
+
 	it("also runs for a downgrade", async () => {
 		writeFirmwareChangeState({ baseline: "3.7.0-rc.2" });
-		card.files = { "0:/macros/x.g": "if {a ^ b}\n  M118 P0\nendif\n" };
+		card.files = { "0:/macros/x.g": "M558.4 K0 P1\n" }; // a command 3.6.3 does not have
 		machine("3.6.3");
 		await connect();
 		expect(titles()).toContain(T("toastTitle"));

@@ -46,6 +46,16 @@ function extensionOf(name: string): string {
 	return dot <= 0 ? "" : name.slice(dot + 1).toLowerCase();
 }
 
+/**
+ * Files this plugin generates (`macros/FlexibleLayouts/*`, `sys/flexible-layouts.*`). They are written to match the firmware that is
+ * running, so a report that flagged them would be the plugin warning about its own code, and a "fix" would be overwritten by the next
+ * deploy. Never scanned, never counted as "not read".
+ */
+export function isOwnFile(path: string): boolean {
+	const lower = path.toLowerCase();
+	return lower.includes("/macros/flexiblelayouts/") || /\/flexible-layouts\.[^/]*$/.test(lower);
+}
+
 /** Whether a file NAME in `directory` is worth downloading: the file must classify as G-code, and look like it. */
 export function isCandidate(path: string, inMacros: boolean): boolean {
 	if (!isScannable(path).scan) { return false; }
@@ -69,6 +79,7 @@ async function walk(io: ScanIO, dir: string, inMacros: boolean, depth: number, o
 	}
 	for (const entry of entries) {
 		const path = `${dir}${entry.name}`;
+		if (isOwnFile(entry.isDirectory ? `${path}/` : path)) { continue; }
 		if (entry.isDirectory) {
 			await walk(io, `${path}/`, inMacros, depth + 1, out, tooLarge);
 			continue;
@@ -88,6 +99,9 @@ const cacheKey = (f: Listed): string => `${f.path}|${f.size}|${f.lastModified ??
 
 /** Forget everything read so far (a test, or a plugin unload). */
 export function clearScanCache(): void { cache.clear(); }
+
+/** Forget these files, so the next load downloads them again (after this plugin wrote them: size and time alone could look unchanged). */
+export function forgetScannedFiles(paths: ReadonlyArray<string>): void { for (const path of paths) { cache.delete(path); } }
 
 /** The files read by the last successful load, for a pre-flight against another release without touching the machine. */
 export function cachedScanFiles(): Array<ScanFile> {
