@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { join } from "node:path";
 
-// @ts-expect-error - plain .mjs script, no type declarations
 import { findUnnamedIconButtons, scanDirectory } from "../../scripts/check-icon-buttons.mjs";
 
 const find = (tpl: string) => findUnnamedIconButtons(`<template>${tpl}</template>`) as Array<{ line: number; tag: string }>;

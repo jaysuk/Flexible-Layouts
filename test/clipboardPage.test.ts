@@ -24,7 +24,7 @@ describe("FlexPage copy / cut / paste", () => {
 	function mountPage() {
 		const s = useLayoutStore();
 		s.ensurePage("/Clip", "custom").items = [item("a", 0, 0), item("b", 3, 0)];
-		return mountInDwc(FlexPage, { props: { pageId: "/Clip", kind: "custom" }, attachTo: document.body });
+		return mountInDwc(FlexPage, { props: { pageId: "/Clip", kind: "custom" } });
 	}
 	const vm = () => w.vm as unknown as {
 		layout: Array<GridItemModel>; selectedIds: Set<string>; selectAll(): void; undo(): void; canUndo: boolean;

@@ -86,7 +86,7 @@ describe("widgets under DWC's imperial display units", () => {
 		await flushPromises();
 		const inputs = w.findAll("input.wt-offset");
 		// G55 (row 1) X offset is 25.4 mm
-		expect((inputs[3] as { element: HTMLInputElement }).element.value).toBe("1.0000");
+		expect((inputs[3].element as HTMLInputElement).value).toBe("1.0000");
 		await inputs[0].setValue("2");
 		await inputs[0].trigger("change");
 		await flushPromises();

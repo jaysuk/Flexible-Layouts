@@ -155,7 +155,7 @@ describe("Jog widget keyboard access", () => {
 	});
 
 	it("arrow keys move the pad's single tab stop", async () => {
-		const w = mountInDwc(JogWidget, { props: { widget: jog() }, attachTo: document.body });
+		const w = mountInDwc(JogWidget, { props: { widget: jog() } });
 		await flushPromises();
 		const stopBefore = w.findAll(".jog-sector").find((s) => s.attributes("tabindex") === "0")!;
 		const idBefore = stopBefore.attributes("data-sector");

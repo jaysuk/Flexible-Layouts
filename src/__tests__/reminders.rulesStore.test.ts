@@ -28,14 +28,24 @@ const rule = (id: string, over: Partial<MaintenanceIntervalRule> = {}): Maintena
 });
 
 /** A card holding at most one file, with switches for the failure modes the store has to survive. */
+interface FakeCard {
+	text: string | null;
+	writes: number;
+	failRead: boolean;
+	failWrite: boolean;
+	corruptWrite: boolean;
+	existsAnswer: boolean | null | "auto";
+	io: RulesIO;
+}
+
 function fakeCard(initial: string | null = null) {
-	const card = {
-		text: initial as string | null,
+	const card: FakeCard = {
+		text: initial,
 		writes: 0,
 		failRead: false,
 		failWrite: false,
 		corruptWrite: false,
-		existsAnswer: null as boolean | null | "auto",
+		existsAnswer: null,
 		io: {
 			async read() {
 				if (card.failRead || card.text === null) { throw new Error("no file"); }
@@ -47,7 +57,7 @@ function fakeCard(initial: string | null = null) {
 				card.text = card.corruptWrite ? text.slice(0, Math.floor(text.length / 2)) : text;
 			},
 			async exists() { return card.existsAnswer === "auto" ? card.text !== null : card.existsAnswer; },
-		} as RulesIO,
+		},
 	};
 	card.existsAnswer = "auto";
 	return card;
