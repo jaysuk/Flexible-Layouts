@@ -14,7 +14,7 @@
  * until the browser page is reloaded - it holds unsaved text, which is not something to write to storage
  * behind the user's back.
  */
-import { reactive } from "vue";
+import { reactive, ref } from "vue";
 import type { GroupId } from "dwc-gcode-editor";
 
 import { childItemLists, type GridItemModel, type LayoutDocument } from "./document";
@@ -136,6 +136,29 @@ export function pruneExplorerSessions(doc: LayoutDocument): void {
 		}
 	}
 }
+
+/**
+ * "Open this file at this line": asked by something OUTSIDE the Explorer (the firmware-changes report) that navigates to the file's
+ * URL, which has no place for a line. The panel that ends up showing the file picks the request up when its editor mounts and
+ * clears it; a request nobody claims within `REVEAL_TTL_MS` is dropped, so a later, unrelated opening of the file does not jump.
+ */
+export interface RevealRequest { path: string; line: number; at: number }
+export const REVEAL_TTL_MS = 10_000;
+export const revealRequest = ref<RevealRequest | null>(null);
+
+export function requestReveal(path: string, line: number): void {
+	revealRequest.value = { path, line, at: Date.now() };
+}
+
+/** The pending request if it is for `path` and still fresh; an expired one is cleared. */
+export function pendingRevealFor(path: string): RevealRequest | null {
+	const req = revealRequest.value;
+	if (req === null) return null;
+	if (Date.now() - req.at > REVEAL_TTL_MS) { revealRequest.value = null; return null; }
+	return req.path === path ? req : null;
+}
+
+export function clearReveal(): void { revealRequest.value = null; }
 
 /** Whether any remembered or mounted Explorer session holds an editor tab with unsaved edits. */
 export function hasUnsavedExplorerEdits(): boolean {

@@ -104,6 +104,30 @@ Open **Manage pages** (the edit toolbar, the drawer, or *Settings → Flexible L
   live `M291` - and its OK / Cancel buttons list the `M292` they would send and take the box down. It lists every problem in the menu (RepRapFirmware stops loading a
   menu at the first one), and the editor underlines the same problems in the text.
 
+## Firmware changes
+
+*Settings → Flexible Layouts → Firmware changes.* When the firmware version your board reports changes (an update, or a
+downgrade), Flexible Layouts reads your own `0:/sys` and `0:/macros` files and lists the lines that use a command, parameter,
+object-model path or syntax feature whose behaviour changed between the two versions.
+
+- **First connect** just records the version the machine runs; there is nothing to compare with yet, so nothing is said. To check
+  against an older version, type it into *Check against version* and press Check.
+- **After a change** you get one toast ("Firmware version changed") that opens the report: changes grouped by what changed, with the
+  version it changed in, the source it was found in, and every affected `file:line`. **Open** jumps to that line in the Explorer.
+  A change that found nothing moves on silently.
+- **The report says what it did not check.** Only *known* changes are checked, and some cannot be matched to a line at all; the
+  footer counts them and lists them. An empty report is not a guarantee that a file is fine.
+- **Ignore** stops a change being reported (it moves to *Ignored changes*, where it can be restored); **Mark all as reviewed** says
+  your files are checked against the version now running; **Copy report** puts it on the clipboard as Markdown.
+- **In the editor**, the affected lines are underlined ("Changed in 3.7.0-beta.1", with the citation, and *Ignore this change*).
+  Turn that off with *Mark affected lines in the editor*. The scan only runs while the machine is idle, never reads `gcodes/`, and
+  skips files over 1 MB.
+- **Before you update.** In the Firmware update widget, selecting a release also checks your files against it and says how many
+  lines would be affected; the same lines are underlined in the editor while it is selected. This changes nothing and never counts
+  as a review.
+- The baseline and the ignored changes are stored on the board with the rest of the plugin's settings, so every browser that opens
+  the machine agrees. They are not part of the layout, so they are not in an export or a profile.
+
 ## Starter layouts
 
 **Add widget → …** is not the only way to begin: *Layout & sharing → Browse starter layouts…* (and the first-run

@@ -113,8 +113,8 @@ import {
 } from "dwc-gcode-core/stepper/scenarioSet";
 import {
 	alignLineComments, buildDocFromString, canAutoCheck, checkDocument, codeAtCursor, convertTabsToSpaces,
-	createEditorInstance, createIndentationController, createThemeController, createWhitespaceController, gcodeCompletion, gcodeCurrentLine, gcodeLanguage, gcodeLintUi, gcodeLiveCheck,
-	gcodeViewStatePersistence,
+	createEditorInstance, createIndentationController, createThemeController, createWhitespaceController, gcodeCompletion, gcodeCurrentLine, gcodeImpactCheck, gcodeLanguage, gcodeLintUi, gcodeLiveCheck,
+	gcodeViewStatePersistence, refreshImpactCheck,
 	gcodeQuickSearchKeymap, gcodeSearch, gcodeShortcutsHelp, isInsideExpression, menuLanguage, menuLiveLinter, openExpressionQuickSearch,
 	openGcodeQuickSearch, openSearchPanel, openShortcutsHelp, saveKeymap, setCurrentLine, type EditorInstance,
 	type IndentationController, type ThemeController, type WhitespaceController,
@@ -135,6 +135,8 @@ import { isMenuFile } from "../model/editorPreference";
 import { MENU_DIRECTORY } from "../model/display12864/menuSource";
 import { loadScenarioSet, saveScenarioSet } from "../model/gcode/simulationScenario";
 import { trackedObjectModelVersion } from "../model/gcode/objectModelVersion";
+import { ignoreChange, readFirmwareChangeState } from "../model/firmware/changeState";
+import { currentImpactRange } from "../model/firmware/impactRange";
 
 // DWC's own Path.escapeFilename (src/utils/path.ts) is not in a plugin's externalised import
 // surface (only @/plugins, @/stores/*, and DWC's public component palette are - see this repo's own
@@ -334,6 +336,16 @@ function editorExtensions(theme: ThemeController, indentation: IndentationContro
 		// Re-checks the lines being typed on (and, after a pause, the whole file when it is small enough),
 		// keeping the toolbar count current. Menu files are linted by menuLiveLinter below instead.
 		...(isMenu ? [] : [gcodeLiveCheck({ getOptions: checkOptions, onChange: (count) => { diagnosticCount.value = count; } })]),
+		// "Changed since <version>" squiggles for the lines that use something a firmware change touched (the range is the
+		// unreviewed change, or the release the update widget has selected; null = off). Not for menu files.
+		...(isMenu ? [] : [gcodeImpactCheck({
+			getRange: currentImpactRange,
+			path: () => props.filename,
+			isAcknowledged: (id) => readFirmwareChangeState().acknowledged.includes(id),
+			onIgnore: (id) => { ignoreChange(id); },
+			ignoreLabel: i18n.global.t("plugins.flexibleLayouts.firmwareChanges.ignoreChange"),
+			changedInLabel: i18n.global.t("plugins.flexibleLayouts.firmwareChanges.changedIn"),
+		})]),
 		// A menu file is a few hundred bytes (RRF's whole menu buffer is 2500), so it is linted live.
 		...(isMenu ? [menuLiveLinter(() => ({ path: props.filename, siblings: menuSiblings.value }))] : []),
 		// `save` is a hoisted function declaration below - referencing it here (only ever invoked
@@ -648,12 +660,36 @@ function checkOnLoad(instance: EditorInstance | null): void {
 	}, 0);
 }
 
+/** Moves the cursor to 1-based `line` and centres it (used by the firmware-changes report's "Open"). If the file is still loading,
+ *  the jump happens as soon as it has. The line is marked for a moment so the eye finds it. */
+let pendingRevealLine: number | null = null;
+function revealLine(line: number): void {
+	const instance = editorInstance.value;
+	if (instance === null) { pendingRevealLine = line; return; }
+	pendingRevealLine = null;
+	const view = instance.view;
+	const target = view.state.doc.line(Math.min(Math.max(1, line), view.state.doc.lines));
+	view.dispatch({ selection: { anchor: target.from } });
+	setCurrentLine(view, target.number);
+	view.focus();
+	setTimeout(() => { if (editorInstance.value === instance) setCurrentLine(instance.view, null, { scroll: false }); }, 2500);
+}
+
 function openShortcuts(): void {
 	const instance = editorInstance.value;
 	if (instance !== null) openShortcutsHelp(instance.view, { hide: SHORTCUTS_HIDDEN });
 }
 
 watch(hostEl, (el) => { if (el !== null) void load(); }, { immediate: true });
+watch(editorInstance, (instance) => { if (instance !== null && pendingRevealLine !== null) revealLine(pendingRevealLine); });
+
+// The squiggles follow the firmware range and the ignored set: re-run the check when either changes.
+if (!isMenu) {
+	watch(() => JSON.stringify([currentImpactRange(), readFirmwareChangeState().acknowledged]), () => {
+		const instance = editorInstance.value;
+		if (instance !== null) refreshImpactCheck(instance.view);
+	});
+}
 
 // Highlights the current line and draws the line as evaluated beneath it. Scrolls only when the step
 // or line actually moved: a rebuild (the scenario changed, or the buffer was edited) produces a new
@@ -707,5 +743,5 @@ onUnmounted(() => {
 // exposed (read-only in spirit - callers should only ever dispatch through `.view`) purely so tests
 // can drive a real CM6 edit directly, the same way this family's other editor tests do when a
 // synthetic DOM `beforeinput`/composition event under happy-dom would be unreliable to fake.
-defineExpose({ save, focus, editorInstance });
+defineExpose({ save, focus, revealLine, editorInstance });
 </script>

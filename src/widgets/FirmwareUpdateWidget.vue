@@ -75,6 +75,39 @@
 						</div>
 					</div>
 
+					<!-- Pre-flight: which of the user's own files use something that changes in the selected release. Says nothing
+						 about a release it cannot read, and never claims the files are safe: only known changes are checked. -->
+					<div v-if="selectedRelease && preflight" class="fuw-preflight text-caption flex-shrink-0 mt-1" role="status" data-test="preflight">
+						<template v-if="preflight.state === 'checking'">
+							{{ $t("plugins.flexibleLayouts.firmwareChanges.preflight.checking", { tag: selectedRelease.tag }) }}
+						</template>
+						<template v-else-if="preflight.state === 'cannot'">
+							{{ $t("plugins.flexibleLayouts.firmwareChanges.preflight.cannotCheck", { tag: selectedRelease.tag }) }}
+						</template>
+						<template v-else-if="preflight.state === 'unavailable'">
+							{{ $t("plugins.flexibleLayouts.firmwareChanges.preflight.unavailable") }}
+						</template>
+						<template v-else>
+							<div :class="preflight.report.totals.occurrences > 0 ? 'fuw-warn' : 'text-medium-emphasis'">
+								{{ preflight.report.totals.occurrences > 0
+									? $t("plugins.flexibleLayouts.firmwareChanges.preflight.found", {
+										lines: preflight.report.totals.occurrences, files: preflight.report.totals.filesAffected,
+										from: preflight.report.from, tag: selectedRelease.tag,
+									})
+									: $t("plugins.flexibleLayouts.firmwareChanges.preflight.none", { from: preflight.report.from, tag: selectedRelease.tag }) }}
+							</div>
+							<div class="text-medium-emphasis">
+								{{ $t("plugins.flexibleLayouts.firmwareChanges.preflight.coverage", {
+									checked: preflight.report.totals.eventsCheckable, more: preflight.report.totals.eventsUndetectable,
+								}) }}
+							</div>
+							<v-btn v-if="preflight.report.totals.occurrences > 0" size="x-small" variant="tonal" class="mt-1"
+								   @click="preflightOpen = true">
+								{{ $t("plugins.flexibleLayouts.firmwareChanges.preflight.review") }}
+							</v-btn>
+						</template>
+					</div>
+
 					<!-- Direct source (gloomyandy): matching files fetched automatically, ready to send. -->
 					<template v-if="selectedRelease && activeSource?.id === 'gloomyandy'">
 						<div v-if="findError" class="fuw-error text-caption mt-1 flex-shrink-0">{{ findError }}</div>
@@ -131,7 +164,8 @@
 		<!-- Lets the operator untick any file they don't want touched before it's actually fetched/sent -
 			 neither DWC's own FirmwareUpdateDialog (an all-or-nothing yes/no) nor the raw matched-file
 			 list above offers that, and a mixed rig can easily match more boards than intended. -->
-		<FirmwareConfirmFilesDialog v-model="confirmFilesOpen" :files="pendingFiles" @confirm="confirmFilesProceed" />
+		<FirmwareConfirmFilesDialog v-model="confirmFilesOpen" :files="pendingFiles" :notice="preflightNotice" @confirm="confirmFilesProceed" />
+		<FirmwareChangesDialog v-model="preflightOpen" preflight :report="preflight?.state === 'done' ? preflight.report : null" />
 
 		<!-- DWC's own firmware dialogs (from DuetWebControl/components, DWC's externalised public
 			 component palette - see the script section's doc comment). -->
@@ -142,13 +176,19 @@
 </template>
 
 <script setup lang="ts">
-import { computed, inject, onMounted, ref } from "vue";
+import { computed, inject, onBeforeUnmount, onMounted, ref } from "vue";
+
+import type { ImpactReport } from "dwc-gcode-core";
 
 import i18n from "@/i18n";
 import { useMachineStore } from "@/stores/machine";
 import { LogLevel, useUiStore } from "@/stores/ui";
 
 import type { Widget } from "../model/document";
+import FirmwareChangesDialog from "../firmwareChanges/FirmwareChangesDialog.vue";
+import { runFirmwareScan } from "../model/firmware/changeCheck";
+import { mainBoardFirmwareVersion, normaliseFirmwareVersion } from "../model/firmware/changeState";
+import { setPreflightTarget } from "../model/firmware/impactRange";
 import { duet3dSource } from "../model/firmware/duet3dSource";
 import { dwcSource, selectDwcAsset } from "../model/firmware/dwcSource";
 import { gloomyandySource } from "../model/firmware/gloomyandySource";
@@ -267,6 +307,9 @@ function onSourceChanged(): void {
 	patch?.({ sourceId: sourceId.value });
 	releases.value = [];
 	selectedRelease.value = null;
+	preflightToken++;
+	preflight.value = null;
+	setPreflightTarget(null);
 	matchedFiles.value = [];
 	suggestedAsset.value = null;
 	// Previously only the "Include betas" checkbox happened to call loadReleases() (via
@@ -298,11 +341,54 @@ const findError = ref("");
 const matchedFiles = ref<Array<FirmwareCandidateFile>>([]);
 const suggestedAsset = ref<FirmwareCandidateFile | null>(null);
 
+// --- Pre-flight: which of the user's own files use something that changes in the selected release ----------------------------
+// Uses the same scan as the firmware-change report (model/firmware/changeScan.ts, cached by size + modified time) but never
+// touches the baseline: nothing has changed yet, so there is nothing to mark as reviewed. It also points the editor's
+// "changed since" squiggles at the same range (setPreflightTarget) while a release is selected.
+type Preflight =
+	| { state: "checking" }
+	| { state: "cannot" }
+	| { state: "unavailable" }
+	| { state: "done"; report: ImpactReport };
+const preflight = ref<Preflight | null>(null);
+const preflightOpen = ref(false);
+let preflightToken = 0;
+
+async function runPreflight(release: FirmwareRelease): Promise<void> {
+	const token = ++preflightToken;
+	// Only for board firmware: a DuetWebControl release is a different version line that says nothing about G-code.
+	const target = activeSource.value.id === "dwc" ? null : normaliseFirmwareVersion(release.tag);
+	const running = mainBoardFirmwareVersion(machineStore.model);
+	setPreflightTarget(null);
+	if (activeSource.value.id === "dwc") { preflight.value = null; return; }
+	if (target === null || running === null) { preflight.value = { state: "cannot" }; return; }
+	preflight.value = { state: "checking" };
+	setPreflightTarget(target);
+	try {
+		const report = await runFirmwareScan(running, target, { requireIdle: true, quiet: true });
+		if (token !== preflightToken) { return; } // a newer selection superseded this one
+		preflight.value = report === null ? { state: "unavailable" } : { state: "done", report };
+	} catch {
+		if (token === preflightToken) { preflight.value = { state: "unavailable" }; }
+	}
+}
+onBeforeUnmount(() => { preflightToken++; setPreflightTarget(null); });
+
+/** The warning shown in the confirm step: only when the scan found something, never a reassurance. */
+const preflightNotice = computed(() => {
+	const p = preflight.value;
+	if (p?.state !== "done" || p.report.totals.occurrences === 0) { return ""; }
+	return i18n.global.t("plugins.flexibleLayouts.firmwareChanges.preflight.found", {
+		lines: p.report.totals.occurrences, files: p.report.totals.filesAffected, from: p.report.from, tag: p.report.to,
+	});
+});
+
 async function selectRelease(release: FirmwareRelease): Promise<void> {
 	selectedRelease.value = release;
 	matchedFiles.value = [];
 	suggestedAsset.value = null;
 	findError.value = "";
+	void runPreflight(release);
 
 	// DWC updates aren't matched against any board's firmwareFileName at all - the release just has
 	// one asset per connection mode (see dwcSource.ts).

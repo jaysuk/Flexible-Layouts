@@ -33,6 +33,7 @@ import { activateFlLayout } from "./model/layoutState";
 import { isCncOrLaserMode } from "./util/machineMode";
 import { installEscapeGuard, uninstallEscapeGuard } from "./model/access";
 import { installAutoBackupNudges, uninstallAutoBackupNudges } from "./model/configBackup/autoBackupNudges";
+import { installFirmwareChangeNudges, uninstallFirmwareChangeNudges } from "./model/firmware/changeNudges";
 import { teardownScreenState } from "./model/screenState";
 import { installSoundCues, uninstallSoundCues } from "./model/soundCues";
 import { installAudioUnlock } from "./util/sound";
@@ -119,6 +120,10 @@ const uninstallErrorCapture = installErrorCapture();
 // always a one-click toast, never a silent upload/download. See autoBackupNudges.ts.
 installAutoBackupNudges();
 
+// Firmware-change notice: when the board's firmware version differs from the one the user last reviewed, list the lines of their
+// own sys/macros files that use something that changed. One click-through toast; see model/firmware/changeNudges.ts.
+installFirmwareChangeNudges();
+
 // Optional sound / vibration cues for machine events (all off until the user turns them on, per device) - see
 // soundCues.ts. The audio-unlock hook only waits for the first click/tap so the browser will let us play.
 installSoundCues();
@@ -138,6 +143,7 @@ function onPluginUnloaded(id: string): void {
 		uninstallEscapeGuard();
 		uninstallErrorCapture();
 		uninstallAutoBackupNudges();
+		uninstallFirmwareChangeNudges();
 		uninstallCertExpiryNudge();
 		uninstallMaintenanceReminderNudge();
 		teardownScreenState();

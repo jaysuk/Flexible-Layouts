@@ -153,6 +153,9 @@
 					  :label="$t('plugins.flexibleLayouts.updates.autoCheck')" @update:model-value="onToggleChecks" />
 
 			<v-divider class="my-4" />
+			<FirmwareChangesCard />
+
+			<v-divider class="my-4" />
 			<div class="text-title-small mb-1">{{ $t("plugins.flexibleLayouts.sdBackup.title") }}</div>
 			<p class="text-body-small text-medium-emphasis mt-0 mb-2">{{ $t("plugins.flexibleLayouts.sdBackup.hint") }}</p>
 			<div class="d-flex flex-wrap ga-2">
@@ -373,6 +376,7 @@ import ThemeEditor from "../editor/ThemeEditor.vue";
 import ProfilesDialog from "../editor/ProfilesDialog.vue";
 import HelpDialog from "../editor/HelpDialog.vue";
 import AccessSettings from "../editor/AccessSettings.vue";
+import FirmwareChangesCard from "../firmwareChanges/FirmwareChangesCard.vue";
 import PageManager from "../editor/PageManager.vue";
 import PasswordDialog from "../editor/PasswordDialog.vue";
 import ResetConfirmDialog from "../editor/ResetConfirmDialog.vue";

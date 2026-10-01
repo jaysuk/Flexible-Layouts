@@ -3,6 +3,7 @@
 		<v-card>
 			<v-card-title>{{ $t("plugins.flexibleLayouts.firmwareUpdate.confirmFilesTitle") }}</v-card-title>
 			<v-card-text>
+				<p v-if="notice" class="text-caption text-warning mb-2" data-test="preflight-notice">{{ notice }}</p>
 				<p class="text-caption text-medium-emphasis mb-2">{{ $t("plugins.flexibleLayouts.firmwareUpdate.confirmFilesBody") }}</p>
 				<v-checkbox v-for="f in files" :key="f" v-model="selected" :value="f" :label="f" density="compact" hide-details />
 				<p v-if="!selected.length" class="text-caption text-warning mt-2">
@@ -25,7 +26,7 @@ import { ref, watch } from "vue";
 
 // `attach` is a plain pass-through to v-dialog's own prop - see GcodeFilePickerDialog.vue's own
 // doc comment on the same prop for why it exists (a Vuetify overlay testing gotcha, unset in real use).
-const props = defineProps<{ modelValue: boolean; files: Array<string>; attach?: boolean | string }>();
+const props = defineProps<{ modelValue: boolean; files: Array<string>; attach?: boolean | string; notice?: string }>();
 const emit = defineEmits<{ "update:modelValue": [boolean]; confirm: [Array<string>] }>();
 
 const selected = ref<Array<string>>([...props.files]);

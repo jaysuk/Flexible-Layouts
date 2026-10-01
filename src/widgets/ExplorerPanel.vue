@@ -143,12 +143,14 @@ import {
 	activateTab, addTab, canSplit, closeSplitPanes, isShowing as paneIsShowing, isSplit, moveTabToPane, paneOf,
 	removeTab as removeFromSession, setPaneRatio, splitPanes,
 } from "../model/explorerPanes";
-import { explorerSession, releaseExplorerSession, type ExplorerTab as Tab } from "../model/explorerSession";
+import {
+	clearReveal, explorerSession, pendingRevealFor, releaseExplorerSession, revealRequest, type ExplorerTab as Tab,
+} from "../model/explorerSession";
 
 interface FileItem { name: string; isDirectory?: boolean }
 // The subset of GcodeCmEditor.vue's/DWC core's MonacoEditor.vue's exposed surface this panel needs -
 // both mirror the same `save(): Promise<boolean>` contract (see GcodeCmEditor.vue's own doc comment).
-interface EditorHandle { save: () => Promise<boolean> }
+interface EditorHandle { save: () => Promise<boolean>; revealLine?: (line: number) => void }
 
 // `attach` is passed straight through to the close-confirmation `v-dialog`, purely for testability
 // (Vuetify teleports dialog content to `<body>` by default, invisible to a `VueWrapper`'s own `find`)
@@ -277,10 +279,24 @@ const editorRefs = new Map<number, EditorHandle>();
 function bindEditorRef(id: number, el: unknown): void {
 	if (el !== null && typeof (el as Partial<EditorHandle>).save === "function") {
 		editorRefs.set(id, el as EditorHandle);
+		tryReveal();
 	} else {
 		editorRefs.delete(id);
 	}
 }
+
+// "Open at line N" from outside (model/explorerSession.ts's `revealRequest`): claimed by whichever editor for that file is mounted
+// - now, or when it mounts a moment after the navigation. Monaco has no such method, so its request is simply dropped.
+function tryReveal(): void {
+	const req = revealRequest.value;
+	if (req === null) return;
+	const tab = tabs.value.find((t) => t.kind === "editor" && t.filename === req.path);
+	const editor = tab ? editorRefs.get(tab.id) : undefined;
+	if (!editor || pendingRevealFor(req.path) === null) return;
+	clearReveal();
+	editor.revealLine?.(req.line);
+}
+watch(revealRequest, () => tryReveal(), { flush: "post" });
 
 function basename(p: string): string { return p.replace(/\/+$/, "").split("/").pop() || p; }
 function tabLabel(tab: Tab): string {

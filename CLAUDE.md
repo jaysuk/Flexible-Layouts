@@ -6,7 +6,9 @@ Vue 3 + Vuetify plugin for DuetWebControl (drag-and-drop layout customisation fo
 
 - **Tests**: `npm test` — runs the full vitest suite. Bare `npx vitest run` (no file argument) fails
   with a runner-detection error unrelated to code; always use the `npm test` script for a full run.
-  A single file works fine directly: `npx vitest run path/to/file.test.ts`.
+  A single file works fine directly: `npx vitest run path/to/file.test.ts`. Do not run it alongside another heavy
+  job (e.g. `dwc-gcode-core`'s suite): under that load all 171 files fail with the same "vitest is imported directly"
+  error and `happy-dom` AbortErrors, and a rerun on its own is green.
 - **Typecheck**: needs a local DuetWebControl checkout — `DWC_DIR=<path-to-DuetWebControl> npm run typecheck`.
   Bare `npm run typecheck` fails without `DWC_DIR` set. The check resolves `dwc-gcode-core` (and other shared packages) from
   **that checkout's** `node_modules`, not this repo's - a stale copy there (e.g. 1.31.0 while this repo needs 1.32.0) shows up as
@@ -155,6 +157,32 @@ Vue 3 + Vuetify plugin for DuetWebControl (drag-and-drop layout customisation fo
   `v-svg-button` (`util/svgButton.ts`): role, name, tab stop, Enter/Space firing the element's OWN click handler; jog pads are one
   tab stop with `ringNavigation` arrows. Panel headers are keyboard "grab handles" (Enter, arrows, Shift+arrows) that
   `FlexPage` applies as one undo step and announces in an `aria-live` region.
+- **Firmware-change notifications** (`model/firmware/change*.ts`, `impactRange.ts`, `firmwareChanges/`; plan in `FIRMWARE-CHANGES-PLAN.md`).
+  `dwc-gcode-core` (>= 1.33.0) owns the catalogue and the matching (`scanImpact`/`scanFile`/`buildImpactReport`, `impactToDiagnostics`,
+  `RELEASES`); this repo only lists and reads the files and shows the result. **State lives beside the document, not in it**:
+  `plugins.flexibleLayouts.firmwareChanges` (`changeState.ts`: `enabled`, `editorWarnings`, `baseline`, `acknowledged`, `lastScan`,
+  `notifiedKey`), machine-shared like the profiles but outside them, so layout export, profiles and undo never see it (a test
+  asserts the profiles JSON is unchanged). **Event ids are a contract with core** - `acknowledged` stores them, and core's
+  `test/fixtures/event-ids.json` fails if one disappears. `decideCheck`: no baseline -> record it silently, same version -> nothing, any
+  other version (up or down) -> scan. Only `boards[0]` counts. **The scan is idle-only** (`changeCheck.ts`'s `shouldContinue`: connected
+  and `state.status === "idle"`), reads `sys` + `macros` only (never `gcodes/`, files over 1 MB, non-G-code names), 3 downloads at a time,
+  cached in memory by `path|size|lastModified` (`changeScan.ts`), parsing yields every 8 files. `changeNudges.ts` is the toast: once per
+  `baseline->running` pair machine-wide (`notifiedKey`), zero findings advance the baseline silently, a busy machine waits for the idle
+  edge, `CHECK_COOLDOWN_MS` guards a flapping link. The toast route is `/Settings/flexibleLayouts` (the settings-tab key); a route can
+  only name a page, so `requestFirmwareReport()` leaves a 2-minute flag that `FirmwareChangesCard` turns into an open dialog.
+  **"Open at line N"** cannot ride the Explorer URL: `requestReveal(path, line)` (`explorerSession.ts`, 10 s TTL) is claimed by
+  `ExplorerPanel`'s `tryReveal` when the file's editor binds, and `GcodeCmEditor.revealLine` waits for the load. **The firmware-update
+  widget's pre-flight** (`FirmwareUpdateWidget.vue`) scans running -> selected release with `quiet: true` (never overwrites the shared
+  report), never touches the baseline, and sets `preflightTarget` so `currentImpactRange()` (what the editor's `gcodeImpactCheck` is drawn
+  for) follows the selection. Wording is "known changes", never "your files are safe"; the report footer counts what cannot be checked.
+  Editor squiggles need `dwc-gcode-editor` >= 0.15.0 and share the CM lint set with the other linters (see that package's notes on
+  `setDiagnostics`). **Catalogue accuracy is core's job and still partial**: every command in core's dictionary now has `historyChecked`, i.e.
+  its existence and the parameters the entry LISTS were confirmed against RRF source at all 18 tracked builds (282 of 282 as of 2026-09-30; progress is
+  `dictionary/coverage.json`'s `versionHistory`, status in `FIRMWARE-CHANGES-PLAN.md`). That is not "the catalogue is complete": value-level and
+  required-ness changes need a hand-written event, and the motion-maths files (third-order planner, DDA, step timing) were only surface-scanned, so a purely numerical change there
+  is invisible to the catalogue. The 293 commits the triage closed with a section note were read as diffs on 2026-10-01 (`docs/rrf-triage/d3-line-by-line.md` in core) and `M669`'s per-kinematics
+  letters (Hangprinter, five-bar SCARA) are enumerated. So the UI's "known changes" wording and the undetectable count are load-bearing. A mistake found there is fixed in core and arrives via a
+  `dwc-gcode-core` bump, never patched in FL.
 - **Starter layouts are a registry** (`model/starterLayouts.ts`): one entry per page, built from `createDefaultWidget` so schema
   changes flow in; always a NEW page (optionally its own profile), never a change to an existing one. `test/starterLayouts.test.ts`
   checks every entry against the widget catalogue, the 12-column grid and `migrateDocument`.
