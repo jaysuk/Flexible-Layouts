@@ -27,8 +27,8 @@
     "@peculiar/asn1-x509": "^2.10.0",
     "clipper-lib": "^6.4.2",
     "dwc-config-backup-core": "^0.2.1",
-    "dwc-gcode-core": "^1.33.0",
-    "dwc-gcode-editor": "github:jaysuk/dwc-gcode-editor#v0.15.0",
+    "dwc-gcode-core": "^1.35.0",
+    "dwc-gcode-editor": "github:jaysuk/dwc-gcode-editor#v0.16.0",
     "dwc-plugin-runtime": "^0.8.8",
     "grid-layout-plus": "^1.1.1",
     "jszip": "^3.10.2"
