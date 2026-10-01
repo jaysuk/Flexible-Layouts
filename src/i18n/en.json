@@ -1321,7 +1321,15 @@
 	"whatsNew": {
 		"title": "What's new in Flexible Layouts",
 		"close": "Close",
-		"newWidgetsHeading": "New widgets in this release"
+		"newWidgetsHeading": "New widgets in this release",
+		"widgetBlurb": {
+			"tabs": "Several pages of widgets in one panel, with the tab bar on top, bottom or left.",
+			"filamentMonitor": "Live status of each extruder's filament monitor: OK, no data, no filament or too little movement.",
+			"emergencyStop": "A large emergency-stop button you can put on any page.",
+			"fullscreen": "Switch the browser to fullscreen or kiosk mode for a wall-mounted screen.",
+			"jobProgress": "A full-width progress bar for the running job, now placeable on any page.",
+			"jobView": "DWC's 3D preview, layer chart and G-code stream as one panel for your Job pages."
+		}
 	},
 	"maintenance": {
 		"navCaption": "Maintenance",

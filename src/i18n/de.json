@@ -1321,7 +1321,15 @@
 	"whatsNew": {
 		"title": "Neues in Flexible Layouts",
 		"close": "Schließen",
-		"newWidgetsHeading": "Neue Widgets in dieser Version"
+		"newWidgetsHeading": "Neue Widgets in dieser Version",
+		"widgetBlurb": {
+			"tabs": "Mehrere Widget-Seiten in einem Panel, mit Tab-Leiste oben, unten oder links.",
+			"filamentMonitor": "Live-Status des Filamentsensors jedes Extruders: OK, keine Daten, kein Filament oder zu wenig Bewegung.",
+			"emergencyStop": "Ein großer Not-Aus-Button, den du auf jeder Seite platzieren kannst.",
+			"fullscreen": "Browser in den Vollbild- oder Kiosk-Modus schalten, z. B. für einen Wandbildschirm.",
+			"jobProgress": "Ein Fortschrittsbalken in voller Breite für den laufenden Auftrag, auf jeder Seite platzierbar.",
+			"jobView": "DWCs 3D-Vorschau, Schichtdiagramm und G-Code-Stream als ein Panel für deine Job-Seiten."
+		}
 	},
 	"maintenance": {
 		"navCaption": "Wartung",
