@@ -9,7 +9,7 @@
  * Change-event ids (`acknowledged`) are a contract with `dwc-gcode-core`: it never renames or removes one, precisely so an
  * acknowledgement stored here keeps meaning the same change.
  */
-import { compareFirmwareVersions, parseFirmwareVersion } from "dwc-gcode-core";
+import { OLDEST_TRACKED_RELEASE, compareFirmwareVersions, parseFirmwareVersion } from "dwc-gcode-core";
 
 import { useSettingsStore } from "@/stores/settings";
 
@@ -94,8 +94,8 @@ export type CheckDecision = "record-baseline" | "scan" | "none";
 /**
  * What a connect (or reconnect) should do.
  *  - disabled, or no readable running version: nothing.
- *  - no baseline yet: store the current version and stay QUIET - there is nothing to compare against, and a first-run toast
- *    about a change the user did not make would be noise.
+ *  - no baseline yet: the caller stores `initialBaseline(running)` and goes on to scan from it (a first install has no history to
+ *    compare with, so the files are checked against the oldest version the catalogue covers).
  *  - the same version: nothing.
  *  - any other version, up or down: scan.
  */
@@ -103,6 +103,16 @@ export function decideCheck(state: Pick<FirmwareChangeState, "enabled" | "baseli
 	if (!state.enabled || running === null) { return "none"; }
 	if (state.baseline === null) { return "record-baseline"; }
 	return compareFirmwareVersions(state.baseline, running) === 0 ? "none" : "scan";
+}
+
+/**
+ * The baseline of a first install (or of an install that predates this feature): the oldest release the catalogue covers, so the
+ * first scan reports what changed since then. FL cannot know which version the files were really written for, so this is "known
+ * changes since <oldest>", and the report says so by naming both versions. A machine already at (or below) that version has
+ * nothing to scan: the running version itself is recorded.
+ */
+export function initialBaseline(running: string): string {
+	return compareFirmwareVersions(OLDEST_TRACKED_RELEASE, running) < 0 ? OLDEST_TRACKED_RELEASE : running;
 }
 
 /** "Mark all as reviewed": the running version becomes the baseline, so the same change is not reported again. */

@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
-	deployMaintenanceMacros, extractMaintenanceMacroVersion, MAINTENANCE_DAEMON_FILE, MAINTENANCE_DAEMON_MACRO,
-	MAINTENANCE_FLUSH_FILE, MAINTENANCE_FLUSH_MACRO, MAINTENANCE_MACRO_FOLDER, MAINTENANCE_MACRO_SET_VERSION,
+	deployMaintenanceMacros, extractMaintenanceMacroVersion, MAINTENANCE_CUSTOM_FILE, MAINTENANCE_CUSTOM_FLUSH_FILE,
+	MAINTENANCE_DAEMON_FILE, MAINTENANCE_DAEMON_MACRO, MAINTENANCE_FLUSH_FILE, MAINTENANCE_FLUSH_MACRO, MAINTENANCE_MACRO_FOLDER, MAINTENANCE_MACRO_SET_VERSION,
 	MAINTENANCE_MACROS, MAINTENANCE_MAX_TRACKED_AXES, MAINTENANCE_MAX_TRACKED_FANS, MAINTENANCE_MAX_TRACKED_HEATERS,
-	MAINTENANCE_STATE_PATH, maintenanceMacrosMissing, maintenanceMacrosOutdated, seedMaintenanceState,
+	MAINTENANCE_STATE_PATH, maintenanceMacroStatus, maintenanceMacrosMissing, maintenanceMacrosOutdated, seedMaintenanceState,
 } from "../model/maintenance/macros";
 
 // A fake card: in-memory path->text map, plus per-op failure switches and a sent-code log - mirrors
@@ -242,8 +242,39 @@ describe("macro bodies", () => {
 	// (flMaintTrackAxes/flMaintTrackFans/flMaintTrackHeaters) - v9 briefly gated all three behind one
 	// shared flMaintTrackDetail flag, which forced a user who only wanted (say) heater on-time to also
 	// pay for axis/fan polling to get it.
-	it("carries version 10", () => {
-		expect(MAINTENANCE_MACRO_SET_VERSION).toBe(10);
+	it("carries version 11", () => {
+		expect(MAINTENANCE_MACRO_SET_VERSION).toBe(11);
+	});
+
+	// --- v11: the daemon hands off to a GENERATED macro (user counters, service-rule actions).
+	it("seeds flMaintDt and derives flMaintCustomOn from the generated file existing, each behind its own guard", () => {
+		expect(MAINTENANCE_DAEMON_MACRO).toMatch(/if !exists\(global\.flMaintDt\)\r?\n\tglobal flMaintDt = 0/);
+		expect(MAINTENANCE_DAEMON_MACRO).toContain(
+			`if !exists(global.flMaintCustomOn)\n\tglobal flMaintCustomOn = fileexists("${MAINTENANCE_MACRO_FOLDER}/${MAINTENANCE_CUSTOM_FILE}")`,
+		);
+	});
+
+	it("calls the generated macro LAST - after the flush check - and only when it exists, passing dt as a global", () => {
+		const flushCheck = MAINTENANCE_DAEMON_MACRO.indexOf("if global.flMaintUnflushedSec >= 600");
+		const handOff = MAINTENANCE_DAEMON_MACRO.indexOf("if global.flMaintCustomOn");
+		const call = MAINTENANCE_DAEMON_MACRO.indexOf(`M98 P"${MAINTENANCE_MACRO_FOLDER}/${MAINTENANCE_CUSTOM_FILE}"`);
+		expect(flushCheck).toBeGreaterThan(-1);
+		// An expression RRF rejects aborts the macro it is in: that must never stop the base flush.
+		expect(handOff).toBeGreaterThan(flushCheck);
+		expect(call).toBeGreaterThan(handOff);
+		expect(MAINTENANCE_DAEMON_MACRO.slice(handOff, call)).toContain("set global.flMaintDt = var.dt");
+		// ...and nothing follows the call, so there is nothing a failure there could skip.
+		expect(MAINTENANCE_DAEMON_MACRO.slice(call).trim().split("\n")).toHaveLength(1);
+	});
+
+	it("the flush macro persists the generated half last, behind an exists-then-flag guard", () => {
+		const call = MAINTENANCE_FLUSH_MACRO.indexOf(`M98 P"${MAINTENANCE_MACRO_FOLDER}/${MAINTENANCE_CUSTOM_FLUSH_FILE}"`);
+		expect(call).toBeGreaterThan(MAINTENANCE_FLUSH_MACRO.indexOf("flMaintHeaterFullSec"));
+		expect(MAINTENANCE_FLUSH_MACRO).toMatch(/if exists\(global\.flMaintCustomOn\)\r?\n\tif global\.flMaintCustomOn\r?\n\t\tM98 P"/);
+	});
+
+	it("keeps the generated files out of the static deploy, which would otherwise blank them", () => {
+		expect(Object.keys(MAINTENANCE_MACROS).sort()).toEqual([MAINTENANCE_DAEMON_FILE, MAINTENANCE_FLUSH_FILE].sort());
 	});
 
 	it("seeds each of the three tracking flags to false behind its own exists-guard", () => {
@@ -317,6 +348,15 @@ describe("maintenanceMacrosMissing / Outdated", () => {
 		const io = fakeIO({ [`${MAINTENANCE_MACRO_FOLDER}/${MAINTENANCE_DAEMON_FILE}`]: MAINTENANCE_DAEMON_MACRO });
 		io.fail.download = true;
 		await expect(maintenanceMacrosOutdated(io)).resolves.toBe(false);
+	});
+});
+
+describe("maintenanceMacroStatus", () => {
+	it("tells 'never deployed', 'deployed but old' and 'current' apart", async () => {
+		const path = `${MAINTENANCE_MACRO_FOLDER}/${MAINTENANCE_DAEMON_FILE}`;
+		expect(await maintenanceMacroStatus(fakeIO())).toBe("missing");
+		expect(await maintenanceMacroStatus(fakeIO({ [path]: "; FL-MAINTENANCE-MACRO-VERSION: 10\n" }))).toBe("outdated");
+		expect(await maintenanceMacroStatus(fakeIO({ [path]: MAINTENANCE_DAEMON_MACRO }))).toBe("ready");
 	});
 });
 

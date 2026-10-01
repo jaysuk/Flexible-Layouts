@@ -49,7 +49,11 @@ Vue 3 + Vuetify plugin for DuetWebControl (drag-and-drop layout customisation fo
   `overrides`, which restarts the display at the menu it was showing. DWC's Monaco exposes only `save()`/`focus()`
   (`defineExpose({ save, focus: focusEditor })`), so a menu file still opened there falls back to the saved
   file, re-read on save. `GcodeCmEditor` is kind-aware (`isMenu`): menu grammar + live `menu/*` linting from
-  `dwc-gcode-editor`'s `menuFile.ts` (needs editor >= v0.11.0), no G-code completion/F4/Run/stepper.
+  `dwc-gcode-editor`'s `menuFile.ts` (needs editor >= v0.11.0), no G-code completion/F4/Run/stepper. The STM32 `board.txt` opens there too
+  (`isBoard`, `shouldUseNewGcodeEditor` says yes for `FileKind: "board-config"`): `boardTxtLanguage`/`boardTxtCompletion`/`boardTxtLiveLinter`, the same
+  stripped toolbar. Every G-code-only feature (F4, Run, check, stepper, comment tools, the text-banner button, impact squiggles) hangs off
+  `isGcode = !isMenu && !isBoard` - a new file kind means a new flag there, not another `!isMenu`. The banner button
+  (`AsciiArtDialog.vue` -> `insertAsciiArt`) writes `;` comment lines, so it is G-code only.
   The emulator's **Message box** menu shows a sample M291 box (`MenuDisplay.setMessageBox`, core >= 1.30.0): a preview
   has no live M291, so the emulator plays the firmware's part - a recorded `M292` (an OK/Cancel press) takes the box
   down again with `setMessageBox(null)`, after the encoder call returns, as RRF does (clearing it synchronously
@@ -126,6 +130,26 @@ Vue 3 + Vuetify plugin for DuetWebControl (drag-and-drop layout customisation fo
   re-run by a watch because DWC loads settings after plugins. `mergeImported` gives an imported page whose slug collides with
   a different-titled local page a new address (same slug + same title = the page coming back, overwrites). The importers
   (`io.ts`, `btncmd.ts`) still mint UUIDs on purpose; the migration slugs them once merged.
+- **Maintenance rules, user counters and the machine-side action** (`model/maintenance/counters.ts`, `customCounters.ts`, `rulesMacro.ts`,
+  `rulesSync.ts`, `model/reminders/rulesStore.ts`, `ruleAction.ts`, `maintenance/useMaintenanceRules.ts`). A counter is a **key string**
+  (`spindleSeconds`, `axisMm:2`, `custom:c1`) parsed in `counters.ts` - the one place that maps a key to its `global.flMaint*`
+  expression/unit/label; rules, log `services`, `baselines`, the due badge and the generated macro all use it. A log entry's
+  `*AtEntry` fields cover only the original four counters; everything else is in the optional `baselines` record. **Rules live on the
+  SD card** (`0:/sys/flexible-layouts.maintenance-rules.json`, checksummed, read-modify-write via `updateMaintenanceRules`), not in
+  `localStorage` any more (that is now the offline copy and the migration source): an unreadable file is NOT an absent one, and a file is
+  only created when the directory listing positively says it is missing - writing over an unreadable file would delete everyone's
+  rules. **The machine runs rule actions and user counters itself** from a GENERATED `maintenance-custom.g` (+ `-flush.g`); the static
+  daemon (v11) calls it only while `global.flMaintCustomOn` (derived from that file existing - nothing to persist) and AFTER its flush
+  check, so an expression RRF rejects (which aborts the macro it is in) can never stop the base counters being written. Each rule's due
+  value (`baseline + interval`) is baked into that file as a literal, so **anything that moves a baseline must call `resync()`** (logging a
+  service does; so does every rules/counter change and the setup wizard). The "already fired" marker stores the due value that fired, so
+  a new baseline re-arms without a reset step. A rule with no baseline is deliberately NOT armed (it would fire at once on a machine that
+  has simply been running). User conditions are checked with `dwc-gcode-core`'s `parseExpression` and then evaluated on the machine with
+  `echo` before they can be saved; actions must be one G/M/T line, run idle-only by default. The macro TEXT is unit-tested (every
+  expression in it is parsed with the core's parser) and was checked against RRF's source (`fileexists`, M98 on a missing file only
+  warns, daemon cadence, `M291 S1` non-blocking) but has **not been run on real firmware** - have a changed generator reviewed by hand.
+  The Duet3D Maintenance Timers plugin interop (`pluginTimers.ts`) only reads `plugins.MaintenanceTimers.data.timers` and calls its
+  `PUT machine/MaintenanceTimers/Reset`; it accepts camelCase or PascalCase keys because the plugin's serialiser casing is unverified.
 - **Display units and slider preferences follow DWC's settings.** `util/units.ts` (`useLengthUnits`) turns DWC's `displayUnits` into
   inches for the DRO, WCS, WCS table, Octopus DRO and a value widget flagged `lengthMm` - display only: the firmware and every
   command stay in millimetres, so typed inches are converted back before they reach G-code. `widgets/LockableSlider.vue` wraps
@@ -163,7 +187,8 @@ Vue 3 + Vuetify plugin for DuetWebControl (drag-and-drop layout customisation fo
   `plugins.flexibleLayouts.firmwareChanges` (`changeState.ts`: `enabled`, `editorWarnings`, `baseline`, `acknowledged`, `lastScan`,
   `notifiedKey`), machine-shared like the profiles but outside them, so layout export, profiles and undo never see it (a test
   asserts the profiles JSON is unchanged). **Event ids are a contract with core** - `acknowledged` stores them, and core's
-  `test/fixtures/event-ids.json` fails if one disappears. `decideCheck`: no baseline -> record it silently, same version -> nothing, any
+  `test/fixtures/event-ids.json` fails if one disappears. `decideCheck`: no baseline -> `record-baseline`, which the nudge turns into a scan from `initialBaseline(running)` (core's
+  `OLDEST_TRACKED_RELEASE`, 3.6.3; a machine already there just records itself), same version -> nothing, any
   other version (up or down) -> scan. Only `boards[0]` counts. **The scan is idle-only** (`changeCheck.ts`'s `shouldContinue`: connected
   and `state.status === "idle"`), reads `sys` + `macros` only (never `gcodes/`, files over 1 MB, non-G-code names), 3 downloads at a time,
   cached in memory by `path|size|lastModified` (`changeScan.ts`), parsing yields every 8 files. `changeNudges.ts` is the toast: once per
@@ -179,8 +204,10 @@ Vue 3 + Vuetify plugin for DuetWebControl (drag-and-drop layout customisation fo
   `setDiagnostics`). **Catalogue accuracy is core's job and still partial**: every command in core's dictionary now has `historyChecked`, i.e.
   its existence and the parameters the entry LISTS were confirmed against RRF source at all 18 tracked builds (282 of 282 as of 2026-09-30; progress is
   `dictionary/coverage.json`'s `versionHistory`, status in `FIRMWARE-CHANGES-PLAN.md`). That is not "the catalogue is complete": value-level and
-  required-ness changes need a hand-written event, and the motion-maths files (third-order planner, DDA, step timing) were only surface-scanned, so a purely numerical change there
-  is invisible to the catalogue. The 293 commits the triage closed with a section note were read as diffs on 2026-10-01 (`docs/rrf-triage/d3-line-by-line.md` in core) and `M669`'s per-kinematics
+  required-ness changes need a hand-written event (a value-level pass on 2026-10-01 read every changed range check, `MustSee`, rejecting reply and default, and found one miss -
+  `M563 H`/`M140 H`/`M141 H` refusing a heater that already has another job - see core's `d3-line-by-line.md`; it shipped in core 1.35.0), and the motion-maths files: the default (S-curve off) path was
+  compared line by line on 2026-10-01 (a handful of sub-step differences, one event for input-shaping start gaps), but the third-order planner has no 3.6.3 counterpart to diff and nothing was measured on a machine, so a purely numerical change there is invisible to the catalogue.
+  The same pass found HTTP no longer enabled by default (`network-http-not-enabled-by-default`) and the `M472 R1` nested-delete fix; both shipped in core 1.35.0. The 293 commits the triage closed with a section note were read as diffs on 2026-10-01 (`docs/rrf-triage/d3-line-by-line.md` in core) and `M669`'s per-kinematics
   letters (Hangprinter, five-bar SCARA) are enumerated. So the UI's "known changes" wording and the undetectable count are load-bearing. A mistake found there is fixed in core and arrives via a
   `dwc-gcode-core` bump, never patched in FL.
 - **Starter layouts are a registry** (`model/starterLayouts.ts`): one entry per page, built from `createDefaultWidget` so schema

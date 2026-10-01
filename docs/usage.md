@@ -82,8 +82,11 @@ Open **Manage pages** (the edit toolbar, the drawer, or *Settings → Flexible L
 
 *Settings → Flexible Layouts → G-code editor*:
 
-- **Use the new G-code editor** opens G-code files and 12864 menu files (`0:/menu/…`) in a CodeMirror
-  editor with real syntax highlighting and error checking (other file types still use DWC's editor).
+- **Use the new G-code editor** opens G-code files, 12864 menu files (`0:/menu/…`) and the STM32 `board.txt`
+  in a CodeMirror editor with real syntax highlighting and error checking (other file types still use DWC's
+  editor). `board.txt` gets its own highlighting, completion of the known setting names and a live check that
+  marks lines the firmware would skip. In a G-code file, the **text banner** button (the "T" icon) turns a line
+  of text into large letters made of `;` comment lines at the cursor, with a preview.
 - **Also replace the Explorer page** swaps DWC's Explorer for a full-page Flexible Layouts one that uses
   it. Links from notifications and macro lists still work. It applies as soon as you flip the switch on a DWC
   that can change a layout's pages while running (DWC builds with `addLayoutRoutes`); on older builds the
@@ -110,8 +113,10 @@ Open **Manage pages** (the edit toolbar, the drawer, or *Settings → Flexible L
 downgrade), Flexible Layouts reads your own `0:/sys` and `0:/macros` files and lists the lines that use a command, parameter,
 object-model path or syntax feature whose behaviour changed between the two versions.
 
-- **First connect** just records the version the machine runs; there is nothing to compare with yet, so nothing is said. To check
-  against an older version, type it into *Check against version* and press Check.
+- **First connect** (a fresh install, or an install from before this feature) has no earlier version to compare with, so the files
+  are checked against the oldest version the catalogue covers (3.6.3): you get the same toast and report, worded "3.6.3 → <your
+  version>". That is "known changes since 3.6.3", not changes since the version your files were written for - if you know that
+  one, type it into *Check against version* and press Check. A machine already on 3.6.3 (or older) just records its version.
 - **After a change** you get one toast ("Firmware version changed") that opens the report: changes grouped by what changed, with the
   version it changed in, the source it was found in, and every affected `file:line`. **Open** jumps to that line in the Explorer.
   A change that found nothing moves on silently.
@@ -127,6 +132,33 @@ object-model path or syntax feature whose behaviour changed between the two vers
   as a review.
 - The baseline and the ignored changes are stored on the board with the rest of the plugin's settings, so every browser that opens
   the machine agrees. They are not part of the layout, so they are not in an export or a profile.
+
+## Maintenance
+
+The **Maintenance** page (and the Maintenance widget, which links to it) counts how much the machine has been used and tells you when
+service is due. The counting runs on the machine itself, so the totals are right whenever you open DWC. *Set up tracking* installs
+the macros that do it; after an update of Flexible Layouts it may ask you to run it again.
+
+- **Log a service** ("changed the collet") snapshots every counter. Choose which counters it resets - nothing chosen means all of
+  them - so greasing the ways does not restart the spindle-hours clock.
+- **Service reminders** ("grease the ways every 50 spindle hours"): pick what to measure - print or spindle hours, filament, tool
+  changes, power-on time, job counts, any axis's travel, any fan's runtime, any heater's on-time or full-load time, or one of your
+  own counters - and an interval in hours, metres or a count. You get a toast when you connect and a badge on the widget when one is
+  due or nearly due. A rule shows "—" until a service that covers its counter has been logged: it never reports overdue from nothing.
+  Rules are kept on the SD card beside the log, so every browser sees the same ones; rules you made in an earlier version are moved
+  there the first time you open the page.
+- **Run something when it is due.** A rule can also have one G/M/T-code line, which the *machine* runs by itself, once, with no
+  browser open - for example `M291 P"Grease the ways" R"Maintenance" S1` for a message box that does not wait. It runs only while the
+  machine is idle unless you untick that. It needs a logged service to count from (the rule's row says so until then), and it runs
+  once per service: logging the next service re-arms it. Use `S1` (or no `S`) for message boxes: `S2` and `S3` wait for a button
+  and would hold up the tracking macro until someone answers.
+- **Your own counters.** Count the time while conditions you write are all true - for example `state.currentTool == 1`,
+  `state.status == "processing"` or `heat.heaters[0].current > 60`. Each condition is checked for syntax and then evaluated on the
+  machine before the counter can be saved, because an expression the firmware rejects would stop that part of the tracking macro.
+  The machine counts about every 10 seconds, so something that is true for less than that can be missed. A counter can then be used
+  by a reminder like any other.
+- **Maintenance Timers plugin.** If the Duet3D *Maintenance Timers* plugin is installed, its timers appear on the page with their
+  progress and a **Reset** button, and any that have reached their threshold count towards the widget's badge and the connect toast.
 
 ## Starter layouts
 

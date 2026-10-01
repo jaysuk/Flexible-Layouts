@@ -16,8 +16,10 @@
 			</v-btn>
 		</div>
 
-		<v-alert v-if="!trackingConfigured" type="info" variant="tonal" density="compact" class="mb-4">
-			{{ $t("plugins.flexibleLayouts.maintenance.notSetUp") }}
+		<!-- "Update required" (not "not set up") when the macros ARE deployed but from an older template: the
+			 user already set this up, and their totals are intact - only the new features need the update. -->
+		<v-alert v-if="!trackingConfigured" :type="macroStatus === 'outdated' ? 'warning' : 'info'" variant="tonal" density="compact" class="mb-4">
+			{{ $t(macroStatus === "outdated" ? "plugins.flexibleLayouts.maintenance.updateRequired" : "plugins.flexibleLayouts.maintenance.notSetUp") }}
 		</v-alert>
 
 		<!-- Item F: a checksum mismatch means the log file on the card is already inconsistent with
@@ -187,38 +189,27 @@
 
 			<!-- Item H: per-rule "due"/"overdue" badges, derived live from Item D's own baseline
 				 machinery (mostRecentEntryForCounter/baselineForCounter) - a rule with no matching
-				 logged service yet reads as "unknown" (dash), never a false "overdue". -->
+				 logged service yet reads as "unknown" (dash), never a false "overdue". The rules live on
+				 the machine (shared by every browser) and a rule can carry an action the MACHINE runs when
+				 it comes due - see MaintenanceRulesPanel.vue. -->
 			<v-expansion-panel :title="$t('plugins.flexibleLayouts.maintenance.remindersTitle')">
 				<v-expansion-panel-text>
-					<div v-if="!reminderRows.length" class="text-caption text-medium-emphasis mb-3">
-						{{ $t("plugins.flexibleLayouts.maintenance.remindersEmpty") }}
-					</div>
-					<div v-for="row in reminderRows" :key="row.rule.id" class="mnt-detail-row">
-						<div class="d-flex align-center ga-2">
-							<v-icon size="small" :color="row.rule.enabled ? row.color : 'grey'">mdi-circle</v-icon>
-							<span :class="{ 'text-medium-emphasis': !row.rule.enabled }">{{ row.rule.label }}</span>
-						</div>
-						<div class="d-flex align-center ga-2">
-							<span class="text-caption text-medium-emphasis">{{ row.rule.enabled ? row.display : $t("plugins.flexibleLayouts.maintenance.reminderPaused") }}</span>
-							<v-switch :model-value="row.rule.enabled" density="compact" hide-details class="mnt-rule-switch"
-									  :title="$t('plugins.flexibleLayouts.maintenance.reminderToggle')"
-									  @update:model-value="(v) => onToggleRule(row.rule.id, v === true)" />
-							<v-btn :aria-label="$t('plugins.flexibleLayouts.a11y.delete')" icon="mdi-delete" size="x-small" variant="text" density="compact" @click="onDeleteRule(row.rule.id)" />
-						</div>
-					</div>
+					<MaintenanceRulesPanel :state="rulesState" :log="log" :is-fff="isFff" />
+				</v-expansion-panel-text>
+			</v-expansion-panel>
 
-					<v-divider class="my-3" />
-					<div class="d-flex ga-2 flex-wrap align-start">
-						<v-text-field v-model="newRuleLabel" density="compact" variant="outlined" hide-details
-									  :label="$t('plugins.flexibleLayouts.maintenance.reminderLabel')" style="max-width: 200px;" />
-						<v-select v-model="newRuleCounter" :items="reminderCounterItems" density="compact" variant="outlined" hide-details
-								  :label="$t('plugins.flexibleLayouts.maintenance.reminderCounter')" style="max-width: 180px;" />
-						<v-text-field v-model.number="newRuleInterval" type="number" min="1" density="compact" variant="outlined" hide-details
-									  :label="$t('plugins.flexibleLayouts.maintenance.reminderInterval')" style="max-width: 140px;" />
-						<v-btn color="primary" variant="tonal" :disabled="!newRuleLabel || !newRuleInterval" @click="onAddRule">
-							{{ $t("plugins.flexibleLayouts.maintenance.reminderAdd") }}
-						</v-btn>
-					</div>
+			<!-- User-defined counters: "count the time while these conditions are true", run on the
+				 machine like every other counter. -->
+			<v-expansion-panel :title="$t('plugins.flexibleLayouts.maintenance.customTitleSection')">
+				<v-expansion-panel-text>
+					<CustomCountersPanel :state="rulesState" />
+				</v-expansion-panel-text>
+			</v-expansion-panel>
+
+			<!-- Only on a machine that has the Duet3D Maintenance Timers plugin: FL is the UI for it. -->
+			<v-expansion-panel v-if="pluginTimersInstalled" :title="$t('plugins.flexibleLayouts.maintenance.pluginTimersTitle')">
+				<v-expansion-panel-text>
+					<PluginTimersPanel />
 				</v-expansion-panel-text>
 			</v-expansion-panel>
 		</v-expansion-panels>
@@ -237,19 +228,11 @@
 				 checked (the default) means "all of them" - the original, pre-this-field behaviour - so
 				 a user who never touches this gets exactly what they got before. -->
 			<v-card-text class="pt-0">
-				<div class="text-caption text-medium-emphasis mb-1">{{ $t("plugins.flexibleLayouts.maintenance.servicesLabel") }}</div>
-				<div class="d-flex ga-3 flex-wrap">
-					<v-checkbox v-if="!isFff" v-model="newServices" value="spindleSeconds" density="compact" hide-details
-								:label="$t('plugins.flexibleLayouts.maintenance.spindleHours')" />
-					<template v-if="isFff">
-						<v-checkbox v-model="newServices" value="printSeconds" density="compact" hide-details
-									:label="$t('plugins.flexibleLayouts.maintenance.printHours')" />
-						<v-checkbox v-model="newServices" value="filamentMm" density="compact" hide-details
-									:label="$t('plugins.flexibleLayouts.maintenance.filamentUsed')" />
-						<v-checkbox v-model="newServices" value="toolChanges" density="compact" hide-details
-									:label="$t('plugins.flexibleLayouts.maintenance.toolChanges')" />
-					</template>
-				</div>
+				<!-- A multi-select rather than a checkbox per counter: with per-axis, per-fan, per-heater and
+					 user counters there can be dozens. Nothing chosen still means "all of them". -->
+				<v-select v-model="newServices" :items="counterItems" item-title="title" item-value="key" multiple chips closable-chips
+						  density="compact" variant="outlined" hide-details :label="$t('plugins.flexibleLayouts.maintenance.servicesLabel')"
+						  :placeholder="$t('plugins.flexibleLayouts.maintenance.servicesAll')" persistent-placeholder />
 			</v-card-text>
 		</v-card>
 
@@ -298,17 +281,24 @@ import {
 	mostRecentEntryForCounter, readMaintenanceLogWithIntegrity, secondsSince, type MaintenanceCounterKey,
 	type MaintenanceEntry, type MaintenanceIntegrity, type MaintenanceLog,
 } from "../model/maintenance/log";
-import { maintenanceMacrosMissing, maintenanceMacrosOutdated, seedMaintenanceState } from "../model/maintenance/macros";
-import { computeDueStatus } from "../model/reminders/dueStatus";
-import { getIntervalRules, newRuleId, setIntervalRules, type MaintenanceIntervalRule } from "../model/reminders/storage";
+import { maintenanceMacroStatus, seedMaintenanceState, type MaintenanceMacroStatus } from "../model/maintenance/macros";
+import {
+	counterCatalogue, counterTitle, formatCounterAmount, liveCounterValue, snapshotExtraBaselines,
+} from "../model/maintenance/counters";
+import { readPluginTimers } from "../model/maintenance/pluginTimers";
 import { resolveOmPath } from "../util/omPath";
+import CustomCountersPanel from "./CustomCountersPanel.vue";
+import MaintenanceRulesPanel from "./MaintenanceRulesPanel.vue";
 import MaintenanceSetupDialog from "./MaintenanceSetupDialog.vue";
+import PluginTimersPanel from "./PluginTimersPanel.vue";
+import { useMaintenanceRules } from "./useMaintenanceRules";
 
 const machineStore = useMachineStore();
 const uiStore = useUiStore();
 
 const setupOpen = ref(false);
-const trackingConfigured = ref(false);
+const macroStatus = ref<MaintenanceMacroStatus>("missing");
+const trackingConfigured = computed(() => macroStatus.value === "ready");
 const togglingTracking = ref(false);
 const togglingTrackAxes = ref(false);
 const togglingTrackFans = ref(false);
@@ -424,66 +414,17 @@ async function updateDailySnapshot(): Promise<void> {
 	history.value = await readMaintenanceHistory();
 }
 
-// --- Item H: service-interval reminders -----------------------------------------------------------
+// --- Item H: service-interval reminders, machine-side rules, user counters ----------------------------
+// The rules and user counters live on the machine (model/reminders/rulesStore.ts) and drive a generated
+// macro there; this page only owns the shared state and hands it to the panels.
 
-const rules = ref<Array<MaintenanceIntervalRule>>([]);
-function refreshRules(): void {
-	rules.value = getIntervalRules();
-}
+const rulesState = useMaintenanceRules(() => log.value);
 
-const reminderCounterItems = computed(() => (isFff.value
-	? [
-		{ title: i18n.global.t("plugins.flexibleLayouts.maintenance.printHours"), value: "printSeconds" as const },
-		{ title: i18n.global.t("plugins.flexibleLayouts.maintenance.filamentUsed"), value: "filamentMm" as const },
-		{ title: i18n.global.t("plugins.flexibleLayouts.maintenance.toolChanges"), value: "toolChanges" as const },
-	]
-	: [{ title: i18n.global.t("plugins.flexibleLayouts.maintenance.spindleHours"), value: "spindleSeconds" as const }]));
+const pluginTimersInstalled = computed(() => readPluginTimers(machineStore.model) !== null);
 
-const newRuleLabel = ref("");
-const newRuleCounter = ref<MaintenanceCounterKey>(isFff.value ? "printSeconds" : "spindleSeconds");
-const newRuleInterval = ref<number | null>(null);
-
-function onAddRule(): void {
-	if (!newRuleLabel.value || !newRuleInterval.value) { return; }
-	const updated: Array<MaintenanceIntervalRule> = [...rules.value, {
-		id: newRuleId(), label: newRuleLabel.value, counter: newRuleCounter.value,
-		intervalValue: newRuleInterval.value, enabled: true,
-	}];
-	setIntervalRules(updated);
-	rules.value = updated;
-	newRuleLabel.value = "";
-	newRuleInterval.value = null;
-}
-
-function onDeleteRule(id: string): void {
-	const updated = rules.value.filter((r) => r.id !== id);
-	setIntervalRules(updated);
-	rules.value = updated;
-}
-
-/** Pauses/resumes ONE rule without losing its configured label/counter/interval - previously the only
- *  way to stop a rule firing was to delete it outright, discarding that configuration. */
-function onToggleRule(id: string, enabled: boolean): void {
-	const updated = rules.value.map((r) => (r.id === id ? { ...r, enabled } : r));
-	setIntervalRules(updated);
-	rules.value = updated;
-}
-
-const DUE_STATUS_COLOR: Record<string, string> = { unknown: "grey", ok: "success", dueSoon: "warning", overdue: "error" };
-
-/** One row per configured rule: its live delta (via the SAME per-counter baseline machinery Item D's
- *  own "since" badges use - mostRecentEntryForCounter/baselineForCounter) against its threshold,
- *  rendered as "so-far / threshold" in that counter's own unit, with a colour-coded dot. */
-const reminderRows = computed(() => rules.value.map((rule) => {
-	const live = liveValueForCounter(rule.counter);
-	const entry = mostRecentEntryForCounter(log.value, rule.counter);
-	const baseline = entry ? baselineForCounter(entry, rule.counter) : null;
-	const delta = secondsSince(live, baseline);
-	const status = computeDueStatus(delta, rule.intervalValue);
-	const display = delta != null
-		? `${formatCounterDelta(rule.counter, delta)} / ${formatCounterDelta(rule.counter, rule.intervalValue)}`
-		: "—";
-	return { rule, display, color: DUE_STATUS_COLOR[status] };
+/** Every counter this machine can be measured by - what a log entry can be said to service. */
+const counterItems = computed(() => counterCatalogue(machineStore.model, (k, p) => i18n.global.t(k, p ?? {}) as string, {
+	isFff: isFff.value, customCounters: rulesState.doc.customCounters,
 }));
 
 // --- Per-axis/fan/heater detail (v8) ------------------------------------------------------------------
@@ -538,8 +479,7 @@ const filamentErrorsDisplay = computed(() => (liveFilamentErrors.value != null ?
  *  the setup dialog is applied (which calls this itself), so it isn't worth polling. */
 async function checkTrackingConfigured(): Promise<void> {
 	const io = defaultMachineIO();
-	const missing = await maintenanceMacrosMissing(io);
-	trackingConfigured.value = !missing && !(await maintenanceMacrosOutdated(io));
+	macroStatus.value = await maintenanceMacroStatus(io);
 }
 
 /** Re-reads the event log (for liveJobSeconds only - job COUNTS come from the object model above) and
@@ -572,7 +512,7 @@ onMounted(() => {
 	void checkTrackingConfigured();
 	void refreshJobHistory();
 	void updateDailySnapshot();
-	refreshRules();
+	void rulesState.reload();
 	pollTimer = setInterval(() => { void refreshJobHistory(); }, EVENT_LOG_POLL_MS);
 	historyPollTimer = setInterval(() => { void updateDailySnapshot(); }, HISTORY_POLL_MS);
 });
@@ -613,6 +553,7 @@ async function onLogEntry(): Promise<void> {
 			printSecondsAtEntry: livePrintSeconds.value,
 			filamentMmAtEntry: liveFilamentMm.value,
 			toolChangesAtEntry: liveToolChanges.value,
+			baselines: snapshotExtraBaselines(machineStore.model, rulesState.doc.customCounters.map((c) => c.id)),
 			...(newServices.value.length ? { services: newServices.value } : {}),
 		});
 		if (result === "blocked") {
@@ -628,6 +569,9 @@ async function onLogEntry(): Promise<void> {
 		const refreshed = await readMaintenanceLogWithIntegrity();
 		log.value = refreshed.log;
 		logIntegrity.value = refreshed.integrity;
+		// A service moves every rule's baseline, and the machine-side macro has each due value baked
+		// in - regenerate it so an action fires at the NEW due point, not the old one.
+		await rulesState.resync();
 	} finally {
 		logging.value = false;
 	}
@@ -739,26 +683,11 @@ function formatWhen(loggedAt: number): string {
 
 // --- Item D: per-counter "since" badges -----------------------------------------------------------
 
-function liveValueForCounter(counter: MaintenanceCounterKey): number | null {
-	switch (counter) {
-		case "spindleSeconds": return liveSpindleSeconds.value;
-		case "printSeconds": return livePrintSeconds.value;
-		case "filamentMm": return liveFilamentMm.value;
-		case "toolChanges": return liveToolChanges.value;
-	}
-}
+// Live value / title / unit formatting for every counter kind (fixed, per-axis/fan/heater, user) live in
+// model/maintenance/counters.ts. secondsSince() is just `max(0, live - baseline)` with null-propagation,
+// generic despite the name.
 function counterLabel(counter: MaintenanceCounterKey): string {
-	const key = { spindleSeconds: "spindleHours", printSeconds: "printHours", filamentMm: "filamentUsed", toolChanges: "toolChanges" }[counter];
-	return i18n.global.t(`plugins.flexibleLayouts.maintenance.${key}`);
-}
-/** Formats a raw delta in whatever unit that counter actually is - seconds for the two hour-based
- *  counters, millimetres (shown as metres) for filament, a plain count for tool changes. Reusing
- *  secondsSince() here even for non-second counters is fine - it's just `max(0, live - baseline)`
- *  with null-propagation, generic despite the name. */
-function formatCounterDelta(counter: MaintenanceCounterKey, delta: number): string {
-	if (counter === "filamentMm") { return (delta / 1000).toFixed(1) + " m"; }
-	if (counter === "toolChanges") { return String(delta); }
-	return (delta / 3600).toFixed(1) + "h";
+	return counterTitle(counter, machineStore.model, (k, p) => i18n.global.t(k, p ?? {}) as string, rulesState.doc.customCounters);
 }
 
 interface ServiceBadge { label: string; display: string }
@@ -772,9 +701,9 @@ function sinceEntryBadges(entry: MaintenanceEntry): Array<ServiceBadge> {
 		const badges: Array<ServiceBadge> = [];
 		for (const counter of entry.services) {
 			if (mostRecentEntryForCounter(log.value, counter)?.id !== entry.id) { continue; }
-			const delta = secondsSince(liveValueForCounter(counter), baselineForCounter(entry, counter));
+			const delta = secondsSince(liveCounterValue(machineStore.model, counter), baselineForCounter(entry, counter));
 			if (delta == null) { continue; }
-			badges.push({ label: counterLabel(counter), display: formatCounterDelta(counter, delta) });
+			badges.push({ label: counterLabel(counter), display: formatCounterAmount(counter, delta) });
 		}
 		return badges;
 	}
@@ -800,9 +729,6 @@ function sinceEntryBadges(entry: MaintenanceEntry): Array<ServiceBadge> {
 .mnt-outcome-bar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: rgba(127, 127, 127, 0.2); }
 .mnt-outcome-finished { background: rgb(var(--v-theme-success)); }
 .mnt-outcome-cancelled { background: rgb(var(--v-theme-error)); }
-
-.mnt-rule-switch { flex: none; margin: 0; padding: 0; }
-.mnt-rule-switch :deep(.v-selection-control) { min-height: 0; }
 
 .mnt-detail-switch { flex: none; margin: 0; padding: 0; }
 .mnt-detail-switch :deep(.v-selection-control) { min-height: 0; }

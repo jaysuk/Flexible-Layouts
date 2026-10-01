@@ -138,6 +138,9 @@ import {
 	deployMaintenanceMacros, maintenanceMacrosMissing, maintenanceMacrosOutdated, seedMaintenanceState,
 } from "../model/maintenance/macros";
 import { applyJobTrackingPatches, planJobTrackingPatches, type JobMacroPlan } from "../model/maintenance/jobTrackingPatch";
+import { readMaintenanceLog } from "../model/maintenance/log";
+import { syncMaintenanceRules } from "../model/maintenance/rulesSync";
+import { loadMaintenanceRules } from "../model/reminders/rulesStore";
 import { applyTpostPatches, planTpostPatches, type TpostPatchPlan } from "../model/maintenance/toolChangePatch";
 import { resolveOmPath } from "../util/omPath";
 import { CONFIG_G_PATH, DAEMON_G_PATH } from "../util/gcodeFilePatch";
@@ -317,6 +320,14 @@ async function onApply(): Promise<void> {
 			axes: trackAxesEnabled.value, fans: trackFansEnabled.value, heaters: trackHeatersEnabled.value,
 		});
 		if (!seeded) { throw new Error("Could not write the maintenance state file to the SD card."); }
+
+		// The generated half (user counters, rule actions) is not part of the static deploy, so bring it
+		// in line now - otherwise a redeploy of the daemon would leave saved rules with no file to run.
+		// Best-effort: nothing here can fail the setup that already succeeded.
+		try {
+			const [{ doc }, log] = await Promise.all([loadMaintenanceRules(), readMaintenanceLog()]);
+			await syncMaintenanceRules({ io, doc, log, model: machineStore.model });
+		} catch { /* the Maintenance page re-syncs on the next change */ }
 
 		step.value = "done";
 	} catch (e) {

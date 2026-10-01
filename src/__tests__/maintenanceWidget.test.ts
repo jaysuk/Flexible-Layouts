@@ -1,5 +1,5 @@
 import { flushPromises } from "@vue/test-utils";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { loadObjectModel, mountInDwc, setGlobals, setModel } from "dwc-plugin-test-kit";
 
 import { createDefaultWidget } from "../model/document";
@@ -10,6 +10,9 @@ import WidgetView from "../widgets/WidgetView.vue";
 // the repo to need it in a test) - wrap the real stub and add just enough of one to resolve the
 // deployed-macro-version check the widget makes on mount, matching how it looks up the daemon macro
 // text on a real machine (see model/configBackup/machineIO.ts's downloadText).
+// What is "deployed" on the fake card: the current macro, none at all, or an older template.
+const deployed = vi.hoisted(() => ({ mode: "ready" as "ready" | "missing" | "outdated" }));
+
 vi.mock("@/stores/machine", async (importOriginal) => {
 	const actual = await importOriginal<typeof import("@/stores/machine")>();
 	return {
@@ -19,8 +22,10 @@ vi.mock("@/stores/machine", async (importOriginal) => {
 			return {
 				...real,
 				async download(options: { filename: string }) {
-					if (options.filename === `${MAINTENANCE_MACRO_FOLDER}/${MAINTENANCE_DAEMON_FILE}`) {
-						return MAINTENANCE_DAEMON_MACRO;
+					if (options.filename === `${MAINTENANCE_MACRO_FOLDER}/${MAINTENANCE_DAEMON_FILE}` && deployed.mode !== "missing") {
+						return deployed.mode === "outdated"
+							? MAINTENANCE_DAEMON_MACRO.replace(/FL-MAINTENANCE-MACRO-VERSION: \d+/, "FL-MAINTENANCE-MACRO-VERSION: 1")
+							: MAINTENANCE_DAEMON_MACRO;
 					}
 					throw new Error("not found");
 				},
@@ -29,9 +34,40 @@ vi.mock("@/stores/machine", async (importOriginal) => {
 	};
 });
 
+beforeEach(() => { deployed.mode = "ready"; });
+
 function mountMaintenance() {
 	return mountInDwc(WidgetView, { props: { widget: createDefaultWidget("maintenanceWidget") } });
 }
+
+describe("MaintenanceWidget - macro status wording", () => {
+	const mountWith = async (mode: "ready" | "missing" | "outdated") => {
+		deployed.mode = mode;
+		setModel(loadObjectModel(undefined, { overrides: { state: { machineMode: "CNC", currentTool: -1 } } }));
+		const w = mountMaintenance();
+		await flushPromises();
+		await flushPromises();
+		return w;
+	};
+
+	it("says 'not set up' when the macros were never deployed", async () => {
+		const w = await mountWith("missing");
+		expect(w.text()).toContain("plugins.flexibleLayouts.maintenance.notSetUp");
+		expect(w.text()).not.toContain("plugins.flexibleLayouts.maintenance.updateRequired");
+	});
+
+	it("says 'update required' - not 'not set up' - when they are deployed but out of date", async () => {
+		const w = await mountWith("outdated");
+		expect(w.text()).toContain("plugins.flexibleLayouts.maintenance.updateRequired");
+		expect(w.text()).not.toContain("plugins.flexibleLayouts.maintenance.notSetUp");
+	});
+
+	it("shows neither once they are current", async () => {
+		const w = await mountWith("ready");
+		expect(w.text()).not.toContain("plugins.flexibleLayouts.maintenance.updateRequired");
+		expect(w.text()).not.toContain("plugins.flexibleLayouts.maintenance.notSetUp");
+	});
+});
 
 describe("MaintenanceWidget - mode-aware stats (FFF vs CNC/laser)", () => {
 	it("shows print hours / filament used / tool changes on an FFF machine, not spindle hours", async () => {

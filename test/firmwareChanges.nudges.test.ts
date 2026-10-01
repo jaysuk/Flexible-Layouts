@@ -56,9 +56,35 @@ async function connect(): Promise<void> {
 }
 
 describe("first connect", () => {
-	it("records the running version as the baseline and says nothing, reading no files", async () => {
+	it("scans from the oldest tracked release, toasts once, and keeps that baseline until reviewed", async () => {
 		await connect();
+		expect(titles()).toEqual([T("toastTitle")]);
+		expect(readFirmwareChangeState()).toMatchObject({ baseline: "3.6.3", notifiedKey: "3.6.3->3.7.0-rc.2" });
+		expect(card.listings.length).toBeGreaterThan(0);
+	});
+
+	it("moves the baseline silently when nothing known is affected", async () => {
+		card.files = { "0:/sys/config.g": "G1 X1\n" };
+		await connect();
+		expect(titles()).toEqual([]);
 		expect(readFirmwareChangeState().baseline).toBe("3.7.0-rc.2");
+	});
+
+	it("waits for the machine to be idle, with the starting baseline already stored", async () => {
+		machine("3.7.0-rc.2", "processing");
+		await connect();
+		expect(readFirmwareChangeState().baseline).toBe("3.6.3");
+		expect(card.listings).toEqual([]);
+		machine("3.7.0-rc.2", "idle");
+		await flushPromises();
+		await flushPromises();
+		expect(titles()).toEqual([T("toastTitle")]);
+	});
+
+	it("only records the version on a machine already at the oldest tracked release", async () => {
+		machine("3.6.3");
+		await connect();
+		expect(readFirmwareChangeState().baseline).toBe("3.6.3");
 		expect(titles()).toEqual([]);
 		expect(card.listings).toEqual([]);
 	});

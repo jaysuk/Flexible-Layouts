@@ -4,7 +4,7 @@ import { loadObjectModel, setModel } from "dwc-plugin-test-kit";
 import { useSettingsStore } from "@/stores/settings";
 
 import {
-	acknowledgeReview, decideCheck, ignoreChange, mainBoardFirmwareVersion, normaliseFirmwareVersion, readFirmwareChangeState,
+	acknowledgeReview, decideCheck, ignoreChange, initialBaseline, mainBoardFirmwareVersion, normaliseFirmwareVersion, readFirmwareChangeState,
 	restoreChange, writeFirmwareChangeState,
 } from "../src/model/firmware/changeState";
 import { currentImpactRange, setPreflightTarget } from "../src/model/firmware/impactRange";
@@ -22,8 +22,17 @@ beforeEach(() => {
 
 const base = { enabled: true, baseline: null as string | null };
 
+describe("initialBaseline", () => {
+	it("starts at the oldest tracked release for anything newer, and at the running version otherwise", () => {
+		expect(initialBaseline("3.7.0-rc.2")).toBe("3.6.3");
+		expect(initialBaseline("3.7.0-rc.2(CAN0)")).toBe("3.6.3");
+		expect(initialBaseline("3.6.3")).toBe("3.6.3");
+		expect(initialBaseline("3.5.1")).toBe("3.5.1");
+	});
+});
+
 describe("decideCheck", () => {
-	it("records a baseline the first time, and says nothing", () => {
+	it("asks for an initial baseline the first time", () => {
 		expect(decideCheck({ ...base }, "3.7.0-rc.2")).toBe("record-baseline");
 	});
 

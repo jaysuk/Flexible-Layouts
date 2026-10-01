@@ -4,6 +4,11 @@
  * action, wired into index.ts the same way. Unlike certExpiryNudge (a purely browser-local check),
  * this one needs the maintenance LOG too (to find each rule's baseline via Item D's
  * mostRecentEntryForCounter/baselineForCounter), so the connect-check itself is async.
+ *
+ * The rules come from the machine (rulesStore.ts), so a rule set up in one browser is also the one
+ * another browser nudges about. A rule's optional ACTION is not run from here: that is the machine's
+ * job (rulesMacro.ts), and it happens with no browser open - this toast is only the browser's side.
+ * The same toast also covers the Duet3D Maintenance Timers plugin's timers when it is installed.
  */
 import { watch } from "vue";
 
@@ -12,10 +17,10 @@ import { LogLevel, useUiStore } from "@/stores/ui";
 import i18n from "@/i18n";
 
 import { MAINTENANCE_ROUTE_PATH } from "../maintenance/constants";
-import { baselineForCounter, mostRecentEntryForCounter, OM_PATH_FOR_COUNTER, readMaintenanceLog, secondsSince } from "../maintenance/log";
-import { resolveOmPath } from "../../util/omPath";
-import { computeDueStatus } from "./dueStatus";
-import { getIntervalRules } from "./storage";
+import { readMaintenanceLog } from "../maintenance/log";
+import { pluginTimerReached, readPluginTimers } from "../maintenance/pluginTimers";
+import { evaluateRules } from "./dueRules";
+import { loadMaintenanceRules } from "./rulesStore";
 
 let stopConnectWatch: (() => void) | null = null;
 let checkedThisSession = false;
@@ -27,15 +32,23 @@ export function installMaintenanceReminderNudge(): void {
 	async function checkOnConnect(): Promise<void> {
 		if (!machineStore.isConnected || checkedThisSession) { return; }
 		checkedThisSession = true;
-		const rules = getIntervalRules().filter((r) => r.enabled);
-		if (!rules.length) { return; }
-		const log = await readMaintenanceLog();
-		for (const rule of rules) {
-			const rawLive = resolveOmPath(machineStore.model, OM_PATH_FOR_COUNTER[rule.counter]);
-			const live = typeof rawLive === "number" ? rawLive : null;
-			const entry = mostRecentEntryForCounter(log, rule.counter);
-			const baseline = entry ? baselineForCounter(entry, rule.counter) : null;
-			const status = computeDueStatus(secondsSince(live, baseline), rule.intervalValue);
+
+		const rules = (await loadMaintenanceRules()).doc.rules.filter((r) => r.enabled);
+		const log = rules.length ? await readMaintenanceLog() : null;
+
+		// Read AFTER the awaits above: DWC loads the plugin list a moment after it connects, and the
+		// plugin's timers are part of it.
+		for (const timer of (readPluginTimers(machineStore.model) ?? []).filter(pluginTimerReached)) {
+			uiStore.log(
+				LogLevel.warning,
+				i18n.global.t("plugins.flexibleLayouts.maintenance.reminders.title"),
+				i18n.global.t("plugins.flexibleLayouts.maintenance.reminders.pluginTimerBody", { label: timer.title }),
+				MAINTENANCE_ROUTE_PATH,
+			);
+		}
+
+		if (!log) { return; }
+		for (const { rule, status } of evaluateRules(rules, log, machineStore.model)) {
 			if (status !== "overdue" && status !== "dueSoon") { continue; }
 			uiStore.log(
 				status === "overdue" ? LogLevel.warning : LogLevel.info,

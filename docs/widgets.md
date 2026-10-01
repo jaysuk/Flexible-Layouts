@@ -86,7 +86,7 @@ ready-made jog dial, the **CNC / Octopus jog** widget above is usually the bette
 | **Preflight checks** | Loads a G-code file and runs static sanity checks against it — travel bounds, unhomed axes, rapid rates, unknown tool references. | default file, rapid rate, tool table |
 | **Toolpath** | Loads a G-code file and draws its 2D XY toolpath, colouring already-cut vs remaining moves live against the running job's file position. | default file, colour |
 | **Machine health** | Read-only tile of board voltages / MCU temp, free RAM, uptime, network interfaces and probe readings, plus a button for a full `M122` diagnostics dump. | title, which sections shown (power/RAM/uptime/network/probes) |
-| **Maintenance** | Summary tile of tracked usage — print/spindle hours, filament used, tool changes, job counts, power-on hours — with a link through to the full Maintenance page. | label, colour |
+| **Maintenance** | Summary tile of tracked usage — print/spindle hours, filament used, tool changes, job counts, power-on hours — with a link through to the full Maintenance page, and a badge counting service reminders (and Maintenance Timers plugin timers) that are due. | label, colour |
 | **Firmware update** | Browses firmware releases (Duet3D / gloomyandy fork / DWC) matched per board, then hands files to DWC's own upload flow (or triggers an SBC `M997 S2` package update). | source, include prereleases, DSF update feed |
 
 ## More display widgets

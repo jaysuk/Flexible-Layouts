@@ -34,10 +34,25 @@
  */
 import type { MachineIO } from "dwc-config-backup-core";
 
+import {
+	MAINTENANCE_MAX_TRACKED_AXES, MAINTENANCE_MAX_TRACKED_FANS, MAINTENANCE_MAX_TRACKED_HEATERS,
+} from "./counters";
+
+export { MAINTENANCE_MAX_TRACKED_AXES, MAINTENANCE_MAX_TRACKED_FANS, MAINTENANCE_MAX_TRACKED_HEATERS };
+
 export const MAINTENANCE_MACRO_FOLDER = "0:/macros/FlexibleLayouts";
 export const MAINTENANCE_DAEMON_FILE = "maintenance-daemon.g";
 export const MAINTENANCE_FLUSH_FILE = "maintenance-flush.g";
 export const MAINTENANCE_STATE_PATH = "0:/sys/flexible-layouts.maintenance-state.g";
+/** v11: the GENERATED half of the feature (rulesMacro.ts) - user counters and service-rule actions. Not
+ *  part of {@link MAINTENANCE_MACROS}: its content depends on the saved rules, so it is written by
+ *  rulesSync.ts, never by the static deploy (which would blank it). */
+export const MAINTENANCE_CUSTOM_FILE = "maintenance-custom.g";
+export const MAINTENANCE_CUSTOM_FLUSH_FILE = "maintenance-custom-flush.g";
+/** Persisted values of the generated half. A file of its own - not appended to the main state file -
+ *  so re-seeding that one (pause/resume, the setup wizard) can never drop these, and so config.g needs
+ *  no second restore line: the custom macro reloads it itself, once per boot. */
+export const MAINTENANCE_CUSTOM_STATE_PATH = "0:/sys/flexible-layouts.maintenance-custom-state.g";
 
 /** Bumped whenever a change to these macro templates matters enough that an already-deployed copy
  *  should be flagged as outdated - see {@link maintenanceMacrosOutdated}. v2: added print-hours,
@@ -77,18 +92,23 @@ export const MAINTENANCE_STATE_PATH = "0:/sys/flexible-layouts.maintenance-state
  *  overhead specifically. v10: split that one flMaintTrackDetail flag into three independent ones -
  *  flMaintTrackAxes, flMaintTrackFans, flMaintTrackHeaters - each gating only its own loop, so a user
  *  who only cares about (say) heater on-time isn't forced to also pay for axis-travel and fan-runtime
- *  polling to get it, and vice versa. All three still default to false. */
-export const MAINTENANCE_MACRO_SET_VERSION = 10;
+ *  polling to get it, and vice versa. All three still default to false. v11: the daemon now hands off
+ *  to a GENERATED macro (maintenance-custom.g, see rulesMacro.ts) when one exists - user-defined
+ *  condition counters and the machine-side action of a service rule - via `flMaintCustomOn` (derived
+ *  from that file existing, so there is nothing extra to persist) and `flMaintDt` (the poll interval,
+ *  passed as a global because a `var` is not visible inside an M98 callee). The hand-off sits AFTER the
+ *  flush check on purpose: an expression RRF rejects aborts the macro it is in, and that must never be
+ *  able to stop the base counters from being written out. The flush macro now also calls
+ *  maintenance-custom-flush.g. */
+export const MAINTENANCE_MACRO_SET_VERSION = 11;
 
-/** Fixed capacities for the per-axis/fan/heater arrays below. Real machines never come close to these
- *  (even an exotic multi-gantry toolchanger has well under 12 axes) - the caps exist only so the
- *  arrays can be seeded as a plain literal instead of built with a loop (see the v8 note above), and
- *  each tracking block is skipped outright (not a hard error) on the vanishingly unlikely machine
- *  that exceeds its cap, via the `#move.axes <= ...` style guards below. Keep all three in sync with
- *  {@link zeroArrayLiteral}'s call sites and with seedMaintenanceState's padding logic if ever changed. */
-export const MAINTENANCE_MAX_TRACKED_AXES = 12;
-export const MAINTENANCE_MAX_TRACKED_FANS = 12;
-export const MAINTENANCE_MAX_TRACKED_HEATERS = 12;
+/** Capacities of the per-axis/fan/heater arrays below. Real machines never come close to these (even an
+ *  exotic multi-gantry toolchanger has well under 12 axes) - the caps exist only so the arrays can be
+ *  seeded as a plain literal instead of built with a loop (see the v8 note above), and each tracking
+ *  block is skipped outright (not a hard error) on the vanishingly unlikely machine that exceeds its
+ *  cap, via the `#move.axes <= ...` style guards below. Defined in counters.ts (the counter-key parser
+ *  needs them too) and re-exported above; keep them in sync with {@link zeroArrayLiteral}'s call sites
+ *  and with seedMaintenanceState's padding logic if ever changed. */
 
 /** A `{0,0,0,...}` (or `{false,false,...}`) RRF array literal of exactly `length` elements - used to
  *  seed the fixed-size tracking arrays so the element count can never drift from a hand-typed literal. */
@@ -111,7 +131,8 @@ function macroHeader(title: string): string {
 ; This file is yours to customize. Just leave the global.flMaint* variables alone - they're what
 ; Flexible Layouts reads back to compute spindle-on hours, print hours, filament used, tool changes,
 ; power-on time, filament-error counts, per-axis travel distance, per-fan runtime and per-heater
-; on-time/full-load time.
+; on-time/full-load time. Your own counters and rule actions live in maintenance-custom.g, which
+; Flexible Layouts generates (and overwrites) from the Maintenance page.
 
 `;
 }
@@ -178,6 +199,13 @@ if !exists(global.flMaintTrackFans)
 	global flMaintTrackFans = false
 if !exists(global.flMaintTrackHeaters)
 	global flMaintTrackHeaters = false
+; v11 hand-off to the generated custom macro (see the tail of this file). flMaintCustomOn is DERIVED, not
+; persisted: it is true exactly when the generated file is on the card, so a reboot needs no restore.
+; flMaintDt carries this poll's elapsed seconds into that macro (a var is not visible across M98).
+if !exists(global.flMaintDt)
+	global flMaintDt = 0
+if !exists(global.flMaintCustomOn)
+	global flMaintCustomOn = fileexists("${MAINTENANCE_MACRO_FOLDER}/${MAINTENANCE_CUSTOM_FILE}")
 
 var dt = state.upTime - global.flMaintLastPollTime
 ; state.upTime resets to 0 on reboot - without this clamp, a reboot between two polls would show as
@@ -295,6 +323,14 @@ if global.flMaintTrackHeaters
 if global.flMaintUnflushedSec >= 600
 	M98 P"${MAINTENANCE_MACRO_FOLDER}/${MAINTENANCE_FLUSH_FILE}"
 	set global.flMaintUnflushedSec = 0
+
+; User-defined counters and the machine-side action of service rules (v11) - generated from the rules
+; saved on the Maintenance page, so absent until some exist. Deliberately LAST: if one of those
+; expressions is rejected by RRF this macro aborts here, after everything above has already been
+; counted and flushed.
+if global.flMaintCustomOn
+	set global.flMaintDt = var.dt
+	M98 P"${MAINTENANCE_MACRO_FOLDER}/${MAINTENANCE_CUSTOM_FILE}"
 `;
 
 /** Builds the meta-gcode lines that persist one FIXED-SIZE array-valued global to the flush file. The
@@ -378,7 +414,12 @@ echo >>"${MAINTENANCE_STATE_PATH}" "if !exists(global.flMaintTrackHeaters)"
 echo >>"${MAINTENANCE_STATE_PATH}" "  global flMaintTrackHeaters = " ^ global.flMaintTrackHeaters
 echo >>"${MAINTENANCE_STATE_PATH}" "else"
 echo >>"${MAINTENANCE_STATE_PATH}" "  set global.flMaintTrackHeaters = " ^ global.flMaintTrackHeaters
-${flushArrayGlobal("flMaintAxisMm", "axisMmText")}${flushArrayGlobal("flMaintFanSec", "fanSecText")}${flushArrayGlobal("flMaintHeaterSec", "heaterSecText")}${flushArrayGlobal("flMaintHeaterFullSec", "heaterFullSecText")}`;
+${flushArrayGlobal("flMaintAxisMm", "axisMmText")}${flushArrayGlobal("flMaintFanSec", "fanSecText")}${flushArrayGlobal("flMaintHeaterSec", "heaterSecText")}${flushArrayGlobal("flMaintHeaterFullSec", "heaterFullSecText")}; v11: persist the generated half (user counters, rule markers) to its own state file. Last, so a
+; failure there cannot affect what was written above.
+if exists(global.flMaintCustomOn)
+	if global.flMaintCustomOn
+		M98 P"${MAINTENANCE_MACRO_FOLDER}/${MAINTENANCE_CUSTOM_FLUSH_FILE}"
+`;
 
 export const MAINTENANCE_MACROS: Record<string, string> = {
 	[MAINTENANCE_DAEMON_FILE]: MAINTENANCE_DAEMON_MACRO,
@@ -417,6 +458,16 @@ export async function maintenanceMacrosOutdated(io: Pick<MachineIO, "downloadTex
 	} catch {
 		return false;
 	}
+}
+
+export type MaintenanceMacroStatus = "ready" | "missing" | "outdated";
+
+/** One answer for the UI: the macros are not deployed at all ("missing" - needs setting up), deployed
+ *  but from an older template ("outdated" - needs UPDATING; the user already set this up, so it must not
+ *  read as though they never did), or current ("ready"). */
+export async function maintenanceMacroStatus(io: Pick<MachineIO, "downloadText">): Promise<MaintenanceMacroStatus> {
+	if (await maintenanceMacrosMissing(io)) { return "missing"; }
+	return (await maintenanceMacrosOutdated(io)) ? "outdated" : "ready";
 }
 
 export interface MaintenanceExtraCounters {

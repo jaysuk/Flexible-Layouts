@@ -25,17 +25,21 @@
 		<v-toolbar density="compact" color="surface" class="flex-shrink-0">
 			<v-btn :loading="saving" :disabled="!dirty || loading" icon="mdi-content-save-outline"
 				   :title="$t('plugins.flexibleLayouts.gcodeEditor.save')" @click="save" />
-			<v-btn v-if="!isMenu" :disabled="loading" icon="mdi-tag-search" :title="quickSearchTitle" @click="openCodeSearch" />
+			<v-btn v-if="isGcode" :disabled="loading" icon="mdi-tag-search" :title="quickSearchTitle" @click="openCodeSearch" />
 			<v-btn :disabled="loading" icon="mdi-magnify" title="Search (Ctrl+F)" @click="openSearch" />
-			<v-btn v-if="!isMenu" :disabled="loading" icon="mdi-help-circle-outline" title="G-code reference"
+			<v-btn v-if="isGcode" :disabled="loading" icon="mdi-help-circle-outline" title="G-code reference"
 				   :href="docsUrl" target="_blank" rel="noopener noreferrer" />
-			<v-btn v-if="!isMenu" :disabled="loading" icon="mdi-format-indent-increase" title="Align comments" @click="alignComments" />
-			<v-btn v-if="canRun && !isMenu" :loading="running" :disabled="loading || uiStore.uiFrozen" icon="mdi-play"
+			<v-btn v-if="isGcode" :disabled="loading" icon="mdi-format-indent-increase" title="Align comments" @click="alignComments" />
+			<v-btn v-if="isGcode" :disabled="loading" icon="mdi-comment-remove-outline"
+				   :title="$t('plugins.flexibleLayouts.gcodeEditor.stripComments')" @click="stripComments" />
+			<v-btn v-if="isGcode" :disabled="loading" icon="mdi-format-title"
+				   :title="$t('plugins.flexibleLayouts.gcodeEditor.asciiArt')" @click="asciiArtOpen = true" />
+			<v-btn v-if="canRun && isGcode" :loading="running" :disabled="loading || uiStore.uiFrozen" icon="mdi-play"
 				   title="Run" @click="run" />
 			<v-btn :disabled="!dirty || loading" icon="mdi-restore" title="Revert" @click="revert" />
-			<v-btn v-if="!isMenu" :loading="checking" :disabled="loading" icon="mdi-alert-circle-check-outline"
+			<v-btn v-if="isGcode" :loading="checking" :disabled="loading" icon="mdi-alert-circle-check-outline"
 				   :title="$t('plugins.flexibleLayouts.gcodeEditor.checkErrors')" @click="checkForErrors" />
-			<span v-if="!isMenu && diagnosticCount !== null" class="text-caption text-medium-emphasis ml-1">
+			<span v-if="isGcode && diagnosticCount !== null" class="text-caption text-medium-emphasis ml-1">
 				{{ diagnosticCount }}
 			</span>
 			<v-btn :disabled="loading" :color="editorShowWhitespace ? 'primary' : undefined" :variant="editorShowWhitespace ? 'tonal' : undefined"
@@ -43,7 +47,7 @@
 				   @click="setEditorShowWhitespace(!editorShowWhitespace)" />
 			<v-btn icon="mdi-palette" :title="$t('plugins.flexibleLayouts.gcodeEditor.colors')" @click="colorSettingsOpen = true" />
 			<v-btn :disabled="loading" icon="mdi-keyboard-outline" title="Keyboard shortcuts (F1)" @click="openShortcuts" />
-			<v-btn v-if="!isMenu" :disabled="loading" :color="stepperOpen ? 'primary' : undefined" icon="mdi-motion-play-outline"
+			<v-btn v-if="isGcode" :disabled="loading" :color="stepperOpen ? 'primary' : undefined" icon="mdi-motion-play-outline"
 				   title="Step through file" @click="stepperOpen = !stepperOpen" />
 		</v-toolbar>
 		<v-alert v-if="loadError !== null" type="error" variant="tonal" density="compact" class="ma-2">
@@ -61,6 +65,7 @@
 							@reset-message-box-answers="resetMessageBoxAnswers" />
 		<div ref="hostEl" class="flex-grow-1 gcode-cm-editor-host"></div>
 		<EditorColorSettingsDialog v-model="colorSettingsOpen" />
+		<AsciiArtDialog v-model="asciiArtOpen" @insert="insertBanner" />
 	</div>
 </template>
 
@@ -82,6 +87,10 @@
  * completion, F4 search, Run, the stepper and the G-code error check - none of which mean anything for a
  * 12864 menu. What it adds for them is `live-text`: the unsaved buffer, debounced, which is what lets the
  * display preview in `ExplorerPanel.vue` follow edits (DWC's Monaco exposes no text at all).
+ *
+ * **`board.txt`** (the STM32 firmware's `key = value` hardware settings, `editorPreference.ts`'s `isBoardFile`): `dwc-gcode-editor`'s
+ * `boardTxt.ts` highlighting, key completion and a live check. Like a menu file it has none of the G-code toolbar (F4, Run, the
+ * error check, the stepper, comment tools), which all hang off `isGcode`.
  *
  * **Offline conditional stepper** (the "Step through file" toolbar toggle, `GcodeStepperPanel.vue`):
  * lets a user step through ANY file open here — not just gcodes/print files, sys files and macros
@@ -112,26 +121,28 @@ import {
 	singleScenarioSet, updateActiveScenario, type ScenarioSet,
 } from "dwc-gcode-core/stepper/scenarioSet";
 import {
-	alignLineComments, buildDocFromString, canAutoCheck, checkDocument, codeAtCursor, convertTabsToSpaces,
+	alignLineComments, boardTxtCompletion, boardTxtLanguage, boardTxtLiveLinter, buildDocFromString, canAutoCheck, checkDocument, codeAtCursor, convertTabsToSpaces,
 	createEditorInstance, createIndentationController, createThemeController, createWhitespaceController, gcodeCompletion, gcodeCurrentLine, gcodeImpactCheck, gcodeLanguage, gcodeLintUi, gcodeLiveCheck,
-	gcodeViewStatePersistence, refreshImpactCheck,
+	gcodeViewStatePersistence, insertAsciiArt, refreshImpactCheck,
 	gcodeQuickSearchKeymap, gcodeSearch, gcodeShortcutsHelp, isInsideExpression, menuLanguage, menuLiveLinter, openExpressionQuickSearch,
 	openGcodeQuickSearch, openSearchPanel, openShortcutsHelp, saveKeymap, setCurrentLine, type EditorInstance,
 	type IndentationController, type ThemeController, type WhitespaceController,
 } from "dwc-gcode-editor";
 import type { Text } from "@codemirror/state";
+import { withoutCodeComment } from "../model/gcode/stripCodeComments";
 
 import { useMachineStore } from "@/stores/machine";
 import { useSettingsStore } from "@/stores/settings";
 import { LogLevel, useUiStore } from "@/stores/ui";
 import i18n from "@/i18n";
+import AsciiArtDialog from "./AsciiArtDialog.vue";
 import EditorColorSettingsDialog from "./EditorColorSettingsDialog.vue";
 import GcodeStepperPanel from "./GcodeStepperPanel.vue";
 import { defaultMachineIO } from "../model/configBackup/machineIO";
 import { editorColorScheme, loadEditorColorScheme } from "../model/editorColorSettings";
 import { editorShowWhitespace, editorTabWidth, setEditorShowWhitespace } from "../model/editorIndentSettings";
 import { sharedViewStates } from "../model/editorViewState";
-import { isMenuFile } from "../model/editorPreference";
+import { isBoardFile, isMenuFile } from "../model/editorPreference";
 import { MENU_DIRECTORY } from "../model/display12864/menuSource";
 import { loadScenarioSet, saveScenarioSet } from "../model/gcode/simulationScenario";
 import { trackedObjectModelVersion } from "../model/gcode/objectModelVersion";
@@ -181,6 +192,10 @@ const settingsStore = useSettingsStore() as unknown as { darkTheme: boolean };
 // This component is mounted fresh per filename (see ExplorerPanel.vue's tab-per-file model), so a plain
 // const is right: what kind of file this is never changes for the life of the instance.
 const isMenu = isMenuFile(props.filename);
+// The STM32 `board.txt` is `key = value`, not G-code: its own highlighting, key completion and checks, and none of the
+// G-code toolbar. `isGcode` is "everything the G-code features apply to".
+const isBoard = isBoardFile(props.filename);
+const isGcode = !isMenu && !isBoard;
 // The other files in 0:/menu/ (menus and images), for the menu/target-missing and menu/image-missing
 // rules. undefined until listed, which keeps those two rules off rather than reporting everything missing.
 const menuSiblings = shallowRef<ReadonlyArray<string> | undefined>(undefined);
@@ -197,6 +212,7 @@ const cursorCode = ref<string | null>(null);
 const cursorInExpression = ref(false);
 const running = ref(false);
 const colorSettingsOpen = ref(false);
+const asciiArtOpen = ref(false);
 const stepperOpen = ref(false);
 // Offline CONDITIONAL stepping: null until the deferred build in load() below finishes.
 // stepperStep indexes executionIndex.steps (0-based - a step, not a physical line, since a false
@@ -320,40 +336,42 @@ function setDirty(value: boolean): void {
 const viewStates = sharedViewStates();
 
 // A menu file has no G-code completion, comments-by-command or F4 picker, so the help leaves those out.
-const SHORTCUTS_HIDDEN = isMenu ? ["quickSearch", "completion", "blockComment"] : [];
+const SHORTCUTS_HIDDEN = isMenu ? ["quickSearch", "completion", "blockComment"] : isBoard ? ["quickSearch", "blockComment"] : [];
 
 function editorExtensions(theme: ThemeController, indentation: IndentationController, whitespace: WhitespaceController) {
 	return [
 		lineNumbers(),
-		isMenu ? menuLanguage : gcodeLanguage,
+		isMenu ? menuLanguage : isBoard ? boardTxtLanguage : gcodeLanguage,
 		theme.extension,
 		// The Tab key inserts this many spaces, existing tabs are drawn this wide, and save converts them.
 		indentation.extension,
 		whitespace.extension,
-		...(isMenu ? [] : [gcodeCompletion()]),
+		...(isGcode ? [gcodeCompletion()] : isBoard ? [boardTxtCompletion()] : []),
 		gcodeLintUi(),
 		lintGutter(),
 		// Re-checks the lines being typed on (and, after a pause, the whole file when it is small enough),
-		// keeping the toolbar count current. Menu files are linted by menuLiveLinter below instead.
-		...(isMenu ? [] : [gcodeLiveCheck({ getOptions: checkOptions, onChange: (count) => { diagnosticCount.value = count; } })]),
+		// keeping the toolbar count current. Menu files and board.txt are linted by their own linters below instead.
+		...(isGcode ? [gcodeLiveCheck({ getOptions: checkOptions, onChange: (count) => { diagnosticCount.value = count; } })] : []),
 		// "Changed since <version>" squiggles for the lines that use something a firmware change touched (the range is the
-		// unreviewed change, or the release the update widget has selected; null = off). Not for menu files.
-		...(isMenu ? [] : [gcodeImpactCheck({
+		// unreviewed change, or the release the update widget has selected; null = off). Not for menu files or board.txt.
+		...(isGcode ? [gcodeImpactCheck({
 			getRange: currentImpactRange,
 			path: () => props.filename,
 			isAcknowledged: (id) => readFirmwareChangeState().acknowledged.includes(id),
 			onIgnore: (id) => { ignoreChange(id); },
 			ignoreLabel: i18n.global.t("plugins.flexibleLayouts.firmwareChanges.ignoreChange"),
 			changedInLabel: i18n.global.t("plugins.flexibleLayouts.firmwareChanges.changedIn"),
-		})]),
+		})] : []),
 		// A menu file is a few hundred bytes (RRF's whole menu buffer is 2500), so it is linted live.
 		...(isMenu ? [menuLiveLinter(() => ({ path: props.filename, siblings: menuSiblings.value }))] : []),
+		// board.txt is a few hundred lines at most, so it is parsed on every change as well.
+		...(isBoard ? [boardTxtLiveLinter()] : []),
 		// `save` is a hoisted function declaration below - referencing it here (only ever invoked
 		// later, on a real Ctrl+S) does not depend on declaration order.
 		saveKeymap(() => { void save(); }),
 		gcodeSearch(),
 		gcodeShortcutsHelp({ hide: SHORTCUTS_HIDDEN }),
-		...(isMenu ? [] : [gcodeQuickSearchKeymap(() => machineStore.model)]),
+		...(isGcode ? [gcodeQuickSearchKeymap(() => machineStore.model)] : []),
 		gcodeCurrentLine(),
 		// Cursor and scroll come back when a file is reopened (a tab that was closed, or an Explorer that was
 		// left and returned to), keyed by file. In memory only: it lasts as long as the browser page.
@@ -365,7 +383,7 @@ function editorExtensions(theme: ThemeController, indentation: IndentationContro
 				else if (stepperOpen.value) scheduleRebuild();
 			}
 			// The cursor's G-code command/expression state only feeds G-code toolbar buttons and the stepper.
-			if (!isMenu && (update.docChanged || update.selectionSet)) {
+			if (isGcode && (update.docChanged || update.selectionSet)) {
 				cursorCode.value = codeAtCursor(update.view);
 				const line = update.state.doc.lineAt(update.state.selection.main.head);
 				cursorLine.value = line.number;
@@ -537,7 +555,7 @@ async function load(): Promise<void> {
 		}
 		if (isMenu) {
 			void loadMenuSiblings();
-		} else {
+		} else if (isGcode) {
 			scenarioSet.value = loadScenarioSet(props.filename);
 			rebuildExecutionIndex();
 			checkOnLoad(editorInstance.value);
@@ -608,6 +626,34 @@ function alignComments(): void {
 	if (instance !== null) alignLineComments(instance.view);
 }
 
+// Puts the text in as a banner of `;` comment lines at the cursor (one transaction, one undo step).
+function insertBanner(text: string): void {
+	const instance = editorInstance.value;
+	if (instance === null) return;
+	insertAsciiArt(instance.view, text);
+	instance.view.focus();
+}
+
+// Removes the trailing comment from every line that holds real G-code (comment-only and blank lines stay);
+// limited to the selected lines when there is a selection. One transaction, so one undo step.
+function stripComments(): void {
+	const instance = editorInstance.value;
+	if (instance === null) return;
+	const { state } = instance.view;
+	const sel = state.selection.main;
+	const first = sel.empty ? 1 : state.doc.lineAt(sel.from).number;
+	const last = sel.empty ? state.doc.lines : state.doc.lineAt(sel.to).number;
+	const changes: Array<{ from: number; to: number; insert: string }> = [];
+	for (let n = first; n <= last; n++) {
+		const line = state.doc.line(n);
+		const stripped = withoutCodeComment(line.text);
+		if (stripped !== null) changes.push({ from: line.from, to: line.to, insert: stripped });
+	}
+	if (changes.length > 0) instance.view.dispatch({ changes, userEvent: "delete" });
+	uiStore.makeNotification(LogLevel.info, basename(props.filename),
+		i18n.global.t("plugins.flexibleLayouts.gcodeEditor.commentsStripped", { count: changes.length }, changes.length));
+}
+
 function revert(): void {
 	const instance = editorInstance.value;
 	if (instance === null || originalDoc === null) return;
@@ -654,7 +700,7 @@ async function checkForErrors(): Promise<void> {
  *  marked without anyone asking. Skipped for a file too large to check without freezing the page (the
  *  button is still there), and deferred so the editor paints first. */
 function checkOnLoad(instance: EditorInstance | null): void {
-	if (instance === null || isMenu || !canAutoCheck(instance.view)) return;
+	if (instance === null || !isGcode || !canAutoCheck(instance.view)) return;
 	setTimeout(() => {
 		if (editorInstance.value === instance) runCheck(instance); // not superseded by a newer load()
 	}, 0);
@@ -684,7 +730,7 @@ watch(hostEl, (el) => { if (el !== null) void load(); }, { immediate: true });
 watch(editorInstance, (instance) => { if (instance !== null && pendingRevealLine !== null) revealLine(pendingRevealLine); });
 
 // The squiggles follow the firmware range and the ignored set: re-run the check when either changes.
-if (!isMenu) {
+if (isGcode) {
 	watch(() => JSON.stringify([currentImpactRange(), readFirmwareChangeState().acknowledged]), () => {
 		const instance = editorInstance.value;
 		if (instance !== null) refreshImpactCheck(instance.view);

@@ -24,26 +24,18 @@
  */
 import { useMachineStore } from "@/stores/machine";
 
+import type { MaintenanceCounterKey } from "./counters";
+
 const LOG_PATH_DIR = "0:/sys";
 export const MAINT_LOG_PATH = `${LOG_PATH_DIR}/flexible-layouts.maintenance-log.json`;
 
 const LOG_KIND = "flexible-layouts-maintenance-log";
 const LOG_SCHEMA = 1;
 
-/** Counter keys an entry can name in {@link MaintenanceEntry.services} - deliberately limited to the
- *  counters that already have an `*AtEntry` snapshot field below, so "services this counter" always
- *  has a baseline value to compare against. */
-export type MaintenanceCounterKey = "spindleSeconds" | "printSeconds" | "filamentMm" | "toolChanges";
-
-/** Where to read each counter's LIVE value from the object model. The single source of truth for this
- *  mapping - reminders/nudge.ts and MaintenanceWidget.vue both need it (MaintenancePage.vue has its
- *  own already-established liveSpindleSeconds-style computeds instead, so doesn't need this form). */
-export const OM_PATH_FOR_COUNTER: Record<MaintenanceCounterKey, string> = {
-	spindleSeconds: "global.flMaintSpindleSec",
-	printSeconds: "global.flMaintPrintSec",
-	filamentMm: "global.flMaintFilamentMm",
-	toolChanges: "global.flMaintToolChanges",
-};
+/** The counter vocabulary lives in counters.ts (fixed counters, per-axis/fan/heater elements and user
+ *  counters). Re-exported here because the log is where "which counters does this entry service" is
+ *  recorded and most callers already import from this file. */
+export type { MaintenanceCounterKey } from "./counters";
 
 export interface MaintenanceEntry {
 	id: string;
@@ -64,6 +56,11 @@ export interface MaintenanceEntry {
 	filamentMmAtEntry?: number | null;
 	/** Snapshot of global.flMaintToolChanges (FFF) at logging time; same rule as printSecondsAtEntry. */
 	toolChangesAtEntry?: number | null;
+	/** Snapshots of every counter that has no `*AtEntry` field of its own - power-on time, job and
+	 *  filament-error counts, per-axis/fan/heater elements (`axisMm:2`) and user counters
+	 *  (`custom:c1`) - keyed by counter key. A key that is absent here reads as "unknown" (see
+	 *  {@link baselineForCounter}); optional, so an older log and `LOG_SCHEMA` are untouched. */
+	baselines?: Record<string, number>;
 	/** Which counters this entry resets the "since last service" baseline for. Absent/empty means ALL
 	 *  of them (the original, pre-this-field behaviour) - never treat absent as "none". */
 	services?: Array<MaintenanceCounterKey>;
@@ -90,14 +87,17 @@ export function emptyMaintenanceLog(): MaintenanceLog {
  *  risk this exists for), not detect deliberate tampering, so there's no need for anything heavier
  *  (and no need for crypto.subtle's secure-context requirement, which the browser-side cert generator
  *  this codebase used to have was gated behind - see git history). */
-function hashEntries(entries: Array<MaintenanceEntry>): string {
-	const text = JSON.stringify(entries);
+export function fnv1aHex(text: string): string {
 	let hash = 0x811c9dc5;
 	for (let i = 0; i < text.length; i++) {
 		hash ^= text.charCodeAt(i);
 		hash = Math.imul(hash, 0x01000193);
 	}
 	return (hash >>> 0).toString(16).padStart(8, "0");
+}
+
+function hashEntries(entries: Array<MaintenanceEntry>): string {
+	return fnv1aHex(JSON.stringify(entries));
 }
 
 export type MaintenanceIntegrity = "ok" | "mismatch" | "none";
@@ -261,6 +261,10 @@ export function baselineForCounter(entry: MaintenanceEntry, counter: Maintenance
 		case "printSeconds": return entry.printSecondsAtEntry ?? null;
 		case "filamentMm": return entry.filamentMmAtEntry ?? null;
 		case "toolChanges": return entry.toolChangesAtEntry ?? null;
+		default: {
+			const v = entry.baselines?.[counter];
+			return typeof v === "number" && Number.isFinite(v) ? v : null;
+		}
 	}
 }
 

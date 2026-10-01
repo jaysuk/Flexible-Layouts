@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { isExplorerReplaceEnabled, isNewGcodeEditorEnabled, setExplorerReplaceEnabled, setNewGcodeEditorEnabled, shouldReplaceExplorerPage, shouldUseNewGcodeEditor } from "../model/editorPreference";
+import { isBoardFile, isExplorerReplaceEnabled, isNewGcodeEditorEnabled, setExplorerReplaceEnabled, setNewGcodeEditorEnabled, shouldReplaceExplorerPage, shouldUseNewGcodeEditor } from "../model/editorPreference";
 
 // This harness's happy-dom localStorage is a non-functional stub (documented the same way
 // elsewhere in this family - duet-gcode-postprocessor's test/component.test.ts, dwc-gcode-postprocessor's
@@ -53,10 +53,17 @@ describe("shouldUseNewGcodeEditor", () => {
 		expect(shouldUseNewGcodeEditor("0:/sys/config-override.g")).toBe(true);
 	});
 
-	it("is false even when the setting is on for a file it has no support for (board.txt/plain text)", () => {
+	it("is false even when the setting is on for a file it has no support for (plain text)", () => {
 		setNewGcodeEditorEnabled(true);
-		expect(shouldUseNewGcodeEditor("0:/sys/board.txt")).toBe(false);
 		expect(shouldUseNewGcodeEditor("0:/sys/notes.txt")).toBe(false);
+	});
+
+	it("is true for the STM32 board.txt when the setting is on, and false when it is off", () => {
+		expect(shouldUseNewGcodeEditor("0:/sys/board.txt")).toBe(false);
+		setNewGcodeEditorEnabled(true);
+		expect(shouldUseNewGcodeEditor("0:/sys/board.txt")).toBe(true);
+		expect(isBoardFile("0:/sys/board.txt")).toBe(true);
+		expect(isBoardFile("0:/sys/config.g")).toBe(false);
 	});
 
 	it("is true for a 12864 menu file when the setting is on - its unsaved text feeds the display preview", () => {

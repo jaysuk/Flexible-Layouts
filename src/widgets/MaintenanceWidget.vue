@@ -3,7 +3,7 @@
 		<span v-if="widget.label" class="mnt-label text-truncate flex-shrink-0">{{ widget.label }}</span>
 
 		<div v-if="!trackingConfigured" class="text-caption text-medium-emphasis pa-2 flex-grow-1">
-			{{ $t("plugins.flexibleLayouts.maintenance.notSetUp") }}
+			{{ $t(macroStatus === "outdated" ? "plugins.flexibleLayouts.maintenance.updateRequired" : "plugins.flexibleLayouts.maintenance.notSetUp") }}
 		</div>
 		<div v-else class="mnt-body flex-grow-1">
 			<template v-if="isFff">
@@ -69,17 +69,20 @@ import { useMachineStore } from "@/stores/machine";
 import type { Widget } from "../model/document";
 import { defaultMachineIO } from "../model/configBackup/machineIO";
 import { MAINTENANCE_ROUTE_PATH } from "../model/maintenance/constants";
-import { baselineForCounter, mostRecentEntryForCounter, OM_PATH_FOR_COUNTER, readMaintenanceLog, secondsSince } from "../model/maintenance/log";
-import { maintenanceMacrosMissing, maintenanceMacrosOutdated } from "../model/maintenance/macros";
-import { computeDueStatus } from "../model/reminders/dueStatus";
-import { getIntervalRules } from "../model/reminders/storage";
+import { readMaintenanceLog } from "../model/maintenance/log";
+import { maintenanceMacroStatus, type MaintenanceMacroStatus } from "../model/maintenance/macros";
+import { countReachedPluginTimers } from "../model/maintenance/pluginTimers";
+import { evaluateRules, isDue } from "../model/reminders/dueRules";
+import { loadMaintenanceRules } from "../model/reminders/rulesStore";
 import { resolveOmPath } from "../util/omPath";
 
 defineProps<{ widget: Extract<Widget, { type: "maintenanceWidget" }>; overrideColor?: string }>();
 const machineStore = useMachineStore();
 const router = useRouter();
 
-const trackingConfigured = ref(false);
+// "missing" until the check runs (and when not connected): the long-standing "not set up" wording.
+const macroStatus = ref<MaintenanceMacroStatus>("missing");
+const trackingConfigured = computed(() => macroStatus.value === "ready");
 
 // state.machineMode drives which stats make sense to show - a spindle-hours figure is meaningless on
 // an FFF machine (and vice versa for filament/tool-change counts on a CNC/laser one).
@@ -123,25 +126,22 @@ const filamentErrorsDisplay = computed(() => (liveFilamentErrors.value != null ?
 const totalAxisTravelDisplay = computed(() => (totalAxisTravelMm.value != null ? (totalAxisTravelMm.value / 1000).toFixed(1) + " m" : ""));
 
 // --- Item H: due-reminder count -------------------------------------------------------------------
-const dueCount = ref(0);
+// Rules come from the machine's rules file (shared by every browser); the Duet3D Maintenance Timers
+// plugin's reached timers, when that plugin is installed, add to the same badge. The plugin part is a
+// computed over the live model so it follows the timers as they tick.
+const dueRuleCount = ref(0);
+const dueCount = computed(() => dueRuleCount.value + countReachedPluginTimers(machineStore.model));
 async function refreshDueCount(): Promise<void> {
-	const rules = getIntervalRules().filter((r) => r.enabled);
-	if (!rules.length) { dueCount.value = 0; return; }
+	const rules = (await loadMaintenanceRules()).doc.rules.filter((r) => r.enabled);
+	if (!rules.length) { dueRuleCount.value = 0; return; }
 	const log = await readMaintenanceLog();
-	dueCount.value = rules.filter((rule) => {
-		const live = liveNumber(OM_PATH_FOR_COUNTER[rule.counter]);
-		const entry = mostRecentEntryForCounter(log, rule.counter);
-		const baseline = entry ? baselineForCounter(entry, rule.counter) : null;
-		const status = computeDueStatus(secondsSince(live, baseline), rule.intervalValue);
-		return status === "dueSoon" || status === "overdue";
-	}).length;
+	dueRuleCount.value = evaluateRules(rules, log, machineStore.model).filter((e) => isDue(e.status)).length;
 }
 
 onMounted(async () => {
 	if (!machineStore.isConnected) { return; }
 	const io = defaultMachineIO();
-	const missing = await maintenanceMacrosMissing(io);
-	trackingConfigured.value = !missing && !(await maintenanceMacrosOutdated(io));
+	macroStatus.value = await maintenanceMacroStatus(io);
 	void refreshDueCount();
 });
 

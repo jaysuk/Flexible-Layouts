@@ -3,7 +3,9 @@
  * their files against, scan `0:/sys` and `0:/macros` for lines that use something that changed, and raise ONE click-through toast
  * if there are any. Installed once at plugin load, torn down on `dwcPluginUnloaded`, in the shape of `installAutoBackupNudges`.
  *
- *  - First ever connect: the current version is recorded as the baseline and nothing is said (there is nothing to compare with).
+ *  - First ever connect (no baseline): the baseline starts at the oldest release the catalogue covers (`initialBaseline`) and the
+ *    normal path below scans from there, so a fresh install reports what in the files changed since then. A machine already on
+ *    that release has nothing to scan, so its own version is recorded quietly.
  *  - Same version: nothing. A different version - newer OR older - scans, and only while the machine is strictly idle; if it is busy
  *    the scan waits for the busy -> idle edge (same rule as the backup auto-run).
  *  - Findings: one toast, once per `baseline->running` pair machine-wide (`notifiedKey`); the baseline stays put until the user marks
@@ -19,7 +21,7 @@ import i18n from "@/i18n";
 
 import { firmwareChangeReport, machineStatus, requestFirmwareReport, runFirmwareScan } from "./changeCheck";
 import {
-	acknowledgeReview, decideCheck, mainBoardFirmwareVersion, readFirmwareChangeState, writeFirmwareChangeState,
+	acknowledgeReview, decideCheck, initialBaseline, mainBoardFirmwareVersion, readFirmwareChangeState, writeFirmwareChangeState,
 } from "./changeState";
 
 export const CHECK_COOLDOWN_MS = 10 * 60 * 1000;
@@ -42,13 +44,15 @@ function t(key: string, params?: Record<string, unknown>): string {
 export async function checkFirmwareChanges(): Promise<void> {
 	const machineStore = useMachineStore();
 	if (!machineStore.isConnected || inFlight) { return; }
-	const state = readFirmwareChangeState();
+	let state = readFirmwareChangeState();
 	const running = mainBoardFirmwareVersion(machineStore.model);
-	const decision = decideCheck(state, running);
+	let decision = decideCheck(state, running);
 	if (decision === "none" || running === null) { return; }
 	if (decision === "record-baseline") {
-		writeFirmwareChangeState({ baseline: running });
-		return;
+		// Written before the scan so an interrupted or busy first check resumes from the same starting point.
+		state = writeFirmwareChangeState({ baseline: initialBaseline(running) });
+		decision = decideCheck(state, running);
+		if (decision === "none") { return; }
 	}
 
 	const baseline = state.baseline!;
