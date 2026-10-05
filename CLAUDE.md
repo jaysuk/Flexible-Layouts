@@ -13,6 +13,11 @@ Vue 3 + Vuetify plugin for DuetWebControl (drag-and-drop layout customisation fo
   Bare `npm run typecheck` fails without `DWC_DIR` set. The check resolves `dwc-gcode-core` (and other shared packages) from
   **that checkout's** `node_modules`, not this repo's - a stale copy there (e.g. 1.31.0 while this repo needs 1.32.0) shows up as
   "has no exported member" errors in the stepper files that are not real; `npm install` in the DWC checkout first.
+- **Testing against an unpublished `dwc-gcode-core`**: `npm pack` in the core repo, then
+  `npm install --no-save "$(cygpath -w /tmp/dwc-gcode-core-X.Y.Z.tgz)"` here (a bash `/tmp` path is not a Windows path to npm), run `npm test`, and only
+  after `npm publish` set the real `^X.Y.Z` in `package.json` and `npm install` so the lockfile resolves from the registry (poll `npm view
+  dwc-gcode-core@X.Y.Z version --prefer-online` first). A full run takes a few minutes and prints a stream of happy-dom `AbortError` stack traces
+  at teardown that are noise; read the `Test Files`/`Tests` summary line.
 - **Build verification**: `DWC_DIR=<path> npm run verify-build` — produces `FlexibleLayouts-<ver>.zip`
   (the installable plugin package) **and** `FlexibleLayouts-<ver>-srcmap.zip` (debug sourcemaps, held
   back from the main archive) in the repo root. Both are gitignored (`*.zip`) — safe to leave, or
