@@ -185,7 +185,7 @@ Vue 3 + Vuetify plugin for DuetWebControl (drag-and-drop layout customisation fo
   tab stop with `ringNavigation` arrows. Panel headers are keyboard "grab handles" (Enter, arrows, Shift+arrows) that
   `FlexPage` applies as one undo step and announces in an `aria-live` region.
 - **Firmware-change notifications** (`model/firmware/change*.ts`, `impactRange.ts`, `firmwareChanges/`; plan in `FIRMWARE-CHANGES-PLAN.md`).
-  `dwc-gcode-core` (>= 1.33.0) owns the catalogue and the matching (`scanImpact`/`scanFile`/`buildImpactReport`, `impactToDiagnostics`,
+  `dwc-gcode-core` (>= 1.33.0; >= 1.38.0 for 3.7.0 stable - read at the 3.7-dev head and tracked as a provisional untagged build until the tag exists, so a board on `3.7.0` is inside the catalogue) owns the catalogue and the matching (`scanImpact`/`scanFile`/`buildImpactReport`, `impactToDiagnostics`,
   `RELEASES`); this repo only lists and reads the files and shows the result. **State lives beside the document, not in it**:
   `plugins.flexibleLayouts.firmwareChanges` (`changeState.ts`: `enabled`, `editorWarnings`, `baseline`, `acknowledged`, `lastScan`,
   `notifiedKey`), machine-shared like the profiles but outside them, so layout export, profiles and undo never see it (a test
