@@ -21,17 +21,40 @@ type ParseResponse =
 	| { id: number; ok: false; error: string };
 
 interface WorkerScope {
-	onmessage: ((ev: { data: ParseRequest }) => void) | null;
+	onmessage: ((ev: { data: unknown }) => void) | null;
 	postMessage: (msg: ParseResponse) => void;
 }
 const scope = self as unknown as WorkerScope;
 
-scope.onmessage = (ev) => {
-	const { id, text } = ev.data;
-	try {
-		const result = parseGcode(text);
-		scope.postMessage({ id, ok: true, result });
-	} catch (e) {
-		scope.postMessage({ id, ok: false, error: (e as Error)?.message ?? String(e) });
-	}
-};
+function isParseRequest(data: unknown): data is ParseRequest {
+	return (
+		typeof data === "object" &&
+		data !== null &&
+		typeof (data as ParseRequest).id === "number" &&
+		typeof (data as ParseRequest).text === "string"
+	);
+}
+
+// DWC's plugin loader injects EVERY `.js` listed in a manifest's `dwcFiles` as a classic <script>
+// (plugins/index.ts), and this file is one of them, so it also runs on the page's main thread - where
+// `self` is `window`. Wiring `onmessage` there is not harmless: the reply below is then a same-window
+// postMessage that lands in this very handler, which fails on the reply's shape and posts another
+// error reply, forever (one profile showed 1.35 million calls in 9 s). So only act inside a real
+// Worker, and never answer anything that is not a request.
+const workerGlobalScope = (globalThis as { WorkerGlobalScope?: new () => unknown }).WorkerGlobalScope;
+const inWorker = typeof workerGlobalScope === "function" && self instanceof workerGlobalScope;
+
+if (inWorker) {
+	scope.onmessage = (ev) => {
+		if (!isParseRequest(ev.data)) {
+			return;
+		}
+		const { id, text } = ev.data;
+		try {
+			const result = parseGcode(text);
+			scope.postMessage({ id, ok: true, result });
+		} catch (e) {
+			scope.postMessage({ id, ok: false, error: (e as Error)?.message ?? String(e) });
+		}
+	};
+}
